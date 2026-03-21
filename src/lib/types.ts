@@ -38,4 +38,9 @@ export type CartLine = {
   quantity: number;
   image?: string;
   duration?: string;
+  /** Service card extras (shown in cart) */
+  includes?: string[];
+  rating?: number;
+  slotsLeft?: number;
+  bookedToday?: number;
 };

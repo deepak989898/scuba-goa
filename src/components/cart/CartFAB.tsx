@@ -6,6 +6,7 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { SITE_NAME, whatsappLink } from "@/lib/constants";
+import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 import type { CartLine } from "@/lib/types";
 
 declare global {
@@ -93,7 +94,7 @@ export function CartFAB() {
         lineTotal: l.unitPrice * l.quantity,
       }));
 
-      const options = {
+      const options: Record<string, unknown> = {
         key,
         amount: orderData.amount,
         currency: orderData.currency,
@@ -101,52 +102,62 @@ export function CartFAB() {
         name: SITE_NAME,
         description: summary.slice(0, 80) || "Goa experiences",
         prefill: { name, email, contact: phone },
+        modal: {
+          ondismiss: () => setBusy(false),
+        },
         handler: async (response: {
           razorpay_payment_id: string;
           razorpay_order_id: string;
           razorpay_signature: string;
         }) => {
-          const v = await fetch("/api/razorpay/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              booking: {
-                packageId: "cart",
-                packageName: `Cart: ${summary}`,
-                customerName: name,
-                email,
-                phone,
-                date,
-                people: itemCount,
-                amountPaise,
-                cartItems,
-              },
-            }),
-          });
-          const out = await v.json();
-          if (!v.ok) {
-            setMsg(out.error ?? "Verification failed");
-            return;
+          try {
+            const v = await fetch("/api/razorpay/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                booking: {
+                  packageId: "cart",
+                  packageName: `Cart: ${summary}`,
+                  customerName: name,
+                  email,
+                  phone,
+                  date,
+                  people: itemCount,
+                  amountPaise,
+                  cartItems,
+                },
+              }),
+            });
+            const out = await v.json();
+            if (!v.ok) {
+              setMsg(out.error ?? "Verification failed");
+              return;
+            }
+            clearCart();
+            setOpen(false);
+            setCheckoutOpen(false);
+            const wa = whatsappLink(
+              `Hi ${SITE_NAME}, I paid for my cart (${summary}) on ${date}. Payment ref: ${response.razorpay_payment_id}`
+            );
+            window.location.href = wa;
+          } finally {
+            setBusy(false);
           }
-          clearCart();
-          setOpen(false);
-          setCheckoutOpen(false);
-          const wa = whatsappLink(
-            `Hi ${SITE_NAME}, I paid for my cart (${summary}) on ${date}. Payment ref: ${response.razorpay_payment_id}`
-          );
-          window.location.href = wa;
         },
         theme: { color: "#0284c7" },
       };
 
       const rzp = new window.Razorpay(options);
+      attachRazorpayPaymentFailed(rzp, (msg) => {
+        setMsg(msg);
+        setBusy(false);
+      });
       rzp.open();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Payment error");
-    } finally {
       setBusy(false);
     }
   }
@@ -260,6 +271,18 @@ export function CartFAB() {
                         <p className="font-medium text-ocean-900">{line.name}</p>
                         {line.duration ? (
                           <p className="text-xs text-ocean-600">{line.duration}</p>
+                        ) : null}
+                        {line.includes && line.includes.length > 0 ? (
+                          <ul className="mt-1 flex flex-wrap gap-1">
+                            {line.includes.slice(0, 3).map((inc) => (
+                              <li
+                                key={inc}
+                                className="rounded bg-ocean-50 px-1.5 py-0.5 text-[10px] text-ocean-700"
+                              >
+                                {inc}
+                              </li>
+                            ))}
+                          </ul>
                         ) : null}
                         <p className="mt-1 text-sm font-semibold text-ocean-800">
                           ₹{line.unitPrice.toLocaleString("en-IN")} each

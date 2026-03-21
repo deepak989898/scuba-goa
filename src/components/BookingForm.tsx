@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { usePackages } from "@/hooks/usePackages";
 import { SITE_NAME, whatsappLink } from "@/lib/constants";
+import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 
 declare global {
   interface Window {
@@ -69,7 +70,7 @@ export function BookingForm() {
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error ?? "Order failed");
 
-      const options = {
+      const options: Record<string, unknown> = {
         key,
         amount: orderData.amount,
         currency: orderData.currency,
@@ -77,49 +78,59 @@ export function BookingForm() {
         name: SITE_NAME,
         description: selected.name,
         prefill: { name, email, contact: phone },
+        modal: {
+          ondismiss: () => setBusy(false),
+        },
         handler: async (response: {
           razorpay_payment_id: string;
           razorpay_order_id: string;
           razorpay_signature: string;
         }) => {
-          const v = await fetch("/api/razorpay/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              booking: {
-                packageId: selected.id,
-                packageName: selected.name,
-                customerName: name,
-                email,
-                phone,
-                date,
-                people,
-                amountPaise,
-              },
-            }),
-          });
-          const out = await v.json();
-          if (!v.ok) {
-            setMsg(out.error ?? "Verification failed");
-            return;
+          try {
+            const v = await fetch("/api/razorpay/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                booking: {
+                  packageId: selected.id,
+                  packageName: selected.name,
+                  customerName: name,
+                  email,
+                  phone,
+                  date,
+                  people,
+                  amountPaise,
+                },
+              }),
+            });
+            const out = await v.json();
+            if (!v.ok) {
+              setMsg(out.error ?? "Verification failed");
+              return;
+            }
+            setMsg("Payment successful! Redirecting to WhatsApp…");
+            const wa = whatsappLink(
+              `Hi, I paid for ${selected.name} on ${date} for ${people} people. Ref: ${response.razorpay_payment_id}`
+            );
+            window.location.href = wa;
+          } finally {
+            setBusy(false);
           }
-          setMsg("Payment successful! Redirecting to WhatsApp…");
-          const wa = whatsappLink(
-            `Hi, I paid for ${selected.name} on ${date} for ${people} people. Ref: ${response.razorpay_payment_id}`
-          );
-          window.location.href = wa;
         },
         theme: { color: "#0284c7" },
       };
 
       const rzp = new window.Razorpay(options);
+      attachRazorpayPaymentFailed(rzp, (msg) => {
+        setMsg(msg);
+        setBusy(false);
+      });
       rzp.open();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
       setBusy(false);
     }
   }

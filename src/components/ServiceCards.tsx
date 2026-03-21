@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { services } from "@/data/services";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
 
 export function ServiceCards() {
   return (
@@ -44,6 +45,11 @@ export function ServiceCards() {
                       Most Booked
                     </span>
                   )}
+                  {s.limitedSlots ? (
+                    <span className="absolute right-3 top-3 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white">
+                      Limited Slots
+                    </span>
+                  ) : null}
                 </div>
               </Link>
               <div className="flex flex-1 flex-col p-4">
@@ -53,7 +59,8 @@ export function ServiceCards() {
                   </h3>
                 </Link>
                 <p className="mt-1 text-sm text-ocean-600">{s.short}</p>
-                <p className="mt-3 text-sm font-semibold text-ocean-800">
+                <ServiceMetaBlock s={s} />
+                <p className="mt-3 text-lg font-bold text-ocean-900">
                   From ₹{s.priceFrom.toLocaleString("en-IN")}+
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -63,6 +70,11 @@ export function ServiceCards() {
                     title={s.title}
                     priceFrom={s.priceFrom}
                     image={s.image}
+                    duration={s.duration}
+                    includes={s.includes}
+                    rating={s.rating}
+                    slotsLeft={s.slotsLeft}
+                    bookedToday={s.bookedToday}
                     size="sm"
                   />
                   <Link

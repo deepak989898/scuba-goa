@@ -10,6 +10,10 @@ type ServiceProps = {
   priceFrom: number;
   image?: string;
   duration?: string;
+  includes?: string[];
+  rating?: number;
+  slotsLeft?: number;
+  bookedToday?: number;
 };
 
 type PackageProps = {
@@ -45,6 +49,10 @@ export function AddToCartButton(props: Props) {
         priceFrom: props.priceFrom,
         image: props.image,
         duration: props.duration,
+        includes: props.includes,
+        rating: props.rating,
+        slotsLeft: props.slotsLeft,
+        bookedToday: props.bookedToday,
       });
     } else {
       addPackage({

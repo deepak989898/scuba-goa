@@ -20,7 +20,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_*` Firebase | Client SDK (homepage packages, admin UI) |
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | Server JSON string — **writes paid bookings** from `/api/razorpay/verify` |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Server order creation + signature verify |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Checkout popup (same as key id, public) |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Must match `RAZORPAY_KEY_ID` exactly — see [docs/RAZORPAY-TEST.md](docs/RAZORPAY-TEST.md) |
 | `OPENAI_API_KEY` | Optional AI concierge |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | International digits, no `+` (e.g. `919217290871` for +91 92172 90871) |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for SEO / sitemap |
@@ -47,10 +47,9 @@ Use **test keys** from the Razorpay dashboard first. Production: swap to live ke
 
 ## Deploy
 
-See **[docs/DEPLOY-FIREBASE.md](docs/DEPLOY-FIREBASE.md)** for Firebase (`bookscubagoa`), Razorpay secrets, **Firebase App Hosting** vs **Vercel**, and Firestore rules deploy.
-
-- **Vercel**: connect repo, add env vars (mirror `.env.local`), deploy.
-- **Firebase App Hosting**: Git-connected Next.js on Google ([official guide](https://firebase.google.com/docs/app-hosting/get-started)); add the same env vars in the backend settings.
+- **Vercel (recommended):** **[docs/DEPLOY-VERCEL.md](docs/DEPLOY-VERCEL.md)** — import repo, env vars, redeploy, Firebase authorized domains.
+- **Firebase + Razorpay details:** **[docs/DEPLOY-FIREBASE.md](docs/DEPLOY-FIREBASE.md)** and **[docs/RAZORPAY-TEST.md](docs/RAZORPAY-TEST.md)** (Razorpay needs **three** vars: Key ID twice + Secret).
+- **Firebase App Hosting:** [Get started with App Hosting](https://firebase.google.com/docs/app-hosting/get-started); add the same env vars in the backend settings.
 
 ## Pages
 

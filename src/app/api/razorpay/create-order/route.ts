@@ -4,10 +4,20 @@ import Razorpay from "razorpay";
 export async function POST(req: Request) {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const publicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
   if (!keyId || !keySecret) {
     return NextResponse.json(
       { error: "Razorpay keys not configured on server" },
       { status: 500 }
+    );
+  }
+  if (publicKeyId && publicKeyId !== keyId) {
+    return NextResponse.json(
+      {
+        error:
+          "RAZORPAY_KEY_ID must match NEXT_PUBLIC_RAZORPAY_KEY_ID (same test or live pair). Fix Vercel env.",
+      },
+      { status: 400 }
     );
   }
   let body: { amount?: number; currency?: string; receipt?: string };
@@ -35,8 +45,13 @@ export async function POST(req: Request) {
       amount: order.amount,
       currency: order.currency,
     });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Order creation failed";
+  } catch (e: unknown) {
+    const err = e as {
+      error?: { description?: string };
+      message?: string;
+    };
+    const msg =
+      err?.error?.description ?? err?.message ?? "Order creation failed";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }

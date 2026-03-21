@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { services } from "@/data/services";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
 
 export function ServicesGrid() {
   return (
@@ -23,6 +24,11 @@ export function ServicesGrid() {
                 sizes="(max-width:1024px) 100vw, 33vw"
                 loading="lazy"
               />
+              {s.limitedSlots ? (
+                <span className="absolute right-3 top-3 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white">
+                  Limited Slots
+                </span>
+              ) : null}
             </div>
           </Link>
           <div className="p-5">
@@ -32,7 +38,8 @@ export function ServicesGrid() {
               </h2>
             </Link>
             <p className="mt-1 text-sm text-ocean-600">{s.short}</p>
-            <p className="mt-2 text-sm font-semibold text-ocean-800">
+            <ServiceMetaBlock s={s} />
+            <p className="mt-3 text-lg font-bold text-ocean-900">
               From ₹{s.priceFrom.toLocaleString("en-IN")}+
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -42,6 +49,11 @@ export function ServicesGrid() {
                 title={s.title}
                 priceFrom={s.priceFrom}
                 image={s.image}
+                duration={s.duration}
+                includes={s.includes}
+                rating={s.rating}
+                slotsLeft={s.slotsLeft}
+                bookedToday={s.bookedToday}
                 size="sm"
               />
               <Link

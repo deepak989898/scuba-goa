@@ -46,9 +46,6 @@ export default async function ServiceDetailPage({ params }: Props) {
         </div>
       </div>
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <p className="text-2xl font-bold text-ocean-900">
-          From ₹{s.priceFrom.toLocaleString("en-IN")}+
-        </p>
         <p className="mt-6 text-ocean-800">
           Lock slots early during peak season. We sync live packages in Firestore so
           admins can change prices, inclusions, and urgency tags without redeploying
@@ -61,12 +58,7 @@ export default async function ServiceDetailPage({ params }: Props) {
           <strong>water sports Goa booking</strong> combos are popular on weekends;
           ask for same-day feasibility before you pay.
         </p>
-        <ServiceDetailActions
-          slug={s.slug}
-          title={s.title}
-          priceFrom={s.priceFrom}
-          image={s.image}
-        />
+        <ServiceDetailActions service={s} />
       </div>
     </article>
   );

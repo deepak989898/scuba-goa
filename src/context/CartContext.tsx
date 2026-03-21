@@ -24,6 +24,10 @@ type CartContextValue = {
     priceFrom: number;
     image?: string;
     duration?: string;
+    includes?: string[];
+    rating?: number;
+    slotsLeft?: number;
+    bookedToday?: number;
   }) => void;
   addPackage: (input: {
     id: string;
@@ -72,6 +76,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       priceFrom: number;
       image?: string;
       duration?: string;
+      includes?: string[];
+      rating?: number;
+      slotsLeft?: number;
+      bookedToday?: number;
     }) => {
       const key = `service:${input.slug}`;
       setLines((prev) => {
@@ -93,6 +101,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
             quantity: 1,
             image: input.image,
             duration: input.duration,
+            includes: input.includes,
+            rating: input.rating,
+            slotsLeft: input.slotsLeft,
+            bookedToday: input.bookedToday,
           },
         ];
       });

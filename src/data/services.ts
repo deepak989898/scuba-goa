@@ -5,6 +5,14 @@ export type ServiceItem = {
   priceFrom: number;
   image: string;
   mostBooked?: boolean;
+  /** e.g. "4–5 hrs", "Full day" */
+  duration: string;
+  rating: number;
+  includes: string[];
+  slotsLeft?: number;
+  bookedToday?: number;
+  /** Show "Limited Slots" badge when true */
+  limitedSlots?: boolean;
 };
 
 const u = (id: string) =>
@@ -18,6 +26,12 @@ export const services: ServiceItem[] = [
     priceFrom: 2499,
     image: u("photo-1544551763-46a013bb70d5"),
     mostBooked: true,
+    duration: "4–5 hrs",
+    rating: 4.9,
+    includes: ["Boat transfer", "Gear", "Instructor", "Underwater photos"],
+    slotsLeft: 6,
+    bookedToday: 14,
+    limitedSlots: true,
   },
   {
     slug: "north-goa-tour",
@@ -26,6 +40,12 @@ export const services: ServiceItem[] = [
     priceFrom: 1499,
     image: u("photo-1512343879784-a960bf40e7f2"),
     mostBooked: true,
+    duration: "8 hrs",
+    rating: 4.8,
+    includes: ["Hotel pickup", "AC cab", "Flexible stops", "Bottled water"],
+    slotsLeft: 8,
+    bookedToday: 9,
+    limitedSlots: true,
   },
   {
     slug: "south-goa-tour",
@@ -33,6 +53,11 @@ export const services: ServiceItem[] = [
     short: "Quiet shores & heritage",
     priceFrom: 1699,
     image: u("photo-1507525428034-b723cf961d3e"),
+    duration: "8 hrs",
+    rating: 4.7,
+    includes: ["Pickup", "Chapel visit", "Beach time", "Driver guide"],
+    slotsLeft: 10,
+    bookedToday: 6,
   },
   {
     slug: "dudhsagar-trip",
@@ -41,6 +66,17 @@ export const services: ServiceItem[] = [
     priceFrom: 1899,
     image: u("photo-1432405972618-c60b0225b8f9"),
     mostBooked: true,
+    duration: "Full day",
+    rating: 4.7,
+    includes: [
+      "Jeep slots",
+      "Guide",
+      "Life jackets",
+      "Packed breakfast option",
+    ],
+    slotsLeft: 8,
+    bookedToday: 11,
+    limitedSlots: true,
   },
   {
     slug: "water-sports",
@@ -48,6 +84,11 @@ export const services: ServiceItem[] = [
     short: "Jet ski, parasail & more",
     priceFrom: 999,
     image: u("photo-1530549387789-4c1017266635"),
+    duration: "2–3 hrs",
+    rating: 4.6,
+    includes: ["Life jacket", "Instructor", "1 activity combo", "Photos"],
+    slotsLeft: 15,
+    bookedToday: 22,
   },
   {
     slug: "dolphin-trip",
@@ -55,6 +96,11 @@ export const services: ServiceItem[] = [
     short: "Sunrise cruise & sightings",
     priceFrom: 599,
     image: u("photo-1568430462989-d4fbfabde15a"),
+    duration: "2 hrs",
+    rating: 4.5,
+    includes: ["Boat seats", "Life jacket", "Guide", "Sunrise slot"],
+    slotsLeft: 12,
+    bookedToday: 8,
   },
   {
     slug: "casino-bookings",
@@ -62,6 +108,11 @@ export const services: ServiceItem[] = [
     short: "Offshore & onshore entry",
     priceFrom: 2500,
     image: u("photo-1596838132731-3301c3fd4317"),
+    duration: "Evening",
+    rating: 4.6,
+    includes: ["Entry package", "Buffet", "Live entertainment", "Chips"],
+    slotsLeft: 12,
+    bookedToday: 5,
   },
   {
     slug: "night-club",
@@ -69,6 +120,12 @@ export const services: ServiceItem[] = [
     short: "VIP tables & guest lists",
     priceFrom: 1999,
     image: u("photo-1571266028243-e4736f2e9f4a"),
+    duration: "Night",
+    rating: 4.7,
+    includes: ["Guest list", "Table", "Mixers", "VIP lane"],
+    slotsLeft: 4,
+    bookedToday: 7,
+    limitedSlots: true,
   },
   {
     slug: "pubs",
@@ -76,6 +133,11 @@ export const services: ServiceItem[] = [
     short: "Curated pub crawls",
     priceFrom: 799,
     image: u("photo-1514933651103-005eec06c04b"),
+    duration: "4 hrs",
+    rating: 4.5,
+    includes: ["Route guide", "Cover deals", "Group safety"],
+    slotsLeft: 20,
+    bookedToday: 4,
   },
   {
     slug: "disco",
@@ -83,6 +145,11 @@ export const services: ServiceItem[] = [
     short: "Late-night dance floors",
     priceFrom: 1299,
     image: u("photo-1470225620780-dba8ba36b745"),
+    duration: "Night",
+    rating: 4.6,
+    includes: ["Entry", "Guest list", "DJ night"],
+    slotsLeft: 9,
+    bookedToday: 6,
   },
   {
     slug: "flyboarding",
@@ -90,6 +157,12 @@ export const services: ServiceItem[] = [
     short: "Thrill over the Arabian Sea",
     priceFrom: 3499,
     image: u("photo-1502680390469-be75c86b636f"),
+    duration: "45 min slot",
+    rating: 4.8,
+    includes: ["Trainer", "Gear", "Safety briefing", "Photos optional"],
+    slotsLeft: 3,
+    bookedToday: 4,
+    limitedSlots: true,
   },
   {
     slug: "bungee-jumping",
@@ -97,5 +170,11 @@ export const services: ServiceItem[] = [
     short: "Certified operators",
     priceFrom: 3999,
     image: u("photo-1522163182402-834f871fd851"),
+    duration: "1 hr",
+    rating: 4.9,
+    includes: ["Jump", "Certificate", "Harness check", "Photos add-on"],
+    slotsLeft: 5,
+    bookedToday: 2,
+    limitedSlots: true,
   },
 ];
