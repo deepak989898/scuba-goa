@@ -80,11 +80,15 @@ Set **exactly** this:
 
 **Test mode:** turn on **Test mode** in Razorpay, then use **test** Key ID + **test** secret together. Pay with [Razorpay test cards](https://razorpay.com/docs/payments/payments/test-card-details/), not real cards.
 
-### Optional
+### OpenAI (AI Help button — optional)
 
 | Name | Purpose |
 |------|---------|
-| `OPENAI_API_KEY` | AI chat widget |
+| `OPENAI_API_KEY` | Server-side only — enables `/api/chat` for the **AI Help** widget. Create a key at [OpenAI API keys](https://platform.openai.com/api-keys). |
+
+**Security:** Add the key only in **Vercel → Environment Variables** (and `.env.local` on your PC). **Never** commit keys to Git or paste them in public chats. If a key is exposed, **revoke** it in OpenAI and create a new one.
+
+Redeploy after adding `OPENAI_API_KEY`.
 
 ---
 
@@ -125,3 +129,5 @@ Then set `NEXT_PUBLIC_SITE_URL` to `https://yourdomain.com` and redeploy.
 - [ ] Firebase authorized domains include Vercel URL  
 
 More on Razorpay: [docs/RAZORPAY-TEST.md](RAZORPAY-TEST.md)
+
+Worldwide / legal basics: [docs/PUBLISH-WORLDWIDE.md](PUBLISH-WORLDWIDE.md)
