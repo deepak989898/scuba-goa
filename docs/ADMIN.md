@@ -1,4 +1,4 @@
-# Admin: packages, services & bookings
+# Admin: packages, services, bookings & analytics
 
 ## Two product types
 
@@ -7,6 +7,8 @@
 | **Packages** (homepage “Live packages”, cart packages) | `packages` | `/admin/packages` |
 | **Services** (home cards + `/services` list + detail pages) | `services` | `/admin/services` |
 | **Bookings** (paid orders) | `bookings` | `/admin/bookings` |
+| **Analytics** (page views / sessions sample) | `pageViews` | `/admin/analytics` |
+| **Reviews** (moderated ratings) | `ratings` | `/admin/ratings` |
 
 ---
 
@@ -31,6 +33,14 @@ Same as before: **`/admin/packages`** — add / edit / delete rows in `packages`
 ## Bookings
 
 **`/admin/bookings`** — shows documents created by `/api/razorpay/verify` when `FIREBASE_SERVICE_ACCOUNT_KEY` is set on the server.
+
+**Razorpay test mode** does not block Firestore writes; if bookings stay empty after a successful payment, the usual cause is the service account key missing on the host (or wrong project).
+
+---
+
+## Analytics
+
+**`/admin/analytics`** — reads `pageViews` (written by `POST /api/analytics/track` when the same Admin SDK env is set). Deploy updated `firestore.rules` so admins can read `pageViews`.
 
 ---
 

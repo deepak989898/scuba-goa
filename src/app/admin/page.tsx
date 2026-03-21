@@ -48,6 +48,28 @@ export default function AdminHomePage() {
             Paid orders with Razorpay payment IDs.
           </p>
         </Link>
+        <Link
+          href="/admin/analytics"
+          className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
+        >
+          <h2 className="font-display text-lg font-semibold text-ocean-900">
+            Analytics
+          </h2>
+          <p className="mt-2 text-sm text-ocean-600">
+            Page views and session counts from the public site.
+          </p>
+        </Link>
+        <Link
+          href="/admin/ratings"
+          className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
+        >
+          <h2 className="font-display text-lg font-semibold text-ocean-900">
+            Reviews
+          </h2>
+          <p className="mt-2 text-sm text-ocean-600">
+            Approve or delete guest ratings for the homepage.
+          </p>
+        </Link>
       </div>
     </div>
   );

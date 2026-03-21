@@ -6,6 +6,10 @@ import Script from "next/script";
 import { usePackages } from "@/hooks/usePackages";
 import { SITE_NAME, whatsappLink } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
+import {
+  computeMinPayPaise,
+  MIN_PAYMENT_PER_PERSON_INR,
+} from "@/lib/payment";
 
 declare global {
   interface Window {
@@ -26,6 +30,8 @@ export function BookingForm() {
   const [people, setPeople] = useState(2);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  /** Pay minimum advance (₹500 per person) or full total */
+  const [payMode, setPayMode] = useState<"min" | "full">("full");
 
   useEffect(() => {
     if (pre && packages.some((p) => p.id === pre)) setPackageId(pre);
@@ -37,7 +43,14 @@ export function BookingForm() {
   );
 
   const totalInr = selected ? selected.price * people : 0;
-  const amountPaise = Math.round(totalInr * 100);
+  const fullAmountPaise = Math.round(totalInr * 100);
+  const minPayPaise = selected
+    ? computeMinPayPaise(people, fullAmountPaise)
+    : 0;
+  const chargePaise =
+    payMode === "full" || minPayPaise >= fullAmountPaise
+      ? fullAmountPaise
+      : minPayPaise;
 
   async function pay() {
     setMsg(null);
@@ -62,7 +75,9 @@ export function BookingForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: amountPaise,
+          amount: chargePaise,
+          fullAmountPaise,
+          payUnits: people,
           currency: "INR",
           receipt: `bk_${Date.now()}`,
         }),
@@ -102,7 +117,9 @@ export function BookingForm() {
                   phone,
                   date,
                   people,
-                  amountPaise,
+                  amountPaise: chargePaise,
+                  fullAmountPaise,
+                  payUnits: people,
                 },
               }),
             });
@@ -111,11 +128,14 @@ export function BookingForm() {
               setMsg(out.error ?? "Verification failed");
               return;
             }
-            setMsg("Payment successful! Redirecting to WhatsApp…");
-            const wa = whatsappLink(
-              `Hi, I paid for ${selected.name} on ${date} for ${people} people. Ref: ${response.razorpay_payment_id}`
-            );
-            window.location.href = wa;
+            if (out.warning) {
+              try {
+                sessionStorage.setItem("paymentNotice", String(out.warning));
+              } catch {
+                /* ignore */
+              }
+            }
+            window.location.href = "/?payment=success";
           } finally {
             setBusy(false);
           }
@@ -146,7 +166,7 @@ export function BookingForm() {
           Book in 60 seconds
         </h2>
         <p className="mt-1 text-sm text-ocean-600">
-          No login. Pay with UPI, card, or netbanking. Confirmation opens WhatsApp.
+          Pay with UPI, card, or netbanking. Pay minimum ₹{MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} per person or the full amount.
         </p>
         {loading ? (
           <p className="mt-6 text-sm text-ocean-600">Loading packages…</p>
@@ -216,9 +236,46 @@ export function BookingForm() {
               />
             </label>
             {selected ? (
-              <p className="text-lg font-bold text-ocean-900">
-                Total: ₹{(selected.price * people).toLocaleString("en-IN")}
-              </p>
+              <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
+                <p className="text-lg font-bold text-ocean-900">
+                  Full total: ₹{(selected.price * people).toLocaleString("en-IN")}
+                </p>
+                {minPayPaise < fullAmountPaise ? (
+                  <>
+                    <p className="text-sm text-ocean-700">
+                      Minimum advance: ₹{(minPayPaise / 100).toLocaleString("en-IN")}{" "}
+                      ({MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × {people}{" "}
+                      {people === 1 ? "person" : "people"})
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="radio"
+                          name="payMode"
+                          checked={payMode === "min"}
+                          onChange={() => setPayMode("min")}
+                          className="text-ocean-700"
+                        />
+                        Pay minimum (₹{(minPayPaise / 100).toLocaleString("en-IN")})
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="radio"
+                          name="payMode"
+                          checked={payMode === "full"}
+                          onChange={() => setPayMode("full")}
+                        />
+                        Pay full (₹{(fullAmountPaise / 100).toLocaleString("en-IN")})
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-ocean-600">
+                    Order total is below the per-person minimum; you’ll pay the full
+                    amount.
+                  </p>
+                )}
+              </div>
             ) : null}
             {msg ? (
               <p className="text-sm text-ocean-700" role="status">
@@ -231,7 +288,11 @@ export function BookingForm() {
               disabled={busy}
               className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
             >
-              {busy ? "Processing…" : "Pay securely with Razorpay"}
+              {busy
+                ? "Processing…"
+                : selected
+                  ? `Pay ₹${(chargePaise / 100).toLocaleString("en-IN")} with Razorpay`
+                  : "Pay securely with Razorpay"}
             </button>
             <a
               href={whatsappLink()}

@@ -63,8 +63,16 @@ export default function AdminBookingsPage() {
                 {String(r.email ?? "")}
               </p>
               <p className="text-ocean-600">
-                {String(r.date ?? "")} · {String(r.people ?? "")} pax · ₹
+                {String(r.date ?? "")} · {String(r.people ?? "")} pax · Paid ₹
                 {Number(r.amountPaise ?? 0) / 100}
+                {typeof r.fullAmountPaise === "number" &&
+                r.fullAmountPaise > (Number(r.amountPaise) || 0) ? (
+                  <>
+                    {" "}
+                    · Full order ₹{Number(r.fullAmountPaise) / 100} · Balance ₹
+                    {Number(r.balancePaise ?? 0) / 100}
+                  </>
+                ) : null}
               </p>
               <p className="text-xs text-ocean-500">
                 Payment {String(r.razorpayPaymentId ?? r.id)} ·{" "}

@@ -1,6 +1,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
+import Razorpay from "razorpay";
+import { generateBillPdf } from "@/lib/billPdf";
+import { sendBookingConfirmationEmail } from "@/lib/email";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { isValidPayAmountPaise } from "@/lib/payment";
 
 type BookingBody = Record<string, unknown> & {
   packageId: string;
@@ -11,13 +15,17 @@ type BookingBody = Record<string, unknown> & {
   date: string;
   people: number;
   amountPaise: number;
-  /** Set for multi-item cart checkouts */
+  /** Total booking value before partial pay (paise). */
+  fullAmountPaise?: number;
+  /** People or cart units for minimum calculation. */
+  payUnits?: number;
   cartItems?: unknown[];
 };
 
 export async function POST(req: Request) {
   const secret = process.env.RAZORPAY_KEY_SECRET;
-  if (!secret) {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  if (!secret || !keyId) {
     return NextResponse.json({ error: "Razorpay not configured" }, { status: 500 });
   }
   let body: {
@@ -51,17 +59,141 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  const rzp = new Razorpay({ key_id: keyId, key_secret: secret });
+  let paidPaise: number;
+  try {
+    const payment = (await rzp.payments.fetch(razorpay_payment_id)) as {
+      amount?: number;
+      order_id?: string;
+      status?: string;
+    };
+    if (payment.order_id && payment.order_id !== razorpay_order_id) {
+      return NextResponse.json({ error: "Order mismatch" }, { status: 400 });
+    }
+    const amt = Number(payment.amount);
+    if (!Number.isFinite(amt) || amt < 100) {
+      return NextResponse.json({ error: "Invalid payment data" }, { status: 400 });
+    }
+    paidPaise = Math.round(amt);
+  } catch (e) {
+    console.error("Razorpay payment fetch failed", e);
+    return NextResponse.json(
+      { error: "Could not verify payment with Razorpay" },
+      { status: 502 }
+    );
+  }
+
+  const fullPaiseRaw = booking.fullAmountPaise;
+  const payUnitsRaw = booking.payUnits ?? booking.people;
+  const hasStructured =
+    fullPaiseRaw !== undefined &&
+    fullPaiseRaw !== null &&
+    payUnitsRaw !== undefined &&
+    payUnitsRaw !== null;
+
+  let fullAmountPaise = Math.floor(Number(fullPaiseRaw));
+  const payUnits = Math.max(1, Math.floor(Number(payUnitsRaw)));
+
+  if (hasStructured) {
+    if (!Number.isFinite(fullAmountPaise) || fullAmountPaise < 100) {
+      return NextResponse.json(
+        { error: "Invalid booking totals" },
+        { status: 400 }
+      );
+    }
+    if (!isValidPayAmountPaise(paidPaise, fullAmountPaise, payUnits)) {
+      return NextResponse.json(
+        { error: "Paid amount does not match allowed minimum or full total" },
+        { status: 400 }
+      );
+    }
+  } else {
+    fullAmountPaise = paidPaise;
+  }
+
+  const balancePaise = Math.max(0, fullAmountPaise - paidPaise);
+  const paymentMode = balancePaise > 0 ? "partial" : "full";
+
   const db = getAdminDb();
-  if (db) {
-    const ref = db.collection("bookings").doc(razorpay_payment_id);
-    await ref.set({
-      ...booking,
-      razorpayOrderId: razorpay_order_id,
-      razorpayPaymentId: razorpay_payment_id,
-      status: "paid",
-      createdAt: new Date().toISOString(),
+  if (!db) {
+    return NextResponse.json({
+      ok: true,
+      stored: false,
+      emailSent: false,
+      warning:
+        "FIREBASE_SERVICE_ACCOUNT_KEY is missing or invalid on the server. Razorpay payment succeeded, but the booking was not saved. Add the service account JSON to Vercel (or your host) and redeploy.",
     });
   }
 
-  return NextResponse.json({ ok: true, stored: Boolean(db) });
+  const ref = db.collection("bookings").doc(razorpay_payment_id);
+  const payload = {
+    ...booking,
+    amountPaise: paidPaise,
+    fullAmountPaise,
+    payUnits,
+    balancePaise,
+    paymentMode,
+    razorpayOrderId: razorpay_order_id,
+    razorpayPaymentId: razorpay_payment_id,
+    status: "paid",
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    await ref.set(payload);
+  } catch (e) {
+    console.error("bookings write failed", e);
+    return NextResponse.json(
+      {
+        error:
+          "Payment verified but saving the booking failed. Contact support with your Razorpay payment ID.",
+        stored: false,
+      },
+      { status: 500 }
+    );
+  }
+
+  const amountInr = Math.round(paidPaise / 100);
+  const fullInr = Math.round(fullAmountPaise / 100);
+  const balanceInr = Math.round(balancePaise / 100);
+
+  let pdfBytes: Uint8Array | undefined;
+  try {
+    pdfBytes = await generateBillPdf({
+      customerName: String(booking.customerName),
+      customerEmail: String(booking.email).trim(),
+      phone: String(booking.phone),
+      packageName: String(booking.packageName),
+      date: String(booking.date),
+      people: Number(booking.people) || 0,
+      amountPaidInr: amountInr,
+      fullAmountInr: fullInr,
+      balanceInr,
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      isPartial: paymentMode === "partial",
+    });
+  } catch (err) {
+    console.error("PDF bill generation failed", err);
+  }
+
+  let emailSent = false;
+  try {
+    emailSent = await sendBookingConfirmationEmail({
+      to: String(booking.email).trim(),
+      customerName: String(booking.customerName),
+      packageName: String(booking.packageName),
+      date: String(booking.date),
+      people: Number(booking.people) || 0,
+      amountInr,
+      fullAmountInr: fullInr,
+      balanceInr,
+      paymentId: razorpay_payment_id,
+      pdfBytes,
+    });
+  } catch (err) {
+    console.error("booking confirmation email failed", err);
+  }
+
+  return NextResponse.json({ ok: true, stored: true, emailSent });
 }

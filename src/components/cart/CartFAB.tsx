@@ -5,8 +5,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { SITE_NAME, whatsappLink } from "@/lib/constants";
+import { SITE_NAME } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
+import {
+  computeMinPayPaise,
+  MIN_PAYMENT_PER_PERSON_INR,
+} from "@/lib/payment";
 import type { CartLine } from "@/lib/types";
 
 declare global {
@@ -40,8 +44,14 @@ export function CartFAB() {
   const [date, setDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [payMode, setPayMode] = useState<"min" | "full">("full");
 
-  const amountPaise = Math.round(subtotalInr * 100);
+  const fullAmountPaise = Math.round(subtotalInr * 100);
+  const minPayPaise = computeMinPayPaise(itemCount, fullAmountPaise);
+  const chargePaise =
+    payMode === "full" || minPayPaise >= fullAmountPaise
+      ? fullAmountPaise
+      : minPayPaise;
   const showFab = ready && itemCount > 0;
 
   useEffect(() => {
@@ -76,7 +86,9 @@ export function CartFAB() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: amountPaise,
+          amount: chargePaise,
+          fullAmountPaise,
+          payUnits: itemCount,
           currency: "INR",
           receipt: `cart_${Date.now()}`,
         }),
@@ -126,7 +138,9 @@ export function CartFAB() {
                   phone,
                   date,
                   people: itemCount,
-                  amountPaise,
+                  amountPaise: chargePaise,
+                  fullAmountPaise,
+                  payUnits: itemCount,
                   cartItems,
                 },
               }),
@@ -136,13 +150,17 @@ export function CartFAB() {
               setMsg(out.error ?? "Verification failed");
               return;
             }
+            if (out.warning) {
+              try {
+                sessionStorage.setItem("paymentNotice", String(out.warning));
+              } catch {
+                /* ignore */
+              }
+            }
             clearCart();
             setOpen(false);
             setCheckoutOpen(false);
-            const wa = whatsappLink(
-              `Hi ${SITE_NAME}, I paid for my cart (${summary}) on ${date}. Payment ref: ${response.razorpay_payment_id}`
-            );
-            window.location.href = wa;
+            window.location.href = "/?payment=success";
           } finally {
             setBusy(false);
           }
@@ -368,6 +386,40 @@ export function CartFAB() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                     />
+                    {minPayPaise < fullAmountPaise ? (
+                      <div className="rounded-xl border border-ocean-100 bg-sand/80 p-3 text-xs text-ocean-800">
+                        <p className="font-medium text-ocean-900">
+                          Minimum advance: ₹{(minPayPaise / 100).toLocaleString("en-IN")}{" "}
+                          ({MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × {itemCount}{" "}
+                          {itemCount === 1 ? "item" : "items"})
+                        </p>
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="radio"
+                              name="cartPayMode"
+                              checked={payMode === "min"}
+                              onChange={() => setPayMode("min")}
+                            />
+                            Pay minimum (₹{(minPayPaise / 100).toLocaleString("en-IN")})
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="radio"
+                              name="cartPayMode"
+                              checked={payMode === "full"}
+                              onChange={() => setPayMode("full")}
+                            />
+                            Pay full (₹{(fullAmountPaise / 100).toLocaleString("en-IN")})
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-ocean-600">
+                        Cart total is below the per-item minimum; you’ll pay the full
+                        amount.
+                      </p>
+                    )}
                     {msg ? (
                       <p className="text-sm text-red-600" role="alert">
                         {msg}
@@ -379,7 +431,9 @@ export function CartFAB() {
                       onClick={pay}
                       className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
                     >
-                      {busy ? "Processing…" : `Pay ₹${subtotalInr.toLocaleString("en-IN")}`}
+                      {busy
+                        ? "Processing…"
+                        : `Pay ₹${(chargePaise / 100).toLocaleString("en-IN")}`}
                     </button>
                     <button
                       type="button"

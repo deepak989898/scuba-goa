@@ -80,6 +80,16 @@ Set **exactly** this:
 
 **Test mode:** turn on **Test mode** in Razorpay, then use **test** Key ID + **test** secret together. Pay with [Razorpay test cards](https://razorpay.com/docs/payments/payments/test-card-details/), not real cards.
 
+### Email confirmations (Resend — optional but recommended)
+
+After a successful Razorpay verify, the server sends a confirmation email if configured.
+
+| Name | Purpose |
+|------|---------|
+| `RESEND_API_KEY` | API key from [Resend](https://resend.com/api-keys). Without this, payment still works but no email is sent (`emailSent: false` in API response). |
+| `RESEND_FROM_EMAIL` | Optional. Default is Resend’s test sender. For production, verify your domain in Resend and set a matching “From” address. |
+| `ADMIN_NOTIFY_EMAIL` | Optional. Extra BCC on booking emails (in addition to the fixed business BCC in code). |
+
 ### OpenAI (AI Help button — optional)
 
 | Name | Purpose |
@@ -120,7 +130,8 @@ Then set `NEXT_PUBLIC_SITE_URL` to `https://yourdomain.com` and redeploy.
 ## Quick checklist
 
 - [ ] All `NEXT_PUBLIC_FIREBASE_*` set  
-- [ ] `FIREBASE_SERVICE_ACCOUNT_KEY` set (bookings in Firestore)  
+- [ ] `FIREBASE_SERVICE_ACCOUNT_KEY` set (bookings + analytics page views in Firestore)  
+- [ ] `RESEND_API_KEY` set (optional — booking confirmation emails)  
 - [ ] `NEXT_PUBLIC_RAZORPAY_KEY_ID` = Key ID  
 - [ ] `RAZORPAY_KEY_ID` = **same** Key ID as above  
 - [ ] `RAZORPAY_KEY_SECRET` = Key Secret  

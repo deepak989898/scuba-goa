@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { PaymentSuccessBanner } from "@/components/PaymentSuccessBanner";
 import { HeroSection } from "@/components/HeroSection";
 import { ServiceCards } from "@/components/ServiceCards";
 import { PackagesSection } from "@/components/PackagesSection";
@@ -6,6 +8,7 @@ import { TrustSection } from "@/components/TrustSection";
 import { ComboOffers } from "@/components/ComboOffers";
 import { GallerySection } from "@/components/GallerySection";
 import { BlogPreview } from "@/components/BlogPreview";
+import { RatingsSection } from "@/components/RatingsSection";
 import { SITE_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -31,6 +34,9 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <Suspense fallback={null}>
+        <PaymentSuccessBanner />
+      </Suspense>
       <HeroSection />
       <ServiceCards />
       <PackagesSection />
@@ -38,6 +44,7 @@ export default function HomePage() {
       <ComboOffers />
       <GallerySection />
       <BlogPreview />
+      <RatingsSection />
     </>
   );
 }
