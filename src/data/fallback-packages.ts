@@ -1,0 +1,86 @@
+import type { PackageDoc } from "@/lib/types";
+
+export const fallbackPackages: PackageDoc[] = [
+  {
+    id: "fb-1",
+    name: "Grande Island Try Dive + Photos",
+    price: 3499,
+    duration: "4–5 hrs",
+    includes: ["Boat transfer", "Gear", "Instructor", "Underwater photos"],
+    rating: 4.9,
+    slotsLeft: 6,
+    bookedToday: 14,
+    limitedSlots: true,
+    category: "Scuba",
+    imageUrl:
+      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=75",
+  },
+  {
+    id: "fb-2",
+    name: "North Goa Highlights (Private Cab)",
+    price: 2499,
+    duration: "8 hrs",
+    includes: ["Hotel pickup", "AC cab", "Flexible stops", "Bottled water"],
+    rating: 4.8,
+    slotsLeft: 4,
+    bookedToday: 9,
+    limitedSlots: true,
+    category: "Tours",
+    imageUrl:
+      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=900&q=75",
+  },
+  {
+    id: "fb-3",
+    name: "Dudhsagar Jeep Safari Day Trip",
+    price: 2199,
+    duration: "Full day",
+    includes: ["Jeep slots", "Guide", "Life jackets", "Packed breakfast option"],
+    rating: 4.7,
+    slotsLeft: 8,
+    bookedToday: 11,
+    category: "Adventure",
+    imageUrl:
+      "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=900&q=75",
+  },
+  {
+    id: "fb-4",
+    name: "Scuba + Water Sports Combo",
+    price: 4999,
+    duration: "6–7 hrs",
+    includes: ["Try dive", "Jet ski OR parasail", "Lunch", "Transfers"],
+    rating: 5,
+    slotsLeft: 5,
+    bookedToday: 7,
+    isCombo: true,
+    discountPct: 18,
+    limitedSlots: true,
+    category: "Combo",
+    imageUrl:
+      "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=900&q=75",
+  },
+  {
+    id: "fb-5",
+    name: "Casino Cruise Entry + Dinner",
+    price: 3500,
+    duration: "Evening",
+    includes: ["Entry package", "Buffet", "Live entertainment zone"],
+    rating: 4.6,
+    slotsLeft: 12,
+    category: "Nightlife",
+    imageUrl:
+      "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&w=900&q=75",
+  },
+  {
+    id: "fb-6",
+    name: "Flyboard Session (Certified Trainer)",
+    price: 3799,
+    duration: "45 min slot",
+    includes: ["Safety briefing", "Gear", "Instructor", "Photos optional"],
+    rating: 4.8,
+    slotsLeft: 3,
+    limitedSlots: true,
+    category: "Adventure",
+    imageUrl:
+      "https://images.unsplash.com/photo-1502680390469-be75c86b636f?auto=format&fit=crop&w=900&q=75",
+  },
+];

@@ -1,0 +1,43 @@
+import type { Metadata } from "next";
+import { HeroSection } from "@/components/HeroSection";
+import { ServiceCards } from "@/components/ServiceCards";
+import { PackagesSection } from "@/components/PackagesSection";
+import { TrustSection } from "@/components/TrustSection";
+import { ComboOffers } from "@/components/ComboOffers";
+import { GallerySection } from "@/components/GallerySection";
+import { BlogPreview } from "@/components/BlogPreview";
+import { SITE_NAME } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  title: `${SITE_NAME} | Scuba Diving & Goa Tour Packages`,
+  description:
+    "Premium scuba diving Goa, water sports, Dudhsagar, casino & nightlife bookings. Mobile-first, Razorpay secure, WhatsApp confirmations.",
+};
+
+export default function HomePage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TravelAgency",
+    name: SITE_NAME,
+    description:
+      "Scuba diving and tour packages in Goa with online booking and payments.",
+    areaServed: "Goa, India",
+    url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com",
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <HeroSection />
+      <ServiceCards />
+      <PackagesSection />
+      <TrustSection />
+      <ComboOffers />
+      <GallerySection />
+      <BlogPreview />
+    </>
+  );
+}
