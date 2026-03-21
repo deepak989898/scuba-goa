@@ -12,7 +12,7 @@ export function StickyBookBar() {
       <div className="mx-auto max-w-lg">
         <Link
           href="/booking"
-          className="block w-full rounded-full bg-ocean-gradient py-3.5 text-center text-sm font-semibold text-white shadow-md"
+          className="block min-h-12 w-full rounded-full bg-ocean-gradient py-3.5 text-center text-sm font-semibold text-white shadow-md active:opacity-90"
         >
           Book Now
         </Link>

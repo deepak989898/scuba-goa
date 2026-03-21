@@ -2,11 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { services } from "@/data/services";
+import { useServices } from "@/hooks/useServices";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
 
 export function ServicesGrid() {
+  const { services, loading } = useServices();
+
+  if (loading) {
+    return (
+      <ul className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <li key={i} className="h-80 animate-pulse rounded-2xl bg-ocean-50" />
+        ))}
+      </ul>
+    );
+  }
+
   return (
     <ul className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
       {services.map((s) => (
@@ -58,7 +70,7 @@ export function ServicesGrid() {
               />
               <Link
                 href={`/services/${s.slug}`}
-                className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold text-ocean-700 hover:bg-ocean-50"
+                className="inline-flex min-h-11 items-center rounded-full border border-ocean-200 px-3 py-2 text-xs font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100"
               >
                 View details
               </Link>

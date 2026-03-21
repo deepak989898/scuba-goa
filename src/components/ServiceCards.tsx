@@ -3,11 +3,31 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { services } from "@/data/services";
+import { useServices } from "@/hooks/useServices";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
 
 export function ServiceCards() {
+  const { services, loading } = useServices();
+
+  if (loading) {
+    return (
+      <section className="bg-white py-16 sm:py-20" id="services">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="h-10 max-w-md animate-pulse rounded-lg bg-ocean-100" />
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="h-96 animate-pulse rounded-2xl bg-ocean-50"
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="bg-white py-16 sm:py-20" id="services">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -79,7 +99,7 @@ export function ServiceCards() {
                   />
                   <Link
                     href={`/services/${s.slug}`}
-                    className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold text-ocean-700 hover:bg-ocean-50"
+                    className="min-h-11 min-w-11 rounded-full border border-ocean-200 px-3 py-2 text-xs font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100"
                   >
                     Details
                   </Link>

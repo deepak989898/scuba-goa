@@ -25,6 +25,14 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | International digits, no `+` (e.g. `919217290871` for +91 92172 90871) |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for SEO / sitemap |
 
+## Admin: packages, services, bookings
+
+- **`/admin/packages`** — Firestore `packages` (homepage “Live packages”).
+- **`/admin/services`** — Firestore `services` (home + `/services` cards; overrides `src/data/services.ts` when not empty).
+- **`/admin/bookings`** — paid orders.
+
+Details: **[docs/ADMIN.md](docs/ADMIN.md)**. Deploy updated **`firestore.rules`** after pulling (includes `services` rules).
+
 ## Firebase setup
 
 1. Create a Firebase project → enable **Firestore** + **Authentication** (Email/Password).

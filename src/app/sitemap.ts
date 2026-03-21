@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { blogPosts } from "@/data/blog-posts";
-import { services } from "@/data/services";
+import { fallbackServices } from "@/data/services";
 import { SITE_URL } from "@/lib/constants";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -20,7 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: path === "/blog" ? "weekly" : "daily",
     priority: path === "" ? 1 : 0.8,
   }));
-  for (const s of services) {
+  for (const s of fallbackServices) {
     entries.push({
       url: `${base}/services/${s.slug}`,
       lastModified: new Date(),

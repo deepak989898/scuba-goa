@@ -54,7 +54,7 @@ export function AiChatbot() {
         onClick={() => setOpen((o) => !o)}
         className="fixed bottom-[7.25rem] right-4 z-[55] flex h-12 items-center gap-2 rounded-full border border-ocean-200 bg-white px-4 text-sm font-semibold text-ocean-800 shadow-lg md:bottom-8 md:right-[5.5rem]"
       >
-        AI Help
+        Help
       </button>
       <AnimatePresence>
         {open && (

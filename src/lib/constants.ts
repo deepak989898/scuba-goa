@@ -2,7 +2,7 @@ export const SITE_NAME = "Book Scuba Goa";
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.web.app";
 export const CONTACT_EMAIL =
-  process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "hello@bookscubagoa.com";
+  process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "support@bookscubagoa.com";
 
 /** International digits only, no + (e.g. 919217290871 for India +91 92172 90871) */
 export const WHATSAPP_NUMBER =

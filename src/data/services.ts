@@ -13,12 +13,15 @@ export type ServiceItem = {
   bookedToday?: number;
   /** Show "Limited Slots" badge when true */
   limitedSlots?: boolean;
+  /** Admin sort (Firestore); lower shows first */
+  sortOrder?: number;
 };
 
 const u = (id: string) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=75`;
 
-export const services: ServiceItem[] = [
+/** Default data when Firestore `services` collection is empty */
+export const fallbackServices: ServiceItem[] = [
   {
     slug: "scuba-diving",
     title: "Scuba Diving",
@@ -178,3 +181,6 @@ export const services: ServiceItem[] = [
     limitedSlots: true,
   },
 ];
+
+/** @deprecated alias — use `fallbackServices` or data from Firestore */
+export const services = fallbackServices;

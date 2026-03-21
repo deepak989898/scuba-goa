@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { services } from "@/data/services";
+import { getServiceBySlugServer } from "@/lib/get-services-server";
+import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
 
 type Props = { params: Promise<{ slug: string }> };
 
+export const dynamic = "force-dynamic";
+
 export function generateStaticParams() {
-  return services.map((s) => ({ slug: s.slug }));
+  return fallbackServices.map((s) => ({ slug: s.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const s = services.find((x) => x.slug === slug);
+  const s = await getServiceBySlugServer(slug);
   if (!s) return { title: "Service" };
   return {
     title: s.title,
@@ -23,12 +26,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ServiceDetailPage({ params }: Props) {
   const { slug } = await params;
-  const s = services.find((x) => x.slug === slug);
+  const s = await getServiceBySlugServer(slug);
   if (!s) notFound();
 
   return (
     <article className="bg-white">
-      <div className="relative aspect-[21/9] max-h-[420px] w-full">
+      <div className="relative aspect-[21/9] max-h-[min(420px,55vh)] w-full sm:max-h-[420px]">
         <Image
           src={s.image}
           alt={s.title}
@@ -38,20 +41,21 @@ export default async function ServiceDetailPage({ params }: Props) {
           priority
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/80 to-transparent" />
-        <div className="absolute bottom-0 left-0 p-6 sm:p-10">
-          <h1 className="font-display text-3xl font-bold text-white sm:text-5xl">
+        <div className="absolute bottom-0 left-0 p-5 sm:p-10">
+          <h1 className="font-display text-2xl font-bold text-white sm:text-5xl">
             {s.title}
           </h1>
-          <p className="mt-2 max-w-xl text-lg text-white/90">{s.short}</p>
+          <p className="mt-2 max-w-xl text-base text-white/90 sm:text-lg">
+            {s.short}
+          </p>
         </div>
       </div>
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <p className="mt-6 text-ocean-800">
-          Lock slots early during peak season. We sync live packages in Firestore so
-          admins can change prices, inclusions, and urgency tags without redeploying
-          the site.
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+        <p className="text-base leading-relaxed text-ocean-800 sm:text-[17px]">
+          Lock slots early during peak season. Live packages and services can be
+          updated from the admin panel without redeploying.
         </p>
-        <p className="mt-4 text-ocean-800">
+        <p className="mt-4 text-base leading-relaxed text-ocean-800 sm:text-[17px]">
           Tell us your hotel zone, group size, and preferred time—we route you to the
           right boat, cab, or club partner.{" "}
           <strong>Scuba diving Goa</strong> and{" "}

@@ -45,7 +45,7 @@ export function Header() {
           </a>
           <Link
             href="/booking"
-            className="inline-flex rounded-full bg-ocean-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-ocean-500/25 transition hover:opacity-95"
+            className="inline-flex min-h-11 min-w-[5.5rem] items-center justify-center rounded-full bg-ocean-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-ocean-500/25 transition hover:opacity-95 active:opacity-90"
           >
             Book Now
           </Link>

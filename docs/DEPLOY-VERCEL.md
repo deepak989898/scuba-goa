@@ -34,7 +34,7 @@ Add **every** variable your app needs. Use **Production** (and **Preview** if yo
 |------|---------|--------|
 | `NEXT_PUBLIC_SITE_URL` | `https://scuba-goa.vercel.app` | Your real Vercel URL or custom domain (no trailing slash). |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | `919217290871` | Country code + number, no `+`. |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | `hello@bookscubagoa.com` | Optional; shown in footer. |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | `support@bookscubagoa.com` | Optional; shown in footer. |
 
 ### Firebase (client)
 

@@ -36,8 +36,8 @@ export function AddToCartButton(props: Props) {
   const size = props.size ?? "md";
   const base =
     size === "sm"
-      ? "rounded-full border border-ocean-300 bg-white px-3 py-1.5 text-xs font-semibold text-ocean-800"
-      : "rounded-full border-2 border-ocean-500 bg-white px-4 py-2 text-sm font-semibold text-ocean-800 shadow-sm";
+      ? "min-h-11 rounded-full border border-ocean-300 bg-white px-3 py-2 text-xs font-semibold text-ocean-800"
+      : "min-h-11 rounded-full border-2 border-ocean-500 bg-white px-4 py-2 text-sm font-semibold text-ocean-800 shadow-sm";
 
   function onClick(e: React.MouseEvent) {
     e.preventDefault();

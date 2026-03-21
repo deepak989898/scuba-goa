@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
@@ -49,6 +49,13 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#faf8f5",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,10 +63,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dm.variable} ${outfit.variable}`}>
-      <body className="min-h-screen font-sans antialiased">
+      <body className="min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
         <Providers>
           <Header />
-          <main className="pb-24 md:pb-0">{children}</main>
+          <main className="pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+            {children}
+          </main>
           <Footer />
           <CartFAB />
           <WhatsAppFloat />
