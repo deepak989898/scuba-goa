@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { whatsappLink } from "@/lib/constants";
+import {
+  CONTACT_PHONE_HREF,
+  CONTACT_PHONE_LABEL,
+  whatsappLink,
+} from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -26,8 +30,8 @@ export default function ContactPage() {
         </li>
         <li>
           Phone:{" "}
-          <a href="tel:+919876543210" className="text-ocean-600">
-            +91 98765 43210
+          <a href={CONTACT_PHONE_HREF} className="text-ocean-600">
+            {CONTACT_PHONE_LABEL}
           </a>
         </li>
         <li>

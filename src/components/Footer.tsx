@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SITE_NAME } from "@/lib/constants";
+import { CONTACT_PHONE_HREF, CONTACT_PHONE_LABEL, SITE_NAME } from "@/lib/constants";
 
 const quick = [
   { href: "/services", label: "All Services" },
@@ -39,8 +39,8 @@ export function Footer() {
             <ul className="mt-3 space-y-2 text-sm text-ocean-700">
               <li>Calangute–Baga belt, North Goa</li>
               <li>
-                <a href="tel:+919876543210" className="hover:text-ocean-500">
-                  +91 98765 43210
+                <a href={CONTACT_PHONE_HREF} className="hover:text-ocean-500">
+                  {CONTACT_PHONE_LABEL}
                 </a>
               </li>
               <li>

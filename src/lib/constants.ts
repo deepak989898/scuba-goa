@@ -1,8 +1,24 @@
 export const SITE_NAME = "AquaVista Goa";
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://aquavista-goa.example.com";
+
+/** International digits only, no + (e.g. 919217290871 for India +91 92172 90871) */
 export const WHATSAPP_NUMBER =
-  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "919876543210";
+  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "919217290871";
+
+const phoneDigits = () => WHATSAPP_NUMBER.replace(/\D/g, "");
+
+/** Same number for tel: links in footer / contact */
+export const CONTACT_PHONE_HREF = `tel:+${phoneDigits()}`;
+
+export const CONTACT_PHONE_LABEL = (() => {
+  const d = phoneDigits();
+  if (d.length === 12 && d.startsWith("91")) {
+    return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+  }
+  return `+${d}`;
+})();
+
 export const WHATSAPP_DEFAULT_MESSAGE = encodeURIComponent(
   "Hi, I want to book scuba diving in Goa"
 );
@@ -11,5 +27,5 @@ export function whatsappLink(message?: string): string {
   const text = message
     ? encodeURIComponent(message)
     : WHATSAPP_DEFAULT_MESSAGE;
-  return `https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, "")}?text=${text}`;
+  return `https://wa.me/${phoneDigits()}?text=${text}`;
 }

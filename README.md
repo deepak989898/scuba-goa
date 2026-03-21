@@ -22,7 +22,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Server order creation + signature verify |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Checkout popup (same as key id, public) |
 | `OPENAI_API_KEY` | Optional AI concierge |
-| `NEXT_PUBLIC_WHATSAPP_NUMBER` | e.g. `919876543210` |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | International digits, no `+` (e.g. `919217290871` for +91 92172 90871) |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for SEO / sitemap |
 
 ## Firebase setup
