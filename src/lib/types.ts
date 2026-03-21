@@ -27,3 +27,15 @@ export type BookingPayload = {
   razorpayPaymentId?: string;
   status: "pending" | "paid" | "failed";
 };
+
+/** Single row in the shopping cart */
+export type CartLine = {
+  key: string;
+  kind: "service" | "package";
+  refId: string;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  image?: string;
+  duration?: string;
+};

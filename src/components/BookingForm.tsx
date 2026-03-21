@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { usePackages } from "@/hooks/usePackages";
-import { whatsappLink } from "@/lib/constants";
+import { SITE_NAME, whatsappLink } from "@/lib/constants";
 
 declare global {
   interface Window {
@@ -74,7 +74,7 @@ export function BookingForm() {
         amount: orderData.amount,
         currency: orderData.currency,
         order_id: orderData.id,
-        name: "AquaVista Goa",
+        name: SITE_NAME,
         description: selected.name,
         prefill: { name, email, contact: phone },
         handler: async (response: {

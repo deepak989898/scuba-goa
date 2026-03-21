@@ -16,8 +16,8 @@ export default function BookingPage() {
           Secure booking
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-center text-ocean-700">
-          Pick a package, share your travel date, pay with Razorpay—we open WhatsApp
-          with your payment reference.
+          Pick a single package here, or add multiple services from the site to your
+          cart and pay from the floating cart button.
         </p>
         <div className="mt-10">
           <Suspense fallback={<p className="text-center text-ocean-600">Loading…</p>}>

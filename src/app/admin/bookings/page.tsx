@@ -70,6 +70,16 @@ export default function AdminBookingsPage() {
                 Payment {String(r.razorpayPaymentId ?? r.id)} ·{" "}
                 {String(r.createdAt ?? "")}
               </p>
+              {Array.isArray(r.cartItems) && r.cartItems.length > 0 ? (
+                <ul className="mt-3 border-t border-ocean-100 pt-3 text-xs text-ocean-700">
+                  {(r.cartItems as Record<string, unknown>[]).map((it, idx) => (
+                    <li key={idx}>
+                      {String(it.name ?? "")} ×{String(it.quantity ?? "")} · ₹
+                      {Number(it.lineTotal ?? 0).toLocaleString("en-IN")}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </li>
           ))}
         </ul>

@@ -1,4 +1,4 @@
-# AquaVista Goa — Premium booking site
+# Book Scuba Goa — Premium booking site
 
 Next.js 15 (App Router) + Tailwind CSS + Firebase (Firestore + Auth) + Razorpay + Framer Motion. Built for **scuba diving Goa**, **water sports Goa booking**, **Goa tour packages**, casinos, clubs, pubs, disco, flyboarding, and bungee.
 

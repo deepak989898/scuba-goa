@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { services } from "@/data/services";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
 export function ServiceCards() {
   return (
@@ -14,8 +15,8 @@ export function ServiceCards() {
             Experiences curated for Goa
           </h2>
           <p className="mt-3 text-ocean-700">
-            From scuba diving Goa to nightlife & adventure—pick a starting price,
-            then fine-tune on WhatsApp.
+            Add any experience to your cart, then checkout once with Razorpay—or chat
+            on WhatsApp anytime.
           </p>
         </div>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -26,9 +27,9 @@ export function ServiceCards() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: Math.min(idx * 0.04, 0.3) }}
-              className="group relative overflow-hidden rounded-2xl border border-ocean-100 bg-sand shadow-sm transition hover:shadow-md"
+              className="group flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-sand shadow-sm transition hover:shadow-md"
             >
-              <Link href={`/services/${s.slug}`} className="block">
+              <Link href={`/services/${s.slug}`} className="block shrink-0">
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <Image
                     src={s.image}
@@ -44,16 +45,34 @@ export function ServiceCards() {
                     </span>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="font-display text-lg font-semibold text-ocean-900">
+              </Link>
+              <div className="flex flex-1 flex-col p-4">
+                <Link href={`/services/${s.slug}`}>
+                  <h3 className="font-display text-lg font-semibold text-ocean-900 hover:text-ocean-600">
                     {s.title}
                   </h3>
-                  <p className="mt-1 text-sm text-ocean-600">{s.short}</p>
-                  <p className="mt-3 text-sm font-semibold text-ocean-800">
-                    From ₹{s.priceFrom.toLocaleString("en-IN")}+
-                  </p>
+                </Link>
+                <p className="mt-1 text-sm text-ocean-600">{s.short}</p>
+                <p className="mt-3 text-sm font-semibold text-ocean-800">
+                  From ₹{s.priceFrom.toLocaleString("en-IN")}+
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <AddToCartButton
+                    variant="service"
+                    slug={s.slug}
+                    title={s.title}
+                    priceFrom={s.priceFrom}
+                    image={s.image}
+                    size="sm"
+                  />
+                  <Link
+                    href={`/services/${s.slug}`}
+                    className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold text-ocean-700 hover:bg-ocean-50"
+                  >
+                    Details
+                  </Link>
                 </div>
-              </Link>
+              </div>
             </motion.article>
           ))}
         </div>

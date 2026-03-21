@@ -11,6 +11,8 @@ type BookingBody = Record<string, unknown> & {
   date: string;
   people: number;
   amountPaise: number;
+  /** Set for multi-item cart checkouts */
+  cartItems?: unknown[];
 };
 
 export async function POST(req: Request) {

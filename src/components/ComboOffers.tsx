@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { usePackages } from "@/hooks/usePackages";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
 export function ComboOffers() {
   const { packages } = usePackages();
@@ -49,12 +50,24 @@ export function ComboOffers() {
                   ? `Only ${c.slotsLeft} slots left — fills fast on weekends`
                   : "Only 5 slots left this week for combo timings"}
               </p>
-              <Link
-                href={`/booking?package=${encodeURIComponent(c.id)}`}
-                className="mt-4 inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-ocean-900"
-              >
-                Grab combo
-              </Link>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <AddToCartButton
+                  variant="package"
+                  id={c.id}
+                  name={c.name}
+                  price={c.price}
+                  image={c.imageUrl}
+                  duration={c.duration}
+                  size="sm"
+                  className="!border-white/80 !bg-white/10 !text-white hover:!bg-white/20"
+                />
+                <Link
+                  href={`/booking?package=${encodeURIComponent(c.id)}`}
+                  className="inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-ocean-900"
+                >
+                  Grab combo
+                </Link>
+              </div>
             </motion.div>
           ))}
         </div>

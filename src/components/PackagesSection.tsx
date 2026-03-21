@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { usePackages } from "@/hooks/usePackages";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
 export function PackagesSection() {
   const { packages, loading } = usePackages();
@@ -102,16 +103,30 @@ export function PackagesSection() {
                       <span>Booked {p.bookedToday} times today</span>
                     ) : null}
                   </div>
-                  <div className="mt-auto flex items-center justify-between pt-4">
+                  <div className="mt-auto flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-2xl font-bold text-ocean-900">
                       ₹{p.price.toLocaleString("en-IN")}
                     </p>
-                    <Link
-                      href={`/booking?package=${encodeURIComponent(p.id)}`}
-                      className="rounded-full bg-ocean-gradient px-4 py-2 text-sm font-semibold text-white shadow-md"
-                    >
-                      Book Now
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                      <AddToCartButton
+                        variant="package"
+                        id={p.id}
+                        name={p.name}
+                        price={p.price}
+                        image={
+                          p.imageUrl ??
+                          "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=75"
+                        }
+                        duration={p.duration}
+                        size="sm"
+                      />
+                      <Link
+                        href={`/booking?package=${encodeURIComponent(p.id)}`}
+                        className="rounded-full bg-ocean-gradient px-4 py-2 text-sm font-semibold text-white shadow-md"
+                      >
+                        Book Now
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </motion.article>

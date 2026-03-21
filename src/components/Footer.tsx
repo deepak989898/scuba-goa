@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { CONTACT_PHONE_HREF, CONTACT_PHONE_LABEL, SITE_NAME } from "@/lib/constants";
+import {
+  CONTACT_EMAIL,
+  CONTACT_PHONE_HREF,
+  CONTACT_PHONE_LABEL,
+  SITE_NAME,
+} from "@/lib/constants";
 
 const quick = [
   { href: "/services", label: "All Services" },
@@ -45,10 +50,10 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:hello@aquavistagoa.com"
+                  href={`mailto:${CONTACT_EMAIL}`}
                   className="hover:text-ocean-500"
                 >
-                  hello@aquavistagoa.com
+                  {CONTACT_EMAIL}
                 </a>
               </li>
             </ul>

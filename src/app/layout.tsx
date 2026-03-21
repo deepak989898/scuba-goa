@@ -3,6 +3,8 @@ import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { Providers } from "@/components/Providers";
+import { CartFAB } from "@/components/cart/CartFAB";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { StickyBookBar } from "@/components/StickyBookBar";
 import { AiChatbot } from "@/components/AiChatbot";
@@ -55,12 +57,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${dm.variable} ${outfit.variable}`}>
       <body className="min-h-screen font-sans antialiased">
-        <Header />
-        <main className="pb-24 md:pb-0">{children}</main>
-        <Footer />
-        <WhatsAppFloat />
-        <StickyBookBar />
-        <AiChatbot />
+        <Providers>
+          <Header />
+          <main className="pb-24 md:pb-0">{children}</main>
+          <Footer />
+          <CartFAB />
+          <WhatsAppFloat />
+          <StickyBookBar />
+          <AiChatbot />
+        </Providers>
       </body>
     </html>
   );

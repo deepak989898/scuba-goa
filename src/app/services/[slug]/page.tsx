@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { services } from "@/data/services";
+import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -61,20 +61,12 @@ export default async function ServiceDetailPage({ params }: Props) {
           <strong>water sports Goa booking</strong> combos are popular on weekends;
           ask for same-day feasibility before you pay.
         </p>
-        <div className="mt-10 flex flex-wrap gap-3">
-          <Link
-            href="/booking"
-            className="rounded-full bg-ocean-gradient px-6 py-3 text-sm font-semibold text-white shadow-md"
-          >
-            Book this experience
-          </Link>
-          <Link
-            href="/services"
-            className="rounded-full border border-ocean-200 px-6 py-3 text-sm font-semibold text-ocean-800"
-          >
-            All services
-          </Link>
-        </div>
+        <ServiceDetailActions
+          slug={s.slug}
+          title={s.title}
+          priceFrom={s.priceFrom}
+          image={s.image}
+        />
       </div>
     </article>
   );

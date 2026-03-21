@@ -1,4 +1,4 @@
-# Deploy AquaVista Goa — Firebase (`bookscubagoa`) + Razorpay
+# Deploy Book Scuba Goa — Firebase (`bookscubagoa`) + Razorpay
 
 Your app is **Next.js** with **API routes** (Razorpay order + verify). Classic **Firebase Hosting** is for static sites only. Use one of these:
 

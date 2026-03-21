@@ -21,7 +21,7 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-ocean-100/80 bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="font-display text-lg font-semibold text-ocean-900">
-          AquaVista<span className="text-ocean-500">Goa</span>
+          Book Scuba<span className="text-ocean-500">Goa</span>
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => (

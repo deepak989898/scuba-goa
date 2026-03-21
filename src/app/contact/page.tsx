@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import {
+  CONTACT_EMAIL,
   CONTACT_PHONE_HREF,
   CONTACT_PHONE_LABEL,
+  SITE_NAME,
   whatsappLink,
 } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description:
-    "Call, email, or WhatsApp AquaVista Goa for scuba diving and tour package bookings.",
+  description: `Call, email, or WhatsApp ${SITE_NAME} for scuba diving and tour package bookings.`,
 };
 
 export default function ContactPage() {
@@ -36,8 +37,8 @@ export default function ContactPage() {
         </li>
         <li>
           Email:{" "}
-          <a href="mailto:hello@aquavistagoa.com" className="text-ocean-600">
-            hello@aquavistagoa.com
+          <a href={`mailto:${CONTACT_EMAIL}`} className="text-ocean-600">
+            {CONTACT_EMAIL}
           </a>
         </li>
         <li>Studio: North Goa (Calangute–Baga belt)</li>

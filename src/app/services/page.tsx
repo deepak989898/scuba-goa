@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import Image from "next/image";
-import { services } from "@/data/services";
+import { ServicesGrid } from "@/components/ServicesGrid";
 
 export const metadata: Metadata = {
   title: "All Services",
@@ -17,39 +15,10 @@ export default function ServicesPage() {
           All services
         </h1>
         <p className="mt-3 max-w-2xl text-ocean-700">
-          Every experience is mobile-optimized for quick WhatsApp or online pay. Tap
-          through for deep pages and FAQs.
+          Add services to your cart and pay once with Razorpay, or open any page for
+          full details.
         </p>
-        <ul className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((s) => (
-            <li key={s.slug}>
-              <Link
-                href={`/services/${s.slug}`}
-                className="group block overflow-hidden rounded-2xl border border-ocean-100 bg-sand shadow-sm"
-              >
-                <div className="relative aspect-[16/10]">
-                  <Image
-                    src={s.image}
-                    alt={s.title}
-                    fill
-                    className="object-cover transition group-hover:scale-105"
-                    sizes="(max-width:1024px) 100vw, 33vw"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="p-5">
-                  <h2 className="font-display text-xl font-semibold text-ocean-900">
-                    {s.title}
-                  </h2>
-                  <p className="mt-1 text-sm text-ocean-600">{s.short}</p>
-                  <p className="mt-2 text-sm font-semibold text-ocean-800">
-                    From ₹{s.priceFrom.toLocaleString("en-IN")}+
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <ServicesGrid />
       </div>
     </div>
   );
