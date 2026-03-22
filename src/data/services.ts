@@ -6,6 +6,8 @@ export type SubServiceItem = {
   description?: string;
   priceFrom?: number;
   includes?: string[];
+  slotsLeft?: number;
+  bookedToday?: number;
 };
 
 export type ServiceItem = {

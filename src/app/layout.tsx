@@ -66,7 +66,7 @@ export default function RootLayout({
       <body className="min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
         <Providers>
           <Header />
-          <main className="pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+          <main className="pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
             {children}
           </main>
           <Footer />

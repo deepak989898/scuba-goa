@@ -65,6 +65,16 @@ function parseSubServices(raw: unknown): SubServiceItem[] | undefined {
       includes: inc.length ? inc : undefined,
     };
     if (idRaw) row.id = idRaw;
+    const sl = o.slotsLeft;
+    if (sl !== undefined && sl !== null && String(sl).trim() !== "") {
+      const n = Number(sl);
+      if (Number.isFinite(n)) row.slotsLeft = n;
+    }
+    const bt = o.bookedToday;
+    if (bt !== undefined && bt !== null && String(bt).trim() !== "") {
+      const n = Number(bt);
+      if (Number.isFinite(n)) row.bookedToday = n;
+    }
     out.push(row);
   }
   return out.length ? out : undefined;
@@ -134,6 +144,12 @@ export function serviceToPayload(
         row.priceFrom = sub.priceFrom;
       }
       if (sub.includes?.length) row.includes = sub.includes;
+      if (sub.slotsLeft != null && Number.isFinite(sub.slotsLeft)) {
+        row.slotsLeft = sub.slotsLeft;
+      }
+      if (sub.bookedToday != null && Number.isFinite(sub.bookedToday)) {
+        row.bookedToday = sub.bookedToday;
+      }
       return row;
     });
   }

@@ -127,8 +127,8 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
       duration: s.duration,
       includes: sub.includes ?? s.includes,
       rating: s.rating,
-      slotsLeft: s.slotsLeft,
-      bookedToday: s.bookedToday,
+      slotsLeft: sub.slotsLeft ?? s.slotsLeft,
+      bookedToday: sub.bookedToday ?? s.bookedToday,
     });
     setOpen(false);
     setFlash(true);
@@ -164,6 +164,13 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
             <span className="mt-0.5 block text-ocean-600">
               ₹{sub.priceFrom!.toLocaleString("en-IN")}
             </span>
+            {sub.slotsLeft != null || sub.bookedToday != null ? (
+              <span className="mt-1 block text-[10px] text-ocean-500">
+                {sub.slotsLeft != null ? `${sub.slotsLeft} left` : null}
+                {sub.slotsLeft != null && sub.bookedToday != null ? " · " : null}
+                {sub.bookedToday != null ? `${sub.bookedToday} booked today` : null}
+              </span>
+            ) : null}
           </button>
         </li>
       ))}

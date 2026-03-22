@@ -60,8 +60,11 @@ export function ServiceDetailGallery({ images, title, short }: Props) {
           />
         </div>
       ))}
-      <div className="absolute inset-0 z-20 bg-gradient-to-t from-ocean-900/80 to-transparent pointer-events-none" />
-      <div className="absolute bottom-0 left-0 z-30 p-5 sm:p-10 pointer-events-none">
+      <div
+        className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-ocean-900/35 to-transparent sm:from-ocean-900/80"
+        aria-hidden
+      />
+      <div className="pointer-events-none absolute bottom-0 left-0 z-30 hidden p-5 sm:block sm:p-10">
         <h1 className="font-display text-2xl font-bold text-white sm:text-5xl">
           {title}
         </h1>
@@ -93,7 +96,7 @@ export function ServiceDetailGallery({ images, title, short }: Props) {
             </svg>
           </button>
           <div
-            className="absolute bottom-20 left-0 right-0 z-30 flex justify-center gap-1.5 sm:bottom-24"
+            className="absolute bottom-4 left-0 right-0 z-30 flex justify-center gap-1.5 sm:bottom-24"
             role="tablist"
             aria-label="Gallery slides"
           >

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { usePackages } from "@/hooks/usePackages";
+import { useServices } from "@/hooks/useServices";
+import { getPricedSubServicesWithIndex } from "@/lib/service-sub-helpers";
 import { SITE_NAME, whatsappLink } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 import {
@@ -19,6 +21,7 @@ declare global {
 
 export function BookingForm() {
   const { packages, loading } = usePackages();
+  const { services } = useServices();
   const searchParams = useSearchParams();
   const pre = searchParams.get("package");
 
@@ -41,6 +44,16 @@ export function BookingForm() {
     () => packages.find((p) => p.id === packageId),
     [packages, packageId]
   );
+
+  const packagesByCategory = useMemo(() => {
+    const map = new Map<string, typeof packages>();
+    for (const p of packages) {
+      const key = p.category?.trim() || "Packages";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(p);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [packages]);
 
   const totalInr = selected ? selected.price * people : 0;
   const fullAmountPaise = Math.round(totalInr * 100);
@@ -180,13 +193,83 @@ export function BookingForm() {
                 onChange={(e) => setPackageId(e.target.value)}
               >
                 <option value="">Select…</option>
-                {packages.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — ₹{p.price.toLocaleString("en-IN")}
-                  </option>
+                {packagesByCategory.map(([category, list]) => (
+                  <optgroup key={category} label={category}>
+                    {list.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — ₹{p.price.toLocaleString("en-IN")}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </label>
+            <details className="rounded-xl border border-ocean-100 bg-ocean-50/50 p-3 text-sm">
+              <summary className="cursor-pointer font-medium text-ocean-900">
+                Packages &amp; service option prices
+              </summary>
+              <div className="mt-3 space-y-5 text-ocean-800">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                    Package lineup
+                  </p>
+                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                    {packages.map((p) => (
+                      <li
+                        key={p.id}
+                        className="rounded-lg bg-white/90 p-2 ring-1 ring-ocean-100"
+                      >
+                        <p className="font-semibold text-ocean-900">
+                          {p.name}{" "}
+                          <span className="font-normal text-ocean-600">
+                            — ₹{p.price.toLocaleString("en-IN")}
+                          </span>
+                        </p>
+                        {p.includes.length > 0 ? (
+                          <ul className="mt-1 list-inside list-disc text-xs text-ocean-600">
+                            {p.includes.map((inc) => (
+                              <li key={`${p.id}-${inc}`}>{inc}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {services.some((s) => getPricedSubServicesWithIndex(s).length > 0) ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                      Service variants
+                    </p>
+                    <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                      {services.map((s) => {
+                        const priced = getPricedSubServicesWithIndex(s);
+                        if (!priced.length) return null;
+                        return (
+                          <li
+                            key={s.slug}
+                            className="rounded-lg bg-white/90 p-2 ring-1 ring-ocean-100"
+                          >
+                            <p className="font-semibold text-ocean-900">{s.title}</p>
+                            <ul className="mt-1 space-y-0.5 text-xs text-ocean-700">
+                              {priced.map(({ sub }) => (
+                                <li key={`${s.slug}-${sub.title}`}>
+                                  <span className="font-medium">{sub.title}</span>
+                                  <span className="text-ocean-600">
+                                    {" "}
+                                    — ₹{sub.priceFrom!.toLocaleString("en-IN")}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            </details>
             <label className="block text-sm font-medium text-ocean-800">
               Full name
               <input
@@ -237,6 +320,18 @@ export function BookingForm() {
             </label>
             {selected ? (
               <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
+                {selected.includes.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ocean-600">
+                      Included with this package
+                    </p>
+                    <ul className="mt-1 list-inside list-disc text-sm text-ocean-700">
+                      {selected.includes.map((inc) => (
+                        <li key={inc}>{inc}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 <p className="text-lg font-bold text-ocean-900">
                   Full total: ₹{(selected.price * people).toLocaleString("en-IN")}
                 </p>

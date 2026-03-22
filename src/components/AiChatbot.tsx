@@ -52,7 +52,7 @@ export function AiChatbot() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-[7.25rem] right-4 z-[55] flex h-12 items-center gap-2 rounded-full border border-ocean-200 bg-white px-4 text-sm font-semibold text-ocean-800 shadow-lg md:bottom-8 md:right-[5.5rem]"
+        className="fixed bottom-[calc(12rem+env(safe-area-inset-bottom,0px))] right-4 z-[55] flex h-12 items-center gap-2 rounded-full border border-ocean-200 bg-white px-4 text-sm font-semibold text-ocean-800 shadow-lg md:bottom-8 md:right-[5.5rem]"
       >
         Help
       </button>
@@ -62,7 +62,7 @@ export function AiChatbot() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
-            className="fixed bottom-[11rem] right-4 z-[55] flex w-[min(100vw-2.5rem,380px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-24 md:right-[5.5rem]"
+            className="fixed bottom-[calc(16rem+env(safe-area-inset-bottom,0px))] right-4 z-[55] flex w-[min(100vw-2.5rem,380px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-24 md:right-[5.5rem]"
           >
             <div className="flex items-center justify-between border-b border-ocean-100 bg-ocean-50 px-4 py-3">
               <p className="text-sm font-semibold text-ocean-900">Concierge</p>

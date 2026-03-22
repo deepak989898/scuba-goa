@@ -18,6 +18,8 @@ type SubServiceFormRow = {
   description: string;
   priceFrom: string;
   includes: string;
+  slotsLeft: string;
+  bookedToday: string;
 };
 
 const emptySubRow = (): SubServiceFormRow => ({
@@ -26,6 +28,8 @@ const emptySubRow = (): SubServiceFormRow => ({
   description: "",
   priceFrom: "",
   includes: "",
+  slotsLeft: "",
+  bookedToday: "",
 });
 
 export default function AdminServicesPage() {
@@ -108,6 +112,14 @@ export default function AdminServicesPage() {
             ? String(sub.priceFrom)
             : "",
         includes: sub.includes?.join(", ") ?? "",
+        slotsLeft:
+          sub.slotsLeft != null && Number.isFinite(sub.slotsLeft)
+            ? String(sub.slotsLeft)
+            : "",
+        bookedToday:
+          sub.bookedToday != null && Number.isFinite(sub.bookedToday)
+            ? String(sub.bookedToday)
+            : "",
       })) ?? []
     );
   }
@@ -142,6 +154,14 @@ export default function AdminServicesPage() {
         };
         const sid = r.subId.trim();
         if (sid) row.id = sid;
+        if (r.slotsLeft.trim() !== "") {
+          const n = Number(r.slotsLeft);
+          if (Number.isFinite(n)) row.slotsLeft = n;
+        }
+        if (r.bookedToday.trim() !== "") {
+          const n = Number(r.bookedToday);
+          if (Number.isFinite(n)) row.bookedToday = n;
+        }
         rows.push(row);
       }
       return rows.length ? rows : undefined;
@@ -441,6 +461,36 @@ export default function AdminServicesPage() {
                           setSubRows((rows) =>
                             rows.map((r, i) =>
                               i === idx ? { ...r, priceFrom: e.target.value } : r
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="text-sm">
+                      Slots left (optional)
+                      <input
+                        type="number"
+                        className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2"
+                        value={row.slotsLeft}
+                        onChange={(e) =>
+                          setSubRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, slotsLeft: e.target.value } : r
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="text-sm">
+                      Booked today (optional)
+                      <input
+                        type="number"
+                        className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2"
+                        value={row.bookedToday}
+                        onChange={(e) =>
+                          setSubRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, bookedToday: e.target.value } : r
                             )
                           )
                         }

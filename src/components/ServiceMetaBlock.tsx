@@ -1,7 +1,11 @@
 import type { ServiceItem } from "@/data/services";
+import { getAggregatedServiceSlots } from "@/lib/service-slot-totals";
 
 /** Package-style detail row used on service cards & grids */
 export function ServiceMetaBlock({ s }: { s: ServiceItem }) {
+  const { slotsLeft, bookedToday, fromSubServices } =
+    getAggregatedServiceSlots(s);
+
   return (
     <div className="mt-2 space-y-2">
       <p className="text-sm text-ocean-600">{s.duration}</p>
@@ -18,15 +22,21 @@ export function ServiceMetaBlock({ s }: { s: ServiceItem }) {
           </li>
         ))}
       </ul>
-      <div className="flex flex-wrap gap-2 text-xs text-ocean-600">
-        {s.slotsLeft != null ? (
-          <span className="font-semibold text-red-600">
-            Only {s.slotsLeft} slots left
-          </span>
-        ) : null}
-        {s.bookedToday != null ? (
-          <span>Booked {s.bookedToday} times today</span>
-        ) : null}
+      <div className="flex flex-col gap-0.5 text-xs text-ocean-600">
+        <div className="flex flex-wrap gap-2">
+          {slotsLeft != null ? (
+            <span className="font-semibold text-red-600">
+              {slotsLeft} slots left
+              {fromSubServices ? " (total)" : ""}
+            </span>
+          ) : null}
+          {bookedToday != null ? (
+            <span>
+              {bookedToday} booked today
+              {fromSubServices ? " (total)" : ""}
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );

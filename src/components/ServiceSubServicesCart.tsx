@@ -11,14 +11,7 @@ export function ServiceSubServicesCart({ service: s }: Props) {
 
   return (
     <section className="mt-10 border-t border-ocean-100 pt-10">
-      <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
-        Options &amp; add-ons
-      </h2>
-      <p className="mt-2 text-sm text-ocean-600">
-        Add a variant to your cart at its own price—you can mix with other services and
-        checkout once from the cart.
-      </p>
-      <ul className="mt-6 space-y-4">
+      <ul className="space-y-4">
         {s.subServices.map((sub, idx) => {
           const key = getSubServiceCartKey(sub, idx);
           const priceOk =
@@ -63,6 +56,18 @@ export function ServiceSubServicesCart({ service: s }: Props) {
                   ))}
                 </ul>
               ) : null}
+              {sub.slotsLeft != null || sub.bookedToday != null ? (
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-ocean-600">
+                  {sub.slotsLeft != null ? (
+                    <span className="font-semibold text-red-600">
+                      Only {sub.slotsLeft} slots left
+                    </span>
+                  ) : null}
+                  {sub.bookedToday != null ? (
+                    <span>Booked {sub.bookedToday} times today</span>
+                  ) : null}
+                </div>
+              ) : null}
               {priceOk ? (
                 <div className="mt-4">
                   <AddToCartButton
@@ -75,8 +80,8 @@ export function ServiceSubServicesCart({ service: s }: Props) {
                     duration={s.duration}
                     includes={sub.includes ?? s.includes}
                     rating={s.rating}
-                    slotsLeft={s.slotsLeft}
-                    bookedToday={s.bookedToday}
+                    slotsLeft={sub.slotsLeft ?? s.slotsLeft}
+                    bookedToday={sub.bookedToday ?? s.bookedToday}
                     size="sm"
                   />
                 </div>
