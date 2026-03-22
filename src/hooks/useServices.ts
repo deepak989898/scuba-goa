@@ -37,8 +37,13 @@ export function useServices() {
               (a.sortOrder ?? 999) - (b.sortOrder ?? 999) ||
               a.slug.localeCompare(b.slug)
           );
-          setServices(list);
-          setFromFirestore(true);
+          if (list.length === 0) {
+            setServices(fallbackServices);
+            setFromFirestore(false);
+          } else {
+            setServices(list);
+            setFromFirestore(true);
+          }
         }
       } catch {
         if (!cancelled) {

@@ -17,7 +17,7 @@ export async function getAllServicesServer(): Promise<ServiceItem[]> {
     list.sort(
       (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.slug.localeCompare(b.slug)
     );
-    return list;
+    return list.length === 0 ? fallbackServices : list;
   } catch {
     return fallbackServices;
   }
@@ -34,7 +34,9 @@ export async function getServiceBySlugServer(
       return fallbackServices.find((s) => s.slug === slug) ?? null;
     }
     const s = docToService(ref.id, ref.data() as Record<string, unknown>);
-    if (s && s.active === false) return null;
+    if (s && s.active === false) {
+      return fallbackServices.find((x) => x.slug === slug) ?? null;
+    }
     return s;
   } catch {
     return fallbackServices.find((s) => s.slug === slug) ?? null;

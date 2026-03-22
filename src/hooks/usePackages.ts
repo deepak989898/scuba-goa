@@ -55,8 +55,13 @@ export function usePackages() {
             .map((d) => mapDoc(d.id, d.data() as Record<string, unknown>))
             .filter((p) => p.active !== false);
           list.sort((a, b) => a.price - b.price);
-          setPackages(list);
-          setFromFirestore(true);
+          if (list.length === 0) {
+            setPackages(fallbackPackages);
+            setFromFirestore(false);
+          } else {
+            setPackages(list);
+            setFromFirestore(true);
+          }
         }
       } catch {
         if (!cancelled) {
