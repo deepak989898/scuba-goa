@@ -25,7 +25,9 @@ export function RatingsSection() {
   const [loading, setLoading] = useState(true);
   const [authorName, setAuthorName] = useState("");
   const [comment, setComment] = useState("");
-  const [rating, setRating] = useState(5);
+  /** 0 = user has not chosen a rating yet (only empty stars shown). */
+  const [rating, setRating] = useState(0);
+  const [hoverStar, setHoverStar] = useState(0);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -81,6 +83,10 @@ export function RatingsSection() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
+    if (rating < 1 || rating > 5) {
+      setMsg("Tap a star to choose your rating first.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/ratings", {
@@ -99,6 +105,9 @@ export function RatingsSection() {
         return;
       }
       setComment("");
+      setAuthorName("");
+      setRating(0);
+      setHoverStar(0);
       setMsg("Thanks! Your review will appear after we approve it.");
     } catch {
       setMsg("Something went wrong. Try again.");
@@ -106,6 +115,8 @@ export function RatingsSection() {
       setBusy(false);
     }
   }
+
+  const starDisplay = hoverStar || rating;
 
   if (!db) {
     return (
@@ -176,62 +187,102 @@ export function RatingsSection() {
           </>
         ) : null}
 
-        <form
-          onSubmit={submit}
-          className="mx-auto mt-12 max-w-lg rounded-2xl border border-ocean-100 bg-sand/40 p-6 shadow-sm"
-        >
-          <h3 className="font-display text-lg font-semibold text-ocean-900">
+        <div className="mx-auto mt-12 max-w-lg">
+          <h3 className="font-display text-center text-lg font-semibold text-ocean-900">
             Rate your experience
           </h3>
-          <label className="mt-4 block text-sm font-medium text-ocean-800">
-            Your name
-            <input
-              className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2"
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              placeholder="Optional"
-              maxLength={80}
-            />
-          </label>
-          <label className="mt-3 block text-sm font-medium text-ocean-800">
-            Rating
-            <select
-              className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2"
-              value={rating}
-              onChange={(e) => setRating(Number(e.target.value))}
-            >
-              {[5, 4, 3, 2, 1].map((n) => (
-                <option key={n} value={n}>
-                  {n} — {n === 5 ? "Excellent" : n === 4 ? "Good" : "OK"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="mt-3 block text-sm font-medium text-ocean-800">
-            Comment
-            <textarea
-              required
-              rows={3}
-              className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              maxLength={800}
-              placeholder="Tell others about your dive or tour…"
-            />
-          </label>
+          <p className="mt-1 text-center text-sm text-ocean-600">
+            Tap a star to begin — name and comment appear after you choose a rating.
+          </p>
+          <div
+            className="mt-6 flex justify-center gap-1"
+            role="group"
+            aria-label="Choose rating from 1 to 5 stars"
+            onMouseLeave={() => setHoverStar(0)}
+          >
+            {[1, 2, 3, 4, 5].map((n) => {
+              const filled = starDisplay >= n && starDisplay > 0;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  className={`rounded p-1 text-4xl leading-none transition hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500 ${
+                    filled ? "text-amber-500" : "text-ocean-200"
+                  }`}
+                  aria-label={`${n} out of 5 stars`}
+                  aria-pressed={rating === n}
+                  onMouseEnter={() => setHoverStar(n)}
+                  onClick={() => setRating(n)}
+                >
+                  {filled ? "★" : "☆"}
+                </button>
+              );
+            })}
+          </div>
+
           {msg ? (
-            <p className="mt-3 text-sm text-ocean-700" role="status">
+            <p className="mt-4 text-center text-sm text-ocean-700" role="status">
               {msg}
             </p>
           ) : null}
-          <button
-            type="submit"
-            disabled={busy}
-            className="mt-4 w-full rounded-full bg-ocean-800 py-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {busy ? "Sending…" : "Submit review"}
-          </button>
-        </form>
+
+          {rating > 0 ? (
+            <form
+              onSubmit={submit}
+              className="mt-6 rounded-2xl border border-ocean-100 bg-sand/40 p-6 shadow-sm"
+            >
+              <p className="text-center text-sm text-ocean-700">
+                You chose{" "}
+                <span className="font-semibold text-amber-600">
+                  {rating} / 5
+                </span>
+                . Add your name and comment, then submit.
+              </p>
+              <label className="mt-4 block text-sm font-medium text-ocean-800">
+                Your name
+                <input
+                  className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="Optional"
+                  maxLength={80}
+                />
+              </label>
+              <label className="mt-3 block text-sm font-medium text-ocean-800">
+                Comment
+                <textarea
+                  required
+                  rows={3}
+                  className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  maxLength={800}
+                  placeholder="Tell others about your dive or tour…"
+                />
+              </label>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="flex-1 rounded-full bg-ocean-800 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {busy ? "Sending…" : "Submit review"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border border-ocean-200 py-3 text-sm font-semibold text-ocean-800"
+                  onClick={() => {
+                    setRating(0);
+                    setHoverStar(0);
+                    setMsg(null);
+                  }}
+                >
+                  Clear rating
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </div>
       </div>
     </section>
   );
