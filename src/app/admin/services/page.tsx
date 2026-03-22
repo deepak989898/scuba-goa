@@ -10,7 +10,21 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { docToService, serviceToPayload } from "@/lib/service-firestore";
-import type { ServiceItem } from "@/data/services";
+import type { ServiceItem, SubServiceItem } from "@/data/services";
+
+type SubServiceFormRow = {
+  title: string;
+  description: string;
+  priceFrom: string;
+  includes: string;
+};
+
+const emptySubRow = (): SubServiceFormRow => ({
+  title: "",
+  description: "",
+  priceFrom: "",
+  includes: "",
+});
 
 export default function AdminServicesPage() {
   const db = getDb();
@@ -18,6 +32,7 @@ export default function AdminServicesPage() {
   const [loading, setLoading] = useState(true);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [subRows, setSubRows] = useState<SubServiceFormRow[]>([]);
 
   const empty = {
     slug: "",
@@ -33,6 +48,7 @@ export default function AdminServicesPage() {
     sortOrder: 0,
     limitedSlots: true,
     mostBooked: false,
+    detailContent: "",
   };
   const [form, setForm] = useState(empty);
 
@@ -76,7 +92,19 @@ export default function AdminServicesPage() {
       sortOrder: s.sortOrder ?? 0,
       limitedSlots: s.limitedSlots ?? false,
       mostBooked: s.mostBooked ?? false,
+      detailContent: s.detailContent ?? "",
     });
+    setSubRows(
+      s.subServices?.map((sub) => ({
+        title: sub.title,
+        description: sub.description ?? "",
+        priceFrom:
+          sub.priceFrom != null && Number.isFinite(sub.priceFrom)
+            ? String(sub.priceFrom)
+            : "",
+        includes: sub.includes?.join(", ") ?? "",
+      })) ?? []
+    );
   }
 
   async function save() {
@@ -87,6 +115,30 @@ export default function AdminServicesPage() {
       setFormError("Slug and title are required.");
       return;
     }
+    const subServices: SubServiceItem[] | undefined = (() => {
+      const rows: SubServiceItem[] = [];
+      for (const r of subRows) {
+        const title = r.title.trim();
+        if (!title) continue;
+        let priceFrom: number | undefined;
+        if (r.priceFrom.trim() !== "") {
+          const n = Number(r.priceFrom);
+          priceFrom = Number.isFinite(n) ? n : undefined;
+        }
+        const inc = r.includes
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean);
+        rows.push({
+          title,
+          description: r.description.trim() || undefined,
+          priceFrom,
+          includes: inc.length ? inc : undefined,
+        });
+      }
+      return rows.length ? rows : undefined;
+    })();
+
     const item: ServiceItem & { sortOrder: number } = {
       slug,
       title: form.title.trim(),
@@ -104,6 +156,8 @@ export default function AdminServicesPage() {
       limitedSlots: form.limitedSlots,
       mostBooked: form.mostBooked,
       sortOrder: Number(form.sortOrder),
+      detailContent: form.detailContent.trim() || undefined,
+      subServices,
     };
     const payload = serviceToPayload(item);
     if (editingSlug && editingSlug !== slug) {
@@ -117,6 +171,7 @@ export default function AdminServicesPage() {
     }
     await setDoc(doc(db, "services", slug), payload);
     setForm(empty);
+    setSubRows([]);
     setEditingSlug(null);
     await refresh();
   }
@@ -244,7 +299,122 @@ export default function AdminServicesPage() {
                 setForm((f) => ({ ...f, includes: e.target.value }))
               }
             />
+            <span className="mt-1 block text-xs text-ocean-600">
+              All items show on cards and detail; separate with commas.
+            </span>
           </label>
+          <label className="text-sm sm:col-span-2">
+            Detail page copy
+            <textarea
+              rows={6}
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2 font-sans text-sm"
+              value={form.detailContent}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, detailContent: e.target.value }))
+              }
+              placeholder="Shown on /services/your-slug. Leave blank to use the default text. Use a blank line between paragraphs."
+            />
+          </label>
+          <div className="sm:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm font-medium text-ocean-900">
+                Sub-services (detail page)
+              </span>
+              <button
+                type="button"
+                className="rounded-lg border border-ocean-200 px-3 py-1.5 text-xs font-semibold text-ocean-800 hover:bg-ocean-50"
+                onClick={() => setSubRows((rows) => [...rows, emptySubRow()])}
+              >
+                Add sub-service
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-ocean-600">
+              Optional variants or add-ons listed under &quot;Options &amp; add-ons&quot; on
+              the service detail page.
+            </p>
+            <ul className="mt-3 space-y-4">
+              {subRows.map((row, idx) => (
+                <li
+                  key={idx}
+                  className="rounded-xl border border-ocean-100 bg-ocean-50/50 p-4"
+                >
+                  <div className="mb-2 flex justify-end">
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-red-600 hover:underline"
+                      onClick={() =>
+                        setSubRows((rows) => rows.filter((_, i) => i !== idx))
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="text-sm sm:col-span-2">
+                      Title
+                      <input
+                        className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2"
+                        value={row.title}
+                        onChange={(e) =>
+                          setSubRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, title: e.target.value } : r
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="text-sm sm:col-span-2">
+                      Description
+                      <textarea
+                        rows={2}
+                        className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 text-sm"
+                        value={row.description}
+                        onChange={(e) =>
+                          setSubRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx
+                                ? { ...r, description: e.target.value }
+                                : r
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="text-sm">
+                      From price (INR, optional)
+                      <input
+                        type="number"
+                        className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2"
+                        value={row.priceFrom}
+                        onChange={(e) =>
+                          setSubRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, priceFrom: e.target.value } : r
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="text-sm sm:col-span-2">
+                      Includes (comma-separated)
+                      <input
+                        className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2"
+                        value={row.includes}
+                        onChange={(e) =>
+                          setSubRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, includes: e.target.value } : r
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
           <label className="text-sm">
             Slots left
             <input
@@ -307,6 +477,7 @@ export default function AdminServicesPage() {
               onClick={() => {
                 setEditingSlug(null);
                 setForm(empty);
+                setSubRows([]);
               }}
               className="min-h-11 rounded-full border border-ocean-200 px-5 py-2 text-sm font-semibold text-ocean-800"
             >

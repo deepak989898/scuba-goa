@@ -4,23 +4,23 @@ import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import type { PackageDoc } from "@/lib/types";
+import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
 import { fallbackPackages } from "@/data/fallback-packages";
 
 function mapDoc(id: string, data: Record<string, unknown>): PackageDoc {
+  const imageRaw = data.imageUrl != null ? String(data.imageUrl).trim() : "";
   return {
     id,
     name: String(data.name ?? ""),
     price: Number(data.price ?? 0),
     duration: String(data.duration ?? ""),
-    includes: Array.isArray(data.includes)
-      ? (data.includes as string[])
-      : [],
+    includes: parseFirestoreIncludes(data.includes),
     rating: Number(data.rating ?? 4.8),
     slotsLeft:
       data.slotsLeft !== undefined ? Number(data.slotsLeft) : undefined,
     bookedToday:
       data.bookedToday !== undefined ? Number(data.bookedToday) : undefined,
-    imageUrl: data.imageUrl ? String(data.imageUrl) : undefined,
+    imageUrl: imageRaw || undefined,
     category: data.category ? String(data.category) : undefined,
     isCombo: Boolean(data.isCombo),
     discountPct:

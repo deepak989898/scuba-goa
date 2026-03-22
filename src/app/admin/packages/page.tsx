@@ -10,6 +10,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
 import type { PackageDoc } from "@/lib/types";
 
 export default function AdminPackagesPage() {
@@ -39,16 +40,18 @@ export default function AdminPackagesPage() {
     const snap = await getDocs(collection(db, "packages"));
     const rows = snap.docs.map((d) => {
       const x = d.data() as Record<string, unknown>;
+      const imageTrim =
+        x.imageUrl != null ? String(x.imageUrl).trim() : "";
       return {
         id: d.id,
         name: String(x.name ?? ""),
         price: Number(x.price ?? 0),
         duration: String(x.duration ?? ""),
-        includes: Array.isArray(x.includes) ? (x.includes as string[]) : [],
+        includes: parseFirestoreIncludes(x.includes),
         rating: Number(x.rating ?? 0),
         slotsLeft: x.slotsLeft != null ? Number(x.slotsLeft) : undefined,
         bookedToday: x.bookedToday != null ? Number(x.bookedToday) : undefined,
-        imageUrl: x.imageUrl ? String(x.imageUrl) : undefined,
+        imageUrl: imageTrim || undefined,
         category: x.category ? String(x.category) : undefined,
         isCombo: Boolean(x.isCombo),
         discountPct: x.discountPct != null ? Number(x.discountPct) : undefined,
@@ -97,7 +100,7 @@ export default function AdminPackagesPage() {
       rating: Number(form.rating),
       slotsLeft: Number(form.slotsLeft),
       bookedToday: Number(form.bookedToday),
-      imageUrl: form.imageUrl.trim(),
+      imageUrl: form.imageUrl.trim() || "",
       category: form.category.trim(),
       isCombo: form.isCombo,
       limitedSlots: form.limitedSlots,
@@ -184,6 +187,9 @@ export default function AdminPackagesPage() {
                 setForm((f) => ({ ...f, includes: e.target.value }))
               }
             />
+            <span className="mt-1 block text-xs text-ocean-600">
+              All items appear as tags on the package card (no limit).
+            </span>
           </label>
           <label className="text-sm">
             Rating
@@ -237,7 +243,13 @@ export default function AdminPackagesPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, imageUrl: e.target.value }))
               }
+              placeholder="https://… (direct image link; any host)"
             />
+            <span className="mt-1 block text-xs text-ocean-600">
+              Use a full <code className="text-[10px]">https://</code> link to the image
+              file. The homepage uses a flexible loader so hosts do not need to be
+              listed in Next.js config.
+            </span>
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input

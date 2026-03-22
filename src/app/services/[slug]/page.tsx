@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { ServiceDetailSections } from "@/components/ServiceDetailSections";
 import { getServiceBySlugServer } from "@/lib/get-services-server";
 import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
@@ -17,9 +18,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const s = await getServiceBySlugServer(slug);
   if (!s) return { title: "Service" };
+  const fromDetail = s.detailContent?.split(/\n\s*\n+/)[0]?.trim().slice(0, 155);
+  const desc =
+    (fromDetail && fromDetail.length > 0 ? fromDetail : s.short) +
+    ` — book ${s.title.toLowerCase()} in Goa with WhatsApp or Razorpay.`;
   return {
     title: s.title,
-    description: `${s.short} — book ${s.title.toLowerCase()} in Goa with WhatsApp or Razorpay.`,
+    description: desc.slice(0, 320),
     keywords: [s.title, "Goa", "booking"],
   };
 }
@@ -51,18 +56,10 @@ export default async function ServiceDetailPage({ params }: Props) {
         </div>
       </div>
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
-        <p className="text-base leading-relaxed text-ocean-800 sm:text-[17px]">
-          Lock slots early during peak season. Live packages and services can be
-          updated from the admin panel without redeploying.
-        </p>
-        <p className="mt-4 text-base leading-relaxed text-ocean-800 sm:text-[17px]">
-          Tell us your hotel zone, group size, and preferred time—we route you to the
-          right boat, cab, or club partner.{" "}
-          <strong>Scuba diving Goa</strong> and{" "}
-          <strong>water sports Goa booking</strong> combos are popular on weekends;
-          ask for same-day feasibility before you pay.
-        </p>
-        <ServiceDetailActions service={s} />
+        <ServiceDetailSections service={s} />
+        <div className="mt-10">
+          <ServiceDetailActions service={s} />
+        </div>
       </div>
     </article>
   );

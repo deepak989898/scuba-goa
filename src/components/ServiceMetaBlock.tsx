@@ -9,9 +9,9 @@ export function ServiceMetaBlock({ s }: { s: ServiceItem }) {
         ⭐ {s.rating.toFixed(1)} rated
       </p>
       <ul className="flex flex-wrap gap-1.5">
-        {s.includes.slice(0, 4).map((inc) => (
+        {s.includes.map((inc, i) => (
           <li
-            key={inc}
+            key={`${s.slug}-inc-${i}`}
             className="rounded-full bg-ocean-50 px-2 py-0.5 text-xs text-ocean-800"
           >
             {inc}

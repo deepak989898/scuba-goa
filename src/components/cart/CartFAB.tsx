@@ -292,9 +292,9 @@ export function CartFAB() {
                         ) : null}
                         {line.includes && line.includes.length > 0 ? (
                           <ul className="mt-1 flex flex-wrap gap-1">
-                            {line.includes.slice(0, 3).map((inc) => (
+                            {line.includes.map((inc, i) => (
                               <li
-                                key={inc}
+                                key={`${line.key}-inc-${i}`}
                                 className="rounded bg-ocean-50 px-1.5 py-0.5 text-[10px] text-ocean-700"
                               >
                                 {inc}

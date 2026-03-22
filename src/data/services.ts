@@ -1,3 +1,11 @@
+/** Optional add-on or variant shown on /services/[slug] */
+export type SubServiceItem = {
+  title: string;
+  description?: string;
+  priceFrom?: number;
+  includes?: string[];
+};
+
 export type ServiceItem = {
   slug: string;
   title: string;
@@ -15,6 +23,13 @@ export type ServiceItem = {
   limitedSlots?: boolean;
   /** Admin sort (Firestore); lower shows first */
   sortOrder?: number;
+  /**
+   * Long copy for the service detail page. Use blank lines between paragraphs.
+   * If empty, the site shows a short default blurb.
+   */
+  detailContent?: string;
+  /** Shown under detail copy on the service detail page */
+  subServices?: SubServiceItem[];
 };
 
 const u = (id: string) =>

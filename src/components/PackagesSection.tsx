@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { usePackages } from "@/hooks/usePackages";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
@@ -40,7 +40,11 @@ export function PackagesSection() {
           </div>
         ) : (
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {packages.map((p, idx) => (
+            {packages.map((p, idx) => {
+              const cardImage =
+                p.imageUrl?.trim() ||
+                "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=75";
+              return (
               <motion.article
                 key={p.id}
                 initial={{ opacity: 0, y: 12 }}
@@ -50,11 +54,8 @@ export function PackagesSection() {
                 className="flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm"
               >
                 <div className="relative aspect-[16/10]">
-                  <Image
-                    src={
-                      p.imageUrl ??
-                      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=75"
-                    }
+                  <CmsRemoteImage
+                    src={cardImage}
                     alt={p.name}
                     fill
                     className="object-cover"
@@ -84,9 +85,9 @@ export function PackagesSection() {
                     ⭐ {p.rating.toFixed(1)} rated
                   </p>
                   <ul className="mt-3 flex flex-wrap gap-1.5">
-                    {p.includes.slice(0, 4).map((inc) => (
+                    {p.includes.map((inc, i) => (
                       <li
-                        key={inc}
+                        key={`${p.id}-inc-${i}`}
                         className="rounded-full bg-ocean-50 px-2 py-0.5 text-xs text-ocean-800"
                       >
                         {inc}
@@ -113,10 +114,7 @@ export function PackagesSection() {
                         id={p.id}
                         name={p.name}
                         price={p.price}
-                        image={
-                          p.imageUrl ??
-                          "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=75"
-                        }
+                        image={cardImage}
                         duration={p.duration}
                         size="sm"
                       />
@@ -130,7 +128,8 @@ export function PackagesSection() {
                   </div>
                 </div>
               </motion.article>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>
