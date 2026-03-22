@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useServices } from "@/hooks/useServices";
-import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { ServiceCardAddToCart } from "@/components/cart/ServiceCardAddToCart";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
 
 export function ServicesGrid() {
@@ -55,19 +55,7 @@ export function ServicesGrid() {
               From ₹{s.priceFrom.toLocaleString("en-IN")}+
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <AddToCartButton
-                variant="service"
-                slug={s.slug}
-                title={s.title}
-                priceFrom={s.priceFrom}
-                image={s.image}
-                duration={s.duration}
-                includes={s.includes}
-                rating={s.rating}
-                slotsLeft={s.slotsLeft}
-                bookedToday={s.bookedToday}
-                size="sm"
-              />
+              <ServiceCardAddToCart service={s} size="sm" />
               <Link
                 href={`/services/${s.slug}`}
                 className="inline-flex min-h-11 items-center rounded-full border border-ocean-200 px-3 py-2 text-xs font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100"

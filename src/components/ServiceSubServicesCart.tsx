@@ -2,20 +2,9 @@
 
 import type { ServiceItem } from "@/data/services";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { getSubServiceCartKey } from "@/lib/service-sub-helpers";
 
 type Props = { service: ServiceItem };
-
-function subCartKey(sub: { id?: string }, index: number): string {
-  const raw = sub.id?.trim();
-  if (raw) {
-    return raw
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 80) || `i${index}`;
-  }
-  return `i${index}`;
-}
 
 export function ServiceSubServicesCart({ service: s }: Props) {
   if (!s.subServices?.length) return null;
@@ -31,7 +20,7 @@ export function ServiceSubServicesCart({ service: s }: Props) {
       </p>
       <ul className="mt-6 space-y-4">
         {s.subServices.map((sub, idx) => {
-          const key = subCartKey(sub, idx);
+          const key = getSubServiceCartKey(sub, idx);
           const priceOk =
             sub.priceFrom != null &&
             Number.isFinite(sub.priceFrom) &&
