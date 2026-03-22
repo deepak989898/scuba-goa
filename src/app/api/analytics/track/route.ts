@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { parseRequestDevice } from "@/lib/clientDevice";
 
 const PATH_MAX = 512;
 const SESSION_MAX = 128;
@@ -32,11 +33,15 @@ export async function POST(req: Request) {
 
   const path = pathRaw.slice(0, PATH_MAX);
   const sessionId = sessionRaw.slice(0, SESSION_MAX);
+  const { category, label, uaSnippet } = parseRequestDevice(req.headers);
 
   try {
     await db.collection("pageViews").add({
       path,
       sessionId,
+      deviceCategory: category,
+      deviceLabel: label,
+      uaSnippet,
       createdAt: FieldValue.serverTimestamp(),
     });
   } catch (e) {

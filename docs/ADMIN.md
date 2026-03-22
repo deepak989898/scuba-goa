@@ -46,7 +46,7 @@ Same as before: **`/admin/packages`** — add / edit / delete rows in `packages`
 
 ## Analytics
 
-**`/admin/analytics`** — reads `pageViews` (written by `POST /api/analytics/track` when the same Admin SDK env is set). Deploy updated `firestore.rules` so admins can read `pageViews`.
+**`/admin/analytics`** — reads `pageViews` (written by `POST /api/analytics/track` when the same Admin SDK env is set). Shows **today (IST)** unique visitors, page views, **device type** breakdown (from User-Agent), and a recent log with device labels. Deploy updated `firestore.rules` so admins can read `pageViews`.
 
 ---
 
