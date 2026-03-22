@@ -127,7 +127,7 @@ async function main() {
   const col = db.collection("packages");
   for (const p of packages) {
     const ref = col.doc();
-    batch.set(ref, p);
+    batch.set(ref, { ...p, active: true });
   }
   await batch.commit();
   console.log("Seeded", packages.length, "packages");

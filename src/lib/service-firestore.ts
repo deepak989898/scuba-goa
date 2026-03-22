@@ -13,6 +13,8 @@ export type ServiceFirestorePayload = {
   bookedToday?: number;
   limitedSlots?: boolean;
   mostBooked?: boolean;
+  /** Visible on site when true (default). */
+  active: boolean;
   /** Sort order on site (lower first) */
   sortOrder: number;
   detailContent?: string;
@@ -98,6 +100,7 @@ export function docToService(
     priceFrom: Number(data.priceFrom ?? 0),
     image,
     galleryUrls,
+    active: data.active !== false,
     duration: String(data.duration ?? ""),
     rating: Number(data.rating ?? 4.8),
     includes,
@@ -129,6 +132,7 @@ export function serviceToPayload(
     bookedToday: s.bookedToday,
     limitedSlots: s.limitedSlots,
     mostBooked: s.mostBooked,
+    active: s.active !== false,
     sortOrder: s.sortOrder ?? 0,
   };
   const d = (s.detailContent ?? "").trim();

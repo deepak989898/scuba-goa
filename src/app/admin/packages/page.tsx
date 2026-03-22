@@ -32,6 +32,7 @@ export default function AdminPackagesPage() {
     isCombo: false,
     limitedSlots: true,
     discountPct: 0,
+    active: true,
   };
   const [form, setForm] = useState(empty);
 
@@ -56,6 +57,7 @@ export default function AdminPackagesPage() {
         isCombo: Boolean(x.isCombo),
         discountPct: x.discountPct != null ? Number(x.discountPct) : undefined,
         limitedSlots: Boolean(x.limitedSlots),
+        active: x.active !== false,
       } satisfies PackageDoc;
     });
     rows.sort((a, b) => a.price - b.price);
@@ -85,6 +87,7 @@ export default function AdminPackagesPage() {
       isCombo: p.isCombo ?? false,
       limitedSlots: p.limitedSlots ?? false,
       discountPct: p.discountPct ?? 0,
+      active: p.active !== false,
     });
   }
 
@@ -105,6 +108,7 @@ export default function AdminPackagesPage() {
       isCombo: form.isCombo,
       limitedSlots: form.limitedSlots,
       discountPct: form.isCombo ? Number(form.discountPct) : 0,
+      active: form.active,
     };
   }
 
@@ -128,6 +132,13 @@ export default function AdminPackagesPage() {
     await refresh();
   }
 
+  async function togglePackageActive(p: PackageDoc) {
+    if (!db) return;
+    const next = p.active === false;
+    await updateDoc(doc(db, "packages", p.id), { active: next });
+    await refresh();
+  }
+
   if (!db) {
     return (
       <p className="text-ocean-700">
@@ -140,8 +151,9 @@ export default function AdminPackagesPage() {
     <div>
       <h1 className="font-display text-3xl font-bold text-ocean-900">Packages</h1>
       <p className="mt-2 text-sm text-ocean-600">
-        Includes scuba, tours, casinos, clubs, flyboarding, bungee—whatever you add
-        here appears on the homepage.
+        Includes scuba, tours, casinos, clubs, flyboarding, bungee. Uncheck{" "}
+        <strong>Active</strong> to hide a package from the public site (booking,
+        homepage, combos) without deleting it.
       </p>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
@@ -284,6 +296,16 @@ export default function AdminPackagesPage() {
               />
             </label>
           ) : null}
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, active: e.target.checked }))
+              }
+            />
+            Active (visible on site)
+          </label>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
@@ -316,6 +338,7 @@ export default function AdminPackagesPage() {
             <thead className="border-b border-ocean-100 bg-ocean-50 text-ocean-800">
               <tr>
                 <th className="p-3">Name</th>
+                <th className="p-3">Status</th>
                 <th className="p-3">₹</th>
                 <th className="p-3">Slots</th>
                 <th className="p-3">Actions</th>
@@ -323,8 +346,26 @@ export default function AdminPackagesPage() {
             </thead>
             <tbody>
               {list.map((p) => (
-                <tr key={p.id} className="border-b border-ocean-50">
+                <tr
+                  key={p.id}
+                  className={`border-b border-ocean-50 ${
+                    p.active === false ? "bg-ocean-50/80 opacity-90" : ""
+                  }`}
+                >
                   <td className="p-3 font-medium text-ocean-900">{p.name}</td>
+                  <td className="p-3">
+                    <button
+                      type="button"
+                      onClick={() => togglePackageActive(p)}
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        p.active === false
+                          ? "bg-ocean-200 text-ocean-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {p.active === false ? "Inactive" : "Active"}
+                    </button>
+                  </td>
                   <td className="p-3">{p.price}</td>
                   <td className="p-3">{p.slotsLeft ?? "—"}</td>
                   <td className="p-3">

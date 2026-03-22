@@ -26,6 +26,7 @@ function mapDoc(id: string, data: Record<string, unknown>): PackageDoc {
     discountPct:
       data.discountPct !== undefined ? Number(data.discountPct) : undefined,
     limitedSlots: Boolean(data.limitedSlots),
+    active: data.active !== false,
   };
 }
 
@@ -50,9 +51,9 @@ export function usePackages() {
           setPackages(fallbackPackages);
           setFromFirestore(false);
         } else {
-          const list = snap.docs.map((d) =>
-            mapDoc(d.id, d.data() as Record<string, unknown>)
-          );
+          const list = snap.docs
+            .map((d) => mapDoc(d.id, d.data() as Record<string, unknown>))
+            .filter((p) => p.active !== false);
           list.sort((a, b) => a.price - b.price);
           setPackages(list);
           setFromFirestore(true);

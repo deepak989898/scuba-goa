@@ -16,6 +16,8 @@ export type ServiceItem = {
   short: string;
   priceFrom: number;
   image: string;
+  /** When false, hidden from listings, cart, booking, and detail URL. Omitted/true = visible. */
+  active?: boolean;
   /** Extra image URLs for the detail page slider (primary `image` is always first) */
   galleryUrls?: string[];
   mostBooked?: boolean;

@@ -7,6 +7,7 @@ import {
   doc,
   getDocs,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { docToService, serviceToPayload } from "@/lib/service-firestore";
@@ -56,6 +57,7 @@ export default function AdminServicesPage() {
     mostBooked: false,
     detailContent: "",
     galleryUrls: "",
+    active: true,
   };
   const [form, setForm] = useState(empty);
 
@@ -101,6 +103,7 @@ export default function AdminServicesPage() {
       mostBooked: s.mostBooked ?? false,
       detailContent: s.detailContent ?? "",
       galleryUrls: s.galleryUrls?.join("\n") ?? "",
+      active: s.active !== false,
     });
     setSubRows(
       s.subServices?.map((sub) => ({
@@ -198,6 +201,7 @@ export default function AdminServicesPage() {
       bookedToday: Number(form.bookedToday),
       limitedSlots: form.limitedSlots,
       mostBooked: form.mostBooked,
+      active: form.active,
       sortOrder: Number(form.sortOrder),
       detailContent: form.detailContent.trim() || undefined,
       subServices,
@@ -225,6 +229,13 @@ export default function AdminServicesPage() {
     await refresh();
   }
 
+  async function toggleServiceActive(s: ServiceItem) {
+    if (!db) return;
+    const next = s.active === false;
+    await updateDoc(doc(db, "services", s.slug), { active: next });
+    await refresh();
+  }
+
   if (!db) {
     return (
       <p className="text-ocean-700">
@@ -238,8 +249,9 @@ export default function AdminServicesPage() {
       <h1 className="font-display text-3xl font-bold text-ocean-900">Services</h1>
       <p className="mt-2 text-sm text-ocean-600">
         Home page &amp; /services cards. Document ID = URL slug (e.g.{" "}
-        <code className="text-xs">scuba-diving</code>). If this list is empty, the
-        site uses built-in defaults from code until you add rows here.
+        <code className="text-xs">scuba-diving</code>). Turn off{" "}
+        <strong>Active</strong> to hide a service everywhere on the public site
+        (including its detail URL) without deleting the document.
       </p>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
@@ -557,6 +569,16 @@ export default function AdminServicesPage() {
             />
             Most booked badge
           </label>
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, active: e.target.checked }))
+              }
+            />
+            Active (visible on site)
+          </label>
         </div>
         {formError ? (
           <p className="mt-3 text-sm text-red-600" role="alert">
@@ -601,15 +623,34 @@ export default function AdminServicesPage() {
               <tr>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Title</th>
+                <th className="p-3">Status</th>
                 <th className="p-3">From ₹</th>
                 <th className="p-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {list.map((s) => (
-                <tr key={s.slug} className="border-b border-ocean-50">
+                <tr
+                  key={s.slug}
+                  className={`border-b border-ocean-50 ${
+                    s.active === false ? "bg-ocean-50/80 opacity-90" : ""
+                  }`}
+                >
                   <td className="p-3 font-mono text-xs text-ocean-700">{s.slug}</td>
                   <td className="p-3 font-medium text-ocean-900">{s.title}</td>
+                  <td className="p-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleServiceActive(s)}
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        s.active === false
+                          ? "bg-ocean-200 text-ocean-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {s.active === false ? "Inactive" : "Active"}
+                    </button>
+                  </td>
                   <td className="p-3">{s.priceFrom}</td>
                   <td className="p-3">
                     <button

@@ -12,6 +12,8 @@ export type PackageDoc = {
   isCombo?: boolean;
   discountPct?: number;
   limitedSlots?: boolean;
+  /** When false, hidden from homepage, booking, and combos. Default true if omitted. */
+  active?: boolean;
 };
 
 export type BookingPayload = {

@@ -12,7 +12,7 @@ export async function getAllServicesServer(): Promise<ServiceItem[]> {
     const list: ServiceItem[] = [];
     for (const d of snap.docs) {
       const s = docToService(d.id, d.data() as Record<string, unknown>);
-      if (s) list.push(s);
+      if (s && s.active !== false) list.push(s);
     }
     list.sort(
       (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.slug.localeCompare(b.slug)
@@ -33,7 +33,9 @@ export async function getServiceBySlugServer(
     if (!ref.exists) {
       return fallbackServices.find((s) => s.slug === slug) ?? null;
     }
-    return docToService(ref.id, ref.data() as Record<string, unknown>);
+    const s = docToService(ref.id, ref.data() as Record<string, unknown>);
+    if (s && s.active === false) return null;
+    return s;
   } catch {
     return fallbackServices.find((s) => s.slug === slug) ?? null;
   }

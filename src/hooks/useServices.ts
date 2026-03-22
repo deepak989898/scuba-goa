@@ -30,7 +30,7 @@ export function useServices() {
           const list: ServiceItem[] = [];
           for (const d of snap.docs) {
             const s = docToService(d.id, d.data() as Record<string, unknown>);
-            if (s) list.push(s);
+            if (s && s.active !== false) list.push(s);
           }
           list.sort(
             (a, b) =>
