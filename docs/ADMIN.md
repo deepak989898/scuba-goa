@@ -56,7 +56,7 @@ That usually means the Firestore **read failed** (often **permission denied**) a
 
 1. Deploy this repo’s **`firestore.rules`** — they must include **`ratings`** and **`pageViews`** so admins can read those collections (writes stay server-only where needed).
 2. Run: `firebase deploy --only firestore:rules` (or paste rules in Firebase Console → Firestore → Rules → Publish).
-3. Refresh **/admin/ratings** and **/admin/analytics**. If something still fails, the page now shows the Firestore error code (e.g. missing **index** — then deploy **`firestore.indexes.json`**).
+3. Refresh **/admin/ratings** and **/admin/analytics**. If something still fails, the page now shows the Firestore error code (e.g. missing **index** — deploy indexes: see **[FIRESTORE-RULES-AND-INDEXES.md](./FIRESTORE-RULES-AND-INDEXES.md)**).
 
 ## Login
 

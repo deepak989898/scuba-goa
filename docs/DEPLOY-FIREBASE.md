@@ -12,7 +12,7 @@ Your app is **Next.js** with **API routes** (Razorpay order + verify). Classic *
 ## Before anything (one-time in Firebase Console)
 
 1. Open [Firebase Console](https://console.firebase.google.com/) → project **bookscubagoa**.
-2. **Build** → **Firestore Database** → create database (production mode) → deploy rules (see repo `firestore.rules`).
+2. **Build** → **Firestore Database** → create database (production mode) → deploy **rules and indexes** (see **[FIRESTORE-RULES-AND-INDEXES.md](./FIRESTORE-RULES-AND-INDEXES.md)** and repo `firestore.rules` + `firestore.indexes.json`).
 3. **Build** → **Authentication** → **Sign-in method** → enable **Email/Password**.
 4. **Authentication** → **Settings** → **Authorized domains** → add your production domain (e.g. `yourapp.web.app`, `yourdomain.com`, and `localhost` for dev).
 5. Create an **admin user**: Authentication → Add user (email + password).
@@ -47,12 +47,13 @@ Official guide: [Get started with App Hosting](https://firebase.google.com/docs/
 3. Root directory: repo root (where `package.json` is). Build command: `npm ci && npm run build` (or as suggested by the wizard).
 4. In App Hosting → your **backend** → **Environment variables / secrets**, add every variable from `.env.local` that the app needs (especially `RAZORPAY_KEY_SECRET`, `FIREBASE_SERVICE_ACCOUNT_KEY`, `NEXT_PUBLIC_*`).
 
-5. Deploy Firestore rules from your machine (optional):
+5. Deploy Firestore **rules and indexes** from your machine (recommended after clone or rule changes):
    ```bash
    cd "path/to/Website ScubaDiving"
    firebase use bookscubagoa
-   firebase deploy --only firestore:rules
+   firebase deploy --only firestore
    ```
+   Details: [FIRESTORE-RULES-AND-INDEXES.md](./FIRESTORE-RULES-AND-INDEXES.md).
 
 ---
 
