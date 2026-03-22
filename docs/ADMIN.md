@@ -38,11 +38,25 @@ Same as before: **`/admin/packages`** — add / edit / delete rows in `packages`
 
 ---
 
+## Reviews (ratings)
+
+**`/admin/ratings`** — list all submissions. **Pending** reviews are hidden on the public site until you click to **approve**.
+
+**Where approved reviews appear:** the **homepage** (`/`), section **“Guest reviews”** (anchor `#guest-reviews`), directly under **Trust**. Only documents with `approved: true` are loaded there; the UI shows an **Approved** badge on each card.
+
 ## Analytics
 
 **`/admin/analytics`** — reads `pageViews` (written by `POST /api/analytics/track` when the same Admin SDK env is set). Deploy updated `firestore.rules` so admins can read `pageViews`.
 
 ---
+
+## If admin pages stay on “Loading…”
+
+That usually means the Firestore **read failed** (often **permission denied**) and the UI used to hang before showing the error.
+
+1. Deploy this repo’s **`firestore.rules`** — they must include **`ratings`** and **`pageViews`** so admins can read those collections (writes stay server-only where needed).
+2. Run: `firebase deploy --only firestore:rules` (or paste rules in Firebase Console → Firestore → Rules → Publish).
+3. Refresh **/admin/ratings** and **/admin/analytics**. If something still fails, the page now shows the Firestore error code (e.g. missing **index** — then deploy **`firestore.indexes.json`**).
 
 ## Login
 

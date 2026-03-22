@@ -36,31 +36,49 @@ export default function AdminAnalyticsPage() {
   const db = getDb();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!db) {
       setLoading(false);
       return;
     }
+    let cancelled = false;
     (async () => {
-      const q = query(
-        collection(db, "pageViews"),
-        orderBy("createdAt", "desc"),
-        limit(500)
-      );
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          path: String(data.path ?? ""),
-          sessionId: String(data.sessionId ?? ""),
-          createdAt: data.createdAt,
-        };
-      });
-      setRows(list);
-      setLoading(false);
+      setLoadError(null);
+      try {
+        const q = query(
+          collection(db, "pageViews"),
+          orderBy("createdAt", "desc"),
+          limit(500)
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        const list = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            path: String(data.path ?? ""),
+            sessionId: String(data.sessionId ?? ""),
+            createdAt: data.createdAt,
+          };
+        });
+        setRows(list);
+      } catch (e: unknown) {
+        if (cancelled) return;
+        const msg =
+          e && typeof e === "object" && "code" in e
+            ? `${String((e as { code?: string }).code)}: ${String((e as { message?: string }).message ?? e)}`
+            : String(e);
+        setLoadError(msg);
+        setRows([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [db]);
 
   const stats = useMemo(() => {
@@ -116,9 +134,22 @@ export default function AdminAnalyticsPage() {
         gets a session id; repeated views count toward page views.
       </p>
 
+      {loadError ? (
+        <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <p className="font-semibold">Could not load analytics</p>
+          <p className="mt-2 font-mono text-xs opacity-90">{loadError}</p>
+          <p className="mt-3 text-ocean-800">
+            Deploy <code className="text-xs">firestore.rules</code> so admins can read{" "}
+            <code className="text-xs">pageViews</code>. Redeploy rules in Firebase
+            Console or run{" "}
+            <code className="text-xs">firebase deploy --only firestore:rules</code>.
+          </p>
+        </div>
+      ) : null}
+
       {loading ? (
         <p className="mt-8 text-ocean-600">Loading…</p>
-      ) : (
+      ) : loadError ? null : (
         <>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-ocean-100 bg-white p-4 shadow-sm">

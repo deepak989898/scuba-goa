@@ -41,33 +41,51 @@ export default function AdminRatingsPage() {
   const db = getDb();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!db) {
       setLoading(false);
       return;
     }
+    let cancelled = false;
     (async () => {
-      const q = query(
-        collection(db, "ratings"),
-        orderBy("createdAt", "desc"),
-        limit(200)
-      );
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => {
-        const x = d.data();
-        return {
-          id: d.id,
-          authorName: String(x.authorName ?? ""),
-          comment: String(x.comment ?? ""),
-          rating: Number(x.rating ?? 0),
-          approved: Boolean(x.approved),
-          createdAt: x.createdAt,
-        };
-      });
-      setRows(list);
-      setLoading(false);
+      setLoadError(null);
+      try {
+        const q = query(
+          collection(db, "ratings"),
+          orderBy("createdAt", "desc"),
+          limit(200)
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        const list = snap.docs.map((d) => {
+          const x = d.data();
+          return {
+            id: d.id,
+            authorName: String(x.authorName ?? ""),
+            comment: String(x.comment ?? ""),
+            rating: Number(x.rating ?? 0),
+            approved: Boolean(x.approved),
+            createdAt: x.createdAt,
+          };
+        });
+        setRows(list);
+      } catch (e: unknown) {
+        if (cancelled) return;
+        const msg =
+          e && typeof e === "object" && "code" in e
+            ? `${String((e as { code?: string }).code)}: ${String((e as { message?: string }).message ?? e)}`
+            : String(e);
+        setLoadError(msg);
+        setRows([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [db]);
 
   async function toggleApproved(r: Row) {
@@ -103,9 +121,21 @@ export default function AdminRatingsPage() {
         appear on the homepage.
       </p>
 
+      {loadError ? (
+        <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <p className="font-semibold">Could not load reviews</p>
+          <p className="mt-2 font-mono text-xs opacity-90">{loadError}</p>
+          <p className="mt-3 text-ocean-800">
+            Deploy <code className="text-xs">firestore.rules</code> (must allow admins
+            to read <code className="text-xs">ratings</code>). If the error mentions an
+            index, deploy <code className="text-xs">firestore.indexes.json</code>.
+          </p>
+        </div>
+      ) : null}
+
       {loading ? (
         <p className="mt-8 text-ocean-600">Loading…</p>
-      ) : rows.length === 0 ? (
+      ) : loadError ? null : rows.length === 0 ? (
         <p className="mt-8 text-ocean-600">No reviews yet.</p>
       ) : (
         <ul className="mt-8 space-y-4">

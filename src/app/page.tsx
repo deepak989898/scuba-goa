@@ -41,10 +41,10 @@ export default function HomePage() {
       <ServiceCards />
       <PackagesSection />
       <TrustSection />
+      <RatingsSection />
       <ComboOffers />
       <GallerySection />
       <BlogPreview />
-      <RatingsSection />
     </>
   );
 }

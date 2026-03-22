@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   getDocs,
@@ -28,6 +28,7 @@ export function RatingsSection() {
   const [rating, setRating] = useState(5);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!db) {
@@ -35,6 +36,7 @@ export function RatingsSection() {
       return;
     }
     (async () => {
+      setLoadError(null);
       try {
         const q = query(
           collection(db, "ratings"),
@@ -54,12 +56,27 @@ export function RatingsSection() {
             };
           })
         );
-      } catch {
+      } catch (e: unknown) {
         setReviews([]);
+        const code =
+          e && typeof e === "object" && "code" in e
+            ? String((e as { code?: string }).code)
+            : "";
+        setLoadError(
+          code === "failed-precondition"
+            ? "Reviews need a Firestore index. Deploy firestore.indexes.json or use the link in the browser console."
+            : "Could not load reviews. Check Firestore rules and try again."
+        );
       }
       setLoading(false);
     })();
   }, [db]);
+
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return null;
+    const sum = reviews.reduce((s, r) => s + r.rating, 0);
+    return Math.round((sum / reviews.length) * 10) / 10;
+  }, [reviews]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -103,37 +120,61 @@ export function RatingsSection() {
   return (
     <section className="border-t border-ocean-100 bg-white py-16">
       <div className="mx-auto max-w-5xl px-4">
-        <h2 className="font-display text-center text-3xl font-bold text-ocean-900">
+        <h2
+          id="guest-reviews"
+          className="font-display text-center text-3xl font-bold text-ocean-900"
+        >
           Guest reviews
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-sm text-ocean-600">
-          Share your experience with {SITE_NAME}. Reviews are moderated before
-          they appear here.
+          The cards below show only reviews our team has <strong>approved</strong> in
+          the admin panel. New submissions appear here after approval.
         </p>
+
+        {loadError ? (
+          <p className="mt-6 text-center text-sm text-amber-800">{loadError}</p>
+        ) : null}
 
         {loading ? (
           <p className="mt-10 text-center text-ocean-600">Loading reviews…</p>
-        ) : reviews.length === 0 ? (
+        ) : reviews.length === 0 && !loadError ? (
           <p className="mt-10 text-center text-sm text-ocean-600">
-            Be the first to leave a review.
+            No approved reviews yet. Be the first to leave one — we’ll publish it
+            after a quick check.
           </p>
-        ) : (
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
-            {reviews.map((r) => (
-              <li
-                key={r.id}
-                className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
-              >
-                <p className="font-semibold text-ocean-900">{r.authorName}</p>
-                <p className="text-amber-600" aria-hidden>
-                  {"★".repeat(Math.min(5, Math.max(0, r.rating)))}
-                  <span className="sr-only">{r.rating} out of 5</span>
-                </p>
-                <p className="mt-2 text-sm text-ocean-800">{r.comment}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+        ) : reviews.length > 0 ? (
+          <>
+            {averageRating != null ? (
+              <p className="mt-6 text-center text-sm font-medium text-ocean-800">
+                Average from {reviews.length} approved review
+                {reviews.length === 1 ? "" : "s"}:{" "}
+                <span className="text-amber-600">
+                  ★ {averageRating.toFixed(1)} / 5
+                </span>
+              </p>
+            ) : null}
+            <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+              {reviews.map((r) => (
+                <li
+                  key={r.id}
+                  className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-ocean-900">{r.authorName}</p>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                      Approved
+                    </span>
+                  </div>
+                  <p className="text-amber-600" aria-hidden>
+                    {"★".repeat(Math.min(5, Math.max(0, r.rating)))}
+                    <span className="sr-only">{r.rating} out of 5</span>
+                  </p>
+                  <p className="mt-2 text-sm text-ocean-800">{r.comment}</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
 
         <form
           onSubmit={submit}
