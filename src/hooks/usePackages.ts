@@ -45,7 +45,20 @@ export function usePackages() {
     let cancelled = false;
     (async () => {
       try {
-        const snap = await getDocs(collection(db, "packages"));
+        let snap = await getDocs(collection(db, "packages"));
+        if (cancelled) return;
+        if (snap.empty) {
+          try {
+            const seedRes = await fetch("/api/seed-catalog-if-empty", {
+              method: "POST",
+            });
+            if (seedRes.ok && !cancelled) {
+              snap = await getDocs(collection(db, "packages"));
+            }
+          } catch {
+            /* offline or seed unavailable — use code defaults below */
+          }
+        }
         if (cancelled) return;
         if (snap.empty) {
           setPackages(fallbackPackages);

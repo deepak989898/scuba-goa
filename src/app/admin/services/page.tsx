@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   collection,
   deleteDoc,
@@ -40,6 +40,7 @@ export default function AdminServicesPage() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [subRows, setSubRows] = useState<SubServiceFormRow[]>([]);
+  const triedAutoSeed = useRef(false);
 
   const empty = {
     slug: "",
@@ -84,6 +85,15 @@ export default function AdminServicesPage() {
     }
     refresh().finally(() => setLoading(false));
   }, [db, refresh]);
+
+  useEffect(() => {
+    if (!db || loading || list.length > 0 || triedAutoSeed.current) return;
+    triedAutoSeed.current = true;
+    (async () => {
+      const r = await fetch("/api/seed-catalog-if-empty", { method: "POST" });
+      if (r.ok) await refresh();
+    })();
+  }, [db, loading, list.length, refresh]);
 
   function startEdit(s: ServiceItem) {
     setEditingSlug(s.slug);

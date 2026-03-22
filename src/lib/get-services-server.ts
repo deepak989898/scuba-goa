@@ -1,5 +1,6 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { docToService } from "@/lib/service-firestore";
+import { seedCatalogIfEmpty } from "@/lib/seed-default-catalog";
 import { fallbackServices, type ServiceItem } from "@/data/services";
 
 /** Server-only: metadata & SSR when FIREBASE_SERVICE_ACCOUNT_KEY is set */
@@ -7,7 +8,11 @@ export async function getAllServicesServer(): Promise<ServiceItem[]> {
   const db = getAdminDb();
   if (!db) return fallbackServices;
   try {
-    const snap = await db.collection("services").get();
+    let snap = await db.collection("services").get();
+    if (snap.empty) {
+      await seedCatalogIfEmpty(db);
+      snap = await db.collection("services").get();
+    }
     if (snap.empty) return fallbackServices;
     const list: ServiceItem[] = [];
     for (const d of snap.docs) {
@@ -29,6 +34,10 @@ export async function getServiceBySlugServer(
   const db = getAdminDb();
   if (!db) return fallbackServices.find((s) => s.slug === slug) ?? null;
   try {
+    const peek = await db.collection("services").limit(1).get();
+    if (peek.empty) {
+      await seedCatalogIfEmpty(db);
+    }
     const ref = await db.collection("services").doc(slug).get();
     if (!ref.exists) {
       return fallbackServices.find((s) => s.slug === slug) ?? null;

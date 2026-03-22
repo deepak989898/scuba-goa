@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -18,6 +18,7 @@ export default function AdminPackagesPage() {
   const [list, setList] = useState<PackageDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const triedAutoSeed = useRef(false);
 
   const empty = {
     name: "",
@@ -71,6 +72,15 @@ export default function AdminPackagesPage() {
     }
     refresh().finally(() => setLoading(false));
   }, [db, refresh]);
+
+  useEffect(() => {
+    if (!db || loading || list.length > 0 || triedAutoSeed.current) return;
+    triedAutoSeed.current = true;
+    (async () => {
+      const r = await fetch("/api/seed-catalog-if-empty", { method: "POST" });
+      if (r.ok) await refresh();
+    })();
+  }, [db, loading, list.length, refresh]);
 
   function startEdit(p: PackageDoc) {
     setEditingId(p.id);
