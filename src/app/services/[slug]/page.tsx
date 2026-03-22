@@ -40,12 +40,13 @@ export default async function ServiceDetailPage({ params }: Props) {
 
   return (
     <article className="bg-white">
-      <ServiceDetailGallery images={heroImages} title={s.title} short={s.short} />
-      <div className="mx-auto max-w-3xl px-4 pt-6 sm:hidden">
-        <h1 className="font-display text-2xl font-bold text-ocean-900">{s.title}</h1>
-        <p className="mt-1 text-sm text-ocean-600">{s.short}</p>
+      <ServiceDetailGallery images={heroImages} title={s.title} />
+      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-10">
+        <h1 className="font-display text-2xl font-bold text-ocean-900 sm:text-4xl">
+          {s.title}
+        </h1>
       </div>
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <div className="mx-auto max-w-3xl px-4 pb-10 pt-4 sm:px-6 sm:pb-12 sm:pt-6 lg:px-8">
         <ServiceDetailSections service={s} />
         <ServiceSubServicesCart service={s} />
         <div className="mt-10">

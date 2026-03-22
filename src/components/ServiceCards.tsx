@@ -7,6 +7,7 @@ import { ServiceCardImageSlider } from "@/components/ServiceCardImageSlider";
 import { useServices } from "@/hooks/useServices";
 import { ServiceCardAddToCart } from "@/components/cart/ServiceCardAddToCart";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
+import { ServiceShortClamp } from "@/components/ServiceShortClamp";
 import { serviceDetailImages } from "@/lib/service-images";
 
 export function ServiceCards() {
@@ -99,7 +100,7 @@ export function ServiceCards() {
                       {s.title}
                     </h3>
                   </Link>
-                  <p className="mt-1 text-sm text-ocean-600">{s.short}</p>
+                  <ServiceShortClamp slug={s.slug} text={s.short} />
                   <ServiceMetaBlock s={s} />
                   <p className="mt-3 text-lg font-bold text-ocean-900">
                     From ₹{s.priceFrom.toLocaleString("en-IN")}+

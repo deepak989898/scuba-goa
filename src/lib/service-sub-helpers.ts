@@ -39,3 +39,24 @@ export function getPricedSubServicesWithIndex(s: ServiceItem): Array<{
 export function serviceHasPricedSubServices(s: ServiceItem): boolean {
   return getPricedSubServicesWithIndex(s).length > 0;
 }
+
+export function findPricedSubByCartKey(
+  services: ServiceItem[],
+  slug: string,
+  subKey: string
+): { service: ServiceItem; sub: SubServiceItem; index: number } | null {
+  const service = services.find((x) => x.slug === slug);
+  if (!service?.subServices?.length) return null;
+  for (let i = 0; i < service.subServices.length; i++) {
+    const sub = service.subServices[i]!;
+    if (getSubServiceCartKey(sub, i) !== subKey) continue;
+    if (
+      sub.priceFrom != null &&
+      Number.isFinite(sub.priceFrom) &&
+      sub.priceFrom > 0
+    ) {
+      return { service, sub, index: i };
+    }
+  }
+  return null;
+}

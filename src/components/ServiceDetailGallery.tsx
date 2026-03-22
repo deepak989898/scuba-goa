@@ -7,11 +7,11 @@ const AUTO_MS = 5000;
 
 type Props = {
   images: string[];
+  /** Used for image alt text only (no on-image caption). */
   title: string;
-  short: string;
 };
 
-export function ServiceDetailGallery({ images, title, short }: Props) {
+export function ServiceDetailGallery({ images, title }: Props) {
   const list = useMemo(() => {
     const slides = images.filter((u) => u.trim().length > 0);
     return slides.length ? slides : [""];
@@ -61,15 +61,9 @@ export function ServiceDetailGallery({ images, title, short }: Props) {
         </div>
       ))}
       <div
-        className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-ocean-900/35 to-transparent sm:from-ocean-900/80"
+        className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/25 to-transparent"
         aria-hidden
       />
-      <div className="pointer-events-none absolute bottom-0 left-0 z-30 hidden p-5 sm:block sm:p-10">
-        <h1 className="font-display text-2xl font-bold text-white sm:text-5xl">
-          {title}
-        </h1>
-        <p className="mt-2 max-w-xl text-base text-white/90 sm:text-lg">{short}</p>
-      </div>
 
       {n > 1 ? (
         <>
@@ -96,7 +90,7 @@ export function ServiceDetailGallery({ images, title, short }: Props) {
             </svg>
           </button>
           <div
-            className="absolute bottom-4 left-0 right-0 z-30 flex justify-center gap-1.5 sm:bottom-24"
+            className="absolute bottom-4 left-0 right-0 z-30 flex justify-center gap-1.5"
             role="tablist"
             aria-label="Gallery slides"
           >

@@ -7,38 +7,40 @@ function detailParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Full service copy only: admin detail body, else short line — no stock marketing blurbs.
+ */
 export function ServiceDetailSections({ service: s }: { service: ServiceItem }) {
-  const hasCustom = Boolean(s.detailContent?.trim());
-  const paras = hasCustom ? detailParagraphs(s.detailContent!) : [];
+  const custom = (s.detailContent ?? "").trim();
+  const short = (s.short ?? "").trim();
+
+  if (custom) {
+    const paras = detailParagraphs(custom);
+    return (
+      <div className="space-y-4">
+        {paras.map((p, i) => (
+          <p
+            key={i}
+            className="text-base leading-relaxed text-ocean-800 sm:text-[17px] whitespace-pre-line"
+          >
+            {p}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  if (short) {
+    return (
+      <p className="text-base leading-relaxed text-ocean-800 sm:text-[17px] whitespace-pre-line">
+        {short}
+      </p>
+    );
+  }
 
   return (
-    <>
-      {hasCustom ? (
-        <div className="space-y-4">
-          {paras.map((p, i) => (
-            <p
-              key={i}
-              className="text-base leading-relaxed text-ocean-800 sm:text-[17px] whitespace-pre-line"
-            >
-              {p}
-            </p>
-          ))}
-        </div>
-      ) : (
-        <>
-          <p className="text-base leading-relaxed text-ocean-800 sm:text-[17px]">
-            Lock slots early during peak season. Live packages and services can be
-            updated from the admin panel without redeploying.
-          </p>
-          <p className="mt-4 text-base leading-relaxed text-ocean-800 sm:text-[17px]">
-            Tell us your hotel zone, group size, and preferred time—we route you to the
-            right boat, cab, or club partner.{" "}
-            <strong>Scuba diving Goa</strong> and{" "}
-            <strong>water sports Goa booking</strong> combos are popular on weekends;
-            ask for same-day feasibility before you pay.
-          </p>
-        </>
-      )}
-    </>
+    <p className="text-base text-ocean-600">
+      See options below or reach us on WhatsApp for timings and pickup.
+    </p>
   );
 }

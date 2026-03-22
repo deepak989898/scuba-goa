@@ -11,6 +11,11 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
+    match /heroSlides/{id} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
     match /bookings/{id} {
       allow read: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));

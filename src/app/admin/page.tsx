@@ -38,6 +38,17 @@ export default function AdminHomePage() {
           </p>
         </Link>
         <Link
+          href="/admin/hero"
+          className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
+        >
+          <h2 className="font-display text-lg font-semibold text-ocean-900">
+            Hero slider
+          </h2>
+          <p className="mt-2 text-sm text-ocean-600">
+            Homepage hero images: add, reorder, delete.
+          </p>
+        </Link>
+        <Link
           href="/admin/bookings"
           className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
         >

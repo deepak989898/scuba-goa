@@ -1,53 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-
-const slides = [
-  {
-    src: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1920&q=80",
-    alt: "Scuba diving in clear water",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80",
-    alt: "Goa beach coastline",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=1920&q=80",
-    alt: "Water sports at sea",
-  },
-];
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { useHeroSlides } from "@/hooks/useHeroSlides";
 
 export function HeroSection() {
+  const { slides } = useHeroSlides();
   const [i, setI] = useState(0);
+  const n = slides.length;
+
   useEffect(() => {
-    const t = setInterval(() => setI((n) => (n + 1) % slides.length), 5500);
+    setI((x) => (n > 0 ? x % n : 0));
+  }, [n]);
+
+  useEffect(() => {
+    if (n <= 1) return;
+    const t = setInterval(() => setI((x) => (x + 1) % n), 5500);
     return () => clearInterval(t);
-  }, []);
+  }, [n]);
+
+  const current = slides[i] ?? slides[0];
 
   return (
     <section className="relative min-h-[88vh] overflow-hidden bg-ocean-900">
       <div className="absolute inset-0">
         <AnimatePresence mode="wait">
-          <motion.div
-            key={slides[i]!.src}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8 }}
-            className="absolute inset-0"
-          >
-            <Image
-              src={slides[i]!.src}
-              alt={slides[i]!.alt}
-              fill
-              priority
-              className="object-cover"
-              sizes="100vw"
-            />
-          </motion.div>
+          {current ? (
+            <motion.div
+              key={current.src}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              className="absolute inset-0"
+            >
+              <CmsRemoteImage
+                src={current.src}
+                alt={current.alt}
+                fill
+                priority
+                className="object-cover"
+                sizes="100vw"
+              />
+            </motion.div>
+          ) : null}
         </AnimatePresence>
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>

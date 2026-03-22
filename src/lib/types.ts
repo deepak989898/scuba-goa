@@ -23,6 +23,8 @@ export type BookingPayload = {
   date: string;
   people: number;
   amountPaise: number;
+  /** Hotel / area / address for pickup */
+  pickupLocation?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   status: "pending" | "paid" | "failed";
