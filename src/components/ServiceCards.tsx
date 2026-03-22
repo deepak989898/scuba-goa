@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useServices } from "@/hooks/useServices";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
@@ -52,7 +52,7 @@ export function ServiceCards() {
             >
               <Link href={`/services/${s.slug}`} className="block shrink-0">
                 <div className="relative aspect-[4/3] overflow-hidden">
-                  <Image
+                  <CmsRemoteImage
                     src={s.image}
                     alt={s.title}
                     fill

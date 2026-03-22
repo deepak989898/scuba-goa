@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useServices } from "@/hooks/useServices";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
@@ -28,7 +28,7 @@ export function ServicesGrid() {
         >
           <Link href={`/services/${s.slug}`} className="group block">
             <div className="relative aspect-[16/10]">
-              <Image
+              <CmsRemoteImage
                 src={s.image}
                 alt={s.title}
                 fill

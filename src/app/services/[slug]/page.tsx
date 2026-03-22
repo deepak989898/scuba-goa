@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { getServiceBySlugServer } from "@/lib/get-services-server";
 import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
@@ -32,7 +32,7 @@ export default async function ServiceDetailPage({ params }: Props) {
   return (
     <article className="bg-white">
       <div className="relative aspect-[21/9] max-h-[min(420px,55vh)] w-full sm:max-h-[420px]">
-        <Image
+        <CmsRemoteImage
           src={s.image}
           alt={s.title}
           fill

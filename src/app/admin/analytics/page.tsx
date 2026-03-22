@@ -22,6 +22,18 @@ type Row = {
   createdAt: unknown;
 };
 
+function normalizeDeviceCategory(raw: string): DeviceCategory | "" {
+  if (
+    raw === "mobile" ||
+    raw === "tablet" ||
+    raw === "desktop" ||
+    raw === "unknown"
+  ) {
+    return raw;
+  }
+  return "";
+}
+
 function toTimestamp(v: unknown): Timestamp | null {
   if (
     v &&
@@ -72,20 +84,15 @@ export default function AdminAnalyticsPage() {
         );
         const snap = await getDocs(q);
         if (cancelled) return;
-        const list = snap.docs.map((d) => {
+        const list: Row[] = snap.docs.map((d) => {
           const data = d.data();
-          const cat = String(data.deviceCategory ?? "") as DeviceCategory | "";
           return {
             id: d.id,
             path: String(data.path ?? ""),
             sessionId: String(data.sessionId ?? ""),
-            deviceCategory:
-              cat === "mobile" ||
-              cat === "tablet" ||
-              cat === "desktop" ||
-              cat === "unknown"
-                ? cat
-                : "",
+            deviceCategory: normalizeDeviceCategory(
+              String(data.deviceCategory ?? "")
+            ),
             deviceLabel: String(data.deviceLabel ?? ""),
             uaSnippet: String(data.uaSnippet ?? ""),
             createdAt: data.createdAt,
@@ -148,8 +155,8 @@ export default function AdminAnalyticsPage() {
     for (const r of sortedToday) {
       if (!r.sessionId) continue;
       if (sessionFirstDevice.has(r.sessionId)) continue;
-      const c = r.deviceCategory || "unknown";
-      sessionFirstDevice.set(r.sessionId, c === "" ? "unknown" : c);
+      const c: DeviceCategory | "unknown" = r.deviceCategory || "unknown";
+      sessionFirstDevice.set(r.sessionId, c);
     }
 
     const todayDeviceVisitors: Record<string, number> = {

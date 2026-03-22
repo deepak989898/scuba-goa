@@ -215,7 +215,13 @@ export default function AdminServicesPage() {
               className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
               value={form.image}
               onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
+              placeholder="https://… (direct link to .jpg / .webp etc.)"
             />
+            <span className="mt-1 block text-xs text-ocean-600">
+              Use a full <code className="text-[10px]">https://</code> URL. Any host
+              works; for files in <code className="text-[10px]">/public</code> use a
+              path like <code className="text-[10px]">/your-file.jpg</code>.
+            </span>
           </label>
           <label className="text-sm">
             Rating

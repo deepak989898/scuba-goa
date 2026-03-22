@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import Script from "next/script";
 import { useEffect, useState } from "react";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useCart } from "@/context/CartContext";
 import { SITE_NAME } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
@@ -276,7 +276,7 @@ export function CartFAB() {
                     >
                       <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-ocean-100">
                         {line.image ? (
-                          <Image
+                          <CmsRemoteImage
                             src={line.image}
                             alt=""
                             fill
