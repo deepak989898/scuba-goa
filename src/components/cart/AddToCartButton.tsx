@@ -8,6 +8,8 @@ type ServiceProps = {
   slug: string;
   title: string;
   priceFrom: number;
+  /** Sub-service variant — separate cart line from the parent service */
+  subKey?: string;
   image?: string;
   duration?: string;
   includes?: string[];
@@ -47,6 +49,7 @@ export function AddToCartButton(props: Props) {
         slug: props.slug,
         title: props.title,
         priceFrom: props.priceFrom,
+        subKey: props.subKey,
         image: props.image,
         duration: props.duration,
         includes: props.includes,

@@ -32,6 +32,7 @@ export type BookingPayload = {
 export type CartLine = {
   key: string;
   kind: "service" | "package";
+  /** Service slug, package id, or `slug#subKey` for a sub-service line */
   refId: string;
   name: string;
   unitPrice: number;

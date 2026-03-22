@@ -13,6 +13,15 @@ import type { CartLine } from "@/lib/types";
 
 const STORAGE_KEY = "bookscubagoa-cart-v1";
 
+function safeCartSubKey(raw: string): string {
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return (s || "sub").slice(0, 80);
+}
+
 type CartContextValue = {
   lines: CartLine[];
   ready: boolean;
@@ -22,6 +31,8 @@ type CartContextValue = {
     slug: string;
     title: string;
     priceFrom: number;
+    /** If set, this line is a sub-service variant (separate cart row & price) */
+    subKey?: string;
     image?: string;
     duration?: string;
     includes?: string[];
@@ -74,6 +85,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       slug: string;
       title: string;
       priceFrom: number;
+      subKey?: string;
       image?: string;
       duration?: string;
       includes?: string[];
@@ -81,7 +93,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       slotsLeft?: number;
       bookedToday?: number;
     }) => {
-      const key = `service:${input.slug}`;
+      const sub = input.subKey?.trim()
+        ? safeCartSubKey(input.subKey)
+        : "";
+      const key = sub
+        ? `service:${input.slug}:sub:${sub}`
+        : `service:${input.slug}`;
+      const refId = sub ? `${input.slug}#${sub}` : input.slug;
       setLines((prev) => {
         const i = prev.findIndex((l) => l.key === key);
         if (i >= 0) {
@@ -95,7 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           {
             key,
             kind: "service",
-            refId: input.slug,
+            refId,
             name: input.title,
             unitPrice: input.priceFrom,
             quantity: 1,

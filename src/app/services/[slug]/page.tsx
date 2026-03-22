@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { ServiceDetailGallery } from "@/components/ServiceDetailGallery";
 import { ServiceDetailSections } from "@/components/ServiceDetailSections";
+import { ServiceSubServicesCart } from "@/components/ServiceSubServicesCart";
 import { getServiceBySlugServer } from "@/lib/get-services-server";
+import { serviceDetailImages } from "@/lib/service-images";
 import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
 
@@ -34,29 +36,14 @@ export default async function ServiceDetailPage({ params }: Props) {
   const s = await getServiceBySlugServer(slug);
   if (!s) notFound();
 
+  const heroImages = serviceDetailImages(s);
+
   return (
     <article className="bg-white">
-      <div className="relative aspect-[21/9] max-h-[min(420px,55vh)] w-full sm:max-h-[420px]">
-        <CmsRemoteImage
-          src={s.image}
-          alt={s.title}
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/80 to-transparent" />
-        <div className="absolute bottom-0 left-0 p-5 sm:p-10">
-          <h1 className="font-display text-2xl font-bold text-white sm:text-5xl">
-            {s.title}
-          </h1>
-          <p className="mt-2 max-w-xl text-base text-white/90 sm:text-lg">
-            {s.short}
-          </p>
-        </div>
-      </div>
+      <ServiceDetailGallery images={heroImages} title={s.title} short={s.short} />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
         <ServiceDetailSections service={s} />
+        <ServiceSubServicesCart service={s} />
         <div className="mt-10">
           <ServiceDetailActions service={s} />
         </div>

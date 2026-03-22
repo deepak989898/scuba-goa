@@ -17,7 +17,31 @@ export type ServiceFirestorePayload = {
   sortOrder: number;
   detailContent?: string;
   subServices?: SubServiceItem[];
+  /** Extra hero images (detail slider); primary `image` is not repeated here */
+  galleryUrls?: string[];
 };
+
+function parseGalleryUrls(
+  raw: unknown,
+  primaryImage: string
+): string[] | undefined {
+  const pri = primaryImage.trim();
+  const list: string[] = [];
+  if (Array.isArray(raw)) {
+    for (const x of raw) {
+      const u = String(x).trim();
+      if (u && u !== pri && !list.includes(u)) list.push(u);
+    }
+  } else if (typeof raw === "string" && raw.trim()) {
+    for (const u of raw
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)) {
+      if (u !== pri && !list.includes(u)) list.push(u);
+    }
+  }
+  return list.length ? list : undefined;
+}
 
 function parseSubServices(raw: unknown): SubServiceItem[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
@@ -30,7 +54,8 @@ function parseSubServices(raw: unknown): SubServiceItem[] | undefined {
     const inc = parseFirestoreIncludes(o.includes);
     const desc = String(o.description ?? "").trim();
     const pf = o.priceFrom;
-    out.push({
+    const idRaw = o.id != null ? String(o.id).trim() : "";
+    const row: SubServiceItem = {
       title,
       description: desc || undefined,
       priceFrom:
@@ -38,7 +63,9 @@ function parseSubServices(raw: unknown): SubServiceItem[] | undefined {
           ? Number(pf)
           : undefined,
       includes: inc.length ? inc : undefined,
-    });
+    };
+    if (idRaw) row.id = idRaw;
+    out.push(row);
   }
   return out.length ? out : undefined;
 }
@@ -52,12 +79,15 @@ export function docToService(
   const includes = parseFirestoreIncludes(data.includes);
   const detailRaw = String(data.detailContent ?? "").trim();
   const subServices = parseSubServices(data.subServices);
+  const image = String(data.image ?? "").trim();
+  const galleryUrls = parseGalleryUrls(data.galleryUrls, image);
   return {
     slug: docId,
     title,
     short: String(data.short ?? ""),
     priceFrom: Number(data.priceFrom ?? 0),
-    image: String(data.image ?? "").trim(),
+    image,
+    galleryUrls,
     duration: String(data.duration ?? ""),
     rating: Number(data.rating ?? 4.8),
     includes,
@@ -96,6 +126,8 @@ export function serviceToPayload(
   if (s.subServices?.length) {
     payload.subServices = s.subServices.map((sub) => {
       const row: SubServiceItem = { title: sub.title };
+      const sid = sub.id?.trim();
+      if (sid) row.id = sid;
       const d = sub.description?.trim();
       if (d) row.description = d;
       if (sub.priceFrom != null && Number.isFinite(sub.priceFrom)) {
@@ -105,5 +137,14 @@ export function serviceToPayload(
       return row;
     });
   }
+  const extras =
+    s.galleryUrls
+      ?.map((u) => String(u).trim())
+      .filter((u) => u.length > 0 && u !== s.image.trim()) ?? [];
+  const dedup: string[] = [];
+  for (const u of extras) {
+    if (!dedup.includes(u)) dedup.push(u);
+  }
+  if (dedup.length) payload.galleryUrls = dedup;
   return payload;
 }

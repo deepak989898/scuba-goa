@@ -13,6 +13,7 @@ import { docToService, serviceToPayload } from "@/lib/service-firestore";
 import type { ServiceItem, SubServiceItem } from "@/data/services";
 
 type SubServiceFormRow = {
+  subId: string;
   title: string;
   description: string;
   priceFrom: string;
@@ -20,6 +21,7 @@ type SubServiceFormRow = {
 };
 
 const emptySubRow = (): SubServiceFormRow => ({
+  subId: "",
   title: "",
   description: "",
   priceFrom: "",
@@ -49,6 +51,7 @@ export default function AdminServicesPage() {
     limitedSlots: true,
     mostBooked: false,
     detailContent: "",
+    galleryUrls: "",
   };
   const [form, setForm] = useState(empty);
 
@@ -93,9 +96,11 @@ export default function AdminServicesPage() {
       limitedSlots: s.limitedSlots ?? false,
       mostBooked: s.mostBooked ?? false,
       detailContent: s.detailContent ?? "",
+      galleryUrls: s.galleryUrls?.join("\n") ?? "",
     });
     setSubRows(
       s.subServices?.map((sub) => ({
+        subId: sub.id ?? "",
         title: sub.title,
         description: sub.description ?? "",
         priceFrom:
@@ -129,14 +134,31 @@ export default function AdminServicesPage() {
           .split(",")
           .map((x) => x.trim())
           .filter(Boolean);
-        rows.push({
+        const row: SubServiceItem = {
           title,
           description: r.description.trim() || undefined,
           priceFrom,
           includes: inc.length ? inc : undefined,
-        });
+        };
+        const sid = r.subId.trim();
+        if (sid) row.id = sid;
+        rows.push(row);
       }
       return rows.length ? rows : undefined;
+    })();
+
+    const primaryImg = form.image.trim();
+    const galleryUrls = (() => {
+      const parts = form.galleryUrls
+        .split(/[\n,]+/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+      const dedup: string[] = [];
+      for (const u of parts) {
+        if (u === primaryImg) continue;
+        if (!dedup.includes(u)) dedup.push(u);
+      }
+      return dedup.length ? dedup : undefined;
     })();
 
     const item: ServiceItem & { sortOrder: number } = {
@@ -144,7 +166,8 @@ export default function AdminServicesPage() {
       title: form.title.trim(),
       short: form.short.trim(),
       priceFrom: Number(form.priceFrom),
-      image: form.image.trim(),
+      image: primaryImg,
+      galleryUrls,
       duration: form.duration.trim(),
       rating: Number(form.rating),
       includes: form.includes
@@ -278,6 +301,18 @@ export default function AdminServicesPage() {
               path like <code className="text-[10px]">/your-file.jpg</code>.
             </span>
           </label>
+          <label className="text-sm sm:col-span-2">
+            Extra image URLs (detail slider)
+            <textarea
+              rows={3}
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2 font-sans text-sm"
+              value={form.galleryUrls}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, galleryUrls: e.target.value }))
+              }
+              placeholder="One URL per line or comma-separated. Shown after the main image with autoplay. Duplicates of the main URL are ignored."
+            />
+          </label>
           <label className="text-sm">
             Rating
             <input
@@ -329,8 +364,8 @@ export default function AdminServicesPage() {
               </button>
             </div>
             <p className="mt-1 text-xs text-ocean-600">
-              Optional variants or add-ons listed under &quot;Options &amp; add-ons&quot; on
-              the service detail page.
+              Optional variants on the detail page. Set a price (&gt; 0) to show Add to
+              cart. Optional cart id keeps a stable cart key if you reorder rows.
             </p>
             <ul className="mt-3 space-y-4">
               {subRows.map((row, idx) => (
@@ -350,7 +385,22 @@ export default function AdminServicesPage() {
                     </button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="text-sm sm:col-span-2">
+                    <label className="text-sm">
+                      Cart id (optional)
+                      <input
+                        className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 font-mono text-xs"
+                        value={row.subId}
+                        onChange={(e) =>
+                          setSubRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, subId: e.target.value } : r
+                            )
+                          )
+                        }
+                        placeholder="e.g. try-dive"
+                      />
+                    </label>
+                    <label className="text-sm">
                       Title
                       <input
                         className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2"

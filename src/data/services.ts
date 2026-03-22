@@ -1,5 +1,7 @@
 /** Optional add-on or variant shown on /services/[slug] */
 export type SubServiceItem = {
+  /** Stable cart key; if omitted, index is used */
+  id?: string;
   title: string;
   description?: string;
   priceFrom?: number;
@@ -12,6 +14,8 @@ export type ServiceItem = {
   short: string;
   priceFrom: number;
   image: string;
+  /** Extra image URLs for the detail page slider (primary `image` is always first) */
+  galleryUrls?: string[];
   mostBooked?: boolean;
   /** e.g. "4–5 hrs", "Full day" */
   duration: string;
