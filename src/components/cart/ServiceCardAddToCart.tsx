@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import type { ServiceItem } from "@/data/services";
 import { useCart } from "@/context/CartContext";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
@@ -16,11 +22,16 @@ type Props = {
   className?: string;
 };
 
+type MenuPos = { top: number; left: number; minWidth: number };
+
 export function ServiceCardAddToCart({ service: s, size = "md", className }: Props) {
   const { addService } = useCart();
   const [open, setOpen] = useState(false);
   const [flash, setFlash] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [menuPos, setMenuPos] = useState<MenuPos>({ top: 0, left: 0, minWidth: 220 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
 
   const priced = getPricedSubServicesWithIndex(s);
   const hasDropdown = serviceHasPricedSubServices(s);
@@ -31,11 +42,44 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
       : "min-h-11 rounded-full border-2 border-ocean-500 bg-white px-4 py-2 text-sm font-semibold text-ocean-800 shadow-sm";
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    function updatePosition() {
+      const el = btnRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const padding = 8;
+      const menuWidth = Math.max(220, r.width);
+      let left = r.left;
+      if (left + menuWidth > vw - padding) {
+        left = Math.max(padding, vw - padding - menuWidth);
+      }
+      setMenuPos({
+        top: r.bottom + 6,
+        left,
+        minWidth: menuWidth,
+      });
+    }
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
     function onDoc(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -91,9 +135,45 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
     window.setTimeout(() => setFlash(false), 1200);
   }
 
+  const menu = open && mounted ? (
+    <ul
+      ref={menuRef}
+      role="menu"
+      aria-label={`${s.title} — choose variant`}
+      style={{
+        position: "fixed",
+        top: menuPos.top,
+        left: menuPos.left,
+        minWidth: menuPos.minWidth,
+      }}
+      className="z-[400] max-h-[min(70vh,320px)] overflow-y-auto rounded-xl border border-ocean-200 bg-white py-1 shadow-xl"
+    >
+      {priced.map(({ sub, index }) => (
+        <li key={getSubServiceCartKey(sub, index)} role="none">
+          <button
+            type="button"
+            role="menuitem"
+            className="w-full px-3 py-2.5 text-left text-xs text-ocean-900 transition hover:bg-ocean-50 sm:text-sm"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              pickSub(sub, index);
+            }}
+          >
+            <span className="font-semibold">{sub.title}</span>
+            <span className="mt-0.5 block text-ocean-600">
+              ₹{sub.priceFrom!.toLocaleString("en-IN")}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  ) : null;
+
   return (
-    <div className={`relative inline-block ${className ?? ""}`} ref={wrapRef}>
+    <div className={`relative inline-block ${className ?? ""}`}>
       <button
+        ref={btnRef}
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
@@ -108,33 +188,9 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
       >
         {flash ? "Added ✓" : "Add to cart ▾"}
       </button>
-      {open ? (
-        <ul
-          className="absolute left-0 top-full z-50 mt-1 min-w-[220px] max-w-[min(100vw-2rem,320px)] overflow-hidden rounded-xl border border-ocean-200 bg-white py-1 shadow-lg"
-          role="menu"
-          aria-label={`${s.title} — choose variant`}
-        >
-          {priced.map(({ sub, index }) => (
-            <li key={getSubServiceCartKey(sub, index)} role="none">
-              <button
-                type="button"
-                role="menuitem"
-                className="w-full px-3 py-2.5 text-left text-xs text-ocean-900 transition hover:bg-ocean-50 sm:text-sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  pickSub(sub, index);
-                }}
-              >
-                <span className="font-semibold">{sub.title}</span>
-                <span className="mt-0.5 block text-ocean-600">
-                  ₹{sub.priceFrom!.toLocaleString("en-IN")}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {menu && typeof document !== "undefined"
+        ? createPortal(menu, document.body)
+        : null}
     </div>
   );
 }
