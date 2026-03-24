@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "@/lib/firebase";
 import { customerWhatsappLink, SITE_NAME } from "@/lib/constants";
@@ -73,6 +73,28 @@ export default function AdminBookingsPage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [whatsAppLoadingId, setWhatsAppLoadingId] = useState<string | null>(null);
+  const [billPreviewUrl, setBillPreviewUrl] = useState<string | null>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+  const billPreviewUrlRef = useRef<string | null>(null);
+
+  const closeBillPreview = useCallback(() => {
+    if (billPreviewUrlRef.current) {
+      URL.revokeObjectURL(billPreviewUrlRef.current);
+      billPreviewUrlRef.current = null;
+    }
+    setBillPreviewUrl(null);
+  }, []);
+
+  useEffect(() => () => closeBillPreview(), [closeBillPreview]);
+
+  useEffect(() => {
+    if (!billPreviewUrl) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeBillPreview();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [billPreviewUrl, closeBillPreview]);
 
   async function authorizedFetch(
     input: RequestInfo | URL,
@@ -93,59 +115,49 @@ export default function AdminBookingsPage() {
   async function previewBill(paymentId: string) {
     setActionError(null);
     setActionSuccess(null);
-    // Open a tab in the same user gesture; after `await` a new window.open is often blocked.
-    const preview = window.open("about:blank", "_blank", "noopener,noreferrer");
-    if (!preview) {
-      setActionError(
-        "Your browser blocked the preview tab. Allow pop-ups for this site and try again."
+    closeBillPreview();
+
+    setPreviewLoadingId(paymentId);
+    try {
+      const res = await authorizedFetch(
+        `/api/admin/booking-bill?paymentId=${encodeURIComponent(paymentId)}`
       );
-      return;
-    }
+      if (!res) return;
 
-    const res = await authorizedFetch(
-      `/api/admin/booking-bill?paymentId=${encodeURIComponent(paymentId)}`
-    );
-    if (!res) {
-      preview.close();
-      return;
-    }
-
-    const buf = await res.arrayBuffer();
-    if (!res.ok) {
-      preview.close();
-      const text = new TextDecoder().decode(buf.slice(0, 2000));
-      let msg = `Could not load bill (${res.status})`;
-      try {
-        const j = JSON.parse(text) as { error?: string };
-        if (j?.error) msg = j.error;
-      } catch {
-        /* ignore */
+      const buf = await res.arrayBuffer();
+      if (!res.ok) {
+        const text = new TextDecoder().decode(buf.slice(0, 2000));
+        let msg = `Could not load bill (${res.status})`;
+        try {
+          const j = JSON.parse(text) as { error?: string };
+          if (j?.error) msg = j.error;
+        } catch {
+          /* ignore */
+        }
+        setActionError(msg);
+        return;
       }
-      setActionError(msg);
-      return;
-    }
 
-    const ct = res.headers.get("content-type") ?? "";
-    const head = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
-    const pdfMagic =
-      head.length >= 4 &&
-      head[0] === 0x25 &&
-      head[1] === 0x50 &&
-      head[2] === 0x44 &&
-      head[3] === 0x46; /* %PDF */
-    if (!pdfMagic && !ct.includes("application/pdf")) {
-      preview.close();
-      setActionError("Server did not return a PDF. Check Vercel env and admin login.");
-      return;
-    }
+      const ct = res.headers.get("content-type") ?? "";
+      const head = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+      const pdfMagic =
+        head.length >= 4 &&
+        head[0] === 0x25 &&
+        head[1] === 0x50 &&
+        head[2] === 0x44 &&
+        head[3] === 0x46; /* %PDF */
+      if (!pdfMagic && !ct.includes("application/pdf")) {
+        setActionError("Server did not return a PDF. Check Vercel env and admin login.");
+        return;
+      }
 
-    // Blob URLs must be created on the *preview* window — opener-created URLs often
-    // fail to load in the other tab (blank page).
-    const blob = new Blob([buf], { type: "application/pdf" });
-    const pw = preview as unknown as Window & { URL: typeof URL };
-    const objectUrl = pw.URL.createObjectURL(blob);
-    preview.location.href = objectUrl;
-    pw.setTimeout(() => pw.URL.revokeObjectURL(objectUrl), 120_000);
+      const blob = new Blob([buf], { type: "application/pdf" });
+      const objectUrl = URL.createObjectURL(blob);
+      billPreviewUrlRef.current = objectUrl;
+      setBillPreviewUrl(objectUrl);
+    } finally {
+      setPreviewLoadingId(null);
+    }
   }
 
   async function openWhatsappGuestWithBill(r: Row) {
@@ -258,7 +270,8 @@ export default function AdminBookingsPage() {
         <strong>Send confirmation email</strong> (bill attached) or{" "}
         <strong>WhatsApp guest</strong> — the message includes a{" "}
         <strong>time-limited link</strong> that opens the same PDF (WhatsApp cannot
-        attach files from a website button). On Vercel, add{" "}
+        attach files from a website button). <strong>Preview bill</strong> opens an
+        on-page window (not a separate tab) so the PDF shows reliably. On Vercel, add{" "}
         <code className="text-xs">FIREBASE_SERVICE_ACCOUNT_KEY</code> (full service
         account JSON) so APIs can read bookings — Razorpay keys are{" "}
         <strong>not</strong> used to generate the preview. Set{" "}
@@ -415,10 +428,11 @@ export default function AdminBookingsPage() {
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-ocean-100 pt-4">
                   <button
                     type="button"
+                    disabled={previewLoadingId === r.id}
                     onClick={() => previewBill(r.id)}
-                    className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-semibold text-ocean-800 shadow-sm hover:bg-ocean-50"
+                    className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-semibold text-ocean-800 shadow-sm hover:bg-ocean-50 disabled:opacity-50"
                   >
-                    Preview bill
+                    {previewLoadingId === r.id ? "Loading bill…" : "Preview bill"}
                   </button>
                   <button
                     type="button"
@@ -446,6 +460,63 @@ export default function AdminBookingsPage() {
           })}
         </ul>
       )}
+
+      {billPreviewUrl ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-3 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bill-preview-title"
+          onClick={closeBillPreview}
+        >
+          <div
+            className="flex h-[min(90vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-ocean-100 px-4 py-3">
+              <p
+                id="bill-preview-title"
+                className="font-display font-semibold text-ocean-900"
+              >
+                Bill preview
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={billPreviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold text-ocean-800 hover:bg-ocean-50"
+                >
+                  Open in new tab
+                </a>
+                <a
+                  href={billPreviewUrl}
+                  download="booking-bill.pdf"
+                  className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold text-ocean-800 hover:bg-ocean-50"
+                >
+                  Download
+                </a>
+                <button
+                  type="button"
+                  onClick={closeBillPreview}
+                  className="rounded-full bg-ocean-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ocean-900"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <iframe
+              title="Booking bill PDF"
+              src={billPreviewUrl}
+              className="min-h-0 w-full flex-1 border-0 bg-ocean-50/50"
+            />
+            <p className="flex-shrink-0 border-t border-ocean-100 px-4 py-2 text-center text-xs text-ocean-600">
+              If the frame is blank, use <strong>Open in new tab</strong> — some
+              browsers block PDFs inside the page.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
