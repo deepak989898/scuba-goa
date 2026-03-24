@@ -15,7 +15,7 @@ export function ServiceCards() {
 
   if (loading) {
     return (
-      <section className="bg-white pt-12 pb-6 sm:pt-16 sm:pb-10" id="services">
+      <section className="bg-white pt-5 pb-6 sm:pt-16 sm:pb-10" id="services">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
@@ -31,7 +31,7 @@ export function ServiceCards() {
   }
 
   return (
-    <section className="bg-white pt-12 pb-6 sm:pt-16 sm:pb-10" id="services">
+    <section className="bg-white pt-5 pb-6 sm:pt-16 sm:pb-10" id="services">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {services.map((s, idx) => {

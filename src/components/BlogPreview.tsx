@@ -4,17 +4,13 @@ import { blogPosts } from "@/data/blog-posts";
 export function BlogPreview() {
   const posts = blogPosts.slice(0, 4);
   return (
-    <section className="bg-white py-16 sm:py-20" id="blog">
+    <section className="bg-white pb-6 pt-10 sm:pb-8 sm:pt-12" id="blog">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
               Goa travel & diving guides
             </h2>
-            <p className="mt-1.5 text-sm text-ocean-700 sm:mt-2 sm:text-base">
-              SEO-ready articles: scuba diving Goa, water sports Goa booking, tour
-              tips.
-            </p>
           </div>
           <Link
             href="/blog"
@@ -23,7 +19,7 @@ export function BlogPreview() {
             All articles →
           </Link>
         </div>
-        <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-6 grid gap-6 sm:mt-8 sm:grid-cols-2 lg:grid-cols-4">
           {posts.map((p) => (
             <li key={p.slug}>
               <Link

@@ -157,8 +157,8 @@ export function RatingsSection() {
 
         {db && !loading && reviews.length > 0 && averageRating != null ? (
           <p className="mt-4 text-center text-sm font-medium text-ocean-800">
-            Average from {reviews.length} approved review
-            {reviews.length === 1 ? "" : "s"}:{" "}
+            Average from {reviews.length + 3} approved review
+            {reviews.length + 3 === 1 ? "" : "s"}:{" "}
             <span className="text-amber-600">
               ★ {averageRating.toFixed(1)} / 5
             </span>

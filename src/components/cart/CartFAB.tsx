@@ -199,7 +199,7 @@ export function CartFAB() {
               setOpen(true);
               setMsg(null);
             }}
-            className="fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom,0px))] left-4 z-[58] flex h-14 w-14 items-center justify-center rounded-full bg-ocean-800 text-white shadow-lg shadow-ocean-900/30 transition hover:bg-ocean-700 md:bottom-8 md:left-8 md:h-16 md:w-16"
+            className="fixed bottom-[calc(7.25rem-15px+env(safe-area-inset-bottom,0px))] left-4 z-[58] flex h-14 w-14 items-center justify-center rounded-full bg-ocean-800 text-white shadow-lg shadow-ocean-900/30 transition hover:bg-ocean-700 md:bottom-8 md:left-8 md:h-16 md:w-16"
             aria-label={`Open cart, ${itemCount} items`}
           >
             <svg
