@@ -16,8 +16,8 @@ export default function BookingPage() {
           Secure booking
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-center text-ocean-700">
-          Pick a single package here, or add multiple services from the site to your
-          cart and pay from the floating cart button.
+          Add packages or services from the dropdown into your cart, set quantities,
+          then pay here or use the floating cart on other pages.
         </p>
         <div className="mt-10">
           <Suspense fallback={<p className="text-center text-ocean-600">Loading…</p>}>
