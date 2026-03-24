@@ -109,17 +109,43 @@ export default function AdminBookingsPage() {
       preview.close();
       return;
     }
-    const ct = res.headers.get("content-type") ?? "";
-    if (!res.ok || !ct.includes("application/pdf")) {
+
+    const buf = await res.arrayBuffer();
+    if (!res.ok) {
       preview.close();
-      const j = (await res.json().catch(() => null)) as { error?: string } | null;
-      setActionError(j?.error ?? `Could not load bill (${res.status})`);
+      const text = new TextDecoder().decode(buf.slice(0, 2000));
+      let msg = `Could not load bill (${res.status})`;
+      try {
+        const j = JSON.parse(text) as { error?: string };
+        if (j?.error) msg = j.error;
+      } catch {
+        /* ignore */
+      }
+      setActionError(msg);
       return;
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    preview.location.href = url;
-    window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+
+    const ct = res.headers.get("content-type") ?? "";
+    const head = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+    const pdfMagic =
+      head.length >= 4 &&
+      head[0] === 0x25 &&
+      head[1] === 0x50 &&
+      head[2] === 0x44 &&
+      head[3] === 0x46; /* %PDF */
+    if (!pdfMagic && !ct.includes("application/pdf")) {
+      preview.close();
+      setActionError("Server did not return a PDF. Check Vercel env and admin login.");
+      return;
+    }
+
+    // Blob URLs must be created on the *preview* window — opener-created URLs often
+    // fail to load in the other tab (blank page).
+    const blob = new Blob([buf], { type: "application/pdf" });
+    const pw = preview as unknown as Window & { URL: typeof URL };
+    const objectUrl = pw.URL.createObjectURL(blob);
+    preview.location.href = objectUrl;
+    pw.setTimeout(() => pw.URL.revokeObjectURL(objectUrl), 120_000);
   }
 
   async function openWhatsappGuestWithBill(r: Row) {
@@ -232,11 +258,13 @@ export default function AdminBookingsPage() {
         <strong>Send confirmation email</strong> (bill attached) or{" "}
         <strong>WhatsApp guest</strong> — the message includes a{" "}
         <strong>time-limited link</strong> that opens the same PDF (WhatsApp cannot
-        attach files from a website button). Set{" "}
-        <code className="text-xs">NEXT_PUBLIC_SITE_URL</code> in production so links
-        match your live domain; optional{" "}
-        <code className="text-xs">BOOKING_BILL_SHARE_SECRET</code> for signing (falls
-        back to Razorpay secret if set).
+        attach files from a website button). On Vercel, add{" "}
+        <code className="text-xs">FIREBASE_SERVICE_ACCOUNT_KEY</code> (full service
+        account JSON) so APIs can read bookings — Razorpay keys are{" "}
+        <strong>not</strong> used to generate the preview. Set{" "}
+        <code className="text-xs">NEXT_PUBLIC_SITE_URL</code> for correct WhatsApp
+        links; optional <code className="text-xs">BOOKING_BILL_SHARE_SECRET</code>{" "}
+        (or Razorpay secret) for signing share links.
       </p>
       {actionError ? (
         <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
