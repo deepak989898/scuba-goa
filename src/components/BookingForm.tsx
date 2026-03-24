@@ -16,7 +16,7 @@ import {
   encodeServiceSubOption,
   parseBookingOption,
 } from "@/lib/booking-selection";
-import { SITE_NAME, whatsappLink } from "@/lib/constants";
+import { SITE_NAME } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 import {
   computeMinPayPaise,
@@ -529,12 +529,6 @@ export function BookingForm() {
             >
               {payButtonLabel}
             </button>
-            <a
-              href={whatsappLink()}
-              className="block w-full rounded-full border border-ocean-200 py-3 text-center text-sm font-semibold text-ocean-800"
-            >
-              Or chat on WhatsApp
-            </a>
           </div>
         )}
       </div>

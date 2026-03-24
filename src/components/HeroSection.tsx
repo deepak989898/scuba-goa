@@ -58,7 +58,7 @@ export function HeroSection() {
   );
 
   return (
-    <section className="relative min-h-[calc(38vw+20px)] overflow-hidden bg-ocean-900 sm:min-h-[88vh]">
+    <section className="relative min-h-[calc(38vw+32px)] overflow-hidden bg-ocean-900 sm:min-h-[88vh]">
       <div className="absolute inset-0">
         <AnimatePresence mode="wait">
           {current ? (
@@ -85,7 +85,7 @@ export function HeroSection() {
       </div>
 
       {/* Mobile: eyebrow top-left, CTAs bottom-left */}
-      <div className="relative z-10 mx-auto flex min-h-[calc(38vw+20px)] max-w-7xl flex-col justify-between px-4 pb-4 pt-3 sm:hidden">
+      <div className="relative z-10 mx-auto flex min-h-[calc(38vw+32px)] max-w-7xl flex-col justify-between px-4 pb-4 pt-3 sm:hidden">
         <div className="self-start">{eyebrow}</div>
         <div className="self-start space-y-2.5">
           <HeroButtons />
