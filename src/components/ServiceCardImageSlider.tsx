@@ -80,12 +80,12 @@ export function ServiceCardImageSlider({
         </div>
       ))}
       {mostBooked ? (
-        <span className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-ocean-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow">
+        <span className="pointer-events-none absolute left-1.5 top-1.5 z-10 rounded-full bg-ocean-600 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow sm:left-3 sm:top-3 sm:px-2.5 sm:text-xs">
           Most Booked
         </span>
       ) : null}
       {limitedSlots ? (
-        <span className="pointer-events-none absolute right-3 top-3 z-10 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white">
+        <span className="pointer-events-none absolute right-1.5 top-1.5 z-10 rounded-full bg-red-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:right-3 sm:top-3 sm:px-2 sm:text-xs">
           Limited Slots
         </span>
       ) : null}

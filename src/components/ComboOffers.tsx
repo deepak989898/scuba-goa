@@ -14,10 +14,10 @@ export function ComboOffers() {
   return (
     <section className="bg-ocean-900 py-16 text-white sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="font-display text-3xl font-bold sm:text-4xl">
+        <h2 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">
           Combo offers
         </h2>
-        <p className="mt-2 max-w-xl text-ocean-100">
+        <p className="mt-1.5 max-w-xl text-sm text-ocean-100 sm:mt-2 sm:text-base">
           Stack scuba + water sports or tours—discounts auto-applied at checkout
           when you pick a combo package.
         </p>

@@ -131,16 +131,9 @@ export function RatingsSection() {
   return (
     <section className="border-t border-ocean-100 bg-white py-16">
       <div className="mx-auto max-w-5xl px-4">
-        <h2
-          id="guest-reviews"
-          className="font-display text-center text-3xl font-bold text-ocean-900"
-        >
+        <h2 id="guest-reviews" className="sr-only">
           Guest reviews
         </h2>
-        <p className="mx-auto mt-2 max-w-xl text-center text-sm text-ocean-600">
-          The cards below show only reviews our team has <strong>approved</strong> in
-          the admin panel. New submissions appear here after approval.
-        </p>
 
         {loadError ? (
           <p className="mt-6 text-center text-sm text-amber-800">{loadError}</p>
@@ -188,10 +181,10 @@ export function RatingsSection() {
         ) : null}
 
         <div className="mx-auto mt-12 max-w-lg">
-          <h3 className="font-display text-center text-lg font-semibold text-ocean-900">
+          <h3 className="font-display text-center text-base font-semibold text-ocean-900 sm:text-lg">
             Rate your experience
           </h3>
-          <p className="mt-1 text-center text-sm text-ocean-600">
+          <p className="mt-1 text-center text-xs text-ocean-600 sm:text-sm">
             Tap a star to begin — name and comment appear after you choose a rating.
           </p>
           <div
@@ -206,7 +199,7 @@ export function RatingsSection() {
                 <button
                   key={n}
                   type="button"
-                  className={`rounded p-1 text-4xl leading-none transition hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500 ${
+                  className={`rounded p-0.5 text-3xl leading-none transition hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500 sm:p-1 sm:text-4xl ${
                     filled ? "text-amber-500" : "text-ocean-200"
                   }`}
                   aria-label={`${n} out of 5 stars`}

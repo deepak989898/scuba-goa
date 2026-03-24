@@ -65,10 +65,10 @@ export function GallerySection() {
   return (
     <section className="bg-sand py-16 sm:py-20" id="gallery">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
+        <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
           Gallery & moments
         </h2>
-        <p className="mt-2 text-ocean-700">
+        <p className="mt-1.5 text-sm text-ocean-700 sm:mt-2 sm:text-base">
           Photos and short reels from trips — curated from the admin panel.
         </p>
         {loading ? (

@@ -38,8 +38,8 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
 
   const base =
     size === "sm"
-      ? "min-h-11 rounded-full border border-ocean-300 bg-white px-3 py-2 text-xs font-semibold text-ocean-800"
-      : "min-h-11 rounded-full border-2 border-ocean-500 bg-white px-4 py-2 text-sm font-semibold text-ocean-800 shadow-sm";
+      ? "min-h-8 rounded-full border border-ocean-300 bg-white px-2 py-1 text-[10px] font-semibold text-ocean-800 sm:min-h-11 sm:px-3 sm:py-2 sm:text-xs"
+      : "min-h-9 rounded-full border-2 border-ocean-500 bg-white px-3 py-1.5 text-xs font-semibold text-ocean-800 shadow-sm sm:min-h-11 sm:px-4 sm:py-2 sm:text-sm";
 
   useEffect(() => {
     setMounted(true);

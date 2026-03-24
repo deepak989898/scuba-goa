@@ -32,13 +32,13 @@ export function TrustSection() {
     <section className="bg-white py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-ocean-500">
+          <p className="text-xs font-semibold uppercase tracking-widest text-ocean-500 sm:text-sm">
             Trust built on every tide
           </p>
-          <h2 className="mt-2 font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
+          <h2 className="mt-1.5 font-display text-2xl font-bold text-ocean-900 sm:mt-2 sm:text-3xl lg:text-4xl">
             10,000+ Happy Customers
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-ocean-700">
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-ocean-700 sm:mt-3 sm:text-base">
             Certified partners, audited gear cycles, and rescue-ready boats—ask us
             for operator credentials before you pay.
           </p>
@@ -51,10 +51,10 @@ export function TrustSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className="rounded-2xl border border-ocean-100 bg-sand p-6 shadow-sm"
+              className="rounded-2xl border border-ocean-100 bg-sand p-4 shadow-sm sm:p-6"
             >
-              <div className="flex items-center gap-3">
-                <div className="relative h-12 w-12 overflow-hidden rounded-full">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="relative h-10 w-10 overflow-hidden rounded-full sm:h-12 sm:w-12">
                   <Image
                     src={t.img}
                     alt={t.name}
@@ -65,26 +65,14 @@ export function TrustSection() {
                   />
                 </div>
                 <div>
-                  <p className="font-semibold text-ocean-900">{t.name}</p>
-                  <p className="text-xs text-ocean-600">Google review · {t.place}</p>
+                  <p className="text-sm font-semibold text-ocean-900 sm:text-base">{t.name}</p>
+                  <p className="text-[10px] text-ocean-600 sm:text-xs">Google review · {t.place}</p>
                 </div>
               </div>
-              <p className="mt-1 text-amber-500">{"★".repeat(t.stars)}</p>
-              <p className="mt-3 text-sm text-ocean-800">{t.text}</p>
+              <p className="mt-0.5 text-sm text-amber-500 sm:mt-1 sm:text-base">{"★".repeat(t.stars)}</p>
+              <p className="mt-2 text-xs leading-snug text-ocean-800 sm:mt-3 sm:text-sm">{t.text}</p>
             </motion.div>
           ))}
-        </div>
-        <div className="mt-12 flex flex-wrap justify-center gap-4 text-sm text-ocean-700">
-          {["ISO-aligned ops", "First-aid on boat", "Small group ratios"].map(
-            (b) => (
-              <span
-                key={b}
-                className="rounded-full border border-ocean-200 bg-white px-4 py-2"
-              >
-                ✓ {b}
-              </span>
-            )
-          )}
         </div>
       </div>
     </section>

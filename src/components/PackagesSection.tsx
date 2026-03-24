@@ -14,17 +14,17 @@ export function PackagesSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
+            <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
               Live packages
             </h2>
-            <p className="mt-2 text-ocean-700">
+            <p className="mt-1.5 text-sm text-ocean-700 sm:mt-2 sm:text-base">
               Pulled from Firestore when configured—fallback demo rates always
               visible for SEO previews.
             </p>
           </div>
           <Link
             href="/booking"
-            className="text-sm font-semibold text-ocean-600 hover:text-ocean-800"
+            className="text-xs font-semibold text-ocean-600 hover:text-ocean-800 sm:text-sm"
           >
             View all booking options →
           </Link>
@@ -53,48 +53,48 @@ export function PackagesSection() {
                 transition={{ delay: idx * 0.05 }}
                 className="flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm"
               >
-                <div className="relative aspect-[16/10]">
+                <div className="relative aspect-[2/1] sm:aspect-[16/10]">
                   <CmsRemoteImage
                     src={cardImage}
                     alt={p.name}
                     fill
                     className="object-cover"
-                    sizes="(max-width:1024px) 100vw, 33vw"
+                    sizes="(max-width:640px) 50vw, (max-width:1024px) 100vw, 33vw"
                     loading="lazy"
                   />
                   {p.isCombo && p.discountPct ? (
-                    <span className="absolute right-3 top-3 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                    <span className="absolute right-1.5 top-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white sm:right-3 sm:top-3 sm:px-2 sm:text-xs">
                       {p.discountPct}% OFF
                     </span>
                   ) : null}
                   {p.limitedSlots ? (
-                    <span className="absolute left-3 top-3 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white">
+                    <span className="absolute left-1.5 top-1.5 rounded-full bg-red-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:left-3 sm:top-3 sm:px-2 sm:text-xs">
                       Limited Slots
                     </span>
                   ) : null}
                 </div>
-                <div className="flex flex-1 flex-col p-3 sm:p-5">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-ocean-500 sm:text-xs">
+                <div className="flex flex-1 flex-col p-2.5 sm:p-5">
+                  <p className="text-[9px] font-medium uppercase tracking-wide text-ocean-500 sm:text-xs">
                     {p.category ?? "Goa"}
                   </p>
-                  <h3 className="mt-1 font-display text-base font-semibold text-ocean-900 sm:text-xl">
+                  <h3 className="mt-0.5 font-display text-sm font-semibold leading-snug text-ocean-900 sm:mt-1 sm:text-xl">
                     {p.name}
                   </h3>
-                  <p className="mt-1 text-xs text-ocean-600 sm:text-sm">{p.duration}</p>
-                  <p className="mt-1.5 text-xs font-medium text-amber-700 sm:mt-2 sm:text-sm">
+                  <p className="mt-0.5 text-[11px] text-ocean-600 sm:mt-1 sm:text-sm">{p.duration}</p>
+                  <p className="mt-1 text-[11px] font-medium text-amber-700 sm:mt-2 sm:text-sm">
                     ⭐ {p.rating.toFixed(1)} rated
                   </p>
-                  <ul className="mt-2.5 flex flex-wrap gap-1 sm:mt-3 sm:gap-1.5">
+                  <ul className="mt-1.5 flex flex-wrap gap-0.5 sm:mt-3 sm:gap-1.5">
                     {p.includes.map((inc, i) => (
                       <li
                         key={`${p.id}-inc-${i}`}
-                        className="rounded-full bg-ocean-50 px-1.5 py-0.5 text-[10px] text-ocean-800 sm:px-2 sm:text-xs"
+                        className="rounded-full bg-ocean-50 px-1 py-0.5 text-[9px] text-ocean-800 sm:px-2 sm:text-xs"
                       >
                         {inc}
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] text-ocean-600 sm:mt-4 sm:gap-2 sm:text-xs">
+                  <div className="mt-2 flex flex-wrap items-center gap-1 text-[9px] text-ocean-600 sm:mt-4 sm:gap-2 sm:text-xs">
                     {p.slotsLeft != null ? (
                       <span className="font-semibold text-red-600">
                         Only {p.slotsLeft} slots left
@@ -104,11 +104,11 @@ export function PackagesSection() {
                       <span>Booked {p.bookedToday} times today</span>
                     ) : null}
                   </div>
-                  <div className="mt-auto flex flex-col gap-2 pt-3 sm:gap-3 sm:pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-lg font-bold text-ocean-900 sm:text-2xl">
+                  <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:gap-3 sm:pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-base font-bold text-ocean-900 sm:text-2xl">
                       ₹{p.price.toLocaleString("en-IN")}
                     </p>
-                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
                       <AddToCartButton
                         variant="package"
                         id={p.id}
@@ -120,7 +120,7 @@ export function PackagesSection() {
                       />
                       <Link
                         href={`/booking?package=${encodeURIComponent(p.id)}`}
-                        className="rounded-full bg-ocean-gradient px-3 py-1.5 text-xs font-semibold text-white shadow-md sm:px-4 sm:py-2 sm:text-sm"
+                        className="rounded-full bg-ocean-gradient px-2.5 py-1 text-[10px] font-semibold text-white shadow-md sm:px-4 sm:py-2 sm:text-sm"
                       >
                         Book Now
                       </Link>

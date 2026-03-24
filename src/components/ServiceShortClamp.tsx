@@ -29,7 +29,7 @@ export function ServiceShortClamp({ slug, text, className }: Props) {
     <div className={className}>
       <p
         ref={ref}
-        className="mt-1 line-clamp-2 text-sm text-ocean-600"
+        className="mt-1 line-clamp-3 text-xs text-ocean-600 sm:line-clamp-2 sm:text-sm"
         title={text}
       >
         {text}
@@ -37,7 +37,7 @@ export function ServiceShortClamp({ slug, text, className }: Props) {
       {overflow ? (
         <Link
           href={`/services/${slug}`}
-          className="mt-1 inline-block text-xs font-semibold text-ocean-600 hover:text-ocean-800 hover:underline"
+          className="mt-0.5 inline-block text-[10px] font-semibold text-ocean-600 hover:text-ocean-800 hover:underline sm:mt-1 sm:text-xs"
         >
           More…
         </Link>

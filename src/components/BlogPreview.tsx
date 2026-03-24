@@ -8,17 +8,17 @@ export function BlogPreview() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
+            <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
               Goa travel & diving guides
             </h2>
-            <p className="mt-2 text-ocean-700">
+            <p className="mt-1.5 text-sm text-ocean-700 sm:mt-2 sm:text-base">
               SEO-ready articles: scuba diving Goa, water sports Goa booking, tour
               tips.
             </p>
           </div>
           <Link
             href="/blog"
-            className="text-sm font-semibold text-ocean-600 hover:text-ocean-800"
+            className="text-xs font-semibold text-ocean-600 hover:text-ocean-800 sm:text-sm"
           >
             All articles →
           </Link>
@@ -28,15 +28,15 @@ export function BlogPreview() {
             <li key={p.slug}>
               <Link
                 href={`/blog/${p.slug}`}
-                className="block rounded-2xl border border-ocean-100 bg-sand p-5 transition hover:border-ocean-300 hover:shadow-sm"
+                className="block rounded-2xl border border-ocean-100 bg-sand p-4 transition hover:border-ocean-300 hover:shadow-sm sm:p-5"
               >
-                <p className="text-xs text-ocean-500">
+                <p className="text-[10px] text-ocean-500 sm:text-xs">
                   {p.date} · {p.readTime}
                 </p>
-                <h3 className="mt-2 font-display text-lg font-semibold text-ocean-900">
+                <h3 className="mt-1.5 font-display text-base font-semibold leading-snug text-ocean-900 sm:mt-2 sm:text-lg">
                   {p.title}
                 </h3>
-                <p className="mt-2 line-clamp-3 text-sm text-ocean-700">
+                <p className="mt-1.5 line-clamp-3 text-xs text-ocean-700 sm:mt-2 sm:text-sm">
                   {p.excerpt}
                 </p>
               </Link>

@@ -11,6 +11,13 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Slightly smaller root type on phones so more copy fits in cards while desktop stays unchanged. */
+@media (max-width: 639px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
