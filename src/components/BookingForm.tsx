@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
+import { useCart } from "@/context/CartContext";
 import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
 import {
@@ -21,6 +22,7 @@ import {
   computeMinPayPaise,
   MIN_PAYMENT_PER_PERSON_INR,
 } from "@/lib/payment";
+import type { CartLine } from "@/lib/types";
 
 declare global {
   interface Window {
@@ -28,11 +30,30 @@ declare global {
   }
 }
 
+function cartSummary(lines: CartLine[]): string {
+  return lines
+    .map((l) => `${l.name} ×${l.quantity}`)
+    .join(", ")
+    .slice(0, 200);
+}
+
 export function BookingForm() {
   const { packages, loading } = usePackages();
   const { services } = useServices();
   const searchParams = useSearchParams();
   const pre = searchParams.get("package");
+
+  const {
+    lines,
+    ready: cartReady,
+    itemCount,
+    subtotalInr,
+    addPackage,
+    addService,
+    setQuantity,
+    removeLine,
+    clearCart,
+  } = useCart();
 
   const [selection, setSelection] = useState("");
   const [name, setName] = useState("");
@@ -95,15 +116,26 @@ export function BookingForm() {
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [packages]);
 
-  const totalInr = hasSelection ? unitPriceInr * people : 0;
-  const fullAmountPaise = Math.round(totalInr * 100);
-  const minPayPaise = hasSelection
-    ? computeMinPayPaise(people, fullAmountPaise)
+  const hasCart = cartReady && lines.length > 0;
+
+  const singleTotalInr = hasSelection ? unitPriceInr * people : 0;
+  const singleFullAmountPaise = Math.round(singleTotalInr * 100);
+  const singleMinPayPaise = hasSelection
+    ? computeMinPayPaise(people, singleFullAmountPaise)
     : 0;
-  const chargePaise =
-    payMode === "full" || minPayPaise >= fullAmountPaise
-      ? fullAmountPaise
-      : minPayPaise;
+  const singleChargePaise =
+    payMode === "full" || singleMinPayPaise >= singleFullAmountPaise
+      ? singleFullAmountPaise
+      : singleMinPayPaise;
+
+  const cartFullAmountPaise = Math.round(subtotalInr * 100);
+  const cartMinPayPaise = hasCart
+    ? computeMinPayPaise(itemCount, cartFullAmountPaise)
+    : 0;
+  const cartChargePaise =
+    payMode === "full" || cartMinPayPaise >= cartFullAmountPaise
+      ? cartFullAmountPaise
+      : cartMinPayPaise;
 
   const includesList = useMemo(() => {
     if (selectedPackage?.includes.length) return selectedPackage.includes;
@@ -117,16 +149,15 @@ export function BookingForm() {
 
   async function pay() {
     setMsg(null);
-    if (
-      !hasSelection ||
-      !name.trim() ||
-      !email.trim() ||
-      !phone.trim() ||
-      !date
-    ) {
-      setMsg("Fill all required fields and choose a package or service option.");
+    if (!name.trim() || !email.trim() || !phone.trim() || !date) {
+      setMsg("Fill all required fields.");
       return;
     }
+    if (!cartReady) {
+      setMsg("Loading cart… try again.");
+      return;
+    }
+
     const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     if (!key) {
       setMsg(
@@ -138,14 +169,126 @@ export function BookingForm() {
       setMsg("Payment script still loading—try again in a second.");
       return;
     }
+
+    /** Cart checkout (same contract as floating cart) */
+    if (lines.length > 0) {
+      const summary = cartSummary(lines);
+      const cartItems = lines.map((l) => ({
+        kind: l.kind,
+        refId: l.refId,
+        name: l.name,
+        unitPrice: l.unitPrice,
+        quantity: l.quantity,
+        lineTotal: l.unitPrice * l.quantity,
+      }));
+
+      setBusy(true);
+      try {
+        const orderRes = await fetch("/api/razorpay/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: cartChargePaise,
+            fullAmountPaise: cartFullAmountPaise,
+            payUnits: itemCount,
+            currency: "INR",
+            receipt: `bk_cart_${Date.now()}`,
+          }),
+        });
+        const orderData = await orderRes.json();
+        if (!orderRes.ok) throw new Error(orderData.error ?? "Order failed");
+
+        const bookingBase = {
+          packageId: "cart",
+          packageName: `Cart: ${summary}`,
+          customerName: name,
+          email,
+          phone,
+          date,
+          people: itemCount,
+          amountPaise: cartChargePaise,
+          fullAmountPaise: cartFullAmountPaise,
+          payUnits: itemCount,
+          pickupLocation: pickupLocation.trim() || undefined,
+          cartItems,
+        };
+
+        const options: Record<string, unknown> = {
+          key,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          order_id: orderData.id,
+          name: SITE_NAME,
+          description: summary.slice(0, 80) || "Goa experiences",
+          prefill: { name, email, contact: phone },
+          modal: {
+            ondismiss: () => setBusy(false),
+          },
+          handler: async (response: {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              const v = await fetch("/api/razorpay/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  booking: bookingBase,
+                }),
+              });
+              const out = await v.json();
+              if (!v.ok) {
+                setMsg(out.error ?? "Verification failed");
+                return;
+              }
+              if (out.warning) {
+                try {
+                  sessionStorage.setItem("paymentNotice", String(out.warning));
+                } catch {
+                  /* ignore */
+                }
+              }
+              clearCart();
+              window.location.href = "/?payment=success";
+            } finally {
+              setBusy(false);
+            }
+          },
+          theme: { color: "#0284c7" },
+        };
+
+        const rzp = new window.Razorpay(options);
+        attachRazorpayPaymentFailed(rzp, (m) => {
+          setMsg(m);
+          setBusy(false);
+        });
+        rzp.open();
+      } catch (e) {
+        setMsg(e instanceof Error ? e.message : "Something went wrong");
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (!hasSelection) {
+      setMsg(
+        "Your cart is empty. Add packages with Add below the price list, or pick one option in the dropdown."
+      );
+      return;
+    }
+
     setBusy(true);
     try {
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: chargePaise,
-          fullAmountPaise,
+          amount: singleChargePaise,
+          fullAmountPaise: singleFullAmountPaise,
           payUnits: people,
           currency: "INR",
           receipt: `bk_${Date.now()}`,
@@ -162,8 +305,8 @@ export function BookingForm() {
         phone,
         date,
         people,
-        amountPaise: chargePaise,
-        fullAmountPaise,
+        amountPaise: singleChargePaise,
+        fullAmountPaise: singleFullAmountPaise,
         payUnits: people,
         pickupLocation: pickupLocation.trim() || undefined,
       };
@@ -227,6 +370,14 @@ export function BookingForm() {
     }
   }
 
+  const payButtonLabel = busy
+    ? "Processing…"
+    : hasCart
+      ? `Pay ₹${(cartChargePaise / 100).toLocaleString("en-IN")} with Razorpay (cart)`
+      : hasSelection
+        ? `Pay ₹${(singleChargePaise / 100).toLocaleString("en-IN")} with Razorpay`
+        : "Pay securely with Razorpay";
+
   return (
     <div className="mx-auto max-w-xl">
       <Script
@@ -288,6 +439,80 @@ export function BookingForm() {
                 })}
               </select>
             </label>
+
+            <div className="rounded-xl border border-ocean-200 bg-ocean-50/40 p-3">
+              <p className="text-sm font-semibold text-ocean-900">
+                Your cart (this page &amp; site-wide)
+              </p>
+              {!cartReady ? (
+                <p className="mt-2 text-xs text-ocean-600">Loading cart…</p>
+              ) : lines.length === 0 ? (
+                <p className="mt-2 text-sm text-ocean-600">
+                  No items in your cart. Tap <span className="font-medium">Add</span>{" "}
+                  next to any package or service in the full price list below, or
+                  choose one option in the dropdown above.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {lines.map((line) => (
+                    <li
+                      key={line.key}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ocean-100 bg-white p-3 text-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-ocean-900">{line.name}</p>
+                        <p className="text-xs text-ocean-600">
+                          ₹{line.unitPrice.toLocaleString("en-IN")} each · line{" "}
+                          ₹{(line.unitPrice * line.quantity).toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1 rounded-lg border border-ocean-200">
+                          <button
+                            type="button"
+                            className="h-8 w-8 text-ocean-800"
+                            aria-label="Decrease quantity"
+                            onClick={() =>
+                              setQuantity(line.key, line.quantity - 1)
+                            }
+                          >
+                            −
+                          </button>
+                          <span className="w-6 text-center text-xs font-semibold">
+                            {line.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            className="h-8 w-8 text-ocean-800"
+                            aria-label="Increase quantity"
+                            onClick={() =>
+                              setQuantity(line.key, line.quantity + 1)
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-red-600 hover:underline"
+                          onClick={() => removeLine(line.key)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {hasCart && hasSelection ? (
+              <p className="text-xs text-amber-800">
+                You have items in your cart — payment will use the cart only. Clear
+                the cart if you want to pay for the dropdown selection alone.
+              </p>
+            ) : null}
+
             <details className="rounded-xl border border-ocean-100 bg-ocean-50/50 p-3 text-sm">
               <summary className="cursor-pointer font-medium text-ocean-900">
                 Full price list (packages &amp; variants)
@@ -303,19 +528,38 @@ export function BookingForm() {
                         key={p.id}
                         className="rounded-lg bg-white/90 p-2 ring-1 ring-ocean-100"
                       >
-                        <p className="font-semibold text-ocean-900">
-                          {p.name}{" "}
-                          <span className="font-normal text-ocean-600">
-                            — ₹{p.price.toLocaleString("en-IN")}
-                          </span>
-                        </p>
-                        {p.includes.length > 0 ? (
-                          <ul className="mt-1 list-inside list-disc text-xs text-ocean-600">
-                            {p.includes.map((inc) => (
-                              <li key={`${p.id}-${inc}`}>{inc}</li>
-                            ))}
-                          </ul>
-                        ) : null}
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-ocean-900">
+                              {p.name}{" "}
+                              <span className="font-normal text-ocean-600">
+                                — ₹{p.price.toLocaleString("en-IN")}
+                              </span>
+                            </p>
+                            {p.includes.length > 0 ? (
+                              <ul className="mt-1 list-inside list-disc text-xs text-ocean-600">
+                                {p.includes.map((inc) => (
+                                  <li key={`${p.id}-${inc}`}>{inc}</li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-full bg-ocean-600 px-3 py-1 text-xs font-semibold text-white hover:bg-ocean-700"
+                            onClick={() =>
+                              addPackage({
+                                id: p.id,
+                                name: p.name,
+                                price: p.price,
+                                image: p.imageUrl?.trim() || undefined,
+                                duration: p.duration,
+                              })
+                            }
+                          >
+                            Add
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -335,14 +579,40 @@ export function BookingForm() {
                             className="rounded-lg bg-white/90 p-2 ring-1 ring-ocean-100"
                           >
                             <p className="font-semibold text-ocean-900">{s.title}</p>
-                            <ul className="mt-1 space-y-0.5 text-xs text-ocean-700">
-                              {priced.map(({ sub }) => (
-                                <li key={`${s.slug}-${sub.title}`}>
-                                  <span className="font-medium">{sub.title}</span>
-                                  <span className="text-ocean-600">
-                                    {" "}
-                                    — ₹{sub.priceFrom!.toLocaleString("en-IN")}
+                            <ul className="mt-1 space-y-2 text-xs text-ocean-700">
+                              {priced.map(({ sub, index }) => (
+                                <li
+                                  key={`${s.slug}-${getSubServiceCartKey(sub, index)}`}
+                                  className="flex flex-wrap items-center justify-between gap-2 border-t border-ocean-100 pt-2 first:border-t-0 first:pt-0"
+                                >
+                                  <span>
+                                    <span className="font-medium">{sub.title}</span>
+                                    <span className="text-ocean-600">
+                                      {" "}
+                                      — ₹{sub.priceFrom!.toLocaleString("en-IN")}
+                                    </span>
                                   </span>
+                                  <button
+                                    type="button"
+                                    className="shrink-0 rounded-full bg-ocean-600 px-3 py-1 text-[11px] font-semibold text-white hover:bg-ocean-700"
+                                    onClick={() =>
+                                      addService({
+                                        slug: s.slug,
+                                        title: `${s.title} — ${sub.title}`,
+                                        priceFrom: sub.priceFrom!,
+                                        subKey: getSubServiceCartKey(sub, index),
+                                        image: s.image,
+                                        duration: s.duration,
+                                        includes: sub.includes ?? s.includes,
+                                        rating: s.rating,
+                                        slotsLeft: sub.slotsLeft ?? s.slotsLeft,
+                                        bookedToday:
+                                          sub.bookedToday ?? s.bookedToday,
+                                      })
+                                    }
+                                  >
+                                    Add
+                                  </button>
                                 </li>
                               ))}
                             </ul>
@@ -401,18 +671,72 @@ export function BookingForm() {
                 onChange={(e) => setDate(e.target.value)}
               />
             </label>
-            <label className="block text-sm font-medium text-ocean-800">
-              People
-              <input
-                type="number"
-                min={1}
-                max={20}
-                className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                value={people}
-                onChange={(e) => setPeople(Number(e.target.value))}
-              />
-            </label>
-            {hasSelection ? (
+            <div className={hasCart ? "opacity-60" : ""}>
+              <label className="block text-sm font-medium text-ocean-800">
+                People
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  disabled={hasCart}
+                  className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5 disabled:cursor-not-allowed"
+                  value={people}
+                  onChange={(e) => setPeople(Number(e.target.value))}
+                />
+              </label>
+              {hasCart ? (
+                <p className="mt-1 text-xs text-ocean-600">
+                  Cart checkout uses each line’s quantity (above). People applies only
+                  when paying from the dropdown with an empty cart.
+                </p>
+              ) : null}
+            </div>
+
+            {hasCart ? (
+              <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
+                <p className="text-lg font-bold text-ocean-900">
+                  Cart total: ₹{subtotalInr.toLocaleString("en-IN")}
+                </p>
+                {cartMinPayPaise < cartFullAmountPaise ? (
+                  <>
+                    <p className="text-sm text-ocean-700">
+                      Minimum advance: ₹
+                      {(cartMinPayPaise / 100).toLocaleString("en-IN")} (
+                      {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
+                      {itemCount} {itemCount === 1 ? "item" : "items"})
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="radio"
+                          name="payModeBooking"
+                          checked={payMode === "min"}
+                          onChange={() => setPayMode("min")}
+                          className="text-ocean-700"
+                        />
+                        Pay minimum (₹
+                        {(cartMinPayPaise / 100).toLocaleString("en-IN")})
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="radio"
+                          name="payModeBooking"
+                          checked={payMode === "full"}
+                          onChange={() => setPayMode("full")}
+                        />
+                        Pay full (₹
+                        {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-ocean-600">
+                    Cart total is below the per-item minimum; you’ll pay the full
+                    amount.
+                  </p>
+                )}
+              </div>
+            ) : hasSelection ? (
               <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
                 {includesList.length > 0 ? (
                   <div>
@@ -429,13 +753,13 @@ export function BookingForm() {
                   </div>
                 ) : null}
                 <p className="text-lg font-bold text-ocean-900">
-                  Full total: ₹{totalInr.toLocaleString("en-IN")}
+                  Full total: ₹{singleTotalInr.toLocaleString("en-IN")}
                 </p>
-                {minPayPaise < fullAmountPaise ? (
+                {singleMinPayPaise < singleFullAmountPaise ? (
                   <>
                     <p className="text-sm text-ocean-700">
                       Minimum advance: ₹
-                      {(minPayPaise / 100).toLocaleString("en-IN")} (
+                      {(singleMinPayPaise / 100).toLocaleString("en-IN")} (
                       {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
                       {people} {people === 1 ? "person" : "people"})
                     </p>
@@ -443,23 +767,23 @@ export function BookingForm() {
                       <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
-                          name="payMode"
+                          name="payModeBooking"
                           checked={payMode === "min"}
                           onChange={() => setPayMode("min")}
                           className="text-ocean-700"
                         />
                         Pay minimum (₹
-                        {(minPayPaise / 100).toLocaleString("en-IN")})
+                        {(singleMinPayPaise / 100).toLocaleString("en-IN")})
                       </label>
                       <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
-                          name="payMode"
+                          name="payModeBooking"
                           checked={payMode === "full"}
                           onChange={() => setPayMode("full")}
                         />
                         Pay full (₹
-                        {(fullAmountPaise / 100).toLocaleString("en-IN")})
+                        {(singleFullAmountPaise / 100).toLocaleString("en-IN")})
                       </label>
                     </div>
                   </>
@@ -482,11 +806,7 @@ export function BookingForm() {
               disabled={busy}
               className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
             >
-              {busy
-                ? "Processing…"
-                : hasSelection
-                  ? `Pay ₹${(chargePaise / 100).toLocaleString("en-IN")} with Razorpay`
-                  : "Pay securely with Razorpay"}
+              {payButtonLabel}
             </button>
             <a
               href={whatsappLink()}
