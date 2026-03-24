@@ -73,28 +73,28 @@ export function PackagesSection() {
                     </span>
                   ) : null}
                 </div>
-                <div className="flex flex-1 flex-col p-5">
-                  <p className="text-xs font-medium uppercase tracking-wide text-ocean-500">
+                <div className="flex flex-1 flex-col p-3 sm:p-5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-ocean-500 sm:text-xs">
                     {p.category ?? "Goa"}
                   </p>
-                  <h3 className="mt-1 font-display text-xl font-semibold text-ocean-900">
+                  <h3 className="mt-1 font-display text-base font-semibold text-ocean-900 sm:text-xl">
                     {p.name}
                   </h3>
-                  <p className="mt-1 text-sm text-ocean-600">{p.duration}</p>
-                  <p className="mt-2 text-sm font-medium text-amber-700">
+                  <p className="mt-1 text-xs text-ocean-600 sm:text-sm">{p.duration}</p>
+                  <p className="mt-1.5 text-xs font-medium text-amber-700 sm:mt-2 sm:text-sm">
                     ⭐ {p.rating.toFixed(1)} rated
                   </p>
-                  <ul className="mt-3 flex flex-wrap gap-1.5">
+                  <ul className="mt-2.5 flex flex-wrap gap-1 sm:mt-3 sm:gap-1.5">
                     {p.includes.map((inc, i) => (
                       <li
                         key={`${p.id}-inc-${i}`}
-                        className="rounded-full bg-ocean-50 px-2 py-0.5 text-xs text-ocean-800"
+                        className="rounded-full bg-ocean-50 px-1.5 py-0.5 text-[10px] text-ocean-800 sm:px-2 sm:text-xs"
                       >
                         {inc}
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-ocean-600">
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] text-ocean-600 sm:mt-4 sm:gap-2 sm:text-xs">
                     {p.slotsLeft != null ? (
                       <span className="font-semibold text-red-600">
                         Only {p.slotsLeft} slots left
@@ -104,11 +104,11 @@ export function PackagesSection() {
                       <span>Booked {p.bookedToday} times today</span>
                     ) : null}
                   </div>
-                  <div className="mt-auto flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-2xl font-bold text-ocean-900">
+                  <div className="mt-auto flex flex-col gap-2 pt-3 sm:gap-3 sm:pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-lg font-bold text-ocean-900 sm:text-2xl">
                       ₹{p.price.toLocaleString("en-IN")}
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       <AddToCartButton
                         variant="package"
                         id={p.id}
@@ -120,7 +120,7 @@ export function PackagesSection() {
                       />
                       <Link
                         href={`/booking?package=${encodeURIComponent(p.id)}`}
-                        className="rounded-full bg-ocean-gradient px-4 py-2 text-sm font-semibold text-white shadow-md"
+                        className="rounded-full bg-ocean-gradient px-3 py-1.5 text-xs font-semibold text-white shadow-md sm:px-4 sm:py-2 sm:text-sm"
                       >
                         Book Now
                       </Link>

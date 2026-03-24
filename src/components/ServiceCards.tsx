@@ -94,22 +94,22 @@ export function ServiceCards() {
                     </div>
                   )}
                 </Link>
-                <div className="flex flex-1 flex-col p-4">
+                <div className="flex flex-1 flex-col p-3 sm:p-4">
                   <Link href={`/services/${s.slug}`}>
-                    <h3 className="font-display text-lg font-semibold text-ocean-900 hover:text-ocean-600">
+                    <h3 className="font-display text-base font-semibold text-ocean-900 hover:text-ocean-600 sm:text-lg">
                       {s.title}
                     </h3>
                   </Link>
                   <ServiceShortClamp slug={s.slug} text={s.short} />
                   <ServiceMetaBlock s={s} />
-                  <p className="mt-3 text-lg font-bold text-ocean-900">
+                  <p className="mt-2 text-base font-bold text-ocean-900 sm:mt-3 sm:text-lg">
                     From ₹{s.priceFrom.toLocaleString("en-IN")}+
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2">
                     <ServiceCardAddToCart service={s} size="sm" />
                     <Link
                       href={`/services/${s.slug}`}
-                      className="min-h-11 min-w-11 rounded-full border border-ocean-200 px-3 py-2 text-xs font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100"
+                      className="min-h-9 min-w-9 rounded-full border border-ocean-200 px-2.5 py-1.5 text-[11px] font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:min-w-11 sm:px-3 sm:py-2 sm:text-xs"
                     >
                       Details
                     </Link>
