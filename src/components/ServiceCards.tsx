@@ -15,10 +15,9 @@ export function ServiceCards() {
 
   if (loading) {
     return (
-      <section className="bg-white py-16 sm:py-20" id="services">
+      <section className="bg-white pt-12 pb-6 sm:pt-16 sm:pb-10" id="services">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="h-10 max-w-md animate-pulse rounded-lg bg-ocean-100" />
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -32,18 +31,9 @@ export function ServiceCards() {
   }
 
   return (
-    <section className="bg-white py-16 sm:py-20" id="services">
+    <section className="bg-white pt-12 pb-6 sm:pt-16 sm:pb-10" id="services">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl">
-          <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
-            Experiences curated for Goa
-          </h2>
-          <p className="mt-2 text-sm text-ocean-700 sm:mt-3 sm:text-base">
-            Add any experience to your cart, then checkout once with Razorpay—or chat
-            on WhatsApp anytime.
-          </p>
-        </div>
-        <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {services.map((s, idx) => {
             const cardImgs = serviceDetailImages(s);
             const multi = cardImgs.filter(Boolean).length > 1;

@@ -84,19 +84,6 @@ export function HeroSection() {
             guests
           </p>
         </motion.div>
-        <div className="mt-4 flex gap-1.5 sm:mt-10 lg:absolute lg:bottom-10 lg:left-1/2 lg:-translate-x-1/2">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              aria-label={`Slide ${idx + 1}`}
-              onClick={() => setI(idx)}
-              className={`h-2 rounded-full transition-all ${
-                idx === i ? "w-8 bg-white" : "w-2 bg-white/40"
-              }`}
-            />
-          ))}
-        </div>
       </div>
     </section>
   );

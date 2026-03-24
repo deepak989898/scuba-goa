@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
@@ -10,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
-import { SITE_NAME } from "@/lib/constants";
+import { DEMO_TESTIMONIALS } from "@/data/demo-testimonials";
 
 type Review = {
   id: string;
@@ -118,53 +119,83 @@ export function RatingsSection() {
 
   const starDisplay = hoverStar || rating;
 
-  if (!db) {
-    return (
-      <section className="border-t border-ocean-100 bg-white py-16">
-        <div className="mx-auto max-w-5xl px-4 text-center text-sm text-ocean-600">
-          Guest reviews require Firebase to be configured.
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className="border-t border-ocean-100 bg-white py-16">
+    <section className="border-t border-ocean-100 bg-white py-10 sm:py-12">
       <div className="mx-auto max-w-5xl px-4">
         <h2 id="guest-reviews" className="sr-only">
           Guest reviews
         </h2>
 
         {loadError ? (
-          <p className="mt-6 text-center text-sm text-amber-800">{loadError}</p>
+          <p className="mt-2 text-center text-sm text-amber-800">{loadError}</p>
         ) : null}
 
-        {loading ? (
-          <p className="mt-10 text-center text-ocean-600">Loading reviews…</p>
-        ) : reviews.length === 0 && !loadError ? (
-          <p className="mt-10 text-center text-sm text-ocean-600">
-            No approved reviews yet. Be the first to leave one — we’ll publish it
-            after a quick check.
+        {db && loading ? (
+          <p className="mt-2 text-center text-xs text-ocean-500">
+            Loading submitted reviews…
           </p>
-        ) : reviews.length > 0 ? (
-          <>
-            {averageRating != null ? (
-              <p className="mt-6 text-center text-sm font-medium text-ocean-800">
-                Average from {reviews.length} approved review
-                {reviews.length === 1 ? "" : "s"}:{" "}
-                <span className="text-amber-600">
-                  ★ {averageRating.toFixed(1)} / 5
-                </span>
-              </p>
-            ) : null}
-            <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-              {reviews.map((r) => (
+        ) : null}
+
+        {db && !loading && reviews.length > 0 && averageRating != null ? (
+          <p className="mt-4 text-center text-sm font-medium text-ocean-800">
+            Average from {reviews.length} approved review
+            {reviews.length === 1 ? "" : "s"}:{" "}
+            <span className="text-amber-600">
+              ★ {averageRating.toFixed(1)} / 5
+            </span>
+          </p>
+        ) : null}
+
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+          {DEMO_TESTIMONIALS.map((d) => (
+            <li
+              key={d.id}
+              className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-ocean-100">
+                  <Image
+                    src={d.img}
+                    alt={d.authorName}
+                    fill
+                    className="object-cover"
+                    sizes="44px"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-ocean-900">
+                        {d.authorName}
+                      </p>
+                      <p className="text-xs text-ocean-600">
+                        Google review · {d.place}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-ocean-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ocean-800">
+                      Guest
+                    </span>
+                  </div>
+                  <p className="mt-1 text-amber-600" aria-hidden>
+                    {"★".repeat(Math.min(5, Math.max(0, d.rating)))}
+                    <span className="sr-only">{d.rating} out of 5</span>
+                  </p>
+                  <p className="mt-2 text-sm text-ocean-800">{d.comment}</p>
+                </div>
+              </div>
+            </li>
+          ))}
+          {db
+            ? reviews.map((r) => (
                 <li
                   key={r.id}
                   className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-ocean-900">{r.authorName}</p>
+                    <p className="font-semibold text-ocean-900">
+                      {r.authorName}
+                    </p>
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
                       Approved
                     </span>
@@ -175,12 +206,11 @@ export function RatingsSection() {
                   </p>
                   <p className="mt-2 text-sm text-ocean-800">{r.comment}</p>
                 </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
+              ))
+            : null}
+        </ul>
 
-        <div className="mx-auto mt-12 max-w-lg">
+        <div className="mx-auto mt-10 max-w-lg sm:mt-12">
           <h3 className="font-display text-center text-base font-semibold text-ocean-900 sm:text-lg">
             Rate your experience
           </h3>

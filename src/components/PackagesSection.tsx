@@ -10,17 +10,16 @@ export function PackagesSection() {
   const { packages, loading } = usePackages();
 
   return (
-    <section className="bg-gradient-to-b from-ocean-50/80 to-white py-16 sm:py-20" id="packages">
+    <section
+      className="bg-gradient-to-b from-ocean-50/80 to-white pt-6 pb-12 sm:pt-8 sm:pb-16"
+      id="packages"
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
               Live packages
             </h2>
-            <p className="mt-1.5 text-sm text-ocean-700 sm:mt-2 sm:text-base">
-              Pulled from Firestore when configured—fallback demo rates always
-              visible for SEO previews.
-            </p>
           </div>
           <Link
             href="/booking"
@@ -30,7 +29,7 @@ export function PackagesSection() {
           </Link>
         </div>
         {loading ? (
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-3">
             {[1, 2, 3].map((k) => (
               <div
                 key={k}
@@ -39,7 +38,7 @@ export function PackagesSection() {
             ))}
           </div>
         ) : (
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-3">
             {packages.map((p, idx) => {
               const cardImage =
                 p.imageUrl?.trim() ||
