@@ -60,10 +60,10 @@ export function ServiceCards() {
                       mostBooked={s.mostBooked}
                       limitedSlots={s.limitedSlots}
                       sizes={imgSizes}
-                      aspectClass="aspect-[16/9] sm:aspect-[14/11]"
+                      aspectClass="aspect-[3/2] sm:aspect-[5/4]"
                     />
                   ) : (
-                    <div className="relative aspect-[16/9] overflow-hidden sm:aspect-[14/11]">
+                    <div className="relative aspect-[3/2] overflow-hidden sm:aspect-[5/4]">
                       <CmsRemoteImage
                         src={s.image}
                         alt={s.title}

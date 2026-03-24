@@ -59,12 +59,6 @@ export function HeroSection() {
           <p className="text-xs font-medium uppercase tracking-widest text-white/90 sm:text-sm">
             Goa, India · Premium marine experiences
           </p>
-          <h1 className="mt-1.5 font-display text-2xl font-bold leading-tight text-white sm:mt-3 sm:text-5xl lg:text-6xl">
-            Experience Goa Like Never Before 🌊
-          </h1>
-          <p className="mt-1.5 text-sm text-white/90 sm:mt-4 sm:text-xl">
-            Scuba Diving | Water Sports | Goa Tours
-          </p>
           <div className="mt-4 flex flex-wrap gap-1.5 sm:mt-8 sm:gap-3">
             <Link
               href="/booking"

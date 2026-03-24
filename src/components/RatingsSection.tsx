@@ -20,6 +20,25 @@ type Review = {
   rating: number;
 };
 
+function GuestReviewAvatar({ name }: { name: string }) {
+  return (
+    <div
+      className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-ocean-200/80 bg-gradient-to-br from-ocean-100 to-ocean-200"
+      role="img"
+      aria-label={`${name.trim() || "Guest"} profile`}
+    >
+      <svg
+        className="h-6 w-6 text-ocean-500"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden
+      >
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+      </svg>
+    </div>
+  );
+}
+
 export function RatingsSection() {
   const db = getDb();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -192,19 +211,24 @@ export function RatingsSection() {
                   key={r.id}
                   className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-ocean-900">
-                      {r.authorName}
-                    </p>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                      Approved
-                    </span>
+                  <div className="flex items-start gap-3">
+                    <GuestReviewAvatar name={r.authorName} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="font-semibold text-ocean-900">
+                          {r.authorName || "Guest"}
+                        </p>
+                        <span className="shrink-0 rounded-full bg-ocean-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ocean-800">
+                          GUEST
+                        </span>
+                      </div>
+                      <p className="mt-1 text-amber-600" aria-hidden>
+                        {"★".repeat(Math.min(5, Math.max(0, r.rating)))}
+                        <span className="sr-only">{r.rating} out of 5</span>
+                      </p>
+                      <p className="mt-2 text-sm text-ocean-800">{r.comment}</p>
+                    </div>
                   </div>
-                  <p className="text-amber-600" aria-hidden>
-                    {"★".repeat(Math.min(5, Math.max(0, r.rating)))}
-                    <span className="sr-only">{r.rating} out of 5</span>
-                  </p>
-                  <p className="mt-2 text-sm text-ocean-800">{r.comment}</p>
                 </li>
               ))
             : null}

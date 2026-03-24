@@ -52,7 +52,7 @@ export function PackagesSection() {
                 transition={{ delay: idx * 0.05 }}
                 className="flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm"
               >
-                <div className="relative aspect-[16/9] sm:aspect-[56/37]">
+                <div className="relative aspect-[3/2] sm:aspect-[5/4]">
                   <CmsRemoteImage
                     src={cardImage}
                     alt={p.name}
