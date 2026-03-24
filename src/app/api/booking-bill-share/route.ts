@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
-import { authenticateAdminRequest } from "@/lib/admin-request-auth";
-import { generateBillPdf } from "@/lib/billPdf";
 import { bookingDocToBillPdfInput } from "@/lib/bookingBillFromFirestore";
+import { verifyBookingBillShareToken } from "@/lib/bookingBillShareToken";
+import { generateBillPdf } from "@/lib/billPdf";
 import { getAdminDb } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const auth = await authenticateAdminRequest(req);
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token")?.trim();
+  if (!token) {
+    return NextResponse.json({ error: "token required" }, { status: 400 });
   }
 
-  const url = new URL(req.url);
-  const paymentId = url.searchParams.get("paymentId")?.trim();
+  const paymentId = verifyBookingBillShareToken(token);
   if (!paymentId) {
-    return NextResponse.json({ error: "paymentId required" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid or expired link" }, { status: 403 });
   }
 
   const db = getAdminDb();
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   try {
     pdf = await generateBillPdf(input);
   } catch (e) {
-    console.error("admin booking-bill PDF failed", e);
+    console.error("booking-bill-share PDF failed", e);
     return NextResponse.json({ error: "Could not generate PDF" }, { status: 500 });
   }
 

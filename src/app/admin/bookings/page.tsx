@@ -41,13 +41,13 @@ function rupeesFromPaise(paise: unknown): string {
   return `₹${(n / 100).toLocaleString("en-IN")}`;
 }
 
-function buildWhatsappConfirmationMessage(r: Row): string {
+function buildWhatsappConfirmationMessage(r: Row, billPdfUrl?: string): string {
   const name = String(r.customerName ?? "there");
   const pkg = String(r.packageName ?? "Your activity");
   const dateStr = formatTripDate(r.date);
   const paid = rupeesFromPaise(r.amountPaise);
   const ref = String(r.razorpayPaymentId ?? r.id);
-  return [
+  const lines = [
     `Hi ${name},`,
     "",
     `Your booking with ${SITE_NAME} is confirmed.`,
@@ -57,8 +57,12 @@ function buildWhatsappConfirmationMessage(r: Row): string {
     `Amount paid: ${paid}`,
     `Payment reference: ${ref}`,
     "",
-    "We can send your PDF bill by email, or please ask if you need it here.",
-  ].join("\n");
+  ];
+  if (billPdfUrl) {
+    lines.push("Download your PDF bill (link expires in a few days):");
+    lines.push(billPdfUrl);
+  }
+  return lines.join("\n");
 }
 
 export default function AdminBookingsPage() {
@@ -68,6 +72,7 @@ export default function AdminBookingsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [whatsAppLoadingId, setWhatsAppLoadingId] = useState<string | null>(null);
 
   async function authorizedFetch(
     input: RequestInfo | URL,
@@ -88,19 +93,83 @@ export default function AdminBookingsPage() {
   async function previewBill(paymentId: string) {
     setActionError(null);
     setActionSuccess(null);
+    // Open a tab in the same user gesture; after `await` a new window.open is often blocked.
+    const preview = window.open("about:blank", "_blank", "noopener,noreferrer");
+    if (!preview) {
+      setActionError(
+        "Your browser blocked the preview tab. Allow pop-ups for this site and try again."
+      );
+      return;
+    }
+
     const res = await authorizedFetch(
       `/api/admin/booking-bill?paymentId=${encodeURIComponent(paymentId)}`
     );
-    if (!res) return;
-    if (!res.ok) {
+    if (!res) {
+      preview.close();
+      return;
+    }
+    const ct = res.headers.get("content-type") ?? "";
+    if (!res.ok || !ct.includes("application/pdf")) {
+      preview.close();
       const j = (await res.json().catch(() => null)) as { error?: string } | null;
       setActionError(j?.error ?? `Could not load bill (${res.status})`);
       return;
     }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener,noreferrer");
+    preview.location.href = url;
     window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+  }
+
+  async function openWhatsappGuestWithBill(r: Row) {
+    setActionError(null);
+    setActionSuccess(null);
+    const phone = String(r.phone ?? "");
+    if (!customerWhatsappLink(phone, " ")) {
+      setActionError("Add a valid guest phone number on this booking for WhatsApp.");
+      return;
+    }
+
+    const w = window.open("about:blank", "_blank", "noopener,noreferrer");
+    if (!w) {
+      setActionError(
+        "Your browser blocked the new tab. Allow pop-ups for this site and try again."
+      );
+      return;
+    }
+
+    setWhatsAppLoadingId(r.id);
+    try {
+      const res = await authorizedFetch("/api/admin/booking-bill-share-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId: r.id }),
+      });
+      if (!res) {
+        w.close();
+        return;
+      }
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        billUrl?: string;
+      } | null;
+      if (!res.ok || !data?.billUrl) {
+        w.close();
+        setActionError(data?.error ?? `Could not create bill link (${res.status})`);
+        return;
+      }
+      const message = buildWhatsappConfirmationMessage(r, data.billUrl);
+      const wa = customerWhatsappLink(phone, message);
+      if (!wa) {
+        w.close();
+        setActionError("Invalid phone number for WhatsApp.");
+        return;
+      }
+      w.location.href = wa;
+    } finally {
+      setWhatsAppLoadingId(null);
+    }
   }
 
   async function sendConfirmationEmail(paymentId: string) {
@@ -161,8 +230,13 @@ export default function AdminBookingsPage() {
       <p className="mt-2 text-sm text-ocean-600">
         Use <strong>Preview bill</strong> to check the PDF, then{" "}
         <strong>Send confirmation email</strong> (bill attached) or{" "}
-        <strong>WhatsApp</strong> to message the guest (attach the PDF manually if
-        you downloaded it from preview).
+        <strong>WhatsApp guest</strong> — the message includes a{" "}
+        <strong>time-limited link</strong> that opens the same PDF (WhatsApp cannot
+        attach files from a website button). Set{" "}
+        <code className="text-xs">NEXT_PUBLIC_SITE_URL</code> in production so links
+        match your live domain; optional{" "}
+        <code className="text-xs">BOOKING_BILL_SHARE_SECRET</code> for signing (falls
+        back to Razorpay secret if set).
       </p>
       {actionError ? (
         <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -328,26 +402,16 @@ export default function AdminBookingsPage() {
                       ? "Sending…"
                       : "Send confirmation + bill (email)"}
                   </button>
-                  {(() => {
-                    const wa = customerWhatsappLink(
-                      String(r.phone ?? ""),
-                      buildWhatsappConfirmationMessage(r)
-                    );
-                    return wa ? (
-                      <a
-                        href={wa}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100"
-                      >
-                        WhatsApp guest
-                      </a>
-                    ) : (
-                      <span className="self-center text-xs text-ocean-500">
-                        WhatsApp: add a valid phone on the booking
-                      </span>
-                    );
-                  })()}
+                  <button
+                    type="button"
+                    disabled={whatsAppLoadingId === r.id}
+                    onClick={() => openWhatsappGuestWithBill(r)}
+                    className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    {whatsAppLoadingId === r.id
+                      ? "Preparing WhatsApp…"
+                      : "WhatsApp guest + bill link"}
+                  </button>
                 </div>
               </li>
             );

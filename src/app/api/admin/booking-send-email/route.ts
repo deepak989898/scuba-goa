@@ -8,6 +8,8 @@ import { generateBillPdf } from "@/lib/billPdf";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { getAdminDb } from "@/lib/firebase-admin";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
   if (!auth.ok) {
