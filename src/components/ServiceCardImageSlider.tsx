@@ -11,7 +11,7 @@ type Props = {
   mostBooked?: boolean;
   limitedSlots?: boolean;
   sizes: string;
-  /** e.g. aspect-[4/3] (home cards) or aspect-[16/10] (/services grid) */
+  /** e.g. aspect-[16/9] (home cards) or aspect-[56/37] (/services grid) */
   aspectClass?: string;
 };
 

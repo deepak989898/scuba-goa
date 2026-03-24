@@ -44,10 +44,10 @@ export function ServicesGrid() {
                 alt={s.title}
                 limitedSlots={s.limitedSlots}
                 sizes={gridSizes}
-                aspectClass="aspect-[16/10]"
+                aspectClass="aspect-[56/37]"
               />
             ) : (
-              <div className="relative aspect-[16/10] overflow-hidden">
+              <div className="relative aspect-[56/37] overflow-hidden">
                 <CmsRemoteImage
                   src={s.image}
                   alt={s.title}
