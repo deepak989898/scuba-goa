@@ -31,3 +31,11 @@ export function whatsappLink(message?: string): string {
     : WHATSAPP_DEFAULT_MESSAGE;
   return `https://wa.me/${phoneDigits()}?text=${text}`;
 }
+
+/** Opens a chat with the customer's number (digits only in URL). Returns null if the number looks invalid. */
+export function customerWhatsappLink(phoneRaw: string, message: string): string | null {
+  let d = phoneRaw.replace(/\D/g, "");
+  if (d.length < 10) return null;
+  if (d.length === 10 && !d.startsWith("91")) d = `91${d}`;
+  return `https://wa.me/${d}?text=${encodeURIComponent(message)}`;
+}
