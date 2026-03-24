@@ -24,7 +24,7 @@ export function HeroSection() {
   const current = slides[i] ?? slides[0];
 
   return (
-    <section className="relative min-h-[88vh] overflow-hidden bg-ocean-900">
+    <section className="relative min-h-[75vw] overflow-hidden bg-ocean-900 sm:min-h-[88vh]">
       <div className="absolute inset-0">
         <AnimatePresence mode="wait">
           {current ? (
@@ -49,7 +49,7 @@ export function HeroSection() {
         </AnimatePresence>
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
-      <div className="relative z-10 mx-auto flex min-h-[88vh] max-w-7xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:justify-center lg:pb-0 lg:pt-20">
+      <div className="relative z-10 mx-auto flex min-h-[75vw] max-w-7xl flex-col justify-end px-4 pb-12 pt-24 sm:min-h-[88vh] sm:px-6 sm:pb-16 sm:pt-28 lg:px-8 lg:justify-center lg:pb-0 lg:pt-20">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}

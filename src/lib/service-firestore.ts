@@ -128,13 +128,14 @@ export function serviceToPayload(
     duration: s.duration,
     rating: s.rating,
     includes: s.includes,
-    slotsLeft: s.slotsLeft,
-    bookedToday: s.bookedToday,
-    limitedSlots: s.limitedSlots,
-    mostBooked: s.mostBooked,
+    /** Firestore rejects `undefined` — omit or use concrete booleans */
+    limitedSlots: Boolean(s.limitedSlots),
+    mostBooked: Boolean(s.mostBooked),
     active: s.active !== false,
     sortOrder: s.sortOrder ?? 0,
   };
+  if (s.slotsLeft !== undefined) payload.slotsLeft = s.slotsLeft;
+  if (s.bookedToday !== undefined) payload.bookedToday = s.bookedToday;
   const d = (s.detailContent ?? "").trim();
   if (d) payload.detailContent = d;
   if (s.subServices?.length) {

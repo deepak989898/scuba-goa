@@ -6,14 +6,12 @@ import { serviceToPayload } from "@/lib/service-firestore";
 
 function packageToFirestore(p: PackageDoc) {
   const { id: _id, ...rest } = p;
-  return {
+  const row: Record<string, unknown> = {
     name: rest.name,
     price: rest.price,
     duration: rest.duration,
     includes: rest.includes,
     rating: rest.rating,
-    slotsLeft: rest.slotsLeft,
-    bookedToday: rest.bookedToday,
     imageUrl: rest.imageUrl ?? "",
     category: rest.category ?? "",
     isCombo: rest.isCombo ?? false,
@@ -21,6 +19,9 @@ function packageToFirestore(p: PackageDoc) {
     limitedSlots: rest.limitedSlots ?? false,
     active: true,
   };
+  if (rest.slotsLeft !== undefined) row.slotsLeft = rest.slotsLeft;
+  if (rest.bookedToday !== undefined) row.bookedToday = rest.bookedToday;
+  return row;
 }
 
 /**

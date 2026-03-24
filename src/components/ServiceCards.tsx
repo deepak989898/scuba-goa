@@ -18,7 +18,7 @@ export function ServiceCards() {
       <section className="bg-white py-16 sm:py-20" id="services">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="h-10 max-w-md animate-pulse rounded-lg bg-ocean-100" />
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -43,7 +43,7 @@ export function ServiceCards() {
             on WhatsApp anytime.
           </p>
         </div>
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {services.map((s, idx) => {
             const cardImgs = serviceDetailImages(s);
             const multi = cardImgs.filter(Boolean).length > 1;

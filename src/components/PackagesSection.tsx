@@ -30,7 +30,7 @@ export function PackagesSection() {
           </Link>
         </div>
         {loading ? (
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
             {[1, 2, 3].map((k) => (
               <div
                 key={k}
@@ -39,7 +39,7 @@ export function PackagesSection() {
             ))}
           </div>
         ) : (
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
             {packages.map((p, idx) => {
               const cardImage =
                 p.imageUrl?.trim() ||
