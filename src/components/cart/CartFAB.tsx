@@ -42,6 +42,7 @@ export function CartFAB() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState("");
+  const [pickupLocation, setPickupLocation] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [payMode, setPayMode] = useState<"min" | "full">("full");
@@ -63,8 +64,14 @@ export function CartFAB() {
 
   async function pay() {
     setMsg(null);
-    if (!name.trim() || !email.trim() || !phone.trim() || !date) {
-      setMsg("Fill all fields.");
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !phone.trim() ||
+      !date ||
+      !pickupLocation.trim()
+    ) {
+      setMsg("Fill all fields including pickup / address.");
       return;
     }
     if (lines.length === 0) {
@@ -141,6 +148,7 @@ export function CartFAB() {
                   amountPaise: chargePaise,
                   fullAmountPaise,
                   payUnits: itemCount,
+                  pickupLocation: pickupLocation.trim(),
                   cartItems,
                 },
               }),
@@ -386,6 +394,16 @@ export function CartFAB() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                     />
+                    <label className="block text-xs font-medium text-ocean-800">
+                      Pickup / address
+                      <input
+                        className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2 text-sm"
+                        placeholder="Hotel, area, or full address"
+                        value={pickupLocation}
+                        onChange={(e) => setPickupLocation(e.target.value)}
+                        autoComplete="street-address"
+                      />
+                    </label>
                     {minPayPaise < fullAmountPaise ? (
                       <div className="rounded-xl border border-ocean-100 bg-sand/80 p-3 text-xs text-ocean-800">
                         <p className="font-medium text-ocean-900">

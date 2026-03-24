@@ -25,15 +25,6 @@ function HeroButtons() {
   );
 }
 
-function HeroTrustLine() {
-  return (
-    <p className="text-[11px] leading-snug text-white/80 sm:text-sm">
-      Instant WhatsApp confirmations · Razorpay secure pay · 10,000+ happy
-      guests
-    </p>
-  );
-}
-
 export function HeroSection() {
   const { slides } = useHeroSlides();
   const [i, setI] = useState(0);
@@ -58,7 +49,7 @@ export function HeroSection() {
   );
 
   return (
-    <section className="relative min-h-[calc(38vw+32px)] overflow-hidden bg-ocean-900 sm:min-h-[88vh]">
+    <section className="relative min-h-[calc(38vw+47px)] overflow-hidden bg-ocean-900 sm:min-h-[88vh]">
       <div className="absolute inset-0">
         <AnimatePresence mode="wait">
           {current ? (
@@ -75,7 +66,7 @@ export function HeroSection() {
                 alt={current.alt}
                 fill
                 priority
-                className="object-cover"
+                className="object-cover object-center"
                 sizes="100vw"
               />
             </motion.div>
@@ -85,11 +76,10 @@ export function HeroSection() {
       </div>
 
       {/* Mobile: eyebrow top-left, CTAs bottom-left */}
-      <div className="relative z-10 mx-auto flex min-h-[calc(38vw+32px)] max-w-7xl flex-col justify-between px-4 pb-4 pt-3 sm:hidden">
+      <div className="relative z-10 mx-auto flex min-h-[calc(38vw+47px)] max-w-7xl flex-col justify-between px-4 pb-5 pt-3 sm:hidden">
         <div className="self-start">{eyebrow}</div>
-        <div className="self-start space-y-2.5">
+        <div className="self-start">
           <HeroButtons />
-          <HeroTrustLine />
         </div>
       </div>
 
@@ -104,9 +94,6 @@ export function HeroSection() {
           {eyebrow}
           <div className="mt-4 sm:mt-8">
             <HeroButtons />
-          </div>
-          <div className="mt-3 sm:mt-6">
-            <HeroTrustLine />
           </div>
         </motion.div>
       </div>

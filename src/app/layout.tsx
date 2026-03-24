@@ -1,13 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import { Providers } from "@/components/Providers";
-import { CartFAB } from "@/components/cart/CartFAB";
-import { WhatsAppFloat } from "@/components/WhatsAppFloat";
-import { StickyBookBar } from "@/components/StickyBookBar";
-import { AiChatbot } from "@/components/AiChatbot";
+import { SiteChrome } from "@/components/SiteChrome";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 const dm = DM_Sans({
@@ -65,15 +60,7 @@ export default function RootLayout({
     <html lang="en" className={`${dm.variable} ${outfit.variable}`}>
       <body className="min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
         <Providers>
-          <Header />
-          <main className="pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
-            {children}
-          </main>
-          <Footer />
-          <CartFAB />
-          <WhatsAppFloat />
-          <StickyBookBar />
-          <AiChatbot />
+          <SiteChrome>{children}</SiteChrome>
         </Providers>
       </body>
     </html>

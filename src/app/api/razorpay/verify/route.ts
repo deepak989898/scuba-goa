@@ -20,6 +20,7 @@ type BookingBody = Record<string, unknown> & {
   /** People or cart units for minimum calculation. */
   payUnits?: number;
   cartItems?: unknown[];
+  pickupLocation?: string;
 };
 
 export async function POST(req: Request) {
