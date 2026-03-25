@@ -41,6 +41,27 @@ function rupeesFromPaise(paise: unknown): string {
   return `₹${(n / 100).toLocaleString("en-IN")}`;
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Show text in the auxiliary window when WhatsApp redirect cannot run. */
+function writeAuxWindowHtml(w: Window, title: string, bodyHtml: string) {
+  try {
+    w.document.open();
+    w.document.write(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;padding:2rem;max-width:28rem;margin:0 auto;line-height:1.5;color:#0f172a">${bodyHtml}</body></html>`
+    );
+    w.document.close();
+  } catch {
+    /* ignore */
+  }
+}
+
 function buildWhatsappConfirmationMessage(r: Row, billPdfUrl?: string): string {
   const name = String(r.customerName ?? "there");
   const pkg = String(r.packageName ?? "Your activity");
@@ -178,13 +199,21 @@ export default function AdminBookingsPage() {
       return;
     }
 
-    const w = window.open("about:blank", "_blank", "noopener,noreferrer");
+    // Do NOT pass noopener/noreferrer: many browsers return null from window.open()
+    // while still opening a tab, so w.location is never set and the tab stays blank.
+    const w = window.open("", "_blank");
     if (!w) {
       setActionError(
         "Your browser blocked the new tab. Allow pop-ups for this site and try again."
       );
       return;
     }
+
+    writeAuxWindowHtml(
+      w,
+      "WhatsApp",
+      "<p><strong>Preparing bill link…</strong></p><p style=\"font-size:0.875rem;color:#64748b\">You will be redirected to WhatsApp shortly.</p>"
+    );
 
     setWhatsAppLoadingId(r.id);
     try {
@@ -194,7 +223,12 @@ export default function AdminBookingsPage() {
         body: JSON.stringify({ paymentId: r.id }),
       });
       if (!res) {
-        w.close();
+        setActionError("Sign in again to use bill actions.");
+        try {
+          w.close();
+        } catch {
+          /* ignore */
+        }
         return;
       }
       const data = (await res.json().catch(() => null)) as {
@@ -202,18 +236,56 @@ export default function AdminBookingsPage() {
         billUrl?: string;
       } | null;
       if (!res.ok || !data?.billUrl) {
-        w.close();
-        setActionError(data?.error ?? `Could not create bill link (${res.status})`);
+        const err = data?.error ?? `Could not create bill link (${res.status})`;
+        setActionError(err);
+        writeAuxWindowHtml(
+          w,
+          "Bill link",
+          `<p><strong>Could not create bill link</strong></p><p style="font-size:0.875rem">${escapeHtml(err)}</p><p style="font-size:0.875rem;color:#64748b">You can close this tab and check the message on the admin page.</p>`
+        );
         return;
       }
       const message = buildWhatsappConfirmationMessage(r, data.billUrl);
       const wa = customerWhatsappLink(phone, message);
       if (!wa) {
-        w.close();
         setActionError("Invalid phone number for WhatsApp.");
+        try {
+          w.close();
+        } catch {
+          /* ignore */
+        }
         return;
       }
-      w.location.href = wa;
+      try {
+        w.location.assign(wa);
+      } catch {
+        const fallback = window.open(wa, "_blank");
+        if (fallback) {
+          try {
+            w.close();
+          } catch {
+            /* ignore */
+          }
+        } else {
+          setActionError(
+            "Could not open WhatsApp. Copy the bill link from Preview bill or try another browser."
+          );
+          writeAuxWindowHtml(
+            w,
+            "WhatsApp",
+            `<p><strong>Open this link manually</strong></p><p style="word-break:break-all;font-size:0.8rem"><a href="${escapeHtml(wa)}">${escapeHtml(wa)}</a></p>`
+          );
+        }
+      }
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Network error while creating the bill link.";
+      setActionError(msg);
+      writeAuxWindowHtml(
+        w,
+        "Error",
+        `<p><strong>Something went wrong</strong></p><p style="font-size:0.875rem">${escapeHtml(msg)}</p>`
+      );
     } finally {
       setWhatsAppLoadingId(null);
     }
