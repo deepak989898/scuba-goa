@@ -106,7 +106,7 @@ export default function AdminBookingsPage() {
       setActionError("Sign in again to use bill actions.");
       return null;
     }
-    const token = await user.getIdToken();
+    const token = await user.getIdToken(true);
     const headers = new Headers(init?.headers);
     headers.set("Authorization", `Bearer ${token}`);
     return fetch(input, { ...init, headers });
@@ -151,10 +151,19 @@ export default function AdminBookingsPage() {
         return;
       }
 
+      if (buf.byteLength < 100) {
+        setActionError("Bill PDF was empty. Check server logs and FIREBASE_SERVICE_ACCOUNT_KEY.");
+        return;
+      }
+
       const blob = new Blob([buf], { type: "application/pdf" });
       const objectUrl = URL.createObjectURL(blob);
       billPreviewUrlRef.current = objectUrl;
       setBillPreviewUrl(objectUrl);
+    } catch (e) {
+      setActionError(
+        e instanceof Error ? e.message : "Network error while loading the bill."
+      );
     } finally {
       setPreviewLoadingId(null);
     }
@@ -505,14 +514,24 @@ export default function AdminBookingsPage() {
                 </button>
               </div>
             </div>
-            <iframe
-              title="Booking bill PDF"
-              src={billPreviewUrl}
-              className="min-h-0 w-full flex-1 border-0 bg-ocean-50/50"
-            />
+            {/* object/embed: more reliable than iframe for blob: PDFs (Chrome/Safari) */}
+            <object
+              key={billPreviewUrl}
+              data={billPreviewUrl}
+              type="application/pdf"
+              className="min-h-0 min-h-[60vh] w-full flex-1 border-0 bg-ocean-50/50"
+              aria-label="Booking bill PDF"
+            >
+              <embed
+                src={billPreviewUrl}
+                type="application/pdf"
+                className="h-[60vh] w-full"
+                title="Booking bill PDF"
+              />
+            </object>
             <p className="flex-shrink-0 border-t border-ocean-100 px-4 py-2 text-center text-xs text-ocean-600">
-              If the frame is blank, use <strong>Open in new tab</strong> — some
-              browsers block PDFs inside the page.
+              If the preview is blank, use <strong>Open in new tab</strong> or{" "}
+              <strong>Download</strong> — some browsers block inline PDFs.
             </p>
           </div>
         </div>

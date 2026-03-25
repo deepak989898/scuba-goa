@@ -44,7 +44,7 @@ export async function GET(req: Request) {
 
   const filename = `bill-${paymentId.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 48)}.pdf`;
 
-  return new NextResponse(Buffer.from(pdf), {
+  return new NextResponse(new Uint8Array(pdf), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
