@@ -10,8 +10,10 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { getFirebaseStorageClient } from "@/lib/firebase";
 import { docToService, serviceToPayload } from "@/lib/service-firestore";
 import type { ServiceItem, SubServiceItem } from "@/data/services";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 type SubServiceFormRow = {
   subId: string;
@@ -37,6 +39,9 @@ export default function AdminServicesPage() {
   const db = getDb();
   const [list, setList] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingMediaType, setUploadingMediaType] = useState<
+    "posts" | "reels" | "videos" | null
+  >(null);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [subRows, setSubRows] = useState<SubServiceFormRow[]>([]);
@@ -58,6 +63,9 @@ export default function AdminServicesPage() {
     mostBooked: false,
     detailContent: "",
     galleryUrls: "",
+    mediaPosts: "",
+    mediaReels: "",
+    mediaVideos: "",
     active: true,
   };
   const [form, setForm] = useState(empty);
@@ -113,6 +121,9 @@ export default function AdminServicesPage() {
       mostBooked: s.mostBooked ?? false,
       detailContent: s.detailContent ?? "",
       galleryUrls: s.galleryUrls?.join("\n") ?? "",
+      mediaPosts: s.serviceMedia?.posts?.join("\n") ?? "",
+      mediaReels: s.serviceMedia?.reels?.join("\n") ?? "",
+      mediaVideos: s.serviceMedia?.videos?.join("\n") ?? "",
       active: s.active !== false,
     });
     setSubRows(
@@ -215,6 +226,20 @@ export default function AdminServicesPage() {
       sortOrder: Number(form.sortOrder),
       detailContent: form.detailContent.trim() || undefined,
       subServices,
+      serviceMedia: {
+        posts: form.mediaPosts
+          .split(/[\n,]+/)
+          .map((x) => x.trim())
+          .filter(Boolean),
+        reels: form.mediaReels
+          .split(/[\n,]+/)
+          .map((x) => x.trim())
+          .filter(Boolean),
+        videos: form.mediaVideos
+          .split(/[\n,]+/)
+          .map((x) => x.trim())
+          .filter(Boolean),
+      },
     };
     const payload = serviceToPayload(item);
     if (editingSlug && editingSlug !== slug) {
@@ -231,6 +256,59 @@ export default function AdminServicesPage() {
     setSubRows([]);
     setEditingSlug(null);
     await refresh();
+  }
+
+  async function onMediaUpload(
+    mediaType: "posts" | "reels" | "videos",
+    files: FileList | null
+  ) {
+    if (!files || files.length === 0) return;
+    const storage = getFirebaseStorageClient();
+    if (!storage) {
+      setFormError("Firebase Storage not configured.");
+      return;
+    }
+    const slug = form.slug.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!slug) {
+      setFormError("Set service slug first, then upload media.");
+      return;
+    }
+
+    setFormError(null);
+    setUploadingMediaType(mediaType);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of Array.from(files)) {
+        const safeName = file.name.replace(/[^\w.-]+/g, "_");
+        const path = `services/${slug}/${mediaType}/${Date.now()}_${safeName}`;
+        const fileRef = ref(storage, path);
+        await uploadBytes(fileRef, file, {
+          contentType: file.type || undefined,
+        });
+        const url = await getDownloadURL(fileRef);
+        uploadedUrls.push(url);
+      }
+      setForm((prev) => {
+        const key =
+          mediaType === "posts"
+            ? "mediaPosts"
+            : mediaType === "reels"
+              ? "mediaReels"
+              : "mediaVideos";
+        const existing = (prev[key] as string)
+          .split(/[\n,]+/)
+          .map((x) => x.trim())
+          .filter(Boolean);
+        const merged = [...new Set([...existing, ...uploadedUrls])];
+        return { ...prev, [key]: merged.join("\n") };
+      });
+    } catch (e) {
+      setFormError(
+        e instanceof Error ? e.message : "Failed to upload media file(s)."
+      );
+    } finally {
+      setUploadingMediaType(null);
+    }
   }
 
   async function remove(slug: string) {
@@ -392,6 +470,88 @@ export default function AdminServicesPage() {
               placeholder="Shown on /services/your-slug. Leave blank to use the default text. Use a blank line between paragraphs."
             />
           </label>
+          <div className="rounded-xl border border-ocean-100 bg-ocean-50/50 p-4 sm:col-span-2">
+            <p className="text-sm font-semibold text-ocean-900">
+              Detail media tabs (Posts / Reels / Videos)
+            </p>
+            <p className="mt-1 text-xs text-ocean-600">
+              Upload files to Firebase Storage or paste URLs below. These appear on
+              the service detail page bottom section.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <label className="text-sm">
+                Upload post images
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 text-xs"
+                  onChange={(e) => void onMediaUpload("posts", e.target.files)}
+                />
+              </label>
+              <label className="text-sm">
+                Upload reels
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 text-xs"
+                  onChange={(e) => void onMediaUpload("reels", e.target.files)}
+                />
+              </label>
+              <label className="text-sm">
+                Upload videos
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 text-xs"
+                  onChange={(e) => void onMediaUpload("videos", e.target.files)}
+                />
+              </label>
+            </div>
+            {uploadingMediaType ? (
+              <p className="mt-2 text-xs text-ocean-700">
+                Uploading {uploadingMediaType}...
+              </p>
+            ) : null}
+            <label className="mt-3 block text-sm">
+              Post image URLs
+              <textarea
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 font-sans text-sm"
+                value={form.mediaPosts}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, mediaPosts: e.target.value }))
+                }
+                placeholder="One URL per line (images)"
+              />
+            </label>
+            <label className="mt-3 block text-sm">
+              Reels URLs
+              <textarea
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 font-sans text-sm"
+                value={form.mediaReels}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, mediaReels: e.target.value }))
+                }
+                placeholder="One URL per line (short videos/reels)"
+              />
+            </label>
+            <label className="mt-3 block text-sm">
+              Videos URLs
+              <textarea
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 font-sans text-sm"
+                value={form.mediaVideos}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, mediaVideos: e.target.value }))
+                }
+                placeholder="One URL per line (long videos)"
+              />
+            </label>
+          </div>
           <div className="sm:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm font-medium text-ocean-900">

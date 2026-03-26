@@ -21,7 +21,29 @@ export type ServiceFirestorePayload = {
   subServices?: SubServiceItem[];
   /** Extra hero images (detail slider); primary `image` is not repeated here */
   galleryUrls?: string[];
+  serviceMedia?: {
+    posts?: string[];
+    reels?: string[];
+    videos?: string[];
+  };
 };
+
+function parseUrlList(raw: unknown): string[] | undefined {
+  if (Array.isArray(raw)) {
+    const urls = raw
+      .map((x) => String(x).trim())
+      .filter(Boolean);
+    return urls.length ? [...new Set(urls)] : undefined;
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    const urls = raw
+      .split(/[\n,]+/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    return urls.length ? [...new Set(urls)] : undefined;
+  }
+  return undefined;
+}
 
 function parseGalleryUrls(
   raw: unknown,
@@ -93,6 +115,10 @@ export function docToService(
   const subServices = parseSubServices(data.subServices);
   const image = String(data.image ?? "").trim();
   const galleryUrls = parseGalleryUrls(data.galleryUrls, image);
+  const serviceMediaRaw =
+    data.serviceMedia && typeof data.serviceMedia === "object"
+      ? (data.serviceMedia as Record<string, unknown>)
+      : null;
   return {
     slug: docId,
     title,
@@ -114,6 +140,13 @@ export function docToService(
       data.sortOrder !== undefined ? Number(data.sortOrder) : undefined,
     detailContent: detailRaw || undefined,
     subServices,
+    serviceMedia: serviceMediaRaw
+      ? {
+          posts: parseUrlList(serviceMediaRaw.posts),
+          reels: parseUrlList(serviceMediaRaw.reels),
+          videos: parseUrlList(serviceMediaRaw.videos),
+        }
+      : undefined,
   };
 }
 
@@ -167,5 +200,17 @@ export function serviceToPayload(
     if (!dedup.includes(u)) dedup.push(u);
   }
   if (dedup.length) payload.galleryUrls = dedup;
+  const media = s.serviceMedia;
+  if (media) {
+    const posts = parseUrlList(media.posts);
+    const reels = parseUrlList(media.reels);
+    const videos = parseUrlList(media.videos);
+    if (posts?.length || reels?.length || videos?.length) {
+      payload.serviceMedia = {};
+      if (posts?.length) payload.serviceMedia.posts = posts;
+      if (reels?.length) payload.serviceMedia.reels = reels;
+      if (videos?.length) payload.serviceMedia.videos = videos;
+    }
+  }
   return payload;
 }

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ServiceDetailGallery } from "@/components/ServiceDetailGallery";
 import { ServiceDetailSections } from "@/components/ServiceDetailSections";
 import { ServiceSubServicesCart } from "@/components/ServiceSubServicesCart";
+import { ServiceMediaTabs } from "@/components/ServiceMediaTabs";
 import { getServiceBySlugServer } from "@/lib/get-services-server";
 import { serviceDetailImages } from "@/lib/service-images";
 import { fallbackServices } from "@/data/services";
@@ -52,6 +53,7 @@ export default async function ServiceDetailPage({ params }: Props) {
         <div className="mt-10">
           <ServiceDetailActions service={s} />
         </div>
+        <ServiceMediaTabs service={s} />
       </div>
     </article>
   );

@@ -12,6 +12,7 @@ import {
   getSubServiceCartKey,
 } from "@/lib/service-sub-helpers";
 import {
+  encodeServiceBaseOption,
   encodePackageOption,
   encodeServiceSubOption,
   parseBookingOption,
@@ -108,6 +109,22 @@ export function BookingForm() {
             bookedToday: sub.bookedToday ?? s.bookedToday,
           });
         }
+      }
+      if (parsed.kind === "service") {
+        const s = services.find((x) => x.slug === parsed.slug);
+        if (!s) return;
+        if (!Number.isFinite(s.priceFrom) || s.priceFrom <= 0) return;
+        addService({
+          slug: s.slug,
+          title: s.title,
+          priceFrom: s.priceFrom,
+          image: s.image,
+          duration: s.duration,
+          includes: s.includes,
+          rating: s.rating,
+          slotsLeft: s.slotsLeft,
+          bookedToday: s.bookedToday,
+        });
       }
     },
     [packages, services, addPackage, addService]
@@ -334,9 +351,18 @@ export function BookingForm() {
                 ))}
                 {services.map((s) => {
                   const priced = getPricedSubServicesWithIndex(s);
-                  if (!priced.length) return null;
+                  const showMainServiceOption =
+                    priced.length === 0 &&
+                    Number.isFinite(s.priceFrom) &&
+                    s.priceFrom > 0;
                   return (
                     <optgroup key={`svc-${s.slug}`} label={s.title}>
+                      {showMainServiceOption ? (
+                        <option value={encodeServiceBaseOption(s.slug)}>
+                          {s.title} (Main package) — ₹
+                          {s.priceFrom.toLocaleString("en-IN")}
+                        </option>
+                      ) : null}
                       {priced.map(({ sub, index }) => (
                         <option
                           key={`${s.slug}-${getSubServiceCartKey(sub, index)}`}

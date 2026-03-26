@@ -38,6 +38,12 @@ export type ServiceItem = {
   detailContent?: string;
   /** Shown under detail copy on the service detail page */
   subServices?: SubServiceItem[];
+  /** Extra media blocks for detail page tabs */
+  serviceMedia?: {
+    posts?: string[];
+    reels?: string[];
+    videos?: string[];
+  };
 };
 
 const u = (id: string) =>
