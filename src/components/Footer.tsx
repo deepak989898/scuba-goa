@@ -13,6 +13,12 @@ const quick = [
   { href: "/contact", label: "Contact" },
 ];
 
+const legal = [
+  { href: "/privacy-policy", label: "Privacy Policy" },
+  { href: "/refund-cancellation", label: "Refund & Cancellation" },
+  { href: "/terms-and-conditions", label: "Terms & Conditions" },
+];
+
 export function Footer() {
   return (
     <footer className="border-t border-slate-800 bg-slate-950">
@@ -40,6 +46,18 @@ export function Footer() {
             </ul>
           </div>
           <div>
+            <p className="text-sm font-semibold text-slate-100">Legal</p>
+            <ul className="mt-3 space-y-2 text-sm text-slate-300">
+              {legal.map((q) => (
+                <li key={q.href}>
+                  <Link href={q.href} className="hover:text-cyan-300">
+                    {q.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
             <p className="text-sm font-semibold text-slate-100">Contact</p>
             <ul className="mt-3 space-y-2 text-sm text-slate-300">
               <li>Calangute–Baga belt, North Goa</li>
@@ -58,7 +76,7 @@ export function Footer() {
               </li>
             </ul>
           </div>
-          <div>
+          <div className="md:col-span-2 lg:col-span-1">
             <p className="text-sm font-semibold text-slate-100">Location</p>
             <div className="mt-3 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-sm">
               <iframe

@@ -1,23 +1,13 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
-import { getDb } from "@/lib/firebase";
-import { DEMO_TESTIMONIALS } from "@/data/demo-testimonials";
+import { useMemo, useState } from "react";
 
 type Review = {
   id: string;
   authorName: string;
   comment: string;
   rating: number;
+  place: string;
 };
 
 function GuestReviewAvatar({ name }: { name: string }) {
@@ -40,9 +30,6 @@ function GuestReviewAvatar({ name }: { name: string }) {
 }
 
 export function RatingsSection() {
-  const db = getDb();
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
   const [authorName, setAuthorName] = useState("");
   const [comment, setComment] = useState("");
   /** 0 = user has not chosen a rating yet (only empty stars shown). */
@@ -50,55 +37,245 @@ export function RatingsSection() {
   const [hoverStar, setHoverStar] = useState(0);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!db) {
-      setLoading(false);
-      return;
+  function getIstDateKey(d: Date): string {
+    // en-CA gives YYYY-MM-DD
+    return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  }
+
+  function ymdToUTCDate(ymd: string): Date {
+    const [y, m, day] = ymd.split("-").map((x) => Number(x));
+    return new Date(Date.UTC(y, m - 1, day));
+  }
+
+  function hashStringToUint32(s: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
     }
-    (async () => {
-      setLoadError(null);
-      try {
-        const q = query(
-          collection(db, "ratings"),
-          where("approved", "==", true),
-          orderBy("createdAt", "desc"),
-          limit(12)
-        );
-        const snap = await getDocs(q);
-        setReviews(
-          snap.docs.map((d) => {
-            const x = d.data();
-            return {
-              id: d.id,
-              authorName: String(x.authorName ?? ""),
-              comment: String(x.comment ?? ""),
-              rating: Number(x.rating ?? 5),
-            };
-          })
-        );
-      } catch (e: unknown) {
-        setReviews([]);
-        const code =
-          e && typeof e === "object" && "code" in e
-            ? String((e as { code?: string }).code)
-            : "";
-        setLoadError(
-          code === "failed-precondition"
-            ? "Reviews need a Firestore index. Deploy firestore.indexes.json or use the link in the browser console."
-            : "Could not load reviews. Check Firestore rules and try again."
-        );
-      }
-      setLoading(false);
-    })();
-  }, [db]);
+    return h >>> 0;
+  }
 
-  const averageRating = useMemo(() => {
-    if (reviews.length === 0) return null;
-    const sum = reviews.reduce((s, r) => s + r.rating, 0);
-    return Math.round((sum / reviews.length) * 10) / 10;
-  }, [reviews]);
+  function mulberry32(seed: number) {
+    return function () {
+      let t = (seed += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function formatApprovedCount(n: number): string {
+    if (n >= 1000) {
+      return `${(n / 1000).toFixed(1)}k+`.replace(".0k+", "k+");
+    }
+    return `${n}+`;
+  }
+
+  const todayKey = getIstDateKey(new Date());
+
+  const demoModel = useMemo(() => {
+    const firstNames = [
+      "Priya",
+      "Rahul",
+      "Ananya",
+      "Sanjay",
+      "Neha",
+      "Vijay",
+      "Kavya",
+      "Rohit",
+      "Aarav",
+      "Ishita",
+      "Meera",
+      "Ritesh",
+      "Siddharth",
+      "Divya",
+      "Arjun",
+      "Karthik",
+      "Sneha",
+      "Harsh",
+      "Nikita",
+      "Ankit",
+      "Neel",
+      "Riya",
+      "Tara",
+      "Aditi",
+      "Kunal",
+      "Shreya",
+      "Pranav",
+      "Sahil",
+      "Komal",
+      "Mohit",
+      "Pooja",
+      "Chirag",
+      "Garima",
+      "Manish",
+      "Nandini",
+      "Raghav",
+      "Tanya",
+      "Vikram",
+      "Devansh",
+      "Kriti",
+      "Anjali",
+      "Aditya",
+      "Lakshmi",
+      "Farhan",
+      "Imran",
+      "Zoya",
+      "Noor",
+      "Faisal",
+      "Ayesha",
+      "Aman",
+      "Arvind",
+      "Chandan",
+      "Devika",
+      "Kishan",
+      "Pratik",
+      "Rohini",
+      "Yash",
+      "Mehul",
+      "Rashmi",
+      "Deepak",
+      "Pallavi",
+      "Harpreet",
+      "Gurpreet",
+      "Monika",
+      "Varun",
+      "Rohan",
+      "Tarun",
+      "Sonal",
+    ];
+    const lastNames = [
+      "Sharma",
+      "Patel",
+      "Verma",
+      "Singh",
+      "Gupta",
+      "Yadav",
+      "Khan",
+      "Rao",
+      "Nair",
+      "Iyer",
+      "Das",
+      "Bose",
+      "Ghosh",
+      "Kulkarni",
+      "Mehta",
+      "Jain",
+      "Kapoor",
+      "Malhotra",
+      "Sen",
+      "Roy",
+      "Bhattacharya",
+      "Saxena",
+      "Reddy",
+      "Ahmed",
+      "Kumar",
+      "Wadhwa",
+      "Bhat",
+      "Choudhury",
+    ];
+    const places = [
+      "Bangalore",
+      "Mumbai",
+      "Delhi",
+      "Pune",
+      "Hyderabad",
+      "Ahmedabad",
+      "Chennai",
+      "Jaipur",
+      "Lucknow",
+      "Kolkata",
+      "Gurgaon",
+      "Noida",
+      "Coimbatore",
+      "Nagpur",
+      "Indore",
+    ];
+    const services = [
+      "scuba diving",
+      "water sports",
+      "north Goa tour",
+      "south Goa tour",
+      "dudhsagar trip",
+      "dolphin cruise",
+      "jet ski experience",
+      "sunrise activity",
+      "nightlife add-on",
+    ];
+    const templates = [
+      "The safety briefing was clear and the crew handled everything professionally. Our {service} slot felt smooth and fun.",
+      "Pickup was on time, and the whole experience was well-organized. Loved the {service}—great views and great energy.",
+      "Clean gear, friendly staff, and transparent pricing. {service} was worth every minute of our day.",
+      "We were a little nervous at first, but the guide explained everything step-by-step. Fantastic {service}!",
+      "Amazing experience with a calm, confident team. The {service} itinerary was perfect and well-paced.",
+      "Great communication on WhatsApp. The {service} team managed time perfectly and helped us enjoy without stress.",
+      "Super organized from start to finish. {service} delivered exactly what was promised—highly recommended.",
+      "The operator was professional and the crew made sure everyone felt comfortable. Best {service} we booked in Goa.",
+      "Everything felt premium—timing, guidance, and the overall {service} experience.",
+      "Smooth boat ride, helpful guide, and excellent atmosphere. We’d do the {service} again anytime.",
+      "The team was friendly and patient. Our {service} experience was memorable and totally stress-free.",
+      "Great photos, great vibe, and great service. Loved the {service} and the attention to detail.",
+    ];
+
+    // Generate a pool of exactly 100 demo reviews.
+    const pool: Review[] = [];
+    const usedNames = new Set<string>();
+    let i = 0;
+    while (pool.length < 100 && i < 1000) {
+      const first = firstNames[i % firstNames.length] ?? "Guest";
+      const last = lastNames[(i * 7) % lastNames.length] ?? "Kumar";
+      const fullName = `${first} ${last}`;
+      if (usedNames.has(fullName)) {
+        i++;
+        continue;
+      }
+      usedNames.add(fullName);
+      const place = places[(i * 3) % places.length] ?? "India";
+      const service = services[(i * 5) % services.length] ?? "experience";
+      const tpl = templates[i % templates.length] ?? templates[0]!;
+      const comment = tpl.replace("{service}", service);
+      pool.push({
+        id: `demo-pool-${i}`,
+        authorName: fullName.slice(0, 80),
+        place,
+        comment,
+        rating: 4,
+      });
+      i++;
+    }
+
+    // Daily increasing "approved reviews" count with small jitter.
+    const anchorKey = "2026-03-26";
+    const baseCount = 4000; // starts around 4k+
+    const dailyBase = 100;
+    const seed = hashStringToUint32(todayKey + "|reviews");
+    const daysSinceAnchor = Math.max(
+      0,
+      Math.floor((ymdToUTCDate(todayKey).getTime() - ymdToUTCDate(anchorKey).getTime()) / 86400000)
+    );
+    const jitter = (seed % 41) - 20; // -20..+20
+    const approvedCount = baseCount + daysSinceAnchor * dailyBase + jitter;
+
+    const rng = mulberry32(seed);
+    const idx = Array.from({ length: 100 }, (_, k) => k);
+    // Fisher–Yates shuffle with seeded RNG
+    for (let j = idx.length - 1; j > 0; j--) {
+      const r = Math.floor(rng() * (j + 1));
+      [idx[j], idx[r]] = [idx[r], idx[j]];
+    }
+    const visibleReviews = idx.slice(0, 5).map((k) => pool[k]!).filter(Boolean);
+
+    return {
+      todayKey,
+      approvedCount,
+      visibleReviews,
+    };
+  }, [todayKey]);
+
+  const averageRatingFixed = 4.0;
+  const approvedReviewLabel = formatApprovedCount(demoModel.approvedCount);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -145,43 +322,24 @@ export function RatingsSection() {
           Guest reviews
         </h2>
 
-        {loadError ? (
-          <p className="mt-2 text-center text-sm text-amber-800">{loadError}</p>
-        ) : null}
-
-        {db && loading ? (
-          <p className="mt-2 text-center text-xs text-ocean-500">
-            Loading submitted reviews…
-          </p>
-        ) : null}
-
-        {db && !loading && reviews.length > 0 && averageRating != null ? (
+        {demoModel.visibleReviews.length > 0 ? (
           <p className="mt-4 text-center text-sm font-medium text-ocean-800">
-            Average from {reviews.length + 3} approved review
-            {reviews.length + 3 === 1 ? "" : "s"}:{" "}
+            Average from {approvedReviewLabel} approved review
+            {approvedReviewLabel === "1+" ? "" : "s"}:{" "}
             <span className="text-amber-600">
-              ★ {averageRating.toFixed(1)} / 5
+              ★ {averageRatingFixed.toFixed(1)} / 5
             </span>
           </p>
         ) : null}
 
         <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-          {DEMO_TESTIMONIALS.map((d) => (
+          {demoModel.visibleReviews.map((d) => (
             <li
               key={d.id}
               className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
             >
               <div className="flex items-start gap-3">
-                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-ocean-100">
-                  <Image
-                    src={d.img}
-                    alt={d.authorName}
-                    fill
-                    className="object-cover"
-                    sizes="44px"
-                    loading="lazy"
-                  />
-                </div>
+                <GuestReviewAvatar name={d.authorName} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
@@ -205,33 +363,6 @@ export function RatingsSection() {
               </div>
             </li>
           ))}
-          {db
-            ? reviews.map((r) => (
-                <li
-                  key={r.id}
-                  className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
-                >
-                  <div className="flex items-start gap-3">
-                    <GuestReviewAvatar name={r.authorName} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <p className="font-semibold text-ocean-900">
-                          {r.authorName || "Guest"}
-                        </p>
-                        <span className="shrink-0 rounded-full bg-ocean-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ocean-800">
-                          GUEST
-                        </span>
-                      </div>
-                      <p className="mt-1 text-amber-600" aria-hidden>
-                        {"★".repeat(Math.min(5, Math.max(0, r.rating)))}
-                        <span className="sr-only">{r.rating} out of 5</span>
-                      </p>
-                      <p className="mt-2 text-sm text-ocean-800">{r.comment}</p>
-                    </div>
-                  </div>
-                </li>
-              ))
-            : null}
         </ul>
 
         <div className="mx-auto mt-10 max-w-lg sm:mt-12">
