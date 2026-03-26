@@ -274,7 +274,7 @@ export function RatingsSection() {
     };
   }, [todayKey]);
 
-  const averageRatingFixed = 4.0;
+  const averageRatingFixed = 4.6;
   const approvedReviewLabel = formatApprovedCount(demoModel.approvedCount);
 
   async function submit(e: React.FormEvent) {
