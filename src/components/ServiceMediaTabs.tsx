@@ -26,6 +26,7 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
   const [tab, setTab] = useState<TabType>(
     availableTabs[0]?.key ?? "posts"
   );
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
 
   if (availableTabs.length === 0) return null;
 
@@ -56,15 +57,18 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
       {tab === "posts" ? (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {currentList.map((url) => (
-            <a
+            <button
               key={url}
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="block overflow-hidden rounded-xl border border-ocean-100"
+              type="button"
+              onClick={() => setZoomImageUrl(url)}
+              className="block overflow-hidden rounded-xl border border-ocean-100 text-left"
             >
-              <img src={url} alt={service.title} className="h-48 w-full object-cover" />
-            </a>
+              <img
+                src={url}
+                alt={service.title}
+                className="h-48 w-full object-cover transition-transform duration-200 hover:scale-[1.02]"
+              />
+            </button>
           ))}
         </div>
       ) : (
@@ -84,6 +88,30 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
           ))}
         </div>
       )}
+
+      {zoomImageUrl ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setZoomImageUrl(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-ocean-900"
+            onClick={() => setZoomImageUrl(null)}
+          >
+            Close
+          </button>
+          <img
+            src={zoomImageUrl}
+            alt={`${service.title} preview`}
+            className="max-h-[90vh] max-w-[95vw] rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      ) : null}
     </section>
   );
 }
