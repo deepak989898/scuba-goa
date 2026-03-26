@@ -31,6 +31,11 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    match /analyticsSessions/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
     match /ratings/{id} {
       allow read: if resource.data.approved == true
         || (request.auth != null

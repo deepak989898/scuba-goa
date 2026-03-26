@@ -5,6 +5,19 @@ import { parseRequestDevice } from "@/lib/clientDevice";
 
 const PATH_MAX = 512;
 const SESSION_MAX = 128;
+const EVENT_TYPE_MAX = 16;
+const PAGE_LABEL_MAX = 256;
+
+type TrackEventType = "view" | "leave" | "heartbeat";
+
+function isTrackEventType(v: string): v is TrackEventType {
+  return v === "view" || v === "leave" || v === "heartbeat";
+}
+
+function toFiniteNumber(raw: unknown): number | null {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return null;
+  return raw;
+}
 
 export async function POST(req: Request) {
   const db = getAdminDb();
@@ -12,7 +25,15 @@ export async function POST(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
-  let body: { path?: string; sessionId?: string };
+  let body: {
+    path?: string;
+    sessionId?: string;
+    eventType?: string;
+    pageLabel?: string;
+    enteredAtMs?: number;
+    leftAtMs?: number;
+    durationMs?: number;
+  };
   try {
     body = await req.json();
   } catch {
@@ -33,17 +54,59 @@ export async function POST(req: Request) {
 
   const path = pathRaw.slice(0, PATH_MAX);
   const sessionId = sessionRaw.slice(0, SESSION_MAX);
+  const eventTypeRaw =
+    typeof body.eventType === "string" ? body.eventType : "view";
+  const eventType = eventTypeRaw.slice(0, EVENT_TYPE_MAX);
+  if (!isTrackEventType(eventType)) {
+    return NextResponse.json({ error: "Invalid eventType" }, { status: 400 });
+  }
+
+  const pageLabel =
+    typeof body.pageLabel === "string"
+      ? body.pageLabel.slice(0, PAGE_LABEL_MAX)
+      : "";
+  const enteredAtMs = toFiniteNumber(body.enteredAtMs);
+  const leftAtMs = toFiniteNumber(body.leftAtMs);
+  const durationMsRaw = toFiniteNumber(body.durationMs);
+  const durationMs =
+    durationMsRaw === null
+      ? null
+      : Math.max(0, Math.min(Math.round(durationMsRaw), 1000 * 60 * 60 * 6));
   const { category, label, uaSnippet } = parseRequestDevice(req.headers);
 
   try {
     await db.collection("pageViews").add({
       path,
       sessionId,
+      eventType,
+      pageLabel,
+      enteredAtMs,
+      leftAtMs,
+      durationMs,
       deviceCategory: category,
       deviceLabel: label,
       uaSnippet,
       createdAt: FieldValue.serverTimestamp(),
     });
+
+    await db
+      .collection("analyticsSessions")
+      .doc(sessionId || "anon")
+      .set(
+        {
+          sessionId: sessionId || "anon",
+          lastPath: path,
+          pageLabel,
+          isActive: eventType !== "leave",
+          lastEventType: eventType,
+          lastSeenAt: FieldValue.serverTimestamp(),
+          firstSeenAt: FieldValue.serverTimestamp(),
+          deviceCategory: category,
+          deviceLabel: label,
+          uaSnippet,
+        },
+        { merge: true }
+      );
   } catch (e) {
     console.error("pageViews write failed", e);
     return NextResponse.json({ error: "Track failed" }, { status: 500 });

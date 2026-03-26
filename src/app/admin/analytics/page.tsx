@@ -16,10 +16,28 @@ type Row = {
   id: string;
   path: string;
   sessionId: string;
+  eventType: "view" | "leave" | "heartbeat" | "";
+  pageLabel: string;
+  enteredAtMs: number | null;
+  leftAtMs: number | null;
+  durationMs: number | null;
   deviceCategory: DeviceCategory | "";
   deviceLabel: string;
   uaSnippet: string;
   createdAt: unknown;
+};
+
+type SessionDoc = {
+  id: string;
+  sessionId: string;
+  lastPath: string;
+  pageLabel: string;
+  isActive: boolean;
+  lastEventType: string;
+  deviceCategory: DeviceCategory | "";
+  deviceLabel: string;
+  uaSnippet: string;
+  lastSeenAt: unknown;
 };
 
 function normalizeDeviceCategory(raw: string): DeviceCategory | "" {
@@ -46,6 +64,10 @@ function toTimestamp(v: unknown): Timestamp | null {
   return null;
 }
 
+function toNumberOrNull(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
 function istCalendarDate(ts: Timestamp): string {
   return ts.toDate().toLocaleDateString("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -57,14 +79,31 @@ function formatTs(v: unknown): string {
   if (!t) return String(v ?? "—");
   return t.toDate().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
+    hour12: true,
   });
 }
 
-const SAMPLE_LIMIT = 2500;
+function formatMs(ms: number | null): string {
+  if (!ms || ms <= 0) return "—";
+  const totalSec = Math.round(ms / 1000);
+  const sec = totalSec % 60;
+  const totalMin = Math.floor(totalSec / 60);
+  const min = totalMin % 60;
+  const hr = Math.floor(totalMin / 60);
+  if (hr > 0) return `${hr}h ${min}m ${sec}s`;
+  if (min > 0) return `${min}m ${sec}s`;
+  return `${sec}s`;
+}
+
+const SAMPLE_LIMIT = 5000;
+const SESSION_LIMIT = 2000;
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 
 export default function AdminAnalyticsPage() {
   const db = getDb();
   const [rows, setRows] = useState<Row[]>([]);
+  const [sessions, setSessions] = useState<SessionDoc[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -77,19 +116,37 @@ export default function AdminAnalyticsPage() {
     (async () => {
       setLoadError(null);
       try {
-        const q = query(
+        const viewsQuery = query(
           collection(db, "pageViews"),
           orderBy("createdAt", "desc"),
           limit(SAMPLE_LIMIT)
         );
-        const snap = await getDocs(q);
+        const sessionsQuery = query(
+          collection(db, "analyticsSessions"),
+          orderBy("lastSeenAt", "desc"),
+          limit(SESSION_LIMIT)
+        );
+        const [viewsSnap, sessionsSnap] = await Promise.all([
+          getDocs(viewsQuery),
+          getDocs(sessionsQuery),
+        ]);
         if (cancelled) return;
-        const list: Row[] = snap.docs.map((d) => {
+        const list: Row[] = viewsSnap.docs.map((d) => {
           const data = d.data();
           return {
             id: d.id,
             path: String(data.path ?? ""),
             sessionId: String(data.sessionId ?? ""),
+            eventType:
+              data.eventType === "view" ||
+              data.eventType === "leave" ||
+              data.eventType === "heartbeat"
+                ? data.eventType
+                : "",
+            pageLabel: String(data.pageLabel ?? ""),
+            enteredAtMs: toNumberOrNull(data.enteredAtMs),
+            leftAtMs: toNumberOrNull(data.leftAtMs),
+            durationMs: toNumberOrNull(data.durationMs),
             deviceCategory: normalizeDeviceCategory(
               String(data.deviceCategory ?? "")
             ),
@@ -98,7 +155,25 @@ export default function AdminAnalyticsPage() {
             createdAt: data.createdAt,
           };
         });
+        const sessionList: SessionDoc[] = sessionsSnap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            sessionId: String(data.sessionId ?? d.id ?? ""),
+            lastPath: String(data.lastPath ?? ""),
+            pageLabel: String(data.pageLabel ?? ""),
+            isActive: Boolean(data.isActive),
+            lastEventType: String(data.lastEventType ?? ""),
+            deviceCategory: normalizeDeviceCategory(
+              String(data.deviceCategory ?? "")
+            ),
+            deviceLabel: String(data.deviceLabel ?? ""),
+            uaSnippet: String(data.uaSnippet ?? ""),
+            lastSeenAt: data.lastSeenAt,
+          };
+        });
         setRows(list);
+        setSessions(sessionList);
       } catch (e: unknown) {
         if (cancelled) return;
         const msg =
@@ -107,6 +182,7 @@ export default function AdminAnalyticsPage() {
             : String(e);
         setLoadError(msg);
         setRows([]);
+        setSessions([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -123,14 +199,14 @@ export default function AdminAnalyticsPage() {
   );
 
   const stats = useMemo(() => {
-    const sessions = new Set<string>();
+    const sessionIdsSet = new Set<string>();
     const byDay = new Map<string, number>();
 
     const todayRows: Row[] = [];
     for (const r of rows) {
       const ts = toTimestamp(r.createdAt);
       if (!ts) continue;
-      if (r.sessionId) sessions.add(r.sessionId);
+      if (r.sessionId) sessionIdsSet.add(r.sessionId);
       const day = istCalendarDate(ts);
       byDay.set(day, (byDay.get(day) ?? 0) + 1);
       if (day === todayIstYmd) todayRows.push(r);
@@ -182,16 +258,74 @@ export default function AdminAnalyticsPage() {
       sampleDevicePageViews[key] = (sampleDevicePageViews[key] ?? 0) + 1;
     }
 
+    const now = Date.now();
+    const onlineNow = sessions.filter((s) => {
+      const ts = toTimestamp(s.lastSeenAt);
+      if (!ts) return false;
+      return now - ts.toMillis() <= ONLINE_WINDOW_MS && s.lastEventType !== "leave";
+    });
+
+    const uniqueTodaySessionIds = new Set(
+      todayRows.map((r) => r.sessionId).filter(Boolean)
+    );
+    const todayVisitorSummaries = [...uniqueTodaySessionIds].map((sid) => {
+      const sessionRows = todayRows
+        .filter((r) => r.sessionId === sid)
+        .sort((a, b) => {
+          const ta = toTimestamp(a.createdAt)?.toMillis() ?? 0;
+          const tb = toTimestamp(b.createdAt)?.toMillis() ?? 0;
+          return ta - tb;
+        });
+      const first = sessionRows[0];
+      const last = sessionRows[sessionRows.length - 1];
+      const lastSeen = toTimestamp(last?.createdAt)?.toMillis() ?? 0;
+      const totalDurationMs = sessionRows
+        .filter((r) => r.eventType === "leave")
+        .reduce((acc, r) => acc + (r.durationMs ?? 0), 0);
+      return {
+        sessionId: sid,
+        firstSeen: first?.createdAt,
+        lastSeen,
+        lastPath: last?.path ?? "—",
+        pageEvents: sessionRows.length,
+        totalDurationMs,
+        deviceCategory: first?.deviceCategory || "unknown",
+        deviceLabel: first?.deviceLabel || "",
+      };
+    });
+    todayVisitorSummaries.sort((a, b) => b.lastSeen - a.lastSeen);
+
     return {
       pageViews: rows.length,
-      sessionsApprox: sessions.size,
+      sessionsApprox: sessionIdsSet.size,
       byDay: dayList.slice(0, 14),
       todayPageViews,
       todaySessions,
+      onlineNow: onlineNow.length,
+      onlineSessions: onlineNow,
+      todayVisitorSummaries,
       todayDeviceVisitors,
       sampleDevicePageViews,
     };
-  }, [rows, todayIstYmd]);
+  }, [rows, sessions, todayIstYmd]);
+
+  useEffect(() => {
+    if (!selectedSessionId && stats.todayVisitorSummaries.length > 0) {
+      setSelectedSessionId(stats.todayVisitorSummaries[0].sessionId);
+    }
+  }, [selectedSessionId, stats.todayVisitorSummaries]);
+
+  const selectedTimeline = useMemo(() => {
+    if (!selectedSessionId) return [];
+    const sessionRows = rows
+      .filter((r) => r.sessionId === selectedSessionId)
+      .sort((a, b) => {
+        const ta = toTimestamp(a.createdAt)?.toMillis() ?? 0;
+        const tb = toTimestamp(b.createdAt)?.toMillis() ?? 0;
+        return ta - tb;
+      });
+    return sessionRows;
+  }, [rows, selectedSessionId]);
 
   if (!db) {
     return (
@@ -209,9 +343,9 @@ export default function AdminAnalyticsPage() {
         Analytics
       </h1>
       <p className="mt-2 text-sm text-ocean-600">
-        Visitor activity from the public site. Times are <strong>IST</strong>.
-        Numbers use the latest {SAMPLE_LIMIT.toLocaleString("en-IN")} events
-        (very high traffic can make “today” a slight undercount).
+        Visitor activity from the public site. Times are <strong>IST</strong> in
+        12-hour AM/PM format. Numbers use the latest{" "}
+        {SAMPLE_LIMIT.toLocaleString("en-IN")} events.
       </p>
 
       {loadError ? (
@@ -238,6 +372,17 @@ export default function AdminAnalyticsPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
                 <p className="text-xs font-medium text-ocean-500">
+                  Users online now
+                </p>
+                <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
+                  {stats.onlineNow}
+                </p>
+                <p className="mt-1 text-xs text-ocean-600">
+                  Active in last 2 minutes
+                </p>
+              </div>
+              <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-medium text-ocean-500">
                   Unique visitors (sessions)
                 </p>
                 <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
@@ -258,11 +403,11 @@ export default function AdminAnalyticsPage() {
                   Total tracked page loads today
                 </p>
               </div>
-              <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-2">
+              <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-1">
                 <p className="text-xs font-medium text-ocean-500">
                   Today’s visitors by device type
                 </p>
-                <ul className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                <ul className="mt-3 grid grid-cols-2 gap-2 text-sm">
                   {(
                     [
                       ["Phone / mobile", stats.todayDeviceVisitors.mobile],
@@ -282,6 +427,39 @@ export default function AdminAnalyticsPage() {
                 </ul>
               </div>
             </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-4 shadow-sm">
+            <h2 className="font-display text-lg font-semibold text-ocean-900">
+              Users online now
+            </h2>
+            {stats.onlineSessions.length === 0 ? (
+              <p className="mt-3 text-sm text-ocean-600">No users online now.</p>
+            ) : (
+              <ul className="mt-3 space-y-2 text-sm">
+                {stats.onlineSessions.map((s) => (
+                  <li
+                    key={s.id}
+                    className="rounded-xl border border-ocean-100 bg-sand/40 px-3 py-2 text-ocean-900"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                        online
+                      </span>
+                      <span className="font-mono text-xs text-ocean-600">
+                        {s.sessionId.slice(0, 12)}…
+                      </span>
+                      <span className="text-xs text-ocean-500">
+                        last seen {formatTs(s.lastSeenAt)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm">
+                      {s.lastPath || "—"} {s.pageLabel ? `(${s.pageLabel})` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -349,13 +527,96 @@ export default function AdminAnalyticsPage() {
             </div>
           ) : null}
 
-          <div className="mt-10">
+          <div className="mt-10 rounded-2xl border border-ocean-100 bg-white p-4 shadow-sm">
             <h2 className="font-display text-lg font-semibold text-ocean-900">
-              Recent activity
+              Today visitor list (click to inspect timeline)
+            </h2>
+            {stats.todayVisitorSummaries.length === 0 ? (
+              <p className="mt-4 text-ocean-600">No visitors recorded today.</p>
+            ) : (
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <ul className="max-h-[30rem] space-y-2 overflow-y-auto text-sm">
+                  {stats.todayVisitorSummaries.map((s) => (
+                    <li key={s.sessionId}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSessionId(s.sessionId)}
+                        className={`w-full rounded-xl border px-3 py-2 text-left ${
+                          selectedSessionId === s.sessionId
+                            ? "border-ocean-300 bg-ocean-50"
+                            : "border-ocean-100 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-xs text-ocean-600">
+                            {s.sessionId.slice(0, 12)}…
+                          </span>
+                          <span className="text-xs text-ocean-500">
+                            {formatTs(s.firstSeen)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-ocean-900">
+                          Last page: {s.lastPath}
+                        </p>
+                        <p className="mt-1 text-xs text-ocean-600">
+                          Events: {s.pageEvents} · Time on site:{" "}
+                          {formatMs(s.totalDurationMs)} · Device:{" "}
+                          {s.deviceCategory || "unknown"}
+                        </p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="rounded-xl border border-ocean-100 bg-sand/30 p-3">
+                  <h3 className="font-semibold text-ocean-900">
+                    Timeline for {selectedSessionId.slice(0, 12)}…
+                  </h3>
+                  {selectedTimeline.length === 0 ? (
+                    <p className="mt-3 text-sm text-ocean-600">
+                      No events for this visitor.
+                    </p>
+                  ) : (
+                    <ul className="mt-3 max-h-[27rem] space-y-2 overflow-y-auto text-sm">
+                      {selectedTimeline.map((r) => (
+                        <li
+                          key={r.id}
+                          className="rounded-lg border border-ocean-100 bg-white px-3 py-2"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs text-ocean-600">
+                              {formatTs(r.createdAt)}
+                            </span>
+                            <span className="rounded-md bg-ocean-100 px-2 py-0.5 text-xs font-semibold text-ocean-900">
+                              {r.eventType || "view"}
+                            </span>
+                            {r.durationMs ? (
+                              <span className="text-xs text-ocean-700">
+                                stayed {formatMs(r.durationMs)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 font-medium text-ocean-900">
+                            {r.path || "—"} {r.pageLabel ? `(${r.pageLabel})` : ""}
+                          </p>
+                          <p className="mt-1 text-xs text-ocean-600">
+                            device: {r.deviceCategory || "unknown"} {r.deviceLabel}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8">
+            <h2 className="font-display text-lg font-semibold text-ocean-900">
+              Recent raw activity events
             </h2>
             {rows.length === 0 ? (
               <p className="mt-4 text-ocean-600">
-                No page views yet. Deploy with Admin SDK env and browse the site.
+                No page events yet. Deploy with Admin SDK env and browse the site.
               </p>
             ) : (
               <ul className="mt-4 max-h-[32rem] space-y-2 overflow-y-auto text-sm">
@@ -367,6 +628,10 @@ export default function AdminAnalyticsPage() {
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                       <span className="font-mono text-xs text-ocean-600">
                         {formatTs(r.createdAt)}
+                      </span>
+                      <span className="text-ocean-300">·</span>
+                      <span className="rounded bg-ocean-100 px-2 py-0.5 text-[10px] font-semibold text-ocean-900">
+                        {r.eventType || "view"}
                       </span>
                       <span className="text-ocean-300">·</span>
                       <span className="font-medium">{r.path}</span>
@@ -381,6 +646,11 @@ export default function AdminAnalyticsPage() {
                       <span className="text-ocean-500">
                         session {r.sessionId.slice(0, 10)}…
                       </span>
+                      {r.durationMs ? (
+                        <span className="text-ocean-500">
+                          time {formatMs(r.durationMs)}
+                        </span>
+                      ) : null}
                     </div>
                     {r.uaSnippet ? (
                       <p
