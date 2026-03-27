@@ -10,6 +10,99 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "best-time-for-scuba-diving-in-goa",
+    title: "Best Time for Scuba Diving in Goa",
+    excerpt:
+      "Season-by-season guide for visibility, sea comfort, crowd levels, and how to pick the right dive slot in Goa.",
+    date: "2026-03-27",
+    readTime: "7 min",
+    keywords: [
+      "best time for scuba diving in Goa",
+      "Goa diving season",
+      "scuba visibility Goa",
+    ],
+    content: `## Overview
+
+If you are planning your first underwater experience, timing makes a big difference. In Goa, sea conditions, crowd levels, and operator schedules can change by month, so choosing the right window helps you get a smoother and safer session.
+
+## Best season window
+
+For most travelers, the strongest period for beginner-friendly scuba slots is the non-monsoon season, when sea movement is more manageable and operators can run regular departures. Morning slots usually feel better for first-time guests because the sea is often calmer and the day remains open for rest or other activities.
+
+## What to check before booking
+
+- Expected reporting time and total trip duration
+- What is included: briefing, equipment, photos/video, and transfer details
+- Weather reschedule policy and communication channel (usually WhatsApp)
+
+## Practical tip
+
+Book your slot at least a few days in advance during holiday periods. Confirm pickup timing the evening before your activity so there are no delays on the dive day.`,
+  },
+  {
+    slug: "is-scuba-diving-safe",
+    title: "Is Scuba Diving Safe?",
+    excerpt:
+      "A realistic beginner guide to scuba safety, instructor support, pre-dive training, and what responsible operators do.",
+    date: "2026-03-27",
+    readTime: "6 min",
+    keywords: [
+      "is scuba diving safe",
+      "scuba diving safety Goa",
+      "beginner scuba guide",
+    ],
+    content: `## Short answer
+
+Yes, scuba diving is generally safe when you go with trained professionals, follow instructions, and complete the pre-dive briefing properly. Most first-time Goa dive sessions are designed specifically for beginners.
+
+## Why safety works
+
+You are not left alone underwater. Certified instructors guide the activity step-by-step: breathing practice, hand signals, ear equalizing guidance, and controlled movement. Good operators also keep conservative depth and small group management for first-timers.
+
+## Your role as a guest
+
+- Listen carefully during training
+- Report any medical concerns honestly
+- Stay calm and communicate through hand signals
+- Do not rush descent or ascent
+
+## How to choose a safe operator
+
+Ask whether they provide structured briefing, checked equipment, and clear emergency protocols. Also verify cancellation or rescheduling policy for rough weather. Responsible operators prioritize safety over forcing a session in poor conditions.`,
+  },
+  {
+    slug: "scuba-diving-cost-in-goa",
+    title: "Scuba Diving Cost in Goa",
+    excerpt:
+      "Understand real scuba pricing in Goa: what affects cost, what should be included, and how to compare packages fairly.",
+    date: "2026-03-27",
+    readTime: "7 min",
+    keywords: [
+      "scuba diving cost in Goa",
+      "Goa scuba package price",
+      "scuba Goa booking",
+    ],
+    content: `## Why prices vary
+
+Scuba diving cost in Goa depends on operator standards, trip format, and inclusions. A low headline price can look attractive, but final value depends on what is actually covered.
+
+## Common factors affecting price
+
+- Boat transfer quality and distance
+- Instructor ratio and session structure
+- Equipment quality and maintenance
+- Included media (photos/videos)
+- Pickup coordination and support services
+
+## Compare packages the smart way
+
+Before paying, ask for the complete inclusion list in writing. Confirm if taxes, media, and transfer are included. Check reporting time, expected session duration, and whether there are hidden add-ons.
+
+## Better booking strategy
+
+Choose transparent packages from verified operators instead of only chasing the cheapest number. A clear itinerary, proper briefing, and reliable communication usually deliver a better overall experience and fewer surprises.`,
+  },
+  {
     slug: "best-scuba-diving-in-goa",
     title: "Best Scuba Diving in Goa: Sites, Safety & What to Expect",
     excerpt:

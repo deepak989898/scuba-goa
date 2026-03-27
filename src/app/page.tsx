@@ -9,6 +9,7 @@ import { ComboOffers } from "@/components/ComboOffers";
 import { GallerySection } from "@/components/GallerySection";
 import { BlogPreview } from "@/components/BlogPreview";
 import { RatingsSection } from "@/components/RatingsSection";
+import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
 import { SITE_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -41,6 +42,7 @@ export default function HomePage() {
       <ServiceCards />
       <PackagesSection />
       <TrustSection />
+      <HomeScubaInfoSection />
       <RatingsSection />
       <ComboOffers />
       <GallerySection />
