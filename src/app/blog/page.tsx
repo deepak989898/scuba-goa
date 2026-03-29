@@ -3,9 +3,22 @@ import Link from "next/link";
 import { blogPosts } from "@/data/blog-posts";
 
 export const metadata: Metadata = {
-  title: "Travel Blog",
+  title: "Goa Travel & Scuba Blog | Book Scuba Goa",
   description:
-    "Guides for scuba diving Goa, cheap water sports Goa, Dudhsagar trips, and Goa tour packages.",
+    "Long-form guides: best time to scuba dive in Goa, safety, pricing, water sports without hidden fees, Dudhsagar, North/South tours, nightlife, and family itineraries—with FAQs and booking links.",
+  keywords: [
+    "scuba diving Goa blog",
+    "Goa travel guide",
+    "water sports Goa tips",
+    "Dudhsagar trip planning",
+    "Goa monsoon travel",
+  ],
+  openGraph: {
+    title: "Goa Travel & Scuba Blog",
+    description:
+      "Authority-level guides for diving, tours, and activities in Goa—with FAQs and direct booking links.",
+    type: "website",
+  },
 };
 
 export default function BlogIndexPage() {
