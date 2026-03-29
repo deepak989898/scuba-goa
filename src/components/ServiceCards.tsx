@@ -56,7 +56,7 @@ export function ServiceCards() {
                 >
                   <span className="sr-only">{s.title}</span>
                 </Link>
-                <div className="relative z-[1] flex flex-1 flex-col">
+                <div className="relative z-[1] flex flex-1 flex-col pointer-events-none">
                   <div className="pointer-events-none shrink-0 overflow-hidden rounded-t-2xl">
                     {multi ? (
                       <ServiceCardImageSlider
@@ -101,11 +101,13 @@ export function ServiceCards() {
                       From ₹{s.priceFrom.toLocaleString("en-IN")}+
                     </p>
                   </div>
-                  <div className="relative z-[2] mt-auto flex flex-wrap gap-1 px-2.5 pb-2.5 sm:mt-0 sm:gap-2 sm:px-4 sm:pb-4">
-                    <ServiceCardAddToCart service={s} size="sm" />
+                  <div className="relative z-[2] mt-auto flex flex-wrap gap-1 px-2.5 pb-2.5 pointer-events-none sm:mt-0 sm:gap-2 sm:px-4 sm:pb-4">
+                    <span className="pointer-events-auto inline-flex">
+                      <ServiceCardAddToCart service={s} size="sm" />
+                    </span>
                     <Link
                       href={`/services/${s.slug}`}
-                      className="min-h-8 min-w-8 rounded-full border border-ocean-200 bg-sand px-2 py-1 text-[10px] font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:min-w-11 sm:px-3 sm:py-2 sm:text-xs"
+                      className="pointer-events-auto min-h-8 min-w-8 rounded-full border border-ocean-200 bg-sand px-2 py-1 text-[10px] font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:min-w-11 sm:px-3 sm:py-2 sm:text-xs"
                     >
                       Details
                     </Link>
