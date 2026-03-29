@@ -6,6 +6,28 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useHomeGallery } from "@/hooks/useHomeGallery";
 import type { HomeGalleryItem } from "@/lib/home-gallery-default";
 
+/** Helps some browsers show a first frame with preload="metadata" only */
+function videoSrcForThumbnailFrame(url: string) {
+  const t = url.trim();
+  if (!t || t.includes("#")) return t;
+  return `${t}#t=0.001`;
+}
+
+/** When admin did not set posterUrl, show a frame from the video file */
+function AutoVideoThumbnail({ src, label }: { src: string; label: string }) {
+  return (
+    <video
+      src={videoSrcForThumbnailFrame(src)}
+      muted
+      playsInline
+      preload="metadata"
+      className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      aria-hidden
+      title={label}
+    />
+  );
+}
+
 function Thumbnail({
   item,
   active,
@@ -16,7 +38,7 @@ function Thumbnail({
   onSelect: () => void;
 }) {
   const isVideo = item.type === "video";
-  const thumbSrc = isVideo ? item.posterUrl?.trim() : item.mediaUrl;
+  const adminPoster = isVideo ? item.posterUrl?.trim() : "";
 
   return (
     <button
@@ -26,9 +48,18 @@ function Thumbnail({
         active ? "ring-ocean-500" : "hover:ring-ocean-200"
       }`}
     >
-      {thumbSrc ? (
+      {!isVideo ? (
         <CmsRemoteImage
-          src={thumbSrc}
+          src={item.mediaUrl}
+          alt={item.alt}
+          fill
+          className="object-cover"
+          sizes="150px"
+          loading="lazy"
+        />
+      ) : adminPoster ? (
+        <CmsRemoteImage
+          src={adminPoster}
           alt={item.alt}
           fill
           className="object-cover"
@@ -36,15 +67,18 @@ function Thumbnail({
           loading="lazy"
         />
       ) : (
-        <div
-          className="absolute inset-0 flex items-center justify-center bg-ocean-800/90 text-white"
-          aria-hidden
-        >
-          <span className="text-2xl">▶</span>
-        </div>
+        <>
+          <AutoVideoThumbnail src={item.mediaUrl} label={item.alt} />
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25 text-white"
+            aria-hidden
+          >
+            <span className="text-2xl drop-shadow-md">▶</span>
+          </div>
+        </>
       )}
       {isVideo ? (
-        <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+        <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
           Reel
         </span>
       ) : null}
@@ -61,6 +95,13 @@ export function GallerySection() {
   }, [items.length]);
 
   const current = items[active];
+  const mainVideoPoster = current?.type === "video" ? current.posterUrl?.trim() : "";
+  const mainVideoSrc =
+    current?.type === "video"
+      ? mainVideoPoster
+        ? current.mediaUrl.trim()
+        : videoSrcForThumbnailFrame(current.mediaUrl)
+      : "";
 
   return (
     <section className="bg-sand py-16 sm:py-20" id="gallery">
@@ -88,10 +129,10 @@ export function GallerySection() {
                 >
                   {current.type === "video" ? (
                     <video
-                      key={current.mediaUrl}
+                      key={`${current.mediaUrl}-${mainVideoPoster || "auto-thumb"}`}
                       className="h-full w-full object-cover"
-                      src={current.mediaUrl}
-                      poster={current.posterUrl?.trim() || undefined}
+                      src={mainVideoSrc}
+                      poster={mainVideoPoster || undefined}
                       controls
                       playsInline
                       preload="metadata"

@@ -13,6 +13,11 @@ type Props = {
   sizes: string;
   /** e.g. aspect-[3/2] (home cards) or aspect-[56/37] (/services grid) */
   aspectClass?: string;
+  /**
+   * When true, slides are not hit-targets—clicks pass through to a parent overlay link.
+   * Prev/next/dot controls keep pointer events so the slider stays usable.
+   */
+  passthroughClicks?: boolean;
 };
 
 export function ServiceCardImageSlider({
@@ -22,6 +27,7 @@ export function ServiceCardImageSlider({
   limitedSlots,
   sizes,
   aspectClass = "aspect-[4/3]",
+  passthroughClicks = false,
 }: Props) {
   const list = useMemo(() => {
     const slides = images.map((u) => u.trim()).filter(Boolean);
@@ -60,7 +66,13 @@ export function ServiceCardImageSlider({
   }, []);
 
   return (
-    <div className={`relative ${aspectClass} overflow-hidden`}>
+    <div
+      className={`relative ${aspectClass} overflow-hidden ${
+        passthroughClicks
+          ? "pointer-events-none [&_*]:pointer-events-none [&_button]:pointer-events-auto"
+          : ""
+      }`}
+    >
       {list.map((src, idx) => (
         <div
           key={`${idx}-${src.slice(0, 32)}`}
