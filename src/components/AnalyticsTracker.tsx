@@ -10,16 +10,37 @@ const HEARTBEAT_MS = 30_000;
 
 type EventType = "view" | "leave" | "heartbeat";
 
-function track(payload: {
-  path: string;
-  sessionId: string;
-  eventType: EventType;
-  pageLabel?: string;
-  enteredAtMs?: number;
-  leftAtMs?: number;
-  durationMs?: number;
-}) {
-  const body = JSON.stringify(payload);
+type VisitState = { path: string; enteredAtMs: number; pageLabel: string };
+
+function clientContextPayload() {
+  if (typeof window === "undefined") return {};
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return {
+      screenWidth: window.screen?.width,
+      screenHeight: window.screen?.height,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      language: navigator.language?.slice(0, 48),
+      timeZone: timeZone?.slice(0, 80),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function track(
+  payload: {
+    path: string;
+    sessionId: string;
+    eventType: EventType;
+    pageLabel?: string;
+    enteredAtMs?: number;
+    leftAtMs?: number;
+    durationMs?: number;
+  } & ReturnType<typeof clientContextPayload>
+) {
+  const body = JSON.stringify({ ...clientContextPayload(), ...payload });
   if (
     payload.eventType === "leave" &&
     typeof navigator !== "undefined" &&
@@ -56,19 +77,20 @@ function getSessionId(): string {
 
 export function AnalyticsTracker() {
   const pathname = usePathname() ?? "/";
-  const visitRef = useRef<{ path: string; enteredAtMs: number } | null>(null);
+  const visitRef = useRef<VisitState | null>(null);
 
   useEffect(() => {
     if (!pathname.startsWith("/") || pathname.startsWith("/admin")) return;
 
     const key = pathname || "/";
     const now = Date.now();
-    const prev = lastTrackAt.get(key) ?? 0;
-    if (now - prev < 2500) return;
+    const prevDedupe = lastTrackAt.get(key) ?? 0;
+    if (now - prevDedupe < 2500) return;
     lastTrackAt.set(key, now);
 
     const sessionId = getSessionId();
-    const pageLabel = typeof document !== "undefined" ? document.title : "";
+    const pageLabel =
+      typeof document !== "undefined" ? document.title.trim() : "";
 
     const prevVisit = visitRef.current;
     if (prevVisit && prevVisit.path !== key) {
@@ -77,18 +99,25 @@ export function AnalyticsTracker() {
         path: prevVisit.path,
         sessionId,
         eventType: "leave",
-        pageLabel,
+        pageLabel: prevVisit.pageLabel,
         enteredAtMs: prevVisit.enteredAtMs,
         leftAtMs: now,
         durationMs,
       });
     }
 
-    visitRef.current = { path: key, enteredAtMs: now };
+    visitRef.current = { path: key, enteredAtMs: now, pageLabel };
     track({ path: key, sessionId, eventType: "view", pageLabel });
 
     const hb = window.setInterval(() => {
-      track({ path: key, sessionId, eventType: "heartbeat", pageLabel });
+      const v = visitRef.current;
+      if (!v || v.path !== key) return;
+      track({
+        path: v.path,
+        sessionId,
+        eventType: "heartbeat",
+        pageLabel: v.pageLabel,
+      });
     }, HEARTBEAT_MS);
 
     const onHidden = () => {
@@ -100,7 +129,7 @@ export function AnalyticsTracker() {
         path: current.path,
         sessionId,
         eventType: "leave",
-        pageLabel,
+        pageLabel: current.pageLabel,
         enteredAtMs: current.enteredAtMs,
         leftAtMs: leftNow,
         durationMs: Math.max(0, leftNow - current.enteredAtMs),
@@ -125,7 +154,7 @@ export function AnalyticsTracker() {
         path: current.path,
         sessionId,
         eventType: "leave",
-        pageLabel: typeof document !== "undefined" ? document.title : "",
+        pageLabel: current.pageLabel,
         enteredAtMs: current.enteredAtMs,
         leftAtMs: now,
         durationMs: Math.max(0, now - current.enteredAtMs),

@@ -11,6 +11,10 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import type { DeviceCategory } from "@/lib/clientDevice";
+import {
+  formatGeoLine,
+  shortenPageLabel,
+} from "@/lib/analytics-display";
 
 type Row = {
   id: string;
@@ -25,6 +29,15 @@ type Row = {
   deviceLabel: string;
   uaSnippet: string;
   createdAt: unknown;
+  geoCountry?: string;
+  geoCity?: string;
+  geoRegion?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  language?: string;
+  timeZone?: string;
 };
 
 type SessionDoc = {
@@ -38,6 +51,15 @@ type SessionDoc = {
   deviceLabel: string;
   uaSnippet: string;
   lastSeenAt: unknown;
+  geoCountry?: string;
+  geoCity?: string;
+  geoRegion?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  language?: string;
+  timeZone?: string;
 };
 
 function normalizeDeviceCategory(raw: string): DeviceCategory | "" {
@@ -95,6 +117,36 @@ function formatMs(ms: number | null): string {
   return `${sec}s`;
 }
 
+function formatScreenViewportLine(r: {
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+}): string {
+  const parts: string[] = [];
+  if (r.screenWidth && r.screenHeight) {
+    parts.push(`screen ${r.screenWidth}×${r.screenHeight}`);
+  }
+  if (r.viewportWidth && r.viewportHeight) {
+    parts.push(`viewport ${r.viewportWidth}×${r.viewportHeight}`);
+  }
+  return parts.join(" · ");
+}
+
+function pickSessionFields(data: Record<string, unknown>) {
+  return {
+    geoCountry: String(data.geoCountry ?? "").trim() || undefined,
+    geoCity: String(data.geoCity ?? "").trim() || undefined,
+    geoRegion: String(data.geoRegion ?? "").trim() || undefined,
+    screenWidth: toNumberOrNull(data.screenWidth) ?? undefined,
+    screenHeight: toNumberOrNull(data.screenHeight) ?? undefined,
+    viewportWidth: toNumberOrNull(data.viewportWidth) ?? undefined,
+    viewportHeight: toNumberOrNull(data.viewportHeight) ?? undefined,
+    language: String(data.language ?? "").trim() || undefined,
+    timeZone: String(data.timeZone ?? "").trim() || undefined,
+  };
+}
+
 const SAMPLE_LIMIT = 5000;
 const SESSION_LIMIT = 2000;
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
@@ -132,7 +184,8 @@ export default function AdminAnalyticsPage() {
         ]);
         if (cancelled) return;
         const list: Row[] = viewsSnap.docs.map((d) => {
-          const data = d.data();
+          const data = d.data() as Record<string, unknown>;
+          const extra = pickSessionFields(data);
           return {
             id: d.id,
             path: String(data.path ?? ""),
@@ -153,10 +206,12 @@ export default function AdminAnalyticsPage() {
             deviceLabel: String(data.deviceLabel ?? ""),
             uaSnippet: String(data.uaSnippet ?? ""),
             createdAt: data.createdAt,
+            ...extra,
           };
         });
         const sessionList: SessionDoc[] = sessionsSnap.docs.map((d) => {
-          const data = d.data();
+          const data = d.data() as Record<string, unknown>;
+          const extra = pickSessionFields(data);
           return {
             id: d.id,
             sessionId: String(data.sessionId ?? d.id ?? ""),
@@ -170,6 +225,7 @@ export default function AdminAnalyticsPage() {
             deviceLabel: String(data.deviceLabel ?? ""),
             uaSnippet: String(data.uaSnippet ?? ""),
             lastSeenAt: data.lastSeenAt,
+            ...extra,
           };
         });
         setRows(list);
@@ -264,6 +320,8 @@ export default function AdminAnalyticsPage() {
       if (!ts) return false;
       return now - ts.toMillis() <= ONLINE_WINDOW_MS && s.lastEventType !== "leave";
     });
+    const onlineIdSet = new Set(onlineNow.map((s) => s.sessionId));
+    const sessionById = new Map(sessions.map((s) => [s.sessionId, s]));
 
     const uniqueTodaySessionIds = new Set(
       todayRows.map((r) => r.sessionId).filter(Boolean)
@@ -282,15 +340,30 @@ export default function AdminAnalyticsPage() {
       const totalDurationMs = sessionRows
         .filter((r) => r.eventType === "leave")
         .reduce((acc, r) => acc + (r.durationMs ?? 0), 0);
+      const sess = sessionById.get(sid);
+      const geoLine = formatGeoLine({
+        geoCity: sess?.geoCity,
+        geoRegion: sess?.geoRegion,
+        geoCountry: sess?.geoCountry,
+      });
+      const screenLine =
+        formatScreenViewportLine(sess ?? {}) ||
+        formatScreenViewportLine(first ?? {});
       return {
         sessionId: sid,
         firstSeen: first?.createdAt,
         lastSeen,
         lastPath: last?.path ?? "—",
+        lastPageShort: shortenPageLabel(last?.pageLabel ?? ""),
         pageEvents: sessionRows.length,
         totalDurationMs,
         deviceCategory: first?.deviceCategory || "unknown",
-        deviceLabel: first?.deviceLabel || "",
+        deviceLabel: sess?.deviceLabel || first?.deviceLabel || "",
+        isOnline: onlineIdSet.has(sid),
+        geoLine,
+        screenLine,
+        language: sess?.language,
+        timeZone: sess?.timeZone,
       };
     });
     todayVisitorSummaries.sort((a, b) => b.lastSeen - a.lastSeen);
@@ -433,6 +506,11 @@ export default function AdminAnalyticsPage() {
             <h2 className="font-display text-lg font-semibold text-ocean-900">
               Users online now
             </h2>
+            <p className="mt-1 text-xs text-ocean-500">
+              City/country uses request headers on Vercel (
+              <code className="text-[10px]">x-vercel-ip-*</code>). Local dev may show
+              no location. Screen size comes from the visitor&apos;s browser.
+            </p>
             {stats.onlineSessions.length === 0 ? (
               <p className="mt-3 text-sm text-ocean-600">No users online now.</p>
             ) : (
@@ -444,18 +522,55 @@ export default function AdminAnalyticsPage() {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                        online
+                        Online
                       </span>
                       <span className="font-mono text-xs text-ocean-600">
-                        {s.sessionId.slice(0, 12)}…
+                        {s.sessionId.slice(0, 14)}…
                       </span>
                       <span className="text-xs text-ocean-500">
-                        last seen {formatTs(s.lastSeenAt)}
+                        last activity {formatTs(s.lastSeenAt)}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm">
-                      {s.lastPath || "—"} {s.pageLabel ? `(${s.pageLabel})` : ""}
+                    <p className="mt-1 font-mono text-sm font-semibold text-ocean-900">
+                      {s.lastPath || "—"}
                     </p>
+                    {shortenPageLabel(s.pageLabel) ? (
+                      <p className="mt-0.5 text-xs text-ocean-600" title={s.pageLabel}>
+                        {shortenPageLabel(s.pageLabel)}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-ocean-700">
+                      <span className="font-medium text-ocean-800">
+                        {s.deviceCategory || "unknown"}
+                      </span>
+                      {s.deviceLabel ? ` · ${s.deviceLabel}` : ""}
+                    </p>
+                    {formatGeoLine({
+                      geoCity: s.geoCity,
+                      geoRegion: s.geoRegion,
+                      geoCountry: s.geoCountry,
+                    }) ? (
+                      <p className="mt-0.5 text-xs text-ocean-600">
+                        Location:{" "}
+                        {formatGeoLine({
+                          geoCity: s.geoCity,
+                          geoRegion: s.geoRegion,
+                          geoCountry: s.geoCountry,
+                        })}
+                      </p>
+                    ) : null}
+                    {formatScreenViewportLine(s) ? (
+                      <p className="mt-0.5 text-xs text-ocean-600">
+                        {formatScreenViewportLine(s)}
+                      </p>
+                    ) : null}
+                    {(s.language || s.timeZone) && (
+                      <p className="mt-0.5 text-xs text-ocean-500">
+                        {s.language ? `Lang: ${s.language}` : ""}
+                        {s.language && s.timeZone ? " · " : ""}
+                        {s.timeZone ? `TZ: ${s.timeZone}` : ""}
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -547,22 +662,43 @@ export default function AdminAnalyticsPage() {
                             : "border-ocean-100 bg-white"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="font-mono text-xs text-ocean-600">
-                            {s.sessionId.slice(0, 12)}…
+                            {s.sessionId.slice(0, 14)}…
                           </span>
-                          <span className="text-xs text-ocean-500">
-                            {formatTs(s.firstSeen)}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {s.isOnline ? (
+                              <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-800">
+                                Online
+                              </span>
+                            ) : null}
+                            <span className="text-xs text-ocean-500">
+                              {formatTs(s.firstSeen)}
+                            </span>
+                          </div>
                         </div>
-                        <p className="mt-1 text-sm font-medium text-ocean-900">
-                          Last page: {s.lastPath}
+                        <p className="mt-1 font-mono text-sm font-semibold text-ocean-900">
+                          Last: {s.lastPath}
                         </p>
+                        {s.lastPageShort ? (
+                          <p className="mt-0.5 text-xs text-ocean-600">{s.lastPageShort}</p>
+                        ) : null}
                         <p className="mt-1 text-xs text-ocean-600">
                           Events: {s.pageEvents} · Time on site:{" "}
-                          {formatMs(s.totalDurationMs)} · Device:{" "}
-                          {s.deviceCategory || "unknown"}
+                          {formatMs(s.totalDurationMs)}
                         </p>
+                        <p className="mt-0.5 text-xs text-ocean-700">
+                          {s.deviceCategory || "unknown"}
+                          {s.deviceLabel ? ` · ${s.deviceLabel}` : ""}
+                        </p>
+                        {s.geoLine ? (
+                          <p className="mt-0.5 text-xs text-ocean-600">
+                            Location: {s.geoLine}
+                          </p>
+                        ) : null}
+                        {s.screenLine ? (
+                          <p className="mt-0.5 text-xs text-ocean-500">{s.screenLine}</p>
+                        ) : null}
                       </button>
                     </li>
                   ))}
@@ -595,12 +731,49 @@ export default function AdminAnalyticsPage() {
                               </span>
                             ) : null}
                           </div>
-                          <p className="mt-1 font-medium text-ocean-900">
-                            {r.path || "—"} {r.pageLabel ? `(${r.pageLabel})` : ""}
+                          <p className="mt-1 break-all font-mono text-sm font-semibold text-ocean-900">
+                            {r.path || "—"}
                           </p>
-                          <p className="mt-1 text-xs text-ocean-600">
-                            device: {r.deviceCategory || "unknown"} {r.deviceLabel}
+                          {shortenPageLabel(r.pageLabel) ? (
+                            <p
+                              className="mt-0.5 text-xs text-ocean-600"
+                              title={r.pageLabel}
+                            >
+                              {shortenPageLabel(r.pageLabel)}
+                            </p>
+                          ) : null}
+                          <p className="mt-1 text-xs text-ocean-700">
+                            <span className="font-medium">
+                              {r.deviceCategory || "unknown"}
+                            </span>
+                            {r.deviceLabel ? ` · ${r.deviceLabel}` : ""}
                           </p>
+                          {formatGeoLine({
+                            geoCity: r.geoCity,
+                            geoRegion: r.geoRegion,
+                            geoCountry: r.geoCountry,
+                          }) ? (
+                            <p className="mt-0.5 text-xs text-ocean-600">
+                              Location:{" "}
+                              {formatGeoLine({
+                                geoCity: r.geoCity,
+                                geoRegion: r.geoRegion,
+                                geoCountry: r.geoCountry,
+                              })}
+                            </p>
+                          ) : null}
+                          {formatScreenViewportLine(r) ? (
+                            <p className="mt-0.5 text-xs text-ocean-500">
+                              {formatScreenViewportLine(r)}
+                            </p>
+                          ) : null}
+                          {(r.language || r.timeZone) && (
+                            <p className="mt-0.5 text-xs text-ocean-500">
+                              {r.language ? `Lang ${r.language}` : ""}
+                              {r.language && r.timeZone ? " · " : ""}
+                              {r.timeZone ? r.timeZone : ""}
+                            </p>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -652,6 +825,25 @@ export default function AdminAnalyticsPage() {
                         </span>
                       ) : null}
                     </div>
+                    {formatGeoLine({
+                      geoCity: r.geoCity,
+                      geoRegion: r.geoRegion,
+                      geoCountry: r.geoCountry,
+                    }) ? (
+                      <p className="mt-1 text-xs text-ocean-600">
+                        Location:{" "}
+                        {formatGeoLine({
+                          geoCity: r.geoCity,
+                          geoRegion: r.geoRegion,
+                          geoCountry: r.geoCountry,
+                        })}
+                      </p>
+                    ) : null}
+                    {formatScreenViewportLine(r) ? (
+                      <p className="mt-0.5 text-xs text-ocean-500">
+                        {formatScreenViewportLine(r)}
+                      </p>
+                    ) : null}
                     {r.uaSnippet ? (
                       <p
                         className="mt-1 truncate font-mono text-[10px] text-ocean-500"
