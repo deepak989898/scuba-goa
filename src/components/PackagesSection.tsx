@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { usePackages } from "@/hooks/usePackages";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { SocialShareButtons } from "@/components/SocialShareButtons";
 
 export function PackagesSection() {
   const { packages, loading } = usePackages();
@@ -123,6 +124,11 @@ export function PackagesSection() {
                       >
                         Book Now
                       </Link>
+                      <SocialShareButtons
+                        title={p.name}
+                        path={`/booking?package=${encodeURIComponent(p.id)}`}
+                        compact
+                      />
                     </div>
                   </div>
                 </div>

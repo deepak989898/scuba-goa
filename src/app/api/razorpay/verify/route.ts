@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
+import { FieldValue } from "firebase-admin/firestore";
 import { generateBillPdf } from "@/lib/billPdf";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { getAdminDb } from "@/lib/firebase-admin";
@@ -22,6 +23,14 @@ type BookingBody = Record<string, unknown> & {
   cartItems?: unknown[];
   pickupLocation?: string;
 };
+
+function normalizePhone(raw: unknown): string {
+  const s = typeof raw === "string" ? raw : "";
+  const d = s.replace(/\D/g, "");
+  if (d.length < 10) return "";
+  if (d.length > 12) return d.slice(-12);
+  return d;
+}
 
 export async function POST(req: Request) {
   const secret = process.env.RAZORPAY_KEY_SECRET;
@@ -142,6 +151,22 @@ export async function POST(req: Request) {
 
   try {
     await ref.set(payload);
+    const leadPhone = normalizePhone(booking.phone);
+    if (leadPhone) {
+      await db
+        .collection("marketingLeads")
+        .doc(leadPhone)
+        .set(
+          {
+            converted: true,
+            status: "booked",
+            bookingId: razorpay_payment_id,
+            convertedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+    }
   } catch (e) {
     console.error("bookings write failed", e);
     return NextResponse.json(

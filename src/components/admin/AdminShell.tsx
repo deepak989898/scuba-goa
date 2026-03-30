@@ -99,6 +99,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               Analytics
             </Link>
             <Link
+              href="/admin/marketing"
+              className="text-ocean-700 hover:text-ocean-500"
+            >
+              Marketing
+            </Link>
+            <Link
               href="/admin/ratings"
               className="text-ocean-700 hover:text-ocean-500"
             >

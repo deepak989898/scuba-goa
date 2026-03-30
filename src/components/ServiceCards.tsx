@@ -9,6 +9,7 @@ import { ServiceCardAddToCart } from "@/components/cart/ServiceCardAddToCart";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
 import { ServiceShortClamp } from "@/components/ServiceShortClamp";
 import { serviceDetailImages } from "@/lib/service-images";
+import { SocialShareButtons } from "@/components/SocialShareButtons";
 
 export function ServiceCards() {
   const { services, loading } = useServices();
@@ -111,6 +112,13 @@ export function ServiceCards() {
                     >
                       Details
                     </Link>
+                    <span className="pointer-events-auto">
+                      <SocialShareButtons
+                        title={s.title}
+                        path={`/services/${s.slug}`}
+                        compact
+                      />
+                    </span>
                   </div>
                 </div>
               </motion.article>

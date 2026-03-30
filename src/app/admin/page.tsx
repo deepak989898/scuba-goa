@@ -82,6 +82,17 @@ export default function AdminHomePage() {
           </p>
         </Link>
         <Link
+          href="/admin/marketing"
+          className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
+        >
+          <h2 className="font-display text-lg font-semibold text-ocean-900">
+            Marketing automation
+          </h2>
+          <p className="mt-2 text-sm text-ocean-600">
+            Broadcast offers, festival campaigns, and abandoned-user follow-up queue.
+          </p>
+        </Link>
+        <Link
           href="/admin/ratings"
           className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
         >

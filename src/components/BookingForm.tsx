@@ -31,6 +31,25 @@ declare global {
   }
 }
 
+const LEAD_SID_KEY = "bsg_marketing_sid";
+
+function getLeadSessionId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let id = sessionStorage.getItem(LEAD_SID_KEY);
+    if (!id) {
+      id =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `m_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem(LEAD_SID_KEY, id);
+    }
+    return id;
+  } catch {
+    return `m_${Date.now()}`;
+  }
+}
+
 function cartSummary(lines: CartLine[]): string {
   return lines
     .map((l) => `${l.name} ×${l.quantity}`)
@@ -68,6 +87,7 @@ export function BookingForm() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [payMode, setPayMode] = useState<"min" | "full">("full");
+  const [leadSentAt, setLeadSentAt] = useState<number>(0);
 
   const addFromEncodedOption = useCallback(
     (encoded: string) => {
@@ -308,6 +328,31 @@ export function BookingForm() {
     : hasCart
       ? `Pay ₹${(cartChargePaise / 100).toLocaleString("en-IN")} with Razorpay`
       : "Pay securely with Razorpay";
+
+  useEffect(() => {
+    if (!cartReady || lines.length === 0) return;
+    if (!name.trim() || !phone.trim()) return;
+    const now = Date.now();
+    if (now - leadSentAt < 90_000) return;
+
+    const payload = {
+      name: name.trim(),
+      phone: phone.trim(),
+      interestedItem: lines[0]?.name ?? "Booking intent",
+      preferredDate: date || "",
+      source: "booking_form",
+      sessionId: getLeadSessionId(),
+    };
+    const t = window.setTimeout(() => {
+      void fetch("/api/marketing/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+      setLeadSentAt(Date.now());
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [cartReady, lines, name, phone, date, leadSentAt]);
 
   return (
     <div className="mx-auto max-w-xl">

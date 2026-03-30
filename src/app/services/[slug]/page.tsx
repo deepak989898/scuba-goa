@@ -8,6 +8,7 @@ import { getServiceBySlugServer } from "@/lib/get-services-server";
 import { serviceDetailImages } from "@/lib/service-images";
 import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
+import { SocialShareButtons } from "@/components/SocialShareButtons";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -50,6 +51,14 @@ export default async function ServiceDetailPage({ params }: Props) {
       <div className="mx-auto max-w-3xl px-4 pb-10 pt-4 sm:px-6 sm:pb-12 sm:pt-6 lg:px-8">
         <ServiceDetailSections service={s} />
         <ServiceSubServicesCart service={s} />
+        <div className="mt-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+            Share this service
+          </p>
+          <div className="mt-2">
+            <SocialShareButtons title={s.title} path={`/services/${s.slug}`} />
+          </div>
+        </div>
         <div className="mt-10">
           <ServiceDetailActions service={s} />
         </div>
