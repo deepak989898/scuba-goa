@@ -25,11 +25,11 @@ export function ComboOffers() {
           {combos.map((c, i) => (
             <motion.div
               key={c.id}
-              initial={{ opacity: 0, x: -12 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.06 }}
-              className="rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm"
+              className="u-depth-card-dark rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>

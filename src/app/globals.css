@@ -23,6 +23,87 @@ body {
   background: var(--background);
 }
 
+/** Layered “3D” depth: cards tilt in perspective + soft mesh behind content */
+body.site-3d {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 120% 90% at 50% -25%, rgba(14, 165, 233, 0.14), transparent 52%),
+    radial-gradient(ellipse 85% 55% at 100% 40%, rgba(2, 132, 199, 0.08), transparent 48%),
+    radial-gradient(ellipse 70% 45% at 0% 85%, rgba(56, 189, 248, 0.1), transparent 42%);
+}
+
+@media (min-width: 640px) {
+  body.site-3d {
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .u-depth-card {
+    transform-style: preserve-3d;
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow:
+      0 14px 40px -12px rgba(12, 74, 110, 0.22),
+      0 6px 18px -6px rgba(12, 74, 110, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+
+  .u-depth-card:hover {
+    transform: perspective(1000px) rotateX(2.5deg) rotateY(-3deg) translateZ(8px);
+    box-shadow:
+      0 28px 56px -16px rgba(12, 74, 110, 0.32),
+      0 14px 32px -10px rgba(12, 74, 110, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+
+  .u-depth-card-dark {
+    transform-style: preserve-3d;
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow:
+      0 18px 48px -12px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 36px rgba(56, 189, 248, 0.12);
+  }
+
+  .u-depth-card-dark:hover {
+    transform: perspective(1000px) rotateX(-2deg) rotateY(2.5deg) translateZ(12px);
+    box-shadow:
+      0 28px 64px -14px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 255, 255, 0.12),
+      0 0 48px rgba(56, 189, 248, 0.2);
+  }
+
+  .u-hero-3d {
+    transform-style: preserve-3d;
+    transform: perspective(1200px) rotateX(4deg) translateZ(0);
+    box-shadow:
+      0 32px 64px -20px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+      0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  }
+
+  @media (max-width: 639px) {
+    .u-hero-3d {
+      transform: perspective(900px) rotateX(2deg) translateZ(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .u-depth-card,
+    .u-depth-card:hover,
+    .u-depth-card-dark,
+    .u-depth-card-dark:hover,
+    .u-hero-3d {
+      transform: none !important;
+      transition: box-shadow 0.2s ease;
+    }
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

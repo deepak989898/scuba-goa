@@ -55,7 +55,7 @@ export function AdConversionStrip() {
   return (
     <section className="bg-white py-3 sm:py-4">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
+        <div className="u-depth-card rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold text-amber-900 sm:text-base">{urgentLine}</p>

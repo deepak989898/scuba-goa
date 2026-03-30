@@ -44,11 +44,11 @@ export function ServiceCards() {
             return (
               <motion.article
                 key={s.slug}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: Math.min(idx * 0.04, 0.3) }}
-                className="group relative flex flex-col overflow-visible rounded-2xl border border-ocean-100 bg-sand shadow-sm transition hover:shadow-md"
+                className="u-depth-card group relative flex flex-col overflow-visible rounded-2xl border border-ocean-100 bg-sand"
               >
                 <Link
                   href={`/services/${s.slug}`}

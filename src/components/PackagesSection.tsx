@@ -47,11 +47,11 @@ export function PackagesSection() {
               return (
               <motion.article
                 key={p.id}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.05 }}
-                className="flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm"
+                className="u-depth-card flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white"
               >
                 <div className="relative aspect-[3/2] sm:aspect-[5/4]">
                   <CmsRemoteImage

@@ -32,7 +32,7 @@ export function ServicesGrid() {
         return (
         <li
           key={s.slug}
-          className="group relative overflow-visible rounded-2xl border border-ocean-100 bg-sand shadow-sm"
+          className="u-depth-card group relative overflow-visible rounded-2xl border border-ocean-100 bg-sand"
         >
           <Link
             href={`/services/${s.slug}`}

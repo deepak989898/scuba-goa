@@ -77,8 +77,10 @@ export function HeroSection() {
 
       {/* Mobile: eyebrow top-left, CTAs bottom-left */}
       <div className="relative z-10 mx-auto flex min-h-[calc(38vw+47px)] max-w-7xl flex-col justify-between px-4 pb-5 pt-3 sm:hidden">
-        <div className="self-start">{eyebrow}</div>
-        <div className="self-start">
+        <div className="self-start rounded-xl border border-white/15 bg-white/10 px-2.5 py-1.5 backdrop-blur-md u-hero-3d">
+          {eyebrow}
+        </div>
+        <div className="self-start rounded-2xl border border-white/20 bg-white/10 p-2.5 backdrop-blur-md u-hero-3d">
           <HeroButtons />
         </div>
       </div>
@@ -86,10 +88,10 @@ export function HeroSection() {
       {/* sm+ */}
       <div className="relative z-10 mx-auto hidden min-h-[88vh] max-w-7xl flex-col justify-end px-4 pb-16 pt-28 sm:flex lg:justify-center lg:px-8 lg:pb-0 lg:pt-20">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="max-w-2xl"
+          className="max-w-2xl rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur-md u-hero-3d sm:p-8"
         >
           {eyebrow}
           <div className="mt-4 sm:mt-8">

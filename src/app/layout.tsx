@@ -58,7 +58,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dm.variable} ${outfit.variable}`}>
-      <body className="min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
+      <body className="site-3d min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
         <Providers>
           <SiteChrome>{children}</SiteChrome>
         </Providers>

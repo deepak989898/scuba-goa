@@ -33,6 +33,16 @@ const config: Config = {
         "hero-overlay":
           "linear-gradient(180deg, rgba(12,74,110,0.55) 0%, rgba(2,132,199,0.35) 50%, rgba(250,248,245,0.95) 100%)",
       },
+      boxShadow: {
+        depth:
+          "0 14px 40px -12px rgba(12, 74, 110, 0.22), 0 6px 18px -6px rgba(12, 74, 110, 0.12), inset 0 1px 0 rgba(255,255,255,0.55)",
+        "depth-hover":
+          "0 28px 56px -16px rgba(12, 74, 110, 0.32), 0 14px 32px -10px rgba(12, 74, 110, 0.16), inset 0 1px 0 rgba(255,255,255,0.65)",
+        "depth-dark":
+          "0 18px 48px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.08), 0 0 36px rgba(56, 189, 248, 0.12)",
+        "depth-dark-hover":
+          "0 28px 64px -14px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.12), 0 0 48px rgba(56, 189, 248, 0.2)",
+      },
       animation: {
         "fade-up": "fadeUp 0.6s ease-out forwards",
         float: "float 6s ease-in-out infinite",

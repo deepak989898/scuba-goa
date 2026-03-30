@@ -24,7 +24,7 @@ export function BlogPreview() {
             <li key={p.slug}>
               <Link
                 href={`/blog/${p.slug}`}
-                className="block rounded-2xl border border-ocean-100 bg-sand p-4 transition hover:border-ocean-300 hover:shadow-sm sm:p-5"
+                className="u-depth-card block rounded-2xl border border-ocean-100 bg-sand p-4 hover:border-ocean-300 sm:p-5"
               >
                 <p className="text-[10px] text-ocean-500 sm:text-xs">
                   {p.date} · {p.readTime}
