@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PaymentSuccessBanner } from "@/components/PaymentSuccessBanner";
 import { HeroSection } from "@/components/HeroSection";
+import { AdConversionStrip } from "@/components/AdConversionStrip";
 import { ServiceCards } from "@/components/ServiceCards";
 import { PackagesSection } from "@/components/PackagesSection";
 import { TrustSection } from "@/components/TrustSection";
@@ -39,6 +40,7 @@ export default function HomePage() {
         <PaymentSuccessBanner />
       </Suspense>
       <HeroSection />
+      <AdConversionStrip />
       <ServiceCards />
       <PackagesSection />
       <TrustSection />

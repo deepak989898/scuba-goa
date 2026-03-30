@@ -19,6 +19,15 @@ export default function BookingPage() {
           Add packages or services from the dropdown into your cart, set quantities,
           then pay here or use the floating cart on other pages.
         </p>
+        <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+          <p className="text-sm font-semibold text-amber-900">
+            Only a few peak slots left for tomorrow. Book now to lock your slot.
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Limited-time ad offer: up to ₹500 off on selected plans (confirm during
+            booking/WhatsApp).
+          </p>
+        </div>
         <div className="mt-10">
           <Suspense fallback={<p className="text-center text-ocean-600">Loading…</p>}>
             <BookingForm />

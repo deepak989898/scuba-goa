@@ -555,6 +555,9 @@ export function BookingForm() {
             >
               {payButtonLabel}
             </button>
+            <p className="text-center text-xs text-ocean-600">
+              Booking is confirmed after successful payment verification.
+            </p>
           </div>
         )}
       </div>

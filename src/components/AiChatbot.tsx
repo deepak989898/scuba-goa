@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { whatsappLink } from "@/lib/constants";
 
 const STORAGE_KEY = "bookscuba_ai_lang";
 
@@ -50,6 +52,13 @@ function welcomeFor(api: string) {
   return WELCOME[api] ?? WELCOME.English!;
 }
 
+const QUICK_PROMPTS = [
+  "Suggest best package for 2 people tomorrow",
+  "Show today's limited-time offer and urgency",
+  "I came from Facebook ad. Help me book in 60 seconds",
+  "Is booking confirmed after payment? Explain",
+];
+
 export function AiChatbot() {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<string | null>(null);
@@ -97,10 +106,8 @@ export function AiChatbot() {
     setMessages([]);
   }
 
-  async function send() {
-    const t = input.trim();
+  async function askBot(t: string) {
     if (!t || loading || !lang) return;
-    setInput("");
     setMessages((m) => [...m, { role: "user", text: t }]);
     setLoading(true);
     try {
@@ -129,6 +136,19 @@ export function AiChatbot() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function send() {
+    const t = input.trim();
+    if (!t || loading || !lang) return;
+    setInput("");
+    await askBot(t);
+  }
+
+  async function sendPreset(text: string) {
+    if (loading || !lang) return;
+    setInput("");
+    await askBot(text);
   }
 
   return (
@@ -211,6 +231,25 @@ export function AiChatbot() {
                   {loading ? (
                     <p className="text-xs text-ocean-500">Thinking…</p>
                   ) : null}
+                  {!loading && messages.length <= 2 ? (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold text-ocean-600">
+                        Quick sales assistant
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {QUICK_PROMPTS.map((q) => (
+                          <button
+                            key={q}
+                            type="button"
+                            className="rounded-full border border-ocean-200 bg-ocean-50 px-3 py-1.5 text-xs font-medium text-ocean-800 hover:border-ocean-400"
+                            onClick={() => sendPreset(q)}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex gap-2 border-t border-ocean-100 p-3">
                   <input
@@ -231,6 +270,27 @@ export function AiChatbot() {
                   >
                     Send
                   </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 border-t border-ocean-100 bg-ocean-50/70 px-3 py-2">
+                  <Link
+                    href="/booking"
+                    className="rounded-full bg-ocean-700 px-3 py-1.5 text-xs font-semibold text-white"
+                  >
+                    Book now
+                  </Link>
+                  <a
+                    href={whatsappLink(
+                      "Hi, I came from ad and want best offer. Date: , People: , Pickup area: "
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-ocean-300 bg-white px-3 py-1.5 text-xs font-semibold text-ocean-800"
+                  >
+                    WhatsApp closer
+                  </a>
+                  <span className="text-[11px] text-ocean-600">
+                    Limited-time offer may apply on selected plans.
+                  </span>
                 </div>
               </>
             )}
