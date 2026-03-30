@@ -49,8 +49,9 @@ export function SocialShareButtons({
     window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
   }
 
-  const base = "inline-flex items-center gap-1.5 rounded-full font-semibold text-white";
-  const size = compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-xs";
+  const base =
+    "inline-flex items-center justify-center rounded-full font-semibold text-white";
+  const size = compact ? "h-7 w-7 text-[10px]" : "h-8 w-8 text-xs";
 
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className ?? ""}`} role="group" aria-label={`Share ${title}`}>
@@ -60,9 +61,9 @@ export function SocialShareButtons({
         rel="noopener noreferrer"
         className={`${base} ${size} bg-[#25D366] hover:brightness-95`}
         aria-label={`Share ${title} on WhatsApp`}
+        title="Share on WhatsApp"
       >
         <WhatsAppIcon />
-        <span>WhatsApp</span>
       </a>
       <a
         href={fb}
@@ -70,9 +71,9 @@ export function SocialShareButtons({
         rel="noopener noreferrer"
         className={`${base} ${size} bg-[#1877F2] hover:brightness-95`}
         aria-label={`Share ${title} on Facebook`}
+        title="Share on Facebook"
       >
         <FacebookIcon />
-        <span>Facebook</span>
       </a>
       <button
         type="button"
@@ -82,7 +83,6 @@ export function SocialShareButtons({
         title="Copies link and opens Instagram."
       >
         <InstagramIcon />
-        <span>{copied ? "Copied" : "Instagram"}</span>
       </button>
       {igHint ? (
         <span className="text-[10px] text-ocean-600">
