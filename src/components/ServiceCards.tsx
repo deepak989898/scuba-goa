@@ -66,11 +66,11 @@ export function ServiceCards() {
                         mostBooked={s.mostBooked}
                         limitedSlots={s.limitedSlots}
                         sizes={imgSizes}
-                        aspectClass="aspect-[3/2] sm:aspect-[5/4]"
+                        aspectClass="aspect-[3/2] max-sm:min-h-[calc((100vw_-_3rem)_/_2_*_(2/3)_+_20px)] sm:aspect-[5/4]"
                         passthroughClicks
                       />
                     ) : (
-                      <div className="relative aspect-[3/2] overflow-hidden sm:aspect-[5/4] pointer-events-none [&_*]:pointer-events-none">
+                      <div className="relative aspect-[3/2] max-sm:min-h-[calc((100vw_-_3rem)_/_2_*_(2/3)_+_20px)] overflow-hidden sm:aspect-[5/4] pointer-events-none [&_*]:pointer-events-none">
                         <CmsRemoteImage
                           src={s.image}
                           alt={s.title}

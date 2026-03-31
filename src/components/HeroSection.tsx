@@ -49,7 +49,7 @@ export function HeroSection() {
   );
 
   return (
-    <section className="relative min-h-[calc(38vw+47px)] overflow-hidden bg-ocean-900 sm:min-h-[88vh]">
+    <section className="relative min-h-[calc(38vw+67px)] overflow-hidden bg-ocean-900 sm:min-h-[88vh]">
       <div className="absolute inset-0">
         <AnimatePresence mode="wait">
           {current ? (
@@ -76,7 +76,7 @@ export function HeroSection() {
       </div>
 
       {/* Mobile: eyebrow top-left, CTAs bottom-left */}
-      <div className="relative z-10 mx-auto flex min-h-[calc(38vw+47px)] max-w-7xl flex-col justify-between px-4 pb-5 pt-3 sm:hidden">
+      <div className="relative z-10 mx-auto flex min-h-[calc(38vw+67px)] max-w-7xl flex-col justify-between px-4 pb-5 pt-3 sm:hidden">
         <div className="self-start rounded-xl border border-white/15 bg-white/10 px-2.5 py-1.5 backdrop-blur-md u-hero-3d">
           {eyebrow}
         </div>

@@ -40,7 +40,7 @@ export function ServiceDetailGallery({ images, title }: Props) {
   );
 
   return (
-    <div className="relative aspect-[21/9] max-h-[min(420px,55vh)] w-full sm:max-h-[420px]">
+    <div className="relative aspect-[21/9] w-full max-h-[min(420px,55vh)] max-sm:min-h-[calc(100vw_*_9_/21_+_60px)] max-sm:max-h-[min(480px,calc(55vh_+_60px))] sm:max-h-[420px]">
       {list.map((src, idx) => (
         <div
           key={`${idx}-${src.slice(0, 40)}`}
