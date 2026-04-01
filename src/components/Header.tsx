@@ -27,11 +27,11 @@ export function Header() {
           aria-label="Book Scuba Goa home"
         >
           <Image
-            src="/book-scuba-goa-logo.png"
+            src="/book-scuba-goa-logo-transparent.png"
             alt="Book Scuba Goa"
-            width={260}
-            height={90}
-            className="h-10 w-auto sm:h-12"
+            width={650}
+            height={238}
+            className="h-12 w-auto sm:h-14"
             priority
           />
         </Link>
