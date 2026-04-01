@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { whatsappLink } from "@/lib/constants";
@@ -20,8 +21,19 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-700/80 bg-slate-950/90 shadow-depth backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="font-display text-lg font-semibold text-slate-100">
-          Book Scuba<span className="text-cyan-300">Goa</span>
+        <Link
+          href="/"
+          className="inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+          aria-label="Book Scuba Goa home"
+        >
+          <Image
+            src="/book-scuba-goa-logo.png"
+            alt="Book Scuba Goa"
+            width={260}
+            height={90}
+            className="h-10 w-auto sm:h-12"
+            priority
+          />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => (
