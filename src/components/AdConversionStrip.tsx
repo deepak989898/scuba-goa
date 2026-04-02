@@ -53,7 +53,7 @@ export function AdConversionStrip() {
     : "Live rates available in booking";
 
   return (
-    <section className="relative z-10 bg-white pt-[clamp(10rem,46vw,13.5rem)] pb-3 sm:pt-4 sm:pb-4">
+    <section className="relative z-10 bg-white pt-[clamp(11.5rem,52vw,15rem)] pb-3 sm:pt-4 sm:pb-4">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="u-depth-card rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
