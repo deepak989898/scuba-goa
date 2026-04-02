@@ -81,18 +81,18 @@ function HeroQuickBookingPanel() {
   );
 
   const inputClass =
-    "mt-0.5 w-full rounded-lg border px-2 py-1.5 text-[11px] focus:outline-none focus:ring-1 sm:mt-1 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm border-white/25 bg-white/10 text-white placeholder:text-white/50 focus:border-cyan-300/80 focus:ring-cyan-300/60 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:placeholder:text-ocean-400 max-sm:focus:border-ocean-500 max-sm:focus:ring-ocean-400";
+    "mt-0.5 w-full min-h-0 rounded-md border px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 sm:mt-1 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm border-white/25 bg-white/10 text-white placeholder:text-white/50 focus:border-cyan-300/80 focus:ring-cyan-300/60 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:placeholder:text-ocean-400 max-sm:focus:border-ocean-500 max-sm:focus:ring-ocean-400";
 
   return (
-    <div className="rounded-xl border border-white/20 bg-white/10 p-2 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-2xl sm:rounded-3xl sm:p-5 sm:shadow-none">
-      <p className="text-center text-[10px] font-semibold uppercase tracking-wider text-white/90 max-sm:text-ocean-800 sm:text-xs">
+    <div className="rounded-lg border border-white/20 bg-white/10 p-1.5 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
+      <p className="text-center text-[9px] font-semibold uppercase tracking-wide text-white/90 max-sm:text-ocean-800 sm:text-xs sm:tracking-wider">
         Quick booking
       </p>
       <form
         onSubmit={submit}
-        className="mt-2 space-y-1.5 sm:mt-4 sm:space-y-3"
+        className="mt-1 grid grid-cols-2 gap-x-1.5 gap-y-1 sm:mt-4 sm:flex sm:flex-col sm:gap-3"
       >
-        <label className="block text-[10px] font-medium text-white/90 max-sm:text-ocean-800 sm:text-xs">
+        <label className="col-span-2 block text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:text-xs">
           Phone <span className="text-cyan-200 max-sm:text-cyan-600">*</span>
           <input
             type="tel"
@@ -102,31 +102,32 @@ function HeroQuickBookingPanel() {
             className={inputClass}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Mobile number"
+            placeholder="Mobile"
           />
         </label>
-        <label className="block text-[10px] font-medium text-white/90 max-sm:text-ocean-800 sm:text-xs">
+        <label className="block min-w-0 text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:col-span-2 sm:text-xs">
           Name
           <input
             type="text"
             className={inputClass}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Optional"
+            placeholder="—"
             maxLength={80}
           />
         </label>
-        <label className="block text-[10px] font-medium text-white/90 max-sm:text-ocean-800 sm:text-xs">
-          Preferred date
+        <label className="block min-w-0 text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:col-span-2 sm:text-xs">
+          <span className="max-sm:hidden">Preferred </span>date
           <input
             type="date"
-            className={`${inputClass} [color-scheme:dark] max-sm:[color-scheme:light]`}
+            className={`${inputClass} [color-scheme:dark] max-sm:[color-scheme:light] max-sm:pr-0`}
             value={preferredDate}
             onChange={(e) => setPreferredDate(e.target.value)}
           />
         </label>
-        <label className="block text-[10px] font-medium text-white/90 max-sm:text-ocean-800 sm:text-xs">
-          Interested in
+        <label className="col-span-2 block text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:text-xs">
+          <span className="max-sm:hidden">Interested in</span>
+          <span className="sm:hidden">Package</span>
           <select
             className={`${inputClass} text-white`}
             value={interestedItem}
@@ -145,7 +146,7 @@ function HeroQuickBookingPanel() {
         </label>
         {msg ? (
           <p
-            className="text-center text-[10px] leading-snug text-cyan-100 max-sm:text-ocean-700 sm:text-xs"
+            className="col-span-2 text-center text-[9px] leading-tight text-cyan-100 max-sm:text-ocean-700 sm:text-xs"
             role="status"
           >
             {msg}
@@ -154,23 +155,34 @@ function HeroQuickBookingPanel() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-full bg-cyan-500 py-2 text-[11px] font-semibold text-slate-950 shadow-md shadow-cyan-500/25 transition hover:bg-cyan-400 disabled:opacity-50 sm:py-3 sm:text-sm"
+          className="col-span-2 w-full rounded-full bg-cyan-500 py-1.5 text-[10px] font-semibold text-slate-950 shadow-md shadow-cyan-500/25 transition hover:bg-cyan-400 disabled:opacity-50 sm:py-3 sm:text-sm"
         >
-          {busy ? "Sending…" : "Request callback"}
+          {busy ? (
+            <>
+              <span className="sm:hidden">Wait…</span>
+              <span className="hidden sm:inline">Sending…</span>
+            </>
+          ) : (
+            <>
+              <span className="sm:hidden">Callback</span>
+              <span className="hidden sm:inline">Request callback</span>
+            </>
+          )}
         </button>
       </form>
-      <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-3">
+      <div className="mt-1 flex gap-1 sm:mt-4 sm:gap-3">
         <Link
           href="/booking"
-          className="inline-flex min-h-9 min-w-0 flex-1 items-center justify-center rounded-full bg-white px-2 py-1.5 text-[10px] font-semibold text-ocean-800 shadow-md transition hover:bg-ocean-50 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm"
+          className="inline-flex min-h-7 min-w-0 flex-1 items-center justify-center rounded-full bg-white px-1.5 py-1 text-[9px] font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-md"
         >
-          Book Now
+          <span className="sm:hidden">Book</span>
+          <span className="hidden sm:inline">Book Now</span>
         </Link>
         <a
           href={wa}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-9 min-w-0 flex-1 items-center justify-center rounded-full border-2 border-white/80 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 max-sm:border-ocean-300 max-sm:bg-ocean-50 max-sm:text-ocean-800 max-sm:hover:bg-ocean-100 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm"
+          className="inline-flex min-h-7 min-w-0 flex-1 items-center justify-center rounded-full border border-white/80 bg-white/10 px-1.5 py-1 text-[9px] font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 max-sm:border-ocean-300 max-sm:bg-ocean-50 max-sm:text-ocean-800 max-sm:hover:bg-ocean-100 sm:min-h-11 sm:flex-none sm:border-2 sm:px-5 sm:py-2.5 sm:text-sm"
         >
           WhatsApp
         </a>
@@ -225,14 +237,14 @@ export function HeroSection() {
       </div>
 
       {/* Mobile: ~40% of form on hero, ~60% below hero (above urgency strip); bottom-aligned then translateY(60% of card height) */}
-      <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center px-3 pb-0 sm:hidden">
+      <div className="pointer-events-none absolute inset-0 z-20 flex w-full items-end justify-center px-[14px] pb-0 sm:hidden">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.45 }}
-          className="pointer-events-auto relative z-30 w-full max-w-[min(20rem,calc(100vw-1.25rem))]"
+          className="pointer-events-auto relative z-30 w-full min-w-0 max-w-none"
         >
-          <div className="translate-y-[60%]">
+          <div className="w-full min-w-0 translate-y-[60%]">
             <HeroQuickBookingPanel />
           </div>
         </motion.div>
