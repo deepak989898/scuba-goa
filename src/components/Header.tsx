@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { whatsappLink } from "@/lib/constants";
 
@@ -16,14 +17,26 @@ const nav = [
 ];
 
 export function Header() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-700/80 bg-slate-950/90 shadow-depth backdrop-blur-md">
+    <header
+      className={
+        isHome
+          ? "sticky top-0 z-50 border-b border-white/15 bg-transparent shadow-none backdrop-blur-md"
+          : "sticky top-0 z-50 border-b border-slate-700/80 bg-slate-950/90 shadow-depth backdrop-blur-md"
+      }
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+          className={
+            isHome
+              ? "inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-ocean-900"
+              : "inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+          }
           aria-label="Book Scuba Goa home"
         >
           <Image
@@ -40,7 +53,11 @@ export function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-full px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-cyan-300"
+              className={
+                isHome
+                  ? "rounded-full px-3 py-2 text-sm font-medium text-white/90 transition hover:bg-white/10 hover:text-cyan-200"
+                  : "rounded-full px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-cyan-300"
+              }
             >
               {item.label}
             </Link>
@@ -51,7 +68,11 @@ export function Header() {
             href={whatsappLink()}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden rounded-full border border-slate-600 px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-cyan-400 hover:bg-slate-800 sm:inline-flex"
+            className={
+              isHome
+                ? "hidden rounded-full border border-white/40 px-3 py-2 text-sm font-medium text-white transition hover:border-cyan-200 hover:bg-white/10 sm:inline-flex"
+                : "hidden rounded-full border border-slate-600 px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-cyan-400 hover:bg-slate-800 sm:inline-flex"
+            }
           >
             WhatsApp
           </a>
@@ -63,11 +84,17 @@ export function Header() {
           </Link>
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 md:hidden"
+            className={
+              isHome
+                ? "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/40 text-white md:hidden"
+                : "inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 md:hidden"
+            }
             aria-label="Open menu"
             onClick={() => setOpen((v) => !v)}
           >
-            <span className="text-slate-100">{open ? "✕" : "☰"}</span>
+            <span className={isHome ? "text-white" : "text-slate-100"}>
+              {open ? "✕" : "☰"}
+            </span>
           </button>
         </div>
       </div>
@@ -77,7 +104,11 @@ export function Header() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-slate-700 bg-slate-950 md:hidden"
+            className={
+              isHome
+                ? "border-t border-white/15 bg-slate-950/95 backdrop-blur-md md:hidden"
+                : "border-t border-slate-700 bg-slate-950 md:hidden"
+            }
           >
             <div className="flex flex-col gap-1 px-4 py-3">
               {nav.map((item) => (

@@ -6,7 +6,6 @@ import { AdConversionStrip } from "@/components/AdConversionStrip";
 import { ServiceCards } from "@/components/ServiceCards";
 import { PackagesSection } from "@/components/PackagesSection";
 import { TrustSection } from "@/components/TrustSection";
-import { ComboOffers } from "@/components/ComboOffers";
 import { GallerySection } from "@/components/GallerySection";
 import { BlogPreview } from "@/components/BlogPreview";
 import { RatingsSection } from "@/components/RatingsSection";
@@ -43,11 +42,10 @@ export default function HomePage() {
       <AdConversionStrip />
       <ServiceCards />
       <PackagesSection />
-      <TrustSection />
-      <HomeScubaInfoSection />
-      <RatingsSection />
-      <ComboOffers />
       <GallerySection />
+      <TrustSection />
+      <RatingsSection />
+      <HomeScubaInfoSection />
       <BlogPreview />
     </>
   );

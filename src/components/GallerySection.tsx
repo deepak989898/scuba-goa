@@ -128,17 +128,25 @@ export function GallerySection() {
                   className="absolute inset-0"
                 >
                   {current.type === "video" ? (
-                    <video
-                      key={`${current.mediaUrl}-${mainVideoPoster || "auto-thumb"}`}
-                      className="h-full w-full object-cover"
-                      src={mainVideoSrc}
-                      poster={mainVideoPoster || undefined}
-                      controls
-                      playsInline
-                      preload="metadata"
+                    <div
+                      className="absolute inset-0"
+                      onContextMenu={(e) => e.preventDefault()}
                     >
-                      {current.alt}
-                    </video>
+                      <video
+                        key={`${current.mediaUrl}-${mainVideoPoster || "auto-thumb"}`}
+                        className="h-full w-full object-cover"
+                        src={mainVideoSrc}
+                        poster={mainVideoPoster || undefined}
+                        controls
+                        controlsList="nodownload"
+                        disablePictureInPicture
+                        playsInline
+                        preload="metadata"
+                        onContextMenu={(e) => e.preventDefault()}
+                      >
+                        {current.alt}
+                      </video>
+                    </div>
                   ) : (
                     <CmsRemoteImage
                       src={current.mediaUrl}

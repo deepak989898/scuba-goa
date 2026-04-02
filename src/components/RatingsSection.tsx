@@ -31,6 +31,7 @@ function GuestReviewAvatar({ name }: { name: string }) {
 
 export function RatingsSection() {
   const [authorName, setAuthorName] = useState("");
+  const [city, setCity] = useState("");
   const [comment, setComment] = useState("");
   /** 0 = user has not chosen a rating yet (only empty stars shown). */
   const [rating, setRating] = useState(0);
@@ -291,6 +292,7 @@ export function RatingsSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           authorName: authorName.trim() || "Guest",
+          city: city.trim(),
           comment: comment.trim(),
           rating,
           website: "",
@@ -303,6 +305,7 @@ export function RatingsSection() {
       }
       setComment("");
       setAuthorName("");
+      setCity("");
       setRating(0);
       setHoverStar(0);
       setMsg("Thanks! Your review will appear after we approve it.");
@@ -370,7 +373,8 @@ export function RatingsSection() {
             Rate your experience
           </h3>
           <p className="mt-1 text-center text-xs text-ocean-600 sm:text-sm">
-            Tap a star to begin — name and comment appear after you choose a rating.
+            Tap a star to begin — city, name, and comment appear after you choose a
+            rating.
           </p>
           <div
             className="mt-6 flex justify-center gap-1"
@@ -414,9 +418,20 @@ export function RatingsSection() {
                 <span className="font-semibold text-amber-600">
                   {rating} / 5
                 </span>
-                . Add your name and comment, then submit.
+                . Add your city, name, and comment, then submit.
               </p>
               <label className="mt-4 block text-sm font-medium text-ocean-800">
+                Your city
+                <input
+                  required
+                  className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g. Mumbai, Delhi, Goa"
+                  maxLength={80}
+                />
+              </label>
+              <label className="mt-3 block text-sm font-medium text-ocean-800">
                 Your name
                 <input
                   className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2"
@@ -452,6 +467,7 @@ export function RatingsSection() {
                   onClick={() => {
                     setRating(0);
                     setHoverStar(0);
+                    setCity("");
                     setMsg(null);
                   }}
                 >

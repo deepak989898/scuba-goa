@@ -77,12 +77,17 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
             <div
               key={url}
               className="overflow-hidden rounded-xl border border-ocean-100 bg-black/5 p-2"
+              onContextMenu={(e) => e.preventDefault()}
             >
               <video
                 src={url}
                 controls
+                controlsList="nodownload"
+                disablePictureInPicture
+                playsInline
                 preload="metadata"
                 className="max-h-[26rem] w-full rounded-lg bg-black"
+                onContextMenu={(e) => e.preventDefault()}
               />
             </div>
           ))}

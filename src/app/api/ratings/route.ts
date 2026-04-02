@@ -4,6 +4,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 
 const MAX_NAME = 80;
 const MAX_COMMENT = 800;
+const MAX_CITY = 80;
 
 export async function POST(req: Request) {
   const db = getAdminDb();
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
     authorName?: string;
     comment?: string;
     rating?: number;
+    city?: string;
     website?: string;
   };
   try {
@@ -49,10 +51,22 @@ export async function POST(req: Request) {
     );
   }
 
+  const city = String(body.city ?? "")
+    .trim()
+    .slice(0, MAX_CITY);
+
+  if (!city) {
+    return NextResponse.json(
+      { error: "Please enter your city" },
+      { status: 400 }
+    );
+  }
+
   try {
     await db.collection("ratings").add({
       authorName: authorName || "Guest",
       comment,
+      city,
       rating: Math.round(rating),
       approved: false,
       createdAt: FieldValue.serverTimestamp(),

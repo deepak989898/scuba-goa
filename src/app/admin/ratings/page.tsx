@@ -17,6 +17,7 @@ import { getDb } from "@/lib/firebase";
 type Row = {
   id: string;
   authorName: string;
+  city: string;
   comment: string;
   rating: number;
   approved: boolean;
@@ -64,6 +65,7 @@ export default function AdminRatingsPage() {
           return {
             id: d.id,
             authorName: String(x.authorName ?? ""),
+            city: String(x.city ?? ""),
             comment: String(x.comment ?? ""),
             rating: Number(x.rating ?? 0),
             approved: Boolean(x.approved),
@@ -152,7 +154,12 @@ export default function AdminRatingsPage() {
                       {"★".repeat(Math.min(5, Math.max(0, r.rating)))}
                     </span>
                   </p>
-                  <p className="mt-1 text-xs text-ocean-500">{formatTs(r.createdAt)}</p>
+                  <p className="mt-1 text-xs text-ocean-500">
+                    {formatTs(r.createdAt)}
+                    {r.city ? (
+                      <span className="text-ocean-600"> · {r.city}</span>
+                    ) : null}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
