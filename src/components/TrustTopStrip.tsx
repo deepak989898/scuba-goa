@@ -39,10 +39,10 @@ function IconChat({ className }: { className?: string }) {
 }
 
 const items = [
-  { Icon: IconLock, label: "Razorpay secure pay", short: "Razorpay" },
-  { Icon: IconBolt, label: "Book → pay → instant confirm", short: "Instant confirm" },
-  { Icon: IconStar, label: "10,000+ happy guests", short: "10k+ guests" },
-  { Icon: IconChat, label: "WhatsApp slot & pickup", short: "WhatsApp" },
+  { Icon: IconLock, label: "Pay safely — Razorpay", short: "Razorpay" },
+  { Icon: IconBolt, label: "Book now — instant confirmation", short: "Instant" },
+  { Icon: IconStar, label: "10,000+ real dives & smiles", short: "10k+ guests" },
+  { Icon: IconChat, label: "Live slots & pickup on WhatsApp", short: "WhatsApp" },
 ] as const;
 
 type Props = { isHome: boolean };
@@ -87,7 +87,7 @@ export function TrustTopStrip({ isHome }: Props) {
           href="/booking"
           className="shrink-0 touch-manipulation rounded-full bg-cyan-500 px-2.5 py-1.5 text-[10px] font-bold text-slate-950 shadow-sm transition hover:bg-cyan-400 active:opacity-90 sm:px-3 sm:py-1 sm:text-xs"
         >
-          Book now
+          Check slots
         </Link>
       </div>
     </div>

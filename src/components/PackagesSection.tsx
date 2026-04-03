@@ -19,18 +19,18 @@ export function PackagesSection() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
-              Live packages
+              Pick your dive — prices lock at checkout
             </h2>
-            <p className="mt-1.5 text-sm font-medium text-amber-800 sm:text-base">
-              Tap Book Now or add to cart — prices you see are the ones you pay at
-              checkout.
+            <p className="mt-1.5 text-sm font-medium text-ocean-800 sm:text-base">
+              No sticker shock: what you see here is what you pay. Add to cart or hit
+              Book while your dates still work — popular slots disappear on weekends.
             </p>
           </div>
           <Link
             href="/booking"
-            className="text-xs font-semibold text-ocean-600 hover:text-ocean-800 sm:text-sm"
+            className="text-xs font-bold text-ocean-700 hover:text-ocean-900 sm:text-sm"
           >
-            View all booking options →
+            Open full checkout →
           </Link>
         </div>
         {loading ? (

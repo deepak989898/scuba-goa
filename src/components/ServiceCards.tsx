@@ -18,6 +18,15 @@ export function ServiceCards() {
     return (
       <section className="bg-white pt-5 pb-6 sm:pt-16 sm:pb-10" id="services">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-4 sm:mb-8">
+            <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-3xl">
+              More ways to love Goa
+            </h2>
+            <p className="mt-1 text-xs text-ocean-700 sm:text-sm">
+              Tours, waterfalls, water sports — add to cart or tap Details, then checkout when
+              you&apos;re ready to commit.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <div
@@ -34,6 +43,15 @@ export function ServiceCards() {
   return (
     <section className="bg-white pt-5 pb-6 sm:pt-16 sm:pb-10" id="services">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-4 sm:mb-8">
+          <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-3xl">
+            More ways to love Goa
+          </h2>
+          <p className="mt-1 text-xs text-ocean-700 sm:text-sm">
+            Tours, waterfalls, water sports — add to cart or tap Details, then checkout when
+            you&apos;re ready to commit.
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {services.map((s, idx) => {
             const cardImgs = serviceDetailImages(s);
@@ -108,9 +126,9 @@ export function ServiceCards() {
                     </span>
                     <Link
                       href={`/services/${s.slug}`}
-                      className="pointer-events-auto min-h-8 min-w-8 rounded-full border border-ocean-200 bg-sand px-2 py-1 text-[10px] font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:min-w-11 sm:px-3 sm:py-2 sm:text-xs"
+                      className="pointer-events-auto min-h-8 min-w-8 rounded-full border border-ocean-200 bg-sand px-2 py-1 text-[10px] font-bold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:min-w-11 sm:px-3 sm:py-2 sm:text-xs"
                     >
-                      Details
+                      See &amp; book
                     </Link>
                     <span className="pointer-events-auto">
                       <SocialShareButtons

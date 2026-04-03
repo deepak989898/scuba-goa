@@ -302,7 +302,8 @@ export function LeadOfferPopup() {
               Get ₹200 OFF
             </h2>
             <p className="mt-2 text-center text-sm text-ocean-700">
-              Enter your WhatsApp number — we’ll open chat with your discount code.
+              You&apos;re seconds from ₹200 off — we&apos;ll drop the code in WhatsApp so you
+              can book with confidence.
             </p>
             <form onSubmit={submit} className="mt-4 space-y-3">
               <label className="block text-xs font-medium text-ocean-800">
@@ -328,7 +329,7 @@ export function LeadOfferPopup() {
                 disabled={busy}
                 className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
               >
-                {busy ? "Sending…" : "Claim on WhatsApp"}
+                {busy ? "Sending…" : "Send my ₹200 code on WhatsApp"}
               </button>
             </form>
             <div className="mt-4 border-t border-ocean-100 pt-4">

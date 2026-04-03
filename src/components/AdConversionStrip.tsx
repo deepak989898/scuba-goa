@@ -45,8 +45,8 @@ export function AdConversionStrip() {
   }, [packages, services]);
 
   const urgentLine = top
-    ? `Only ${top.slotsLeft ?? 3} slots left for tomorrow ⚡ Book now & get up to ₹500 off on selected plans.`
-    : "High-demand slots are filling fast ⚡ Book now & get up to ₹500 off on selected plans.";
+    ? `Don't let "we'll book later" win — only ${top.slotsLeft ?? 3} slots left for tomorrow on ${top.name}. Up to ₹500 off selected plans.`
+    : "Weekends fill first — high-demand slots are going now. Book today & grab up to ₹500 off selected plans.";
 
   const priceLine = top
     ? `${top.name} from ₹${top.price.toLocaleString("en-IN")}`
@@ -68,9 +68,9 @@ export function AdConversionStrip() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/booking"
-                className="inline-flex rounded-full bg-ocean-gradient px-4 py-2 text-xs font-semibold text-white sm:text-sm"
+                className="inline-flex rounded-full bg-ocean-gradient px-4 py-2 text-xs font-bold text-white shadow-sm sm:text-sm"
               >
-                Book now
+                Secure my slot
               </Link>
               <a
                 href={whatsappLink(
@@ -78,9 +78,9 @@ export function AdConversionStrip() {
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex rounded-full border border-ocean-300 bg-white px-4 py-2 text-xs font-semibold text-ocean-800 sm:text-sm"
+                className="inline-flex rounded-full border border-ocean-300 bg-white px-4 py-2 text-xs font-bold text-ocean-800 sm:text-sm"
               >
-                Claim offer on WhatsApp
+                WhatsApp — best price now
               </a>
             </div>
           </div>

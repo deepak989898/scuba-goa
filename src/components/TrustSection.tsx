@@ -4,9 +4,18 @@ import { motion } from "framer-motion";
 
 export function TrustSection() {
   const pillars = [
-    { title: "Certified operators", body: "Verified partners & briefing-first sessions." },
-    { title: "Secure checkout", body: "Razorpay payments with clear booking references." },
-    { title: "WhatsApp confirmation", body: "Slot and pickup details on your phone." },
+    {
+      title: "Certified operators",
+      body: "Trained crew, safety-first briefings — so your first breath underwater feels calm, not chaotic.",
+    },
+    {
+      title: "Secure checkout",
+      body: "Pay with Razorpay; you get a clear booking reference—no vague “we’ll confirm later.”",
+    },
+    {
+      title: "WhatsApp confirmation",
+      body: "Slot, pickup, and what to bring—on your phone before you even pack your towel.",
+    },
   ];
 
   return (
@@ -23,7 +32,7 @@ export function TrustSection() {
           className="text-center"
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-ocean-500 sm:text-sm">
-            Why guests actually pay &amp; show up
+            Why people stop scrolling and actually book
           </p>
           <h2
             id="trust-heading"

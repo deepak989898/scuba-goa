@@ -16,24 +16,24 @@ export function StickyBookBar() {
           onClick={() => openLeadOfferPopup()}
           className="min-h-11 w-full touch-manipulation rounded-lg bg-amber-500/95 py-2.5 text-center text-[11px] font-bold uppercase tracking-wide text-amber-950 shadow-sm active:opacity-90 active:scale-[0.99]"
         >
-          Get ₹200 OFF — WhatsApp
+          Claim ₹200 OFF — WhatsApp code
         </button>
         <div className="grid grid-cols-2 gap-2">
           <a
             href={MISSED_CALL_TEL_HREF}
             className="flex min-h-12 touch-manipulation items-center justify-center rounded-full border-2 border-white/40 bg-white/10 px-2 text-center text-xs font-semibold text-white backdrop-blur-sm active:bg-white/20"
           >
-            Missed call
+            Ring once — callback
           </a>
           <Link
             href="/booking"
-            className="flex min-h-12 touch-manipulation items-center justify-center rounded-full bg-ocean-gradient px-2 text-center text-sm font-semibold text-white shadow-md active:opacity-90"
+            className="flex min-h-12 touch-manipulation items-center justify-center rounded-full bg-ocean-gradient px-2 text-center text-sm font-bold text-white shadow-md active:opacity-90"
           >
-            Book Now
+            Lock my slot
           </Link>
         </div>
-        <p className="pb-0.5 text-center text-[9px] leading-snug text-white/50">
-          Ring once · {MISSED_CALL_DISPLAY_LABEL}
+        <p className="pb-0.5 text-center text-[9px] leading-snug text-white/55">
+          Free callback · {MISSED_CALL_DISPLAY_LABEL}
         </p>
       </div>
     </div>

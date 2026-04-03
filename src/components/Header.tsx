@@ -99,13 +99,13 @@ export function Header() {
                 : "hidden rounded-full bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-400 md:inline-flex"
             }
           >
-            ₹200 OFF
+            ₹200 code
           </button>
           <Link
             href="/booking"
-            className="inline-flex min-h-11 min-w-[5.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
+            className="inline-flex min-h-11 min-w-[5.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
           >
-            Book Now
+            Get a slot
           </Link>
           <button
             type="button"
@@ -169,7 +169,7 @@ export function Header() {
                   openLeadOfferPopup();
                 }}
               >
-                Get ₹200 OFF — WhatsApp
+                Claim ₹200 code — WhatsApp
               </button>
             </div>
           </motion.div>

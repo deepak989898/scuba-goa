@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
 import { usePackages } from "@/hooks/usePackages";
 import { whatsappLink } from "@/lib/constants";
+import type { PackageDoc } from "@/lib/types";
 
 const LEAD_SID_KEY = "bsg_marketing_sid";
 
@@ -27,8 +28,23 @@ function getLeadSessionId(): string {
   }
 }
 
-function HeroQuickBookingPanel() {
-  const { packages, loading } = usePackages();
+function lowestListedPackageInr(list: PackageDoc[]): number | null {
+  const nums = list
+    .map((p) => p.price)
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (!nums.length) return null;
+  return Math.min(...nums);
+}
+
+function HeroQuickBookingPanel({
+  packages,
+  loading,
+  fromPriceInr,
+}: {
+  packages: PackageDoc[];
+  loading: boolean;
+  fromPriceInr: number | null;
+}) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
@@ -85,8 +101,29 @@ function HeroQuickBookingPanel() {
 
   return (
     <div className="rounded-lg border border-white/20 bg-white/10 p-1.5 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
+      {fromPriceInr != null ? (
+        <p className="mb-1 text-center font-display text-sm font-bold tabular-nums text-cyan-600 max-sm:text-base max-sm:text-ocean-900 sm:mb-2 sm:text-lg sm:text-cyan-200">
+          From ₹{fromPriceInr.toLocaleString("en-IN")}
+          <span className="block text-[9px] font-semibold normal-case tracking-normal text-ocean-600 max-sm:text-[10px] sm:text-[10px] sm:text-cyan-100/90">
+            Live package price on site · ₹199 advance to lock
+          </span>
+        </p>
+      ) : loading ? (
+        <p className="mb-1 text-center text-[9px] font-medium text-ocean-600 max-sm:text-[10px] sm:mb-2 sm:text-xs sm:text-white/70">
+          Loading live prices…
+        </p>
+      ) : null}
       <p className="text-center text-[9px] font-semibold uppercase tracking-wide text-white/90 max-sm:text-ocean-800 sm:text-xs sm:tracking-wider">
-        Or we call you — 60 sec
+        Tell us you&apos;re in — we call back in ~60 sec
+      </p>
+      <p className="mt-1 text-center text-[10px] font-medium leading-snug text-ocean-700 max-sm:text-ocean-700 sm:mt-2 sm:text-xs sm:text-white/90">
+        <span className="sm:hidden">
+          Morning North Goa slots move fast — drop your number and we&apos;ll help you lock a
+          date.
+        </span>
+        <span className="hidden sm:inline">
+          Drop your number — we&apos;ll help you lock a morning slot before it&apos;s gone.
+        </span>
       </p>
       <form
         onSubmit={submit}
@@ -164,8 +201,8 @@ function HeroQuickBookingPanel() {
             </>
           ) : (
             <>
-              <span className="sm:hidden">Callback</span>
-              <span className="hidden sm:inline">Request callback</span>
+              <span className="sm:hidden">Call me</span>
+              <span className="hidden sm:inline">Call me back — I want to book</span>
             </>
           )}
         </button>
@@ -175,8 +212,8 @@ function HeroQuickBookingPanel() {
           href="/booking"
           className="inline-flex min-h-10 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full bg-white px-1.5 py-1.5 text-[10px] font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-md"
         >
-          <span className="sm:hidden">Book</span>
-          <span className="hidden sm:inline">Book Now</span>
+          <span className="sm:hidden">Book slot</span>
+          <span className="hidden sm:inline">Secure my slot</span>
         </Link>
         <a
           href={wa}
@@ -193,6 +230,11 @@ function HeroQuickBookingPanel() {
 
 export function HeroSection() {
   const { slides } = useHeroSlides();
+  const { packages, loading: packagesLoading } = usePackages();
+  const fromPriceInr = useMemo(
+    () => lowestListedPackageInr(packages),
+    [packages],
+  );
   const [i, setI] = useState(0);
   const n = slides.length;
 
@@ -239,8 +281,11 @@ export function HeroSection() {
 
       {/* Mobile: keep hero image clean — no text on photo (CTAs: sticky bar + form + trust strip) */}
       <h1 className="sr-only">
-        Book Scuba Goa — scuba diving, tours &amp; water sports in North Goa. Pay online
-        with Razorpay; WhatsApp confirmation.
+        Book Scuba Goa — scuba diving, tours &amp; water sports in North Goa.
+        {fromPriceInr != null
+          ? ` Packages from ₹${fromPriceInr.toLocaleString("en-IN")}.`
+          : ""}{" "}
+        Pay online with Razorpay; WhatsApp confirmation.
       </h1>
       {/* Desktop / tablet: conversion copy over hero */}
       <div className="pointer-events-none absolute inset-x-0 top-[5.25rem] z-[16] hidden justify-center px-3 sm:flex sm:inset-x-auto sm:left-0 sm:top-1/2 sm:w-full sm:-translate-y-[52%] sm:justify-start sm:px-6 sm:pl-8 lg:pl-12">
@@ -249,19 +294,31 @@ export function HeroSection() {
             Limited morning slots · North Goa
           </p>
           <h2 className="mt-1 font-display text-lg font-bold leading-snug tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:mt-2 sm:text-3xl sm:leading-tight md:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
-            <span className="block sm:inline">Stop scrolling — lock your scuba &amp;</span>{" "}
-            <span className="block sm:inline">tour slot while it&apos;s still available</span>
+            <span className="block sm:inline">Make this the trip you actually</span>{" "}
+            <span className="block sm:inline">breathed underwater</span>
           </h2>
+          {fromPriceInr != null ? (
+            <p className="mt-2 font-display text-2xl font-bold tabular-nums tracking-tight text-cyan-200 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] sm:mt-3 sm:text-3xl md:text-4xl">
+              From ₹{fromPriceInr.toLocaleString("en-IN")}
+              <span className="mt-0.5 block font-sans text-[10px] font-semibold uppercase tracking-wider text-white/85 sm:text-xs">
+                Live site price · not a teaser rate
+              </span>
+            </p>
+          ) : packagesLoading ? (
+            <p className="mt-2 text-xs font-medium text-white/75 sm:mt-3 sm:text-sm">
+              Loading live prices…
+            </p>
+          ) : null}
           <p className="mt-1.5 text-xs font-medium leading-snug text-white/95 drop-shadow sm:mt-3 sm:text-base sm:leading-relaxed md:text-lg">
-            ₹199 advance or full pay · Razorpay · WhatsApp confirm — real bookings, not
-            brochures.
+            ₹199 advance or full pay · Razorpay · WhatsApp confirm — turn &quot;someday&quot;
+            into a real slot on the boat.
           </p>
           <div className="mt-2.5 flex flex-wrap justify-center gap-2 sm:mt-6 sm:justify-start sm:gap-3">
             <Link
               href="/booking"
               className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-900/35 transition hover:bg-cyan-400 sm:px-6 sm:text-sm"
             >
-              Book &amp; pay now
+              Secure my dive &amp; pay
             </Link>
             <a
               href={whatsappLink(
@@ -271,7 +328,7 @@ export function HeroSection() {
               rel="noopener noreferrer"
               className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/75 bg-white/12 px-4 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/22 sm:px-6 sm:text-sm"
             >
-              WhatsApp — book me in
+              WhatsApp — I want today / tomorrow
             </a>
           </div>
         </div>
@@ -286,7 +343,11 @@ export function HeroSection() {
           className="pointer-events-auto relative z-30 w-full min-w-0 max-w-none"
         >
           <div className="w-full min-w-0 translate-y-[60%]">
-            <HeroQuickBookingPanel />
+            <HeroQuickBookingPanel
+              packages={packages}
+              loading={packagesLoading}
+              fromPriceInr={fromPriceInr}
+            />
           </div>
         </motion.div>
       </div>
@@ -299,7 +360,11 @@ export function HeroSection() {
           transition={{ duration: 0.45 }}
           className="pointer-events-auto w-full max-w-sm md:max-w-md"
         >
-          <HeroQuickBookingPanel />
+          <HeroQuickBookingPanel
+            packages={packages}
+            loading={packagesLoading}
+            fromPriceInr={fromPriceInr}
+          />
         </motion.div>
       </div>
     </section>
