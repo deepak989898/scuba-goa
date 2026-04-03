@@ -171,9 +171,15 @@ export function LeadOfferPopup() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setMsg(null);
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 10) {
-      setMsg("Enter a valid WhatsApp number.");
+    let digits = phone.replace(/\D/g, "");
+    if (digits.length >= 12 && digits.startsWith("91")) {
+      digits = digits.slice(-10);
+    }
+    if (digits.length === 11 && digits.startsWith("0")) {
+      digits = digits.slice(1);
+    }
+    if (digits.length !== 10) {
+      setMsg("Enter a valid 10-digit Indian mobile (optional +91).");
       return;
     }
     setBusy(true);
@@ -183,7 +189,7 @@ export function LeadOfferPopup() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: "",
-          phone: phone.trim(),
+          phone: `91${digits}`,
           interestedItem: "₹200 OFF — WhatsApp offer (popup)",
           preferredDate: "",
           source: "offer_popup_200",
@@ -199,7 +205,7 @@ export function LeadOfferPopup() {
       setOpen(false);
       setShowTeaser(false);
       const wa = whatsappLink(
-        `Hi Book Scuba Goa — I want the ₹200 website discount. My WhatsApp number: ${phone.trim()}.`
+        `Hi Book Scuba Goa — I want the ₹200 website discount. My WhatsApp number: +91 ${digits.slice(0, 5)} ${digits.slice(5)}.`
       );
       window.open(wa, "_blank", "noopener,noreferrer");
     } catch {
@@ -259,21 +265,28 @@ export function LeadOfferPopup() {
       <AnimatePresence>
         {open ? (
           <motion.div
-            key="dialog"
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="offer-popup-title"
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 12 }}
-            transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="fixed left-1/2 top-1/2 z-[91] w-[min(100%-1.5rem,22rem)] max-h-[min(100dvh-2rem,32rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border border-amber-200/90 bg-white p-5 shadow-2xl shadow-amber-900/15 max-sm:top-auto max-sm:max-h-[min(88dvh,calc(100dvh-1.25rem))] max-sm:translate-y-0 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-sm:bottom-[max(0.5rem,env(safe-area-inset-bottom,0.5rem))]"
-            onClick={(e) => e.stopPropagation()}
+            key="dialog-portal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[91] flex items-end justify-center p-3 pt-10 pb-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))] pointer-events-none sm:items-center sm:py-6"
           >
+            <motion.div
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="offer-popup-title"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ type: "spring", damping: 26, stiffness: 320 }}
+              className="pointer-events-auto relative w-full max-w-[min(100%,22rem)] max-h-[min(88dvh,calc(100dvh-2.5rem))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-amber-200/90 bg-white px-4 pb-4 pt-3 shadow-2xl shadow-amber-900/15 sm:max-h-[min(90dvh,36rem)] sm:p-5 sm:pt-4"
+              onClick={(e) => e.stopPropagation()}
+            >
             <button
               type="button"
-              className="absolute right-3 top-3 rounded-full p-1 text-ocean-500 transition hover:bg-ocean-50 hover:text-ocean-800"
+              className="absolute right-2 top-2 z-10 min-h-9 min-w-9 touch-manipulation rounded-full p-2 text-ocean-500 transition hover:bg-ocean-50 hover:text-ocean-800 sm:right-3 sm:top-3"
               aria-label="Close"
               onClick={dismiss}
             >
@@ -324,7 +337,7 @@ export function LeadOfferPopup() {
               </p>
               <a
                 href={MISSED_CALL_TEL_HREF}
-                className="mt-2 flex min-h-11 items-center justify-center rounded-full border-2 border-ocean-200 bg-ocean-50 text-sm font-semibold text-ocean-800 transition hover:border-ocean-300 hover:bg-white"
+                className="mt-2 flex min-h-11 w-full items-center justify-center break-all rounded-full border-2 border-ocean-200 bg-ocean-50 px-3 py-2.5 text-center text-xs font-semibold leading-snug text-ocean-800 transition hover:border-ocean-300 hover:bg-white sm:text-sm"
               >
                 {MISSED_CALL_DISPLAY_LABEL}
               </a>
@@ -332,6 +345,7 @@ export function LeadOfferPopup() {
                 Ring once and hang up. Standard call rates may apply.
               </p>
             </div>
+            </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
