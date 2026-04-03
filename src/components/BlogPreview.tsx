@@ -1,15 +1,17 @@
 import Link from "next/link";
-import { blogPosts } from "@/data/blog-posts";
+import { blogPosts, SEO_PILLAR_SLUGS } from "@/data/blog-posts";
 
 export function BlogPreview() {
-  const posts = blogPosts.slice(0, 4);
+  const posts = SEO_PILLAR_SLUGS.map((slug) => blogPosts.find((p) => p.slug === slug)).filter(
+    (p): p is NonNullable<typeof p> => p != null
+  );
   return (
     <section className="bg-white pb-6 pt-10 sm:pb-8 sm:pt-12" id="blog">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
-              Goa travel & diving guides
+              Scuba diving in Goa — essential guides
             </h2>
           </div>
           <Link
@@ -19,7 +21,7 @@ export function BlogPreview() {
             All articles →
           </Link>
         </div>
-        <ul className="mt-6 grid gap-6 sm:mt-8 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-6 grid gap-6 sm:mt-8 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((p) => (
             <li key={p.slug}>
               <Link

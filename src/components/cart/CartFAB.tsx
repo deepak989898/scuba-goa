@@ -7,6 +7,7 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useCart } from "@/context/CartContext";
 import { SITE_NAME } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
+import { persistPaymentConfirmationFromApi } from "@/lib/payment-confirmation";
 import {
   computeMinPayPaise,
   MIN_PAYMENT_PER_PERSON_INR,
@@ -45,7 +46,7 @@ export function CartFAB() {
   const [pickupLocation, setPickupLocation] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [payMode, setPayMode] = useState<"min" | "full">("full");
+  const [payMode, setPayMode] = useState<"min" | "full">("min");
 
   const fullAmountPaise = Math.round(subtotalInr * 100);
   const minPayPaise = computeMinPayPaise(itemCount, fullAmountPaise);
@@ -158,6 +159,7 @@ export function CartFAB() {
               setMsg(out.error ?? "Verification failed");
               return;
             }
+            persistPaymentConfirmationFromApi(out);
             if (out.warning) {
               try {
                 sessionStorage.setItem("paymentNotice", String(out.warning));
@@ -192,7 +194,7 @@ export function CartFAB() {
     <>
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
 
       <AnimatePresence>
@@ -207,7 +209,7 @@ export function CartFAB() {
               setOpen(true);
               setMsg(null);
             }}
-            className="fixed bottom-[calc(7.25rem-15px+env(safe-area-inset-bottom,0px))] left-4 z-[58] flex h-14 w-14 items-center justify-center rounded-full bg-ocean-800 text-white shadow-lg shadow-ocean-900/30 transition hover:bg-ocean-700 md:bottom-8 md:left-8 md:h-16 md:w-16"
+            className="fixed bottom-[calc(10.25rem-15px+env(safe-area-inset-bottom,0px))] left-4 z-[58] flex h-14 w-14 items-center justify-center rounded-full bg-ocean-800 text-white shadow-lg shadow-ocean-900/30 transition hover:bg-ocean-700 md:bottom-8 md:left-8 md:h-16 md:w-16"
             aria-label={`Open cart, ${itemCount} items`}
           >
             <svg

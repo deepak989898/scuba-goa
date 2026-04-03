@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { blogPosts } from "@/data/blog-posts";
+import { blogPostsPillarFirst } from "@/data/blog-posts";
+import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Goa Travel & Scuba Blog | Book Scuba Goa",
+  title: "Scuba Diving in Goa Blog — Price, Safety & Best Time | Book Scuba Goa",
   description:
-    "Long-form guides: best time to scuba dive in Goa, safety, pricing, water sports without hidden fees, Dudhsagar, North/South tours, nightlife, and family itineraries—with FAQs and booking links.",
+    "Scuba diving in Goa guides: best time to dive, is scuba diving safe, scuba diving price Goa & 2026 price guide—plus tours, Dudhsagar, water sports, and FAQs with booking links.",
   keywords: [
+    ...PRIMARY_SEO_KEYWORDS,
     "scuba diving Goa blog",
     "Goa travel guide",
     "water sports Goa tips",
     "Dudhsagar trip planning",
-    "Goa monsoon travel",
   ],
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/blog`,
+  },
   openGraph: {
-    title: "Goa Travel & Scuba Blog",
+    title: `Scuba diving in Goa — guides | ${SITE_NAME}`,
     description:
-      "Authority-level guides for diving, tours, and activities in Goa—with FAQs and direct booking links.",
+      "Pillar guides for scuba diving price Goa, safety, and seasonality—plus Goa tours and activities with direct booking.",
     type: "website",
+    url: `${SITE_URL.replace(/\/$/, "")}/blog`,
   },
 };
 
@@ -26,14 +31,15 @@ export default function BlogIndexPage() {
     <div className="bg-sand py-16 sm:py-20">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <h1 className="font-display text-4xl font-bold text-ocean-900">
-          Goa travel blog
+          Scuba diving in Goa — guides & blog
         </h1>
-        <p className="mt-3 text-ocean-700">
-          SEO-focused articles to help you plan smarter dives, tours, and nightlife in
-          Goa.
+        <p className="mt-3 max-w-2xl text-ocean-700">
+          Start with our three pillar guides (best time, safety, scuba diving price Goa
+          for 2026), then explore tours, monsoon tips, and activity deep-dives—each
+          article links to live booking.
         </p>
         <ul className="mt-12 space-y-6">
-          {blogPosts.map((p) => (
+          {blogPostsPillarFirst().map((p) => (
             <li key={p.slug}>
               <Link
                 href={`/blog/${p.slug}`}

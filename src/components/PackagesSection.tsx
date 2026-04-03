@@ -12,7 +12,7 @@ export function PackagesSection() {
 
   return (
     <section
-      className="bg-gradient-to-b from-ocean-50/80 to-white pt-6 pb-12 sm:pt-8 sm:pb-16"
+      className="bg-gradient-to-b from-ocean-50/80 to-white pt-[clamp(10rem,46vw,13.5rem)] pb-12 sm:pt-8 sm:pb-16"
       id="packages"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -21,6 +21,10 @@ export function PackagesSection() {
             <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
               Live packages
             </h2>
+            <p className="mt-1.5 text-sm font-medium text-amber-800 sm:text-base">
+              Tap Book Now or add to cart — prices you see are the ones you pay at
+              checkout.
+            </p>
           </div>
           <Link
             href="/booking"

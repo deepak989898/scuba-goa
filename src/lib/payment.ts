@@ -1,5 +1,9 @@
-/** Minimum advance per person/unit (INR). ₹500 → 50000 paise. */
-export const MIN_PAYMENT_PER_PERSON_INR = 500;
+/**
+ * Advance booking minimum per cart unit (INR) — each line quantity counts as units.
+ * ₹199 × units, capped at cart total (see computeMinPayPaise).
+ */
+export const MIN_PAYMENT_PER_PERSON_INR = 199;
+export const ADVANCE_BOOKING_INR = MIN_PAYMENT_PER_PERSON_INR;
 export const MIN_PAYMENT_PER_PERSON_PAISE =
   MIN_PAYMENT_PER_PERSON_INR * 100;
 

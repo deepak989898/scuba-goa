@@ -3,7 +3,7 @@ export function HomeScubaInfoSection() {
     <section className="bg-sand/40 py-12 sm:py-14">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl">
-          About Scuba Diving in Goa
+          Scuba diving in Goa — what to know
         </h2>
         <p className="mt-4 leading-relaxed text-ocean-800">
           Scuba diving in Goa is one of the easiest ways for beginners and families to

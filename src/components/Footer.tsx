@@ -3,13 +3,16 @@ import {
   CONTACT_EMAIL,
   CONTACT_PHONE_HREF,
   CONTACT_PHONE_LABEL,
+  MISSED_CALL_DISPLAY_LABEL,
+  MISSED_CALL_TEL_HREF,
   SITE_NAME,
 } from "@/lib/constants";
 
 const quick = [
-  { href: "/services", label: "All Services" },
-  { href: "/booking", label: "Book Online" },
-  { href: "/blog", label: "Travel Blog" },
+  { href: "/booking", label: "Book & pay online" },
+  { href: "/#packages", label: "Package offers" },
+  { href: "/services", label: "All services" },
+  { href: "/blog", label: "Travel blog" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -65,6 +68,20 @@ export function Footer() {
                 <a href={CONTACT_PHONE_HREF} className="hover:text-cyan-300">
                   {CONTACT_PHONE_LABEL}
                 </a>
+              </li>
+              {MISSED_CALL_TEL_HREF !== CONTACT_PHONE_HREF ? (
+                <li>
+                  <a href={MISSED_CALL_TEL_HREF} className="hover:text-cyan-300">
+                    Missed-call line: {MISSED_CALL_DISPLAY_LABEL}
+                  </a>
+                </li>
+              ) : null}
+              <li className="text-xs text-slate-400">
+                Missed-call callback: ring once on{" "}
+                <a href={MISSED_CALL_TEL_HREF} className="text-slate-300 hover:text-cyan-300">
+                  {MISSED_CALL_DISPLAY_LABEL}
+                </a>{" "}
+                — we WhatsApp you back from your caller ID.
               </li>
               <li>
                 <a

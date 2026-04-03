@@ -9,16 +9,18 @@ export const divingPosts: BlogPost[] = [
     date: "2026-03-27",
     readTime: "12 min",
     metaTitle: "Best Time for Scuba Diving in Goa (Month-by-Month Guide) | Book Scuba Goa",
+    pillar: true,
     keywords: [
       "best time for scuba diving in Goa",
+      "scuba diving in Goa",
       "Goa diving season",
       "scuba visibility Goa",
       "Goa sea conditions scuba",
       "Grande Island dive season",
     ],
-    content: `## Why timing matters for scuba in Goa
+    content: `## Why timing matters for scuba diving in Goa
 
-Goa sits on the Arabian Sea, where wind, swell, and seasonal rain change how boats run, how comfortable beginners feel on the surface, and how often operators can reach popular dive points near Grande Island. Picking the right month does not guarantee marine-life fireworks every single day—nature does not work that way—but it does improve your odds of calmer seas, predictable scheduling, and a briefing that is not rushed because the crew is fighting rough weather.
+**Scuba diving in Goa** depends on the Arabian Sea: wind, swell, and seasonal rain change how boats run, how comfortable beginners feel on the surface, and how often operators can reach popular dive points near Grande Island. Picking the right month does not guarantee marine-life fireworks every single day—nature does not work that way—but it does improve your odds of calmer seas, predictable scheduling, and a briefing that is not rushed because the crew is fighting rough weather.
 
 If you are comparing flyers on the beach, remember that **safe operators cancel or reschedule when conditions are wrong**. The best time to dive is not only about sunshine; it is about matching your dates with a realistic sea window and then locking a slot with transparent reporting time, inclusions, and a clear WhatsApp contact. When you are ready to compare packages with live availability, start at our [booking page](/booking) and cross-check details on the [scuba diving service page](/services/scuba-diving).
 
@@ -74,7 +76,7 @@ December is the busiest pricing month for Goa tourism. Expect higher demand for 
 
 Scuba pricing in Goa is not one flat rate because risk, fuel, crew ratios, and media rights differ. A lower headline price might exclude GST, exclude boat transfers, or limit underwater time. A higher price might include better instructor attention, clearer safety briefings, and professional photo or video packages.
 
-When comparing offers, ask directly: **Is the boat transfer included?** **How long is the underwater portion for beginners?** **Are photos and video included, and how many clips?** **What happens if weather cancels?** For a deeper pricing breakdown, read [scuba diving cost in Goa](/blog/scuba-diving-cost-in-goa) and then return to [book with live package cards](/booking).
+When comparing offers, ask directly: **Is the boat transfer included?** **How long is the underwater portion for beginners?** **Are photos and video included, and how many clips?** **What happens if weather cancels?** For a deeper pricing breakdown, read our [scuba diving price guide 2026](/blog/scuba-diving-price-guide-2026) and then return to [book with live package cards](/booking).
 
 ## Practical tips for a smoother dive day
 
@@ -118,15 +120,18 @@ Many guests combine scuba with coastline exploration. If you want a structured d
   },
   {
     slug: "is-scuba-diving-safe",
-    title: "Is Scuba Diving Safe?",
+    title: "Is Scuba Diving Safe in Goa?",
     excerpt:
-      "A straight, evidence-minded guide to beginner scuba safety in Goa: training steps, medical honesty, depth control, boat discipline, and how to choose operators who put safety ahead of shortcuts.",
+      "Is scuba diving safe for beginners in Goa? A straight, evidence-minded guide: training steps, medical honesty, depth control, boat discipline, and how to pick operators who put safety ahead of shortcuts.",
     date: "2026-03-27",
     readTime: "11 min",
     metaTitle: "Is Scuba Diving Safe in Goa? Beginner Safety Guide | Book Scuba Goa",
+    pillar: true,
     keywords: [
       "is scuba diving safe",
+      "is scuba diving safe in Goa",
       "scuba diving safety Goa",
+      "scuba diving in Goa",
       "beginner scuba guide",
       "try dive safety India",
       "non swimmer scuba Goa",
@@ -190,7 +195,7 @@ Stacking a heavy party night, a long trek, and a morning dive in the same 18-hou
 
 ## Related reading for first-timers
 
-If you are still choosing dates, read [best time for scuba diving in Goa](/blog/best-time-for-scuba-diving-in-goa). If you are comparing vendors and pricing psychology, read [scuba diving cost in Goa](/blog/scuba-diving-cost-in-goa). For site context, read [best scuba diving in Goa](/blog/best-scuba-diving-in-goa).`,
+If you are still choosing dates, read [best time for scuba diving in Goa](/blog/best-time-for-scuba-diving-in-goa). If you are comparing vendors and pricing psychology, read our [scuba diving price guide 2026](/blog/scuba-diving-price-guide-2026). For site context, read [best scuba diving in Goa](/blog/best-scuba-diving-in-goa).`,
     faqs: [
       {
         question: "Is scuba diving safe?",
@@ -220,25 +225,30 @@ If you are still choosing dates, read [best time for scuba diving in Goa](/blog/
     ],
   },
   {
-    slug: "scuba-diving-cost-in-goa",
-    title: "Scuba Diving Cost in Goa",
+    slug: "scuba-diving-price-guide-2026",
+    title: "Scuba Diving Price Guide 2026",
     excerpt:
-      "Understand what drives scuba prices in Goa, what should be included in a fair package, how to spot hidden fees, and how to compare operators without sacrificing safety.",
-    date: "2026-03-27",
+      "Scuba diving price Goa (2026): what drives rates, fair inclusions, hidden fees to avoid, and how to compare operators—without sacrificing safety. Updated for North Goa try-dive and Grande Island-style boat trips.",
+    date: "2026-04-04",
     readTime: "11 min",
-    metaTitle: "Scuba Diving Cost in Goa (2026 Pricing Guide) | Book Scuba Goa",
+    metaTitle: "Scuba Diving Price Guide 2026 (Goa Rates & Fees) | Book Scuba Goa",
+    pillar: true,
     keywords: [
+      "scuba diving price Goa",
+      "scuba diving price guide 2026",
+      "scuba diving in Goa",
       "scuba diving cost in Goa",
       "Goa scuba package price",
-      "scuba Goa booking",
       "Grande Island scuba price",
-      "cheap scuba Goa",
+      "best scuba in Goa price",
     ],
-    content: `## Why “the cheapest scuba” is the wrong first question
+    content: `## Scuba diving price Goa — what to expect in 2026
 
-Everyone wants value, but scuba is not a commodity like renting a sunbed. Price reflects boat fuel, crew wages, equipment maintenance cycles, insurance costs, instructor ratios, and sometimes media rights. When one flyer undercuts the market dramatically, you should ask what is being removed from the chain—because the wrong removal is safety margin.
+If you are searching **scuba diving price Goa** or comparing **best scuba in Goa** offers, start here: published rates move with season, boat fuel, crew ratios, equipment cycles, and whether photos or video are bundled. This **scuba diving price guide 2026** explains how to read quotes like an informed traveler—what belongs in a fair package, what often costs extra, and how to avoid beach-side surprises.
 
-This guide explains how to read Goa scuba pricing like an informed traveler: what typically belongs in a package, what commonly costs extra, and how to compare offers without getting tricked by hidden add-ons. When you are ready to see structured packages with clearer inclusions, open our [booking page](/booking) and compare against the [scuba diving service](/services/scuba-diving) details.
+Everyone wants value, but scuba is not a commodity like renting a sunbed. When one flyer undercuts the market dramatically, ask what is being removed from the chain—because the wrong removal is safety margin.
+
+This guide walks through **scuba diving in Goa** pricing logic step by step. When you are ready to see live cards with clearer inclusions, open our [booking page](/booking) and compare against the [scuba diving service](/services/scuba-diving) details.
 
 ## The major price drivers in Goa scuba packages
 
@@ -314,7 +324,7 @@ A slightly higher price that includes proper briefing, safe ratios, and honest w
 - Confirm photos/video and delivery
 - Confirm refund/reschedule rules for rough seas
 
-If you want timing guidance, read [best time for scuba diving in Goa](/blog/best-time-for-scuba-diving-in-goa). If you want safety context, read [is scuba diving safe](/blog/is-scuba-diving-safe).`,
+If you want timing guidance, read [best time for scuba diving in Goa](/blog/best-time-for-scuba-diving-in-goa). If you want safety context, read [is scuba diving safe in Goa](/blog/is-scuba-diving-safe).`,
     faqs: [
       {
         question: "What is a fair scuba diving price in Goa?",
@@ -350,9 +360,11 @@ If you want timing guidance, read [best time for scuba diving in Goa](/blog/best
       "Compare Grande Island-style boat dives, what beginners should expect underwater, how visibility changes, and how to pick certified operators—plus smart links to booking and related tours.",
     date: "2026-03-29",
     readTime: "10 min",
-    metaTitle: "Best Scuba Diving in Goa: Sites & Beginner Expectations | Book Scuba Goa",
+    metaTitle: "Best Scuba in Goa: Sites, Safety & Booking | Book Scuba Goa",
     keywords: [
-      "scuba diving Goa",
+      "best scuba in Goa",
+      "best scuba diving in Goa",
+      "scuba diving in Goa",
       "Grande Island dive",
       "Goa underwater",
       "best scuba operator Goa",
@@ -380,7 +392,7 @@ Visibility is not a dial you can set. It shifts with plankton, swell, runoff aft
 - Realistic group handling
 - Transparent cancellation for rough seas
 
-If you want a deeper safety discussion, read [is scuba diving safe](/blog/is-scuba-diving-safe).
+If you want a deeper safety discussion, read [is scuba diving safe in Goa](/blog/is-scuba-diving-safe).
 
 ## Malvan vs Goa: stop treating them as identical products
 
@@ -412,7 +424,7 @@ If your travel plan includes flying soon after diving, ask your operator for con
 
 ## Photos, video, and memories
 
-Ask upfront what is included. Some guests want a full reel; others want a few stills. Either is fine—**clarity is what matters**. Pricing nuances belong in [scuba diving cost in Goa](/blog/scuba-diving-cost-in-goa).
+Ask upfront what is included. Some guests want a full reel; others want a few stills. Either is fine—**clarity is what matters**. Pricing nuances belong in our [scuba diving price guide 2026](/blog/scuba-diving-price-guide-2026).
 
 ## How to book without getting lost in beach chaos
 

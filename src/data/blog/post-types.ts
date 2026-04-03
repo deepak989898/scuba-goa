@@ -14,5 +14,7 @@ export type BlogPost = {
   content: string;
   /** Optional override for <title>; defaults to "{title} | Book Scuba Goa" in layout */
   metaTitle?: string;
+  /** Pillar guides (homepage preview + editorial priority) */
+  pillar?: boolean;
   faqs?: BlogFaq[];
 };

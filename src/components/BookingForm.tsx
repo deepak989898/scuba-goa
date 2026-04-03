@@ -19,6 +19,7 @@ import {
 } from "@/lib/booking-selection";
 import { SITE_NAME } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
+import { persistPaymentConfirmationFromApi } from "@/lib/payment-confirmation";
 import {
   computeMinPayPaise,
   MIN_PAYMENT_PER_PERSON_INR,
@@ -86,7 +87,7 @@ export function BookingForm() {
   const [date, setDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [payMode, setPayMode] = useState<"min" | "full">("full");
+  const [payMode, setPayMode] = useState<"min" | "full">("min");
   const [leadSentAt, setLeadSentAt] = useState<number>(0);
 
   const addFromEncodedOption = useCallback(
@@ -295,6 +296,7 @@ export function BookingForm() {
               setMsg(out.error ?? "Verification failed");
               return;
             }
+            persistPaymentConfirmationFromApi(out);
             if (out.warning) {
               try {
                 sessionStorage.setItem("paymentNotice", String(out.warning));
@@ -358,17 +360,26 @@ export function BookingForm() {
     <div className="mx-auto max-w-xl">
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
       <div className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
         <h2 className="font-display text-xl font-semibold text-ocean-900">
           Book in 60 seconds
         </h2>
-        <p className="mt-1 text-sm text-ocean-600">
-          Minimum advance is ₹{MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")}{" "}
+        <ol className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-ocean-800 sm:text-xs">
+          <li className="rounded-full bg-ocean-100 px-2.5 py-1">1. Cart</li>
+          <li className="rounded-full bg-ocean-100 px-2.5 py-1">2. Details</li>
+          <li className="rounded-full bg-cyan-100 px-2.5 py-1 text-ocean-900">
+            3. Pay (Razorpay) → instant confirm
+          </li>
+        </ol>
+        <p className="mt-2 text-sm text-ocean-600">
+          <span className="font-semibold text-ocean-800">Advance booking:</span> pay
+          ₹{MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")}{" "}
           <span className="font-medium">per unit</span> in your cart (each line’s
-          quantity counts as separate units). You can pay that minimum or the full
-          cart total.
+          quantity counts), or pay the full total. After Razorpay succeeds, your
+          booking is confirmed on the spot — you’ll see a confirmation screen and we
+          follow up on WhatsApp.
         </p>
         {loading ? (
           <p className="mt-6 text-sm text-ocean-600">Loading packages…</p>
@@ -601,7 +612,10 @@ export function BookingForm() {
               {payButtonLabel}
             </button>
             <p className="text-center text-xs text-ocean-600">
-              Booking is confirmed after successful payment verification.
+              Flow: <strong className="text-ocean-800">Book</strong> →{" "}
+              <strong className="text-ocean-800">Pay with Razorpay</strong> (UPI / card
+              / netbanking) → <strong className="text-ocean-800">Instant confirm</strong>{" "}
+              on this site + email when configured.
             </p>
           </div>
         )}

@@ -86,7 +86,7 @@ function HeroQuickBookingPanel() {
   return (
     <div className="rounded-lg border border-white/20 bg-white/10 p-1.5 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
       <p className="text-center text-[9px] font-semibold uppercase tracking-wide text-white/90 max-sm:text-ocean-800 sm:text-xs sm:tracking-wider">
-        Quick booking
+        Or we call you — 60 sec
       </p>
       <form
         onSubmit={submit}
@@ -155,7 +155,7 @@ function HeroQuickBookingPanel() {
         <button
           type="submit"
           disabled={busy}
-          className="col-span-2 w-full rounded-full bg-cyan-500 py-1.5 text-[10px] font-semibold text-slate-950 shadow-md shadow-cyan-500/25 transition hover:bg-cyan-400 disabled:opacity-50 sm:py-3 sm:text-sm"
+          className="col-span-2 min-h-10 w-full touch-manipulation rounded-full bg-cyan-500 py-2 text-[10px] font-semibold text-slate-950 shadow-md shadow-cyan-500/25 transition hover:bg-cyan-400 active:bg-cyan-300 disabled:opacity-50 sm:min-h-11 sm:py-3 sm:text-sm"
         >
           {busy ? (
             <>
@@ -173,7 +173,7 @@ function HeroQuickBookingPanel() {
       <div className="mt-1 flex gap-1 sm:mt-4 sm:gap-3">
         <Link
           href="/booking"
-          className="inline-flex min-h-7 min-w-0 flex-1 items-center justify-center rounded-full bg-white px-1.5 py-1 text-[9px] font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-md"
+          className="inline-flex min-h-10 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full bg-white px-1.5 py-1.5 text-[10px] font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-md"
         >
           <span className="sm:hidden">Book</span>
           <span className="hidden sm:inline">Book Now</span>
@@ -182,7 +182,7 @@ function HeroQuickBookingPanel() {
           href={wa}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-7 min-w-0 flex-1 items-center justify-center rounded-full border border-white/80 bg-white/10 px-1.5 py-1 text-[9px] font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 max-sm:border-ocean-300 max-sm:bg-ocean-50 max-sm:text-ocean-800 max-sm:hover:bg-ocean-100 sm:min-h-11 sm:flex-none sm:border-2 sm:px-5 sm:py-2.5 sm:text-sm"
+          className="inline-flex min-h-10 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full border border-white/80 bg-white/10 px-1.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 max-sm:border-ocean-300 max-sm:bg-ocean-50 max-sm:text-ocean-800 max-sm:active:bg-ocean-100 sm:min-h-11 sm:flex-none sm:border-2 sm:px-5 sm:py-2.5 sm:text-sm"
         >
           WhatsApp
         </a>
@@ -209,7 +209,7 @@ export function HeroSection() {
   const current = slides[i] ?? slides[0];
 
   return (
-    <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(50dvh,400px)] sm:z-auto sm:-mt-[5.25rem] sm:min-h-[88vh] sm:overflow-hidden sm:pt-[5.25rem]">
+    <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(52dvh,420px)] sm:z-auto sm:-mt-[5.25rem] sm:min-h-[88vh] sm:overflow-hidden sm:pt-[5.25rem]">
       {/* Clip slides to hero box only; section can overflow on mobile for straddle card */}
       <div className="absolute inset-0 overflow-hidden">
         <AnimatePresence mode="wait">
@@ -227,6 +227,7 @@ export function HeroSection() {
                 alt={current.alt}
                 fill
                 priority
+                quality={82}
                 className="object-cover object-center"
                 sizes="100vw"
               />
@@ -234,6 +235,46 @@ export function HeroSection() {
           ) : null}
         </AnimatePresence>
         <div className="absolute inset-0 bg-hero-overlay" />
+      </div>
+
+      {/* Mobile: keep hero image clean — no text on photo (CTAs: sticky bar + form + trust strip) */}
+      <h1 className="sr-only">
+        Book Scuba Goa — scuba diving, tours &amp; water sports in North Goa. Pay online
+        with Razorpay; WhatsApp confirmation.
+      </h1>
+      {/* Desktop / tablet: conversion copy over hero */}
+      <div className="pointer-events-none absolute inset-x-0 top-[5.25rem] z-[16] hidden justify-center px-3 sm:flex sm:inset-x-auto sm:left-0 sm:top-1/2 sm:w-full sm:-translate-y-[52%] sm:justify-start sm:px-6 sm:pl-8 lg:pl-12">
+        <div className="pointer-events-auto w-full max-w-md text-center sm:max-w-lg sm:text-left lg:max-w-xl">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300 sm:text-xs sm:tracking-[0.22em]">
+            Limited morning slots · North Goa
+          </p>
+          <h2 className="mt-1 font-display text-lg font-bold leading-snug tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:mt-2 sm:text-3xl sm:leading-tight md:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
+            <span className="block sm:inline">Stop scrolling — lock your scuba &amp;</span>{" "}
+            <span className="block sm:inline">tour slot while it&apos;s still available</span>
+          </h2>
+          <p className="mt-1.5 text-xs font-medium leading-snug text-white/95 drop-shadow sm:mt-3 sm:text-base sm:leading-relaxed md:text-lg">
+            ₹199 advance or full pay · Razorpay · WhatsApp confirm — real bookings, not
+            brochures.
+          </p>
+          <div className="mt-2.5 flex flex-wrap justify-center gap-2 sm:mt-6 sm:justify-start sm:gap-3">
+            <Link
+              href="/booking"
+              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-900/35 transition hover:bg-cyan-400 sm:px-6 sm:text-sm"
+            >
+              Book &amp; pay now
+            </Link>
+            <a
+              href={whatsappLink(
+                "Hi — I want to book from your website today. What slots do you have?"
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/75 bg-white/12 px-4 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/22 sm:px-6 sm:text-sm"
+            >
+              WhatsApp — book me in
+            </a>
+          </div>
+        </div>
       </div>
 
       {/* Mobile: ~40% of form on hero, ~60% below hero (above urgency strip); bottom-aligned then translateY(60% of card height) */}

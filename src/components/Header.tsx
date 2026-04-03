@@ -5,10 +5,13 @@ import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { whatsappLink } from "@/lib/constants";
+import { MISSED_CALL_TEL_HREF, whatsappLink } from "@/lib/constants";
+import { openLeadOfferPopup } from "@/lib/lead-offer-events";
+import { TrustTopStrip } from "@/components/TrustTopStrip";
 
 const nav = [
   { href: "/", label: "Home" },
+  { href: "/#packages", label: "Offers" },
   { href: "/services", label: "Services" },
   { href: "/booking", label: "Book" },
   { href: "/blog", label: "Blog" },
@@ -76,9 +79,31 @@ export function Header() {
           >
             WhatsApp
           </a>
+          <a
+            href={MISSED_CALL_TEL_HREF}
+            title="Ring once — we WhatsApp you back"
+            className={
+              isHome
+                ? "hidden rounded-full border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-500/25 md:inline-flex"
+                : "hidden rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 md:inline-flex"
+            }
+          >
+            Missed call
+          </a>
+          <button
+            type="button"
+            onClick={() => openLeadOfferPopup()}
+            className={
+              isHome
+                ? "hidden rounded-full bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-400 md:inline-flex"
+                : "hidden rounded-full bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-400 md:inline-flex"
+            }
+          >
+            ₹200 OFF
+          </button>
           <Link
             href="/booking"
-            className="inline-flex min-h-11 min-w-[5.5rem] items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
+            className="inline-flex min-h-11 min-w-[5.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
           >
             Book Now
           </Link>
@@ -98,6 +123,7 @@ export function Header() {
           </button>
         </div>
       </div>
+      <TrustTopStrip isHome={isHome} />
       <AnimatePresence>
         {open && (
           <motion.div
@@ -128,6 +154,23 @@ export function Header() {
               >
                 WhatsApp
               </a>
+              <a
+                href={MISSED_CALL_TEL_HREF}
+                className="rounded-lg px-3 py-2 text-amber-200 hover:bg-slate-800"
+                onClick={() => setOpen(false)}
+              >
+                Missed call (callback)
+              </a>
+              <button
+                type="button"
+                className="w-full rounded-lg bg-amber-500 px-3 py-2 text-left text-sm font-semibold text-amber-950 hover:bg-amber-400"
+                onClick={() => {
+                  setOpen(false);
+                  openLeadOfferPopup();
+                }}
+              >
+                Get ₹200 OFF — WhatsApp
+              </button>
             </div>
           </motion.div>
         )}

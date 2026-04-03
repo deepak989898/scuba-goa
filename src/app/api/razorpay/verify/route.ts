@@ -84,6 +84,13 @@ export async function POST(req: Request) {
     if (!Number.isFinite(amt) || amt < 100) {
       return NextResponse.json({ error: "Invalid payment data" }, { status: 400 });
     }
+    const st = String(payment.status ?? "").toLowerCase();
+    if (st === "failed") {
+      return NextResponse.json(
+        { error: "This payment failed in Razorpay. Start checkout again if you were charged." },
+        { status: 400 }
+      );
+    }
     paidPaise = Math.round(amt);
   } catch (e) {
     console.error("Razorpay payment fetch failed", e);
@@ -123,6 +130,18 @@ export async function POST(req: Request) {
 
   const balancePaise = Math.max(0, fullAmountPaise - paidPaise);
   const paymentMode = balancePaise > 0 ? "partial" : "full";
+  const amountInr = Math.round(paidPaise / 100);
+  const fullInr = Math.round(fullAmountPaise / 100);
+  const balanceInr = Math.round(balancePaise / 100);
+
+  const clientConfirm = {
+    paymentId: razorpay_payment_id,
+    orderId: razorpay_order_id,
+    paymentMode,
+    paidInr: amountInr,
+    balanceInr,
+    fullInr,
+  };
 
   const db = getAdminDb();
   if (!db) {
@@ -130,6 +149,7 @@ export async function POST(req: Request) {
       ok: true,
       stored: false,
       emailSent: false,
+      ...clientConfirm,
       warning:
         "FIREBASE_SERVICE_ACCOUNT_KEY is missing or invalid on the server. Razorpay payment succeeded, but the booking was not saved. Add the service account JSON to Vercel (or your host) and redeploy.",
     });
@@ -174,14 +194,12 @@ export async function POST(req: Request) {
         error:
           "Payment verified but saving the booking failed. Contact support with your Razorpay payment ID.",
         stored: false,
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
       },
       { status: 500 }
     );
   }
-
-  const amountInr = Math.round(paidPaise / 100);
-  const fullInr = Math.round(fullAmountPaise / 100);
-  const balanceInr = Math.round(balancePaise / 100);
 
   let pdfBytes: Uint8Array | undefined;
   try {
@@ -221,5 +239,10 @@ export async function POST(req: Request) {
     console.error("booking confirmation email failed", err);
   }
 
-  return NextResponse.json({ ok: true, stored: true, emailSent });
+  return NextResponse.json({
+    ok: true,
+    stored: true,
+    emailSent,
+    ...clientConfirm,
+  });
 }

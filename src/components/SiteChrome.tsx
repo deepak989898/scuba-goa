@@ -6,6 +6,7 @@ import { AiChatbot } from "@/components/AiChatbot";
 import { CartFAB } from "@/components/cart/CartFAB";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { LeadOfferPopup } from "@/components/LeadOfferPopup";
 import { StickyBookBar } from "@/components/StickyBookBar";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 
@@ -24,13 +25,14 @@ export function SiteChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <Header />
-      <main className="pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+      <main className="pb-[calc(11rem+env(safe-area-inset-bottom,0px))] md:pb-0">
         {children}
       </main>
       <Footer />
       <CartFAB />
       <WhatsAppFloat />
       <StickyBookBar />
+      <LeadOfferPopup />
       <AiChatbot />
     </>
   );

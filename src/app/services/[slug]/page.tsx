@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { ServiceDetailGallery } from "@/components/ServiceDetailGallery";
 import { ServiceDetailSections } from "@/components/ServiceDetailSections";
 import { ServiceSubServicesCart } from "@/components/ServiceSubServicesCart";
@@ -22,14 +23,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const s = await getServiceBySlugServer(slug);
   if (!s) return { title: "Service" };
+  const baseUrl = SITE_URL.replace(/\/$/, "");
+  const canonical = `${baseUrl}/services/${slug}`;
   const fromDetail = s.detailContent?.split(/\n\s*\n+/)[0]?.trim().slice(0, 155);
   const desc =
     (fromDetail && fromDetail.length > 0 ? fromDetail : s.short) +
     ` — book ${s.title.toLowerCase()} in Goa with WhatsApp or Razorpay.`;
+
+  if (slug === "scuba-diving") {
+    const scubaDesc =
+      "Scuba diving in Goa: book try dives and packages with clear scuba diving price Goa, trained crews, and secure Razorpay checkout. Best scuba in Goa—compare inclusions before you pay.";
+    return {
+      title: `Scuba Diving in Goa — Book Try Dive & Packages | ${SITE_NAME}`,
+      description: scubaDesc.slice(0, 320),
+      keywords: [...PRIMARY_SEO_KEYWORDS, s.title, "try dive Goa", "Grande Island"],
+      alternates: { canonical },
+      openGraph: {
+        title: `Scuba diving in Goa | ${SITE_NAME}`,
+        description: scubaDesc.slice(0, 200),
+        url: canonical,
+        type: "website",
+      },
+    };
+  }
+
   return {
     title: s.title,
     description: desc.slice(0, 320),
     keywords: [s.title, "Goa", "booking"],
+    alternates: { canonical },
   };
 }
 

@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     receipt?: string;
     /** Total for the booking/cart (paise). Required for min vs full checkout. */
     fullAmountPaise?: number;
-    /** People (package) or cart quantity units for ₹500/unit minimum. */
+    /** Cart quantity units for advance minimum (₹199 × units, capped at total). */
     payUnits?: number;
   };
   try {

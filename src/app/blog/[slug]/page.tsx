@@ -65,6 +65,7 @@ function articleJsonLd(p: {
   excerpt: string;
   date: string;
   slug: string;
+  keywords?: string[];
 }) {
   const url = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   return {
@@ -74,6 +75,7 @@ function articleJsonLd(p: {
     description: p.excerpt,
     datePublished: p.date,
     dateModified: p.date,
+    keywords: p.keywords?.length ? p.keywords.join(", ") : undefined,
     author: { "@type": "Organization", name: SITE_NAME },
     publisher: { "@type": "Organization", name: SITE_NAME },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },

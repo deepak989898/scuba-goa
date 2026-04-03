@@ -3,7 +3,7 @@ import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { SiteChrome } from "@/components/SiteChrome";
-import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 
 const dm = DM_Sans({
   subsets: ["latin"],
@@ -20,22 +20,22 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} | Scuba Diving Goa & Tour Packages`,
+    default: `${SITE_NAME} | Scuba Diving in Goa — Book Online`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Book scuba diving Goa, water sports Goa booking, North & South Goa tours, Dudhsagar, casinos, clubs, flyboarding & bungee. WhatsApp instant confirm + Razorpay.",
+    "Book scuba diving in Goa online: clear scuba diving price Goa, best scuba in Goa try-dives & packages, tours and water sports. Secure Razorpay checkout and WhatsApp confirmations.",
   keywords: [
-    "scuba diving Goa",
+    ...PRIMARY_SEO_KEYWORDS,
     "water sports Goa booking",
     "Goa tour packages",
     "Dudhsagar trip",
     "casino bookings Goa",
   ],
   openGraph: {
-    title: `${SITE_NAME} | Premium Goa Experiences`,
+    title: `${SITE_NAME} | Scuba Diving in Goa`,
     description:
-      "Luxury-light ocean adventures with transparent pricing and secure payments.",
+      "Compare scuba diving price Goa, book the best scuba in Goa for your dates, and pay securely—try dives, boat trips, tours & more.",
     url: SITE_URL,
     siteName: SITE_NAME,
     locale: "en_IN",

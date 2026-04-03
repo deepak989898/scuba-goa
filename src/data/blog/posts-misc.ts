@@ -32,13 +32,13 @@ For seasonal timing that affects congestion likelihood, read [best time for scub
 
 Depth is not a trophy on your first dive. Deeper water adds task loading: buoyancy control, air consumption, and equalizing discipline. Professional instructors choose conservative profiles for beginners because the goal is a safe, memorable experience—not a number for social media.
 
-If you want safety framing beyond myths, read [is scuba diving safe](/blog/is-scuba-diving-safe).
+If you want safety framing beyond myths, read [is scuba diving safe in Goa](/blog/is-scuba-diving-safe).
 
 ## Myth 4: “Cheap scuba is the same everywhere”
 
 If two prices look wildly different, inclusions and safety margins are usually not identical. Training time, boat quality, crew ratios, equipment maintenance, and media bundles all move the number. Chasing the lowest shout on the beach without a written inclusion list is how tourists get surprise add-ons—or worse, rushed briefings.
 
-Understand pricing psychology in [scuba diving cost in Goa](/blog/scuba-diving-cost-in-goa).
+Understand pricing psychology in our [scuba diving price guide 2026](/blog/scuba-diving-price-guide-2026).
 
 ## Myth 5: “Photos are always included”
 
@@ -245,7 +245,7 @@ For faster rides, [water sports](/services/water-sports) require strict life jac
 
 Introductory scuba is rarely a “whole family default.” Training, medical forms, maturity, and operator policies matter. Some teens love it; some are not ready. Do not promise scuba before confirming eligibility. If parents want to dive, consider splitting the day: one parent dives while the other does a calmer [South Goa tour](/services/south-goa-tour) block with younger kids.
 
-Safety context: [is scuba diving safe](/blog/is-scuba-diving-safe) and [first-time scuba myths](/blog/first-time-scuba-myths).
+Safety context: [is scuba diving safe in Goa](/blog/is-scuba-diving-safe) and [first-time scuba myths](/blog/first-time-scuba-myths).
 
 ## North Goa energy vs South Goa calm: pick your family mode
 
@@ -461,7 +461,7 @@ Limits protect you and staff. Do not argue your way past them. If you are near a
 
 ## Photography and video: adrenaline plus receipts
 
-Many jump sites sell media packages. Confirm pricing before you leap. If you want comparable underwater media later, compare how [scuba diving](/services/scuba-diving) packages handle photos in [scuba diving cost in Goa](/blog/scuba-diving-cost-in-goa).
+Many jump sites sell media packages. Confirm pricing before you leap. If you want comparable underwater media later, compare how [scuba diving](/services/scuba-diving) packages handle photos in our [scuba diving price guide 2026](/blog/scuba-diving-price-guide-2026).
 
 ## Scheduling: never stack bungee, flyboard, and scuba blindly
 
