@@ -342,24 +342,6 @@ export default function AdminBookingsPage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ocean-900">Bookings</h1>
-      <p className="mt-2 text-sm text-ocean-600">
-        Written by <code className="text-xs">/api/razorpay/verify</code> when{" "}
-        <code className="text-xs">FIREBASE_SERVICE_ACCOUNT_KEY</code> is set.
-      </p>
-      <p className="mt-2 text-sm text-ocean-600">
-        Use <strong>Preview bill</strong> to check the PDF, then{" "}
-        <strong>Send confirmation email</strong> (bill attached) or{" "}
-        <strong>WhatsApp guest</strong> — the message includes a{" "}
-        <strong>time-limited link</strong> that opens the same PDF (WhatsApp cannot
-        attach files from a website button). <strong>Preview bill</strong> opens an
-        on-page window (not a separate tab) so the PDF shows reliably. On Vercel, add{" "}
-        <code className="text-xs">FIREBASE_SERVICE_ACCOUNT_KEY</code> (full service
-        account JSON) so APIs can read bookings — Razorpay keys are{" "}
-        <strong>not</strong> used to generate the preview. Set{" "}
-        <code className="text-xs">NEXT_PUBLIC_SITE_URL</code> for correct WhatsApp
-        links; optional <code className="text-xs">BOOKING_BILL_SHARE_SECRET</code>{" "}
-        (or Razorpay secret) for signing share links.
-      </p>
       {actionError ? (
         <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {actionError}

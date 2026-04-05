@@ -26,6 +26,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    /** Written by server (Admin SDK) via /api/marketing/lead; admin UI reads & updates follow-up flags. */
+    match /marketingLeads/{id} {
+      allow read, update: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow create, delete: if false;
+    }
     match /pageViews/{id} {
       allow read: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
