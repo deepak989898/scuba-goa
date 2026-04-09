@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { HeroSlideBackground } from "@/components/HeroSlideBackground";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
-import { getYoutubeEmbedSrc } from "@/lib/hero-video";
 import { usePackages } from "@/hooks/usePackages";
 import { whatsappLink } from "@/lib/constants";
 import type { PackageDoc } from "@/lib/types";
@@ -239,15 +238,24 @@ export function HeroSection() {
   const [i, setI] = useState(0);
   const n = slides.length;
 
+  const advanceSlide = useCallback(() => {
+    setI((prev) => {
+      if (n <= 1) return prev;
+      return (prev + 1) % n;
+    });
+  }, [n]);
+
   useEffect(() => {
     setI((x) => (n > 0 ? x % n : 0));
   }, [n]);
 
   useEffect(() => {
     if (n <= 1) return;
-    const t = setInterval(() => setI((x) => (x + 1) % n), 5500);
-    return () => clearInterval(t);
-  }, [n]);
+    const slide = slides[i];
+    if (slide?.videoUrl?.trim()) return;
+    const t = window.setInterval(() => advanceSlide(), 5500);
+    return () => window.clearInterval(t);
+  }, [n, i, slides, advanceSlide]);
 
   const current = slides[i] ?? slides[0];
   const slideKey = current
@@ -268,44 +276,12 @@ export function HeroSection() {
               transition={{ duration: 0.8 }}
               className="absolute inset-0"
             >
-              {current.videoUrl?.trim() ? (
-                (() => {
-                  const yt = getYoutubeEmbedSrc(current.videoUrl);
-                  if (yt) {
-                    return (
-                      <iframe
-                        title={current.alt}
-                        src={yt}
-                        className="pointer-events-none absolute inset-0 h-full w-full scale-[1.12] border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen={false}
-                      />
-                    );
-                  }
-                  return (
-                    <video
-                      className="absolute inset-0 h-full w-full object-cover object-center"
-                      poster={current.src}
-                      src={current.videoUrl.trim()}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
-                    />
-                  );
-                })()
-              ) : (
-                <CmsRemoteImage
-                  src={current.src}
-                  alt={current.alt}
-                  fill
-                  priority
-                  quality={82}
-                  className="object-cover object-center"
-                  sizes="100vw"
-                />
-              )}
+              <HeroSlideBackground
+                slide={current}
+                slideKey={slideKey}
+                onVideoEnded={advanceSlide}
+                shouldLoopWhenSingleSlide={n <= 1}
+              />
             </motion.div>
           ) : null}
         </AnimatePresence>

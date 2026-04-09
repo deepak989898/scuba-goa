@@ -29,7 +29,9 @@ export function useHeroSlides() {
         } else {
           const rows = snap.docs.map((d) => {
             const x = d.data() as Record<string, unknown>;
-            const videoUrl = String(x.videoUrl ?? "").trim();
+            const videoUrl = String(
+              x.videoUrl ?? x.videoURL ?? x.video_url ?? "",
+            ).trim();
             return {
               id: d.id,
               src: String(x.imageUrl ?? "").trim(),

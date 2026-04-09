@@ -73,8 +73,8 @@ export function Header() {
             rel="noopener noreferrer"
             className={
               isHome
-                ? "hidden rounded-full border border-white/40 px-3 py-2 text-sm font-medium text-white transition hover:border-cyan-200 hover:bg-white/10 sm:inline-flex"
-                : "hidden rounded-full border border-slate-600 px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-cyan-400 hover:bg-slate-800 sm:inline-flex"
+                ? "hidden rounded-full border border-emerald-700/90 bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-black/20 transition hover:bg-emerald-500 sm:inline-flex"
+                : "hidden rounded-full border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 sm:inline-flex"
             }
           >
             WhatsApp
@@ -84,8 +84,8 @@ export function Header() {
             title="Ring once — we WhatsApp you back"
             className={
               isHome
-                ? "hidden rounded-full border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-500/25 md:inline-flex"
-                : "hidden rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 md:inline-flex"
+                ? "hidden rounded-full border border-amber-700/90 bg-amber-400 px-3 py-2 text-sm font-semibold text-amber-950 shadow-md shadow-black/15 transition hover:bg-amber-300 md:inline-flex"
+                : "hidden rounded-full border border-amber-600/80 bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-400 md:inline-flex"
             }
           >
             Missed call

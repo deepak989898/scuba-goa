@@ -9,7 +9,8 @@ import {
   getDocs,
   updateDoc,
 } from "firebase/firestore";
-import { getDb } from "@/lib/firebase";
+import { getDb, getFirebaseStorageClient } from "@/lib/firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 type Row = {
   id: string;
@@ -29,6 +30,8 @@ export default function AdminHeroPage() {
     alt: "",
     sortOrder: 0,
   });
+  const [uploadBusy, setUploadBusy] = useState<"video" | "poster" | null>(null);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!db) return;
@@ -38,7 +41,7 @@ export default function AdminHeroPage() {
       return {
         id: d.id,
         imageUrl: String(x.imageUrl ?? ""),
-        videoUrl: String(x.videoUrl ?? ""),
+        videoUrl: String(x.videoUrl ?? x.videoURL ?? x.video_url ?? ""),
         alt: String(x.alt ?? ""),
         sortOrder: Number(x.sortOrder ?? 0),
       };
@@ -81,6 +84,41 @@ export default function AdminHeroPage() {
     await refresh();
   }
 
+  async function uploadHeroFile(
+    file: File | null,
+    kind: "video" | "poster",
+  ) {
+    if (!file) return;
+    const storage = getFirebaseStorageClient();
+    if (!storage) {
+      setUploadErr("Firebase Storage is not configured (bucket env var).");
+      return;
+    }
+    setUploadErr(null);
+    setUploadBusy(kind);
+    try {
+      const safe = file.name.replace(/[^\w.-]+/g, "_");
+      const folder = kind === "video" ? "hero/videos" : "hero/posters";
+      const path = `${folder}/${Date.now()}_${safe}`;
+      const fileRef = ref(storage, path);
+      await uploadBytes(fileRef, file, {
+        contentType: file.type || undefined,
+      });
+      const url = await getDownloadURL(fileRef);
+      if (kind === "video") {
+        setForm((f) => ({ ...f, videoUrl: url }));
+      } else {
+        setForm((f) => ({ ...f, imageUrl: url }));
+      }
+    } catch (e) {
+      setUploadErr(
+        e instanceof Error ? e.message : "Upload failed. Check Storage rules.",
+      );
+    } finally {
+      setUploadBusy(null);
+    }
+  }
+
   if (!db) {
     return (
       <p className="text-ocean-700">
@@ -96,12 +134,18 @@ export default function AdminHeroPage() {
       </h1>
       <p className="mt-2 text-sm text-ocean-600">
         Slides rotate on the home hero. Add an image URL (recommended as poster), and
-        optionally a video URL — direct MP4/WebM or a YouTube watch/share link. If this list
-        is empty, the site uses built-in defaults. Lower sort order shows earlier.
+        optionally a video URL or an uploaded file — direct MP4/WebM, Firebase URL, or a
+        YouTube / Shorts link. If this list is empty, the site uses built-in defaults. Lower
+        sort order shows earlier.
       </p>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Add slide</h2>
+        {uploadErr ? (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {uploadErr}
+          </p>
+        ) : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="text-sm sm:col-span-2">
             Image URL (poster / fallback)
@@ -111,9 +155,27 @@ export default function AdminHeroPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, imageUrl: e.target.value }))
               }
-              placeholder="https://… (required if no video)"
+              placeholder="https://… (recommended for video poster)"
             />
           </label>
+          <div className="sm:col-span-2">
+            <p className="text-sm font-medium text-ocean-900">Poster image upload</p>
+            <p className="text-xs text-ocean-600">
+              Optional — fills the image URL field with a Firebase download link.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              className="mt-1 block w-full text-sm text-ocean-700 file:mr-3 file:rounded-lg file:border-0 file:bg-ocean-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ocean-900 hover:file:bg-ocean-200"
+              disabled={uploadBusy !== null}
+              onChange={(e) =>
+                void uploadHeroFile(e.target.files?.[0] ?? null, "poster")
+              }
+            />
+            {uploadBusy === "poster" ? (
+              <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
+            ) : null}
+          </div>
           <label className="text-sm sm:col-span-2">
             Video URL (optional)
             <input
@@ -122,9 +184,28 @@ export default function AdminHeroPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, videoUrl: e.target.value }))
               }
-              placeholder="MP4/WebM link or YouTube URL"
+              placeholder="MP4/WebM link, YouTube, or upload below"
             />
           </label>
+          <div className="sm:col-span-2">
+            <p className="text-sm font-medium text-ocean-900">Hero video upload</p>
+            <p className="text-xs text-ocean-600">
+              MP4 or WebM — stored in Firebase Storage; URL is pasted into the field
+              automatically.
+            </p>
+            <input
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+              className="mt-1 block w-full text-sm text-ocean-700 file:mr-3 file:rounded-lg file:border-0 file:bg-ocean-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ocean-900 hover:file:bg-ocean-200"
+              disabled={uploadBusy !== null}
+              onChange={(e) =>
+                void uploadHeroFile(e.target.files?.[0] ?? null, "video")
+              }
+            />
+            {uploadBusy === "video" ? (
+              <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
+            ) : null}
+          </div>
           <label className="text-sm sm:col-span-2">
             Alt text
             <input
