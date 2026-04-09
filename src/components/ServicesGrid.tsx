@@ -23,7 +23,7 @@ export function ServicesGrid() {
   }
 
   return (
-    <ul className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="mt-12 grid grid-cols-1 items-stretch gap-8 sm:grid-cols-2 lg:grid-cols-3">
       {services.map((s) => {
         const cardImgs = serviceDetailImages(s);
         const multi = cardImgs.filter(Boolean).length > 1;
@@ -32,7 +32,7 @@ export function ServicesGrid() {
         return (
         <li
           key={s.slug}
-          className="u-depth-card group relative overflow-visible rounded-2xl border border-ocean-100 bg-sand"
+          className="u-depth-card group relative flex h-full min-h-0 flex-col overflow-visible rounded-2xl border border-ocean-100 bg-sand"
         >
           <Link
             href={`/services/${s.slug}`}
@@ -41,7 +41,7 @@ export function ServicesGrid() {
           >
             <span className="sr-only">{s.title}</span>
           </Link>
-          <div className="relative z-[1] flex flex-col">
+          <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
             <div className="pointer-events-none overflow-hidden rounded-t-2xl">
               {multi ? (
                 <ServiceCardImageSlider
@@ -70,12 +70,12 @@ export function ServicesGrid() {
                 </div>
               )}
             </div>
-            <div className="pointer-events-none p-5 [&_*]:pointer-events-none [&_a]:pointer-events-auto">
-              <h2 className="font-display text-xl font-semibold text-ocean-900">
+            <div className="pointer-events-none flex min-h-0 flex-1 flex-col p-5 [&_*]:pointer-events-none [&_a]:pointer-events-auto">
+              <h2 className="line-clamp-2 min-h-[3rem] font-display text-xl font-semibold leading-snug text-ocean-900">
                 {s.title}
               </h2>
               <ServiceShortClamp slug={s.slug} text={s.short} />
-              <ServiceMetaBlock s={s} />
+              <ServiceMetaBlock s={s} variant="cardGrid" />
               <div className="mt-3 rounded-xl border-2 border-ocean-600 bg-gradient-to-br from-amber-50 via-white to-cyan-50 px-3 py-2.5 shadow-md ring-1 ring-ocean-200/80">
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-ocean-800">
                   From
@@ -86,7 +86,7 @@ export function ServicesGrid() {
                 </p>
               </div>
             </div>
-            <div className="relative z-[2] flex flex-wrap gap-2 px-5 pb-5">
+            <div className="relative z-[2] mt-auto flex flex-wrap gap-2 px-5 pb-5">
               <ServiceCardAddToCart service={s} size="sm" />
               <Link
                 href={`/services/${s.slug}`}

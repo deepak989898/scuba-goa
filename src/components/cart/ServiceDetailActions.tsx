@@ -15,13 +15,13 @@ export function ServiceDetailActions({ service: s }: Props) {
 
   return (
     <div className="mt-8 space-y-8">
-      <div className="rounded-2xl border-2 border-cyan-500/40 bg-gradient-to-br from-ocean-950 via-ocean-900 to-ocean-800 p-6 shadow-lg shadow-ocean-950/20">
-        <p className="text-xs font-extrabold uppercase tracking-wider text-cyan-200">
+      <div className="rounded-2xl border-2 border-ocean-600 bg-gradient-to-br from-amber-50 via-white to-cyan-50 p-6 shadow-md ring-1 ring-ocean-200/80">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-ocean-800">
           From
         </p>
-        <p className="mt-1 font-display text-3xl font-extrabold tabular-nums text-white md:text-4xl">
+        <p className="mt-1 font-display text-3xl font-extrabold tabular-nums text-ocean-950 md:text-4xl">
           ₹{s.priceFrom.toLocaleString("en-IN")}
-          <span className="text-2xl font-bold text-cyan-300">+</span>
+          <span className="text-2xl font-bold text-cyan-700">+</span>
         </p>
       </div>
       <div className="rounded-2xl border border-ocean-100 bg-sand/80 p-6">

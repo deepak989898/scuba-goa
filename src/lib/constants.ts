@@ -62,3 +62,15 @@ export function customerWhatsappLink(phoneRaw: string, message: string): string 
   if (d.length === 10 && !d.startsWith("91")) d = `91${d}`;
   return `https://wa.me/${d}?text=${encodeURIComponent(message)}`;
 }
+
+/** Google Maps embed (office / meeting point — Scuba Diving with Island Trip, Baga). */
+export const OFFICE_MAP_EMBED_SRC =
+  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d7687.314906828183!2d73.74467907770996!3d15.556483400000015!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bbfebd8f126b611%3A0xcca5dbc31fb0bb7d!2sScuba%20Diving%20with%20Island%20Trip!5e0!3m2!1sen!2sin!4v1775777440061!5m2!1sen!2sin";
+
+export const OFFICE_ADDRESS_SINGLELINE =
+  "Office no 2, Titos Lane 2, Saunta Vaddo, Baga, Calangute, Goa 403516";
+
+export const OFFICE_ADDRESS_LINES = [
+  "Office no 2, Titos Lane 2, Saunta Vaddo",
+  "Baga, Calangute, Goa 403516",
+] as const;

@@ -52,7 +52,7 @@ export function ServiceCards() {
             you&apos;re ready to commit.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 items-stretch gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {services.map((s, idx) => {
             const cardImgs = serviceDetailImages(s);
             const multi = cardImgs.filter(Boolean).length > 1;
@@ -66,7 +66,7 @@ export function ServiceCards() {
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: Math.min(idx * 0.04, 0.3) }}
-                className="u-depth-card group relative flex flex-col overflow-visible rounded-2xl border border-ocean-100 bg-sand"
+                className="u-depth-card group relative flex h-full min-h-0 flex-col overflow-visible rounded-2xl border border-ocean-100 bg-sand"
               >
                 <Link
                   href={`/services/${s.slug}`}
@@ -75,7 +75,7 @@ export function ServiceCards() {
                 >
                   <span className="sr-only">{s.title}</span>
                 </Link>
-                <div className="relative z-[1] flex flex-1 flex-col pointer-events-none">
+                <div className="relative z-[1] flex min-h-0 flex-1 flex-col pointer-events-none">
                   <div className="pointer-events-none shrink-0 overflow-hidden rounded-t-2xl">
                     {multi ? (
                       <ServiceCardImageSlider
@@ -110,12 +110,12 @@ export function ServiceCards() {
                       </div>
                     )}
                   </div>
-                  <div className="pointer-events-none flex flex-1 flex-col p-2.5 sm:p-4 [&_*]:pointer-events-none [&_a]:pointer-events-auto">
-                    <h3 className="font-display text-sm font-semibold leading-snug text-ocean-900 sm:text-lg">
+                  <div className="pointer-events-none flex min-h-0 flex-1 flex-col p-2.5 sm:p-4 [&_*]:pointer-events-none [&_a]:pointer-events-auto">
+                    <h3 className="line-clamp-2 min-h-[2.5rem] font-display text-sm font-semibold leading-snug text-ocean-900 sm:min-h-[2.75rem] sm:text-lg">
                       {s.title}
                     </h3>
                     <ServiceShortClamp slug={s.slug} text={s.short} />
-                    <ServiceMetaBlock s={s} />
+                    <ServiceMetaBlock s={s} variant="cardGrid" />
                     <div className="mt-1.5 rounded-xl border-2 border-ocean-600 bg-gradient-to-br from-amber-50 via-white to-cyan-50 px-2.5 py-2 shadow-md ring-1 ring-ocean-200/80 sm:mt-3 sm:px-3 sm:py-2.5">
                       <p className="text-[9px] font-extrabold uppercase tracking-wider text-ocean-800 sm:text-[10px]">
                         From
@@ -126,7 +126,7 @@ export function ServiceCards() {
                       </p>
                     </div>
                   </div>
-                  <div className="relative z-[2] mt-auto flex flex-wrap gap-1 px-2.5 pb-2.5 pointer-events-none sm:mt-0 sm:gap-2 sm:px-4 sm:pb-4">
+                  <div className="relative z-[2] mt-auto flex flex-wrap gap-1 px-2.5 pb-2.5 pointer-events-none sm:gap-2 sm:px-4 sm:pb-4">
                     <span className="pointer-events-auto inline-flex">
                       <ServiceCardAddToCart service={s} size="sm" />
                     </span>
