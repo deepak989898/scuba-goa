@@ -32,7 +32,7 @@ Add **every** variable your app needs. Use **Production** (and **Preview** if yo
 
 | Name | Example | Notes |
 |------|---------|--------|
-| `NEXT_PUBLIC_SITE_URL` | `https://scuba-goa.vercel.app` | Your real Vercel URL or custom domain (no trailing slash). |
+| `NEXT_PUBLIC_SITE_URL` | `https://bookscubagoa.com` | Your canonical live URL (no trailing slash). |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | `919217290871` | Country code + number, no `+`. |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | `support@bookscubagoa.com` | Optional; shown in footer. |
 
@@ -114,8 +114,9 @@ Env vars are baked in at **build time** for `NEXT_PUBLIC_*` and available at **r
 
 Firebase Console → **Authentication** → **Settings** → **Authorized domains** → add:
 
-- `scuba-goa.vercel.app` (your Vercel subdomain)
-- Your custom domain if you add one later
+- `bookscubagoa.com`
+- `www.bookscubagoa.com` (if you use `www`)
+- your Vercel preview domain (optional, for preview auth testing)
 
 ---
 
@@ -123,7 +124,7 @@ Firebase Console → **Authentication** → **Settings** → **Authorized domain
 
 Vercel → **Project** → **Settings** → **Domains** → add your domain and follow DNS instructions.
 
-Then set `NEXT_PUBLIC_SITE_URL` to `https://yourdomain.com` and redeploy.
+Then set `NEXT_PUBLIC_SITE_URL` to your canonical domain (for example `https://bookscubagoa.com`) and redeploy.
 
 ---
 

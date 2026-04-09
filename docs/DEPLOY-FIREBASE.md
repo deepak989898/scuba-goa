@@ -14,7 +14,7 @@ Your app is **Next.js** with **API routes** (Razorpay order + verify). Classic *
 1. Open [Firebase Console](https://console.firebase.google.com/) → project **bookscubagoa**.
 2. **Build** → **Firestore Database** → create database (production mode) → deploy **rules and indexes** (see **[FIRESTORE-RULES-AND-INDEXES.md](./FIRESTORE-RULES-AND-INDEXES.md)** and repo `firestore.rules` + `firestore.indexes.json`).
 3. **Build** → **Authentication** → **Sign-in method** → enable **Email/Password**.
-4. **Authentication** → **Settings** → **Authorized domains** → add your production domain (e.g. `yourapp.web.app`, `yourdomain.com`, and `localhost` for dev).
+4. **Authentication** → **Settings** → **Authorized domains** → add your production domain (for this project: `bookscubagoa.com`, plus `www.bookscubagoa.com` if used, and `localhost` for dev).
 5. Create an **admin user**: Authentication → Add user (email + password).
 6. **Firestore** → add collection `admins` → document ID = that user’s **UID** (from Authentication users list). Fields e.g. `{ "email": "you@email.com" }`.
 

@@ -1,6 +1,6 @@
 export const SITE_NAME = "Book Scuba Goa";
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.web.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.com";
 
 /** Primary search phrases for on-page copy, metadata, and blog strategy */
 export const PRIMARY_SEO_KEYWORDS = [
