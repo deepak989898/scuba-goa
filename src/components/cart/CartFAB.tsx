@@ -20,6 +20,21 @@ declare global {
   }
 }
 
+async function resolveRazorpayKeyId(): Promise<string> {
+  const buildKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  if (buildKey) return buildKey;
+  const res = await fetch("/api/razorpay/public-key", { cache: "no-store" });
+  const data = await res.json().catch(() => ({}));
+  const keyId = typeof data?.keyId === "string" ? data.keyId.trim() : "";
+  if (!res.ok || !keyId) {
+    throw new Error(
+      data?.error ??
+        "Razorpay key missing. Set NEXT_PUBLIC_RAZORPAY_KEY_ID or RAZORPAY_KEY_ID in Vercel."
+    );
+  }
+  return keyId;
+}
+
 function cartSummary(lines: CartLine[]): string {
   return lines
     .map((l) => `${l.name} ×${l.quantity}`)
@@ -79,17 +94,13 @@ export function CartFAB() {
       setMsg("Your cart is empty.");
       return;
     }
-    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    if (!key) {
-      setMsg("Razorpay key missing.");
-      return;
-    }
     if (!window.Razorpay) {
       setMsg("Payment script loading—try again.");
       return;
     }
     setBusy(true);
     try {
+      const key = await resolveRazorpayKeyId();
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

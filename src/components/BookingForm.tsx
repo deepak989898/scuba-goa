@@ -34,6 +34,21 @@ declare global {
 
 const LEAD_SID_KEY = "bsg_marketing_sid";
 
+async function resolveRazorpayKeyId(): Promise<string> {
+  const buildKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  if (buildKey) return buildKey;
+  const res = await fetch("/api/razorpay/public-key", { cache: "no-store" });
+  const data = await res.json().catch(() => ({}));
+  const keyId = typeof data?.keyId === "string" ? data.keyId.trim() : "";
+  if (!res.ok || !keyId) {
+    throw new Error(
+      data?.error ??
+        "Razorpay key missing. Set NEXT_PUBLIC_RAZORPAY_KEY_ID or RAZORPAY_KEY_ID in Vercel."
+    );
+  }
+  return keyId;
+}
+
 function getLeadSessionId(): string {
   if (typeof window === "undefined") return "";
   try {
@@ -211,13 +226,6 @@ export function BookingForm() {
       return;
     }
 
-    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    if (!key) {
-      setMsg(
-        "Razorpay key missing. Add NEXT_PUBLIC_RAZORPAY_KEY_ID for checkout."
-      );
-      return;
-    }
     if (!window.Razorpay) {
       setMsg("Payment script still loading—try again in a second.");
       return;
@@ -235,6 +243,7 @@ export function BookingForm() {
 
     setBusy(true);
     try {
+      const key = await resolveRazorpayKeyId();
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
