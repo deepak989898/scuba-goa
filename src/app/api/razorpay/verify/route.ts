@@ -239,10 +239,15 @@ export async function POST(req: Request) {
     console.error("booking confirmation email failed", err);
   }
 
+  const emailWarning = emailSent
+    ? undefined
+    : "Payment is successful, but confirmation email was not sent. Check RESEND_API_KEY and RESEND_FROM_EMAIL (use a verified sender like support@bookscubagoa.com).";
+
   return NextResponse.json({
     ok: true,
     stored: true,
     emailSent,
+    warning: emailWarning,
     ...clientConfirm,
   });
 }

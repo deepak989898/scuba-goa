@@ -28,8 +28,9 @@ export async function sendBookingConfirmationEmail(opts: {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
 
-  const from =
-    process.env.RESEND_FROM_EMAIL ?? `${SITE_NAME} <onboarding@resend.dev>`;
+  const from = formatFromAddress(
+    process.env.RESEND_FROM_EMAIL ?? CONTACT_EMAIL
+  );
 
   const partialNote =
     opts.balanceInr > 0
@@ -76,7 +77,25 @@ export async function sendBookingConfirmationEmail(opts: {
     body: JSON.stringify(body),
   });
 
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    console.error("Resend send failed", {
+      status: res.status,
+      from,
+      to: opts.to,
+      body: errText.slice(0, 800),
+    });
+  }
+
   return res.ok;
+}
+
+function formatFromAddress(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return `${SITE_NAME} <onboarding@resend.dev>`;
+  if (trimmed.includes("<") && trimmed.includes(">")) return trimmed;
+  if (trimmed.includes("@")) return `${SITE_NAME} <${trimmed}>`;
+  return `${SITE_NAME} <onboarding@resend.dev>`;
 }
 
 function escapeFilename(s: string): string {
