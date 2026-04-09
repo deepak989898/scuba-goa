@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { HeroSlideBackground } from "@/components/HeroSlideBackground";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
 import { usePackages } from "@/hooks/usePackages";
@@ -51,6 +58,14 @@ function HeroQuickBookingPanel({
   const [interestedItem, setInterestedItem] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [mobileFormOpen, setMobileFormOpen] = useState(false);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!mobileFormOpen) return;
+    const t = window.setTimeout(() => phoneInputRef.current?.focus(), 180);
+    return () => window.clearTimeout(t);
+  }, [mobileFormOpen]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -99,6 +114,14 @@ function HeroQuickBookingPanel({
   const inputClass =
     "mt-0.5 w-full min-h-0 rounded-md border px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 sm:mt-1 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm border-white/25 bg-white/10 text-white placeholder:text-white/50 focus:border-cyan-300/80 focus:ring-cyan-300/60 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:placeholder:text-ocean-400 max-sm:focus:border-ocean-500 max-sm:focus:ring-ocean-400";
 
+  const bookSlotBtnClass =
+    "inline-flex min-h-11 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm";
+
+  const whatsappSolidClass =
+    "inline-flex min-h-11 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full bg-emerald-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-950/30 ring-2 ring-emerald-400/60 transition hover:bg-emerald-500 active:bg-emerald-700 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm";
+
+  const showMobileFields = mobileFormOpen;
+
   return (
     <div className="rounded-lg border border-white/20 bg-white/10 p-1.5 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
       {fromPriceInr != null ? (
@@ -113,10 +136,59 @@ function HeroQuickBookingPanel({
           Loading live prices…
         </p>
       ) : null}
-      <p className="text-center text-[9px] font-semibold uppercase tracking-wide text-white/90 max-sm:text-ocean-800 sm:text-xs sm:tracking-wider">
+
+      {/* Mobile: compact 3-button row — expands to full form */}
+      <div className="sm:hidden">
+        {!showMobileFields ? (
+          <div className="mt-2 space-y-2">
+            <p className="text-center text-[10px] font-extrabold uppercase tracking-wide text-ocean-800">
+              Quick actions
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setMobileFormOpen(true)}
+                className="flex min-h-11 touch-manipulation flex-col items-center justify-center rounded-xl bg-ocean-900 px-1 py-1.5 text-center text-[9px] font-extrabold uppercase leading-tight text-white shadow-md shadow-ocean-950/40 ring-1 ring-ocean-700 active:scale-[0.98]"
+              >
+                Call me
+              </button>
+              <Link
+                href="/booking"
+                className="flex min-h-11 touch-manipulation flex-col items-center justify-center rounded-xl bg-gradient-to-b from-cyan-400 to-cyan-600 px-1 py-1.5 text-center text-[9px] font-extrabold uppercase leading-tight text-slate-950 shadow-md shadow-cyan-900/40 ring-1 ring-cyan-300 active:scale-[0.98]"
+              >
+                Book slot
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileFormOpen(true)}
+                className="flex min-h-11 touch-manipulation flex-col items-center justify-center rounded-xl bg-emerald-600 px-1 py-1.5 text-center text-[9px] font-extrabold uppercase leading-tight text-white shadow-md shadow-emerald-950/35 ring-1 ring-emerald-500 active:scale-[0.98]"
+              >
+                WhatsApp
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setMobileFormOpen(false);
+              setMsg(null);
+            }}
+            className="mb-2 text-left text-[11px] font-bold text-ocean-700 underline decoration-ocean-300 underline-offset-2"
+          >
+            ← Back to quick actions
+          </button>
+        )}
+      </div>
+
+      <p
+        className={`text-center text-[9px] font-semibold uppercase tracking-wide text-white/90 max-sm:text-ocean-800 sm:text-xs sm:tracking-wider ${showMobileFields ? "max-sm:block" : "max-sm:hidden"} sm:block`}
+      >
         Tell us you&apos;re in — we call back in ~60 sec
       </p>
-      <p className="mt-1 text-center text-[10px] font-medium leading-snug text-ocean-700 max-sm:text-ocean-700 sm:mt-2 sm:text-xs sm:text-white/90">
+      <p
+        className={`mt-1 text-center text-[10px] font-medium leading-snug text-ocean-700 max-sm:text-ocean-700 sm:mt-2 sm:text-xs sm:text-white/90 ${showMobileFields ? "max-sm:block" : "max-sm:hidden"} sm:block`}
+      >
         <span className="sm:hidden">
           Morning North Goa slots move fast — drop your number and we&apos;ll help you lock a
           date.
@@ -127,11 +199,12 @@ function HeroQuickBookingPanel({
       </p>
       <form
         onSubmit={submit}
-        className="mt-1 grid grid-cols-2 gap-x-1.5 gap-y-1 sm:mt-4 sm:flex sm:flex-col sm:gap-3"
+        className={`mt-1 grid grid-cols-2 gap-x-1.5 gap-y-1 sm:mt-4 sm:flex sm:flex-col sm:gap-3 ${showMobileFields ? "max-sm:grid" : "max-sm:hidden"}`}
       >
         <label className="col-span-2 block text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:text-xs">
           Phone <span className="text-cyan-200 max-sm:text-cyan-600">*</span>
           <input
+            ref={phoneInputRef}
             type="tel"
             inputMode="tel"
             autoComplete="tel"
@@ -192,7 +265,7 @@ function HeroQuickBookingPanel({
         <button
           type="submit"
           disabled={busy}
-          className="col-span-2 min-h-10 w-full touch-manipulation rounded-full bg-cyan-500 py-2 text-[10px] font-semibold text-slate-950 shadow-md shadow-cyan-500/25 transition hover:bg-cyan-400 active:bg-cyan-300 disabled:opacity-50 sm:min-h-11 sm:py-3 sm:text-sm"
+          className="col-span-2 min-h-10 w-full touch-manipulation rounded-full bg-ocean-900 py-2 text-[10px] font-extrabold text-white shadow-lg shadow-ocean-950/40 ring-2 ring-cyan-400/50 transition hover:bg-ocean-800 active:brightness-95 disabled:opacity-50 max-sm:uppercase sm:min-h-11 sm:bg-cyan-500 sm:py-3 sm:font-bold sm:text-slate-950 sm:shadow-cyan-500/30 sm:ring-cyan-300/60 sm:hover:bg-cyan-400"
         >
           {busy ? (
             <>
@@ -201,17 +274,16 @@ function HeroQuickBookingPanel({
             </>
           ) : (
             <>
-              <span className="sm:hidden">Call me</span>
+              <span className="sm:hidden">Send — call me back</span>
               <span className="hidden sm:inline">Call me back — I want to book</span>
             </>
           )}
         </button>
       </form>
-      <div className="mt-1 flex gap-1 sm:mt-4 sm:gap-3">
-        <Link
-          href="/booking"
-          className="inline-flex min-h-10 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full bg-white px-1.5 py-1.5 text-[10px] font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-md"
-        >
+      <div
+        className={`mt-1 flex gap-1 sm:mt-4 sm:gap-3 ${showMobileFields ? "max-sm:flex" : "max-sm:hidden"} sm:flex`}
+      >
+        <Link href="/booking" className={bookSlotBtnClass}>
           <span className="sm:hidden">Book slot</span>
           <span className="hidden sm:inline">Secure my slot</span>
         </Link>
@@ -219,7 +291,7 @@ function HeroQuickBookingPanel({
           href={wa}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-10 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full border border-white/80 bg-white/10 px-1.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 max-sm:border-ocean-300 max-sm:bg-ocean-50 max-sm:text-ocean-800 max-sm:active:bg-ocean-100 sm:min-h-11 sm:flex-none sm:border-2 sm:px-5 sm:py-2.5 sm:text-sm"
+          className={whatsappSolidClass}
         >
           WhatsApp
         </a>

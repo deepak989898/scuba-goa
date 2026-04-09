@@ -59,8 +59,8 @@ export default function HomePage() {
         <PaymentSuccessBanner />
       </Suspense>
       <HeroSection />
-      <PackagesSection />
       <ServiceCards />
+      <PackagesSection />
       <AdConversionStrip />
       <TrustSection />
       <RatingsSection />

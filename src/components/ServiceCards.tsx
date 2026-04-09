@@ -116,15 +116,13 @@ export function ServiceCards() {
                     </h3>
                     <ServiceShortClamp slug={s.slug} text={s.short} />
                     <ServiceMetaBlock s={s} />
-                    <div className="mt-1.5 rounded-xl border-2 border-cyan-500/50 bg-gradient-to-br from-ocean-950 via-ocean-900 to-ocean-800 px-2.5 py-2 shadow-lg shadow-ocean-950/25 sm:mt-3 sm:px-3 sm:py-2.5">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-cyan-200/95 sm:text-[10px]">
+                    <div className="mt-1.5 rounded-xl border-2 border-ocean-600 bg-gradient-to-br from-amber-50 via-white to-cyan-50 px-2.5 py-2 shadow-md ring-1 ring-ocean-200/80 sm:mt-3 sm:px-3 sm:py-2.5">
+                      <p className="text-[9px] font-extrabold uppercase tracking-wider text-ocean-800 sm:text-[10px]">
                         From
                       </p>
-                      <p className="font-display text-base font-extrabold tabular-nums leading-tight text-white sm:text-xl">
+                      <p className="font-display text-base font-extrabold tabular-nums leading-tight text-ocean-950 sm:text-xl">
                         ₹{s.priceFrom.toLocaleString("en-IN")}
-                        <span className="text-sm font-bold text-cyan-300 sm:text-lg">
-                          +
-                        </span>
+                        <span className="text-sm font-bold text-cyan-700 sm:text-lg">+</span>
                       </p>
                     </div>
                   </div>
