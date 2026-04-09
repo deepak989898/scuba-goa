@@ -14,6 +14,7 @@ import { getDb } from "@/lib/firebase";
 type Row = {
   id: string;
   imageUrl: string;
+  videoUrl: string;
   alt: string;
   sortOrder: number;
 };
@@ -22,7 +23,12 @@ export default function AdminHeroPage() {
   const db = getDb();
   const [list, setList] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ imageUrl: "", alt: "", sortOrder: 0 });
+  const [form, setForm] = useState({
+    imageUrl: "",
+    videoUrl: "",
+    alt: "",
+    sortOrder: 0,
+  });
 
   const refresh = useCallback(async () => {
     if (!db) return;
@@ -32,6 +38,7 @@ export default function AdminHeroPage() {
       return {
         id: d.id,
         imageUrl: String(x.imageUrl ?? ""),
+        videoUrl: String(x.videoUrl ?? ""),
         alt: String(x.alt ?? ""),
         sortOrder: Number(x.sortOrder ?? 0),
       };
@@ -49,13 +56,16 @@ export default function AdminHeroPage() {
   }, [db, refresh]);
 
   async function saveNew() {
-    if (!db || !form.imageUrl.trim()) return;
+    const img = form.imageUrl.trim();
+    const vid = form.videoUrl.trim();
+    if (!db || (!img && !vid)) return;
     await addDoc(collection(db, "heroSlides"), {
-      imageUrl: form.imageUrl.trim(),
-      alt: form.alt.trim() || "Hero image",
+      imageUrl: img,
+      videoUrl: vid,
+      alt: form.alt.trim() || "Hero slide",
       sortOrder: Number(form.sortOrder),
     });
-    setForm({ imageUrl: "", alt: "", sortOrder: list.length });
+    setForm({ imageUrl: "", videoUrl: "", alt: "", sortOrder: list.length });
     await refresh();
   }
 
@@ -85,22 +95,34 @@ export default function AdminHeroPage() {
         Homepage hero slider
       </h1>
       <p className="mt-2 text-sm text-ocean-600">
-        Images rotate on the home hero. If this list is empty, the site uses built-in
-        defaults. Lower sort order shows earlier.
+        Slides rotate on the home hero. Add an image URL (recommended as poster), and
+        optionally a video URL — direct MP4/WebM or a YouTube watch/share link. If this list
+        is empty, the site uses built-in defaults. Lower sort order shows earlier.
       </p>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Add slide</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="text-sm sm:col-span-2">
-            Image URL
+            Image URL (poster / fallback)
             <input
               className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
               value={form.imageUrl}
               onChange={(e) =>
                 setForm((f) => ({ ...f, imageUrl: e.target.value }))
               }
-              placeholder="https://…"
+              placeholder="https://… (required if no video)"
+            />
+          </label>
+          <label className="text-sm sm:col-span-2">
+            Video URL (optional)
+            <input
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
+              value={form.videoUrl}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, videoUrl: e.target.value }))
+              }
+              placeholder="MP4/WebM link or YouTube URL"
             />
           </label>
           <label className="text-sm sm:col-span-2">
@@ -145,6 +167,7 @@ export default function AdminHeroPage() {
               <tr>
                 <th className="p-3">Sort</th>
                 <th className="p-3">Preview</th>
+                <th className="p-3">Type</th>
                 <th className="p-3">Alt</th>
                 <th className="p-3">Actions</th>
               </tr>
@@ -163,18 +186,36 @@ export default function AdminHeroPage() {
                     />
                   </td>
                   <td className="p-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={r.imageUrl}
-                      alt=""
-                      className="h-14 w-24 rounded object-cover"
-                    />
+                    {r.imageUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={r.imageUrl}
+                        alt=""
+                        className="h-14 w-24 rounded object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs text-ocean-500">—</span>
+                    )}
+                  </td>
+                  <td className="max-w-[8rem] p-3 text-xs text-ocean-700">
+                    {r.videoUrl.trim() ? (
+                      <span className="font-semibold text-ocean-900">Video</span>
+                    ) : (
+                      <span>Image</span>
+                    )}
                   </td>
                   <td className="max-w-xs p-3 text-xs text-ocean-700">
                     {r.alt}
-                    <div className="mt-1 truncate font-mono text-[10px] text-ocean-500">
-                      {r.imageUrl}
-                    </div>
+                    {r.imageUrl ? (
+                      <div className="mt-1 truncate font-mono text-[10px] text-ocean-500">
+                        {r.imageUrl}
+                      </div>
+                    ) : null}
+                    {r.videoUrl.trim() ? (
+                      <div className="mt-1 truncate font-mono text-[10px] text-ocean-500">
+                        {r.videoUrl}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="p-3">
                     <button

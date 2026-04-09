@@ -8,6 +8,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   MISSED_CALL_DISPLAY_LABEL,
@@ -135,7 +136,6 @@ export function LeadOfferPopup() {
   useEffect(() => {
     if (isAdmin) return;
     const onCustom = () => {
-      if (readPopupState() !== "fresh") return;
       openedRef.current = true;
       setOpen(true);
       setShowTeaser(false);
@@ -302,36 +302,55 @@ export function LeadOfferPopup() {
               Get ₹200 OFF
             </h2>
             <p className="mt-2 text-center text-sm text-ocean-700">
-              You&apos;re seconds from ₹200 off — we&apos;ll drop the code in WhatsApp so you
-              can book with confidence.
+              Fastest way to lock your slot: book online with secure card or UPI (Razorpay).
+              The ₹200 website offer is for guests who book through this site — details on the
+              booking page.
             </p>
-            <form onSubmit={submit} className="mt-4 space-y-3">
-              <label className="block text-xs font-medium text-ocean-800">
-                WhatsApp number
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="10-digit mobile"
-                  className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5 text-ocean-900 placeholder:text-ocean-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                />
-              </label>
-              {msg ? (
-                <p className="text-center text-sm text-red-600" role="status">
-                  {msg}
-                </p>
-              ) : null}
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
-              >
-                {busy ? "Sending…" : "Send my ₹200 code on WhatsApp"}
-              </button>
-            </form>
+            <Link
+              href="/booking"
+              className="mt-4 flex min-h-12 w-full items-center justify-center rounded-full bg-ocean-gradient px-4 py-3 text-center text-sm font-bold text-white shadow-md transition hover:opacity-95"
+              onClick={() => {
+                setOpen(false);
+                setShowTeaser(false);
+              }}
+            >
+              Claim ₹200 off — book online now
+            </Link>
+            <div className="mt-5 border-t border-ocean-100 pt-4">
+              <p className="text-center text-xs font-semibold text-ocean-800">
+                Prefer WhatsApp? Get the code here
+              </p>
+              <p className="mt-1 text-center text-[11px] text-ocean-600">
+                We&apos;ll save your number and open WhatsApp with a prefilled message.
+              </p>
+              <form onSubmit={submit} className="mt-3 space-y-3">
+                <label className="block text-xs font-medium text-ocean-800">
+                  WhatsApp number
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="10-digit mobile"
+                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5 text-ocean-900 placeholder:text-ocean-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
+                </label>
+                {msg ? (
+                  <p className="text-center text-sm text-red-600" role="status">
+                    {msg}
+                  </p>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full rounded-full border-2 border-ocean-200 bg-ocean-50 py-3 text-sm font-semibold text-ocean-900 transition hover:border-ocean-300 hover:bg-white disabled:opacity-50"
+                >
+                  {busy ? "Sending…" : "Send my ₹200 code on WhatsApp"}
+                </button>
+              </form>
+            </div>
             <div className="mt-4 border-t border-ocean-100 pt-4">
               <p className="text-center text-[11px] font-semibold text-ocean-600">
                 Or missed call — we WhatsApp you back

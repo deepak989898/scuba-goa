@@ -111,8 +111,8 @@ export function Header() {
             type="button"
             className={
               isHome
-                ? "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/40 text-white md:hidden"
-                : "inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 md:hidden"
+                ? "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/50 bg-slate-950/75 text-white shadow-md shadow-black/20 backdrop-blur-sm md:hidden"
+                : "inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 bg-slate-900 md:hidden"
             }
             aria-label="Open menu"
             onClick={() => setOpen((v) => !v)}
@@ -130,18 +130,21 @@ export function Header() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className={
-              isHome
-                ? "border-t border-white/15 bg-slate-950/95 backdrop-blur-md md:hidden"
-                : "border-t border-slate-700 bg-slate-950 md:hidden"
-            }
+            className="z-[60] border-t border-slate-700 bg-slate-950 md:hidden"
           >
             <div className="flex flex-col gap-1 px-4 py-3">
+              <Link
+                href="/booking"
+                className="rounded-xl bg-ocean-gradient px-3 py-3 text-center text-sm font-bold text-white shadow-md"
+                onClick={() => setOpen(false)}
+              >
+                Book &amp; pay online — ₹200 off
+              </Link>
               {nav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg px-3 py-2 text-slate-200 hover:bg-slate-800"
+                  className="rounded-lg px-3 py-2.5 text-slate-100 hover:bg-slate-800"
                   onClick={() => setOpen(false)}
                 >
                   {item.label}
@@ -149,27 +152,27 @@ export function Header() {
               ))}
               <a
                 href={whatsappLink()}
-                className="rounded-lg px-3 py-2 text-cyan-300 hover:bg-slate-800"
+                className="rounded-lg px-3 py-2.5 text-cyan-300 hover:bg-slate-800"
                 onClick={() => setOpen(false)}
               >
-                WhatsApp
+                WhatsApp chat
               </a>
               <a
                 href={MISSED_CALL_TEL_HREF}
-                className="rounded-lg px-3 py-2 text-amber-200 hover:bg-slate-800"
+                className="rounded-lg px-3 py-2.5 text-amber-200 hover:bg-slate-800"
                 onClick={() => setOpen(false)}
               >
                 Missed call (callback)
               </a>
               <button
                 type="button"
-                className="w-full rounded-lg bg-amber-500 px-3 py-2 text-left text-sm font-semibold text-amber-950 hover:bg-amber-400"
+                className="w-full rounded-lg border border-amber-400/80 bg-amber-500/15 px-3 py-2.5 text-left text-sm font-semibold text-amber-100 hover:bg-amber-500/25"
                 onClick={() => {
                   setOpen(false);
                   openLeadOfferPopup();
                 }}
               >
-                Claim ₹200 code — WhatsApp
+                Get ₹200 code on WhatsApp
               </button>
             </div>
           </motion.div>

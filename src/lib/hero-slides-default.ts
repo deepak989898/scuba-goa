@@ -1,4 +1,5 @@
-export type HeroSlide = { src: string; alt: string };
+/** `src` is always the image URL (also used as video poster when `videoUrl` is set). */
+export type HeroSlide = { src: string; alt: string; videoUrl?: string };
 
 export const DEFAULT_HERO_SLIDES: HeroSlide[] = [
   {

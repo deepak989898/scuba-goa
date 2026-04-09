@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
+import { getYoutubeEmbedSrc } from "@/lib/hero-video";
 import { usePackages } from "@/hooks/usePackages";
 import { whatsappLink } from "@/lib/constants";
 import type { PackageDoc } from "@/lib/types";
@@ -249,6 +250,9 @@ export function HeroSection() {
   }, [n]);
 
   const current = slides[i] ?? slides[0];
+  const slideKey = current
+    ? `${current.videoUrl ?? ""}|${current.src}|${i}`
+    : "hero-empty";
 
   return (
     <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(52dvh,420px)] sm:z-auto sm:-mt-[5.25rem] sm:min-h-[88vh] sm:overflow-hidden sm:pt-[5.25rem]">
@@ -257,22 +261,51 @@ export function HeroSection() {
         <AnimatePresence mode="wait">
           {current ? (
             <motion.div
-              key={current.src}
+              key={slideKey}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8 }}
               className="absolute inset-0"
             >
-              <CmsRemoteImage
-                src={current.src}
-                alt={current.alt}
-                fill
-                priority
-                quality={82}
-                className="object-cover object-center"
-                sizes="100vw"
-              />
+              {current.videoUrl?.trim() ? (
+                (() => {
+                  const yt = getYoutubeEmbedSrc(current.videoUrl);
+                  if (yt) {
+                    return (
+                      <iframe
+                        title={current.alt}
+                        src={yt}
+                        className="pointer-events-none absolute inset-0 h-full w-full scale-[1.12] border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen={false}
+                      />
+                    );
+                  }
+                  return (
+                    <video
+                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      poster={current.src}
+                      src={current.videoUrl.trim()}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  );
+                })()
+              ) : (
+                <CmsRemoteImage
+                  src={current.src}
+                  alt={current.alt}
+                  fill
+                  priority
+                  quality={82}
+                  className="object-cover object-center"
+                  sizes="100vw"
+                />
+              )}
             </motion.div>
           ) : null}
         </AnimatePresence>

@@ -29,17 +29,26 @@ export function useHeroSlides() {
         } else {
           const rows = snap.docs.map((d) => {
             const x = d.data() as Record<string, unknown>;
+            const videoUrl = String(x.videoUrl ?? "").trim();
             return {
               id: d.id,
               src: String(x.imageUrl ?? "").trim(),
               alt: String(x.alt ?? "Hero image").trim() || "Hero image",
               sortOrder: Number(x.sortOrder ?? 0),
+              videoUrl: videoUrl.length > 0 ? videoUrl : undefined,
             };
           });
           rows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
           const list: HeroSlide[] = rows
-            .filter((r) => r.src.length > 0)
-            .map((r) => ({ src: r.src, alt: r.alt }));
+            .filter((r) => r.src.length > 0 || r.videoUrl)
+            .map((r) => ({
+              src:
+                r.src.length > 0
+                  ? r.src
+                  : "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1920&q=80",
+              alt: r.alt,
+              videoUrl: r.videoUrl,
+            }));
           setSlides(list.length ? list : DEFAULT_HERO_SLIDES);
         }
       } catch {
