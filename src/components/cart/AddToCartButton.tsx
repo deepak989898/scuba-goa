@@ -32,14 +32,19 @@ type Props = (ServiceProps | PackageProps) & {
   size?: "sm" | "md";
 };
 
+/** Shared look for cart CTAs on cards (AddToCartButton + ServiceCardAddToCart). */
+export function addToCartButtonClasses(size: "sm" | "md"): string {
+  if (size === "sm") {
+    return "min-h-8 rounded-full border-2 border-cyan-300/90 bg-ocean-800 px-2 py-1 text-[10px] font-extrabold text-white shadow-md shadow-ocean-950/30 transition hover:bg-ocean-700 hover:border-cyan-200 active:brightness-95 sm:min-h-11 sm:px-3 sm:py-2 sm:text-xs";
+  }
+  return "min-h-9 rounded-full border-2 border-cyan-400 bg-ocean-gradient px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-ocean-950/35 transition hover:brightness-110 active:brightness-95 sm:min-h-11 sm:px-4 sm:py-2 sm:text-sm";
+}
+
 export function AddToCartButton(props: Props) {
   const { addService, addPackage } = useCart();
   const [flash, setFlash] = useState(false);
   const size = props.size ?? "md";
-  const base =
-    size === "sm"
-      ? "min-h-8 rounded-full border border-ocean-300 bg-white px-2 py-1 text-[10px] font-semibold text-ocean-800 sm:min-h-11 sm:px-3 sm:py-2 sm:text-xs"
-      : "min-h-9 rounded-full border-2 border-ocean-500 bg-white px-3 py-1.5 text-xs font-semibold text-ocean-800 shadow-sm sm:min-h-11 sm:px-4 sm:py-2 sm:text-sm";
+  const base = addToCartButtonClasses(size);
 
   function onClick(e: React.MouseEvent) {
     e.preventDefault();
@@ -74,8 +79,8 @@ export function AddToCartButton(props: Props) {
     <button
       type="button"
       onClick={onClick}
-      className={`${base} transition hover:bg-ocean-50 ${props.className ?? ""} ${
-        flash ? "ring-2 ring-ocean-400 ring-offset-2" : ""
+      className={`${base} ${props.className ?? ""} ${
+        flash ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-white" : ""
       }`}
     >
       {flash ? "Added ✓" : "Add to cart"}

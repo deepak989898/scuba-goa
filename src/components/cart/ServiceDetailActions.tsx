@@ -15,13 +15,17 @@ export function ServiceDetailActions({ service: s }: Props) {
 
   return (
     <div className="mt-8 space-y-8">
-      <div className="rounded-2xl border border-ocean-100 bg-sand/80 p-6">
-        <p className="text-2xl font-bold text-ocean-900">
-          From ₹{s.priceFrom.toLocaleString("en-IN")}+
+      <div className="rounded-2xl border-2 border-cyan-500/40 bg-gradient-to-br from-ocean-950 via-ocean-900 to-ocean-800 p-6 shadow-lg shadow-ocean-950/20">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-cyan-200">
+          From
         </p>
-        <div className="mt-4">
-          <ServiceMetaBlock s={s} />
-        </div>
+        <p className="mt-1 font-display text-3xl font-extrabold tabular-nums text-white md:text-4xl">
+          ₹{s.priceFrom.toLocaleString("en-IN")}
+          <span className="text-2xl font-bold text-cyan-300">+</span>
+        </p>
+      </div>
+      <div className="rounded-2xl border border-ocean-100 bg-sand/80 p-6">
+        <ServiceMetaBlock s={s} />
         {pricedSubsOnly ? (
           <p className="mt-4 text-sm text-ocean-600">
             Add to cart from an option below—each variant has its own price.
@@ -45,13 +49,13 @@ export function ServiceDetailActions({ service: s }: Props) {
         ) : null}
         <Link
           href="/booking"
-          className="inline-flex items-center rounded-full bg-ocean-gradient px-6 py-3 text-sm font-semibold text-white shadow-md"
+          className="inline-flex items-center rounded-full border-2 border-cyan-300/80 bg-ocean-gradient px-6 py-3 text-sm font-bold text-white shadow-lg shadow-ocean-950/35 transition hover:brightness-110"
         >
           Book this experience
         </Link>
         <Link
           href="/services"
-          className="inline-flex items-center rounded-full border border-ocean-200 px-6 py-3 text-sm font-semibold text-ocean-800"
+          className="inline-flex items-center rounded-full border-2 border-ocean-200 bg-white px-6 py-3 text-sm font-bold text-ocean-900 shadow-sm transition hover:bg-ocean-50"
         >
           All services
         </Link>

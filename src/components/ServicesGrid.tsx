@@ -76,15 +76,21 @@ export function ServicesGrid() {
               </h2>
               <ServiceShortClamp slug={s.slug} text={s.short} />
               <ServiceMetaBlock s={s} />
-              <p className="mt-3 text-lg font-bold text-ocean-900">
-                From ₹{s.priceFrom.toLocaleString("en-IN")}+
-              </p>
+              <div className="mt-3 rounded-xl border-2 border-cyan-500/50 bg-gradient-to-br from-ocean-950 via-ocean-900 to-ocean-800 px-3 py-2.5 shadow-lg shadow-ocean-950/25">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-200">
+                  From
+                </p>
+                <p className="font-display text-xl font-extrabold tabular-nums text-white">
+                  ₹{s.priceFrom.toLocaleString("en-IN")}
+                  <span className="text-base font-bold text-cyan-300">+</span>
+                </p>
+              </div>
             </div>
             <div className="relative z-[2] flex flex-wrap gap-2 px-5 pb-5">
               <ServiceCardAddToCart service={s} size="sm" />
               <Link
                 href={`/services/${s.slug}`}
-                className="inline-flex min-h-11 items-center rounded-full border border-ocean-200 bg-sand px-3 py-2 text-xs font-semibold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-xs font-extrabold text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300"
               >
                 View details
               </Link>

@@ -30,7 +30,7 @@ export function ServiceSubServicesCart({ service: s }: Props) {
                   {sub.title}
                 </h3>
                 {priceOk ? (
-                  <p className="text-sm font-bold text-ocean-800">
+                  <p className="rounded-lg border border-cyan-500/40 bg-ocean-950 px-2.5 py-1 font-display text-lg font-extrabold tabular-nums text-white">
                     ₹{sub.priceFrom!.toLocaleString("en-IN")}
                   </p>
                 ) : (

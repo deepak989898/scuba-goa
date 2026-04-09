@@ -9,7 +9,10 @@ import {
 import { createPortal } from "react-dom";
 import type { ServiceItem } from "@/data/services";
 import { useCart } from "@/context/CartContext";
-import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import {
+  AddToCartButton,
+  addToCartButtonClasses,
+} from "@/components/cart/AddToCartButton";
 import {
   getPricedSubServicesWithIndex,
   getSubServiceCartKey,
@@ -36,10 +39,7 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
   const priced = getPricedSubServicesWithIndex(s);
   const hasDropdown = serviceHasPricedSubServices(s);
 
-  const base =
-    size === "sm"
-      ? "min-h-8 rounded-full border border-ocean-300 bg-white px-2 py-1 text-[10px] font-semibold text-ocean-800 sm:min-h-11 sm:px-3 sm:py-2 sm:text-xs"
-      : "min-h-9 rounded-full border-2 border-ocean-500 bg-white px-3 py-1.5 text-xs font-semibold text-ocean-800 shadow-sm sm:min-h-11 sm:px-4 sm:py-2 sm:text-sm";
+  const base = addToCartButtonClasses(size);
 
   useEffect(() => {
     setMounted(true);
@@ -153,7 +153,7 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
           <button
             type="button"
             role="menuitem"
-            className="w-full px-3 py-2.5 text-left text-xs text-ocean-900 transition hover:bg-ocean-50 sm:text-sm"
+            className="w-full px-3 py-2.5 text-left text-xs text-ocean-900 transition hover:bg-cyan-50 sm:text-sm"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -161,7 +161,7 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
             }}
           >
             <span className="font-semibold">{sub.title}</span>
-            <span className="mt-0.5 block text-ocean-600">
+            <span className="mt-0.5 block text-sm font-extrabold tabular-nums text-ocean-900">
               ₹{sub.priceFrom!.toLocaleString("en-IN")}
             </span>
             {sub.slotsLeft != null || sub.bookedToday != null ? (
@@ -184,8 +184,8 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`${base} transition hover:bg-ocean-50 ${
-          flash ? "ring-2 ring-ocean-400 ring-offset-2" : ""
+        className={`${base} ${
+          flash ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-white" : ""
         }`}
         onClick={(e) => {
           e.preventDefault();

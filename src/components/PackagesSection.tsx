@@ -109,14 +109,16 @@ export function PackagesSection() {
                     ) : null}
                   </div>
                   <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:gap-3 sm:pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-ocean-500 sm:text-xs">
-                        Today&apos;s live price
-                      </p>
-                      <p className="text-base font-extrabold leading-none tracking-tight text-ocean-900 sm:text-2xl">
-                        ₹{p.price.toLocaleString("en-IN")}
-                      </p>
-                      <p className="mt-1 text-[10px] font-semibold text-red-700 sm:text-xs">
+                    <div className="min-w-0 flex-1">
+                      <div className="rounded-xl border-2 border-amber-400/60 bg-gradient-to-br from-slate-950 via-ocean-950 to-ocean-900 px-2.5 py-2 shadow-lg shadow-ocean-950/30 sm:px-3 sm:py-2.5">
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-200 sm:text-xs">
+                          Today&apos;s live price
+                        </p>
+                        <p className="mt-0.5 font-display text-xl font-extrabold tabular-nums leading-none tracking-tight text-white sm:text-3xl">
+                          ₹{p.price.toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                      <p className="mt-1.5 text-[10px] font-bold text-red-700 sm:text-xs">
                         {p.slotsLeft != null
                           ? `Book now: only ${p.slotsLeft} slots left for this rate`
                           : "Book now to lock this rate"}
@@ -134,7 +136,7 @@ export function PackagesSection() {
                       />
                       <Link
                         href={`/booking?package=${encodeURIComponent(p.id)}`}
-                        className="rounded-full bg-ocean-gradient px-2.5 py-1 text-[10px] font-bold text-white shadow-md sm:px-4 sm:py-2 sm:text-sm"
+                        className="inline-flex items-center justify-center rounded-full border-2 border-cyan-300/80 bg-ocean-gradient px-2.5 py-1 text-center text-[10px] font-extrabold text-white shadow-lg shadow-ocean-950/35 transition hover:brightness-110 active:brightness-95 sm:px-4 sm:py-2 sm:text-sm"
                       >
                         Lock this price
                       </Link>

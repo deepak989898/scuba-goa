@@ -116,9 +116,17 @@ export function ServiceCards() {
                     </h3>
                     <ServiceShortClamp slug={s.slug} text={s.short} />
                     <ServiceMetaBlock s={s} />
-                    <p className="mt-1.5 text-sm font-bold text-ocean-900 sm:mt-3 sm:text-lg">
-                      From ₹{s.priceFrom.toLocaleString("en-IN")}+
-                    </p>
+                    <div className="mt-1.5 rounded-xl border-2 border-cyan-500/50 bg-gradient-to-br from-ocean-950 via-ocean-900 to-ocean-800 px-2.5 py-2 shadow-lg shadow-ocean-950/25 sm:mt-3 sm:px-3 sm:py-2.5">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-cyan-200/95 sm:text-[10px]">
+                        From
+                      </p>
+                      <p className="font-display text-base font-extrabold tabular-nums leading-tight text-white sm:text-xl">
+                        ₹{s.priceFrom.toLocaleString("en-IN")}
+                        <span className="text-sm font-bold text-cyan-300 sm:text-lg">
+                          +
+                        </span>
+                      </p>
+                    </div>
                   </div>
                   <div className="relative z-[2] mt-auto flex flex-wrap gap-1 px-2.5 pb-2.5 pointer-events-none sm:mt-0 sm:gap-2 sm:px-4 sm:pb-4">
                     <span className="pointer-events-auto inline-flex">
@@ -126,7 +134,7 @@ export function ServiceCards() {
                     </span>
                     <Link
                       href={`/services/${s.slug}`}
-                      className="pointer-events-auto min-h-8 min-w-8 rounded-full border border-ocean-200 bg-sand px-2 py-1 text-[10px] font-bold text-ocean-700 hover:bg-ocean-50 active:bg-ocean-100 sm:min-h-11 sm:min-w-11 sm:px-3 sm:py-2 sm:text-xs"
+                      className="pointer-events-auto inline-flex min-h-8 min-w-0 items-center justify-center rounded-full bg-cyan-500 px-2.5 py-1 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300 sm:min-h-11 sm:px-4 sm:py-2 sm:text-xs sm:normal-case sm:tracking-normal"
                     >
                       See &amp; book
                     </Link>
