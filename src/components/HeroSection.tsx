@@ -313,6 +313,9 @@ export function HeroSection() {
             ₹199 advance or full pay · Razorpay · WhatsApp confirm — turn &quot;someday&quot;
             into a real slot on the boat.
           </p>
+          <p className="mt-1 inline-flex rounded-full border border-red-300/60 bg-red-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-100 sm:mt-2 sm:text-xs">
+            Today only: weekend slots go first
+          </p>
           <div className="mt-2.5 flex flex-wrap justify-center gap-2 sm:mt-6 sm:justify-start sm:gap-3">
             <Link
               href="/booking"

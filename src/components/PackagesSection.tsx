@@ -109,9 +109,19 @@ export function PackagesSection() {
                     ) : null}
                   </div>
                   <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:gap-3 sm:pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-base font-bold text-ocean-900 sm:text-2xl">
-                      ₹{p.price.toLocaleString("en-IN")}
-                    </p>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-ocean-500 sm:text-xs">
+                        Today&apos;s live price
+                      </p>
+                      <p className="text-base font-extrabold leading-none tracking-tight text-ocean-900 sm:text-2xl">
+                        ₹{p.price.toLocaleString("en-IN")}
+                      </p>
+                      <p className="mt-1 text-[10px] font-semibold text-red-700 sm:text-xs">
+                        {p.slotsLeft != null
+                          ? `Book now: only ${p.slotsLeft} slots left for this rate`
+                          : "Book now to lock this rate"}
+                      </p>
+                    </div>
                     <div className="flex flex-wrap gap-1 sm:gap-2">
                       <AddToCartButton
                         variant="package"
@@ -124,9 +134,9 @@ export function PackagesSection() {
                       />
                       <Link
                         href={`/booking?package=${encodeURIComponent(p.id)}`}
-                        className="rounded-full bg-ocean-gradient px-2.5 py-1 text-[10px] font-semibold text-white shadow-md sm:px-4 sm:py-2 sm:text-sm"
+                        className="rounded-full bg-ocean-gradient px-2.5 py-1 text-[10px] font-bold text-white shadow-md sm:px-4 sm:py-2 sm:text-sm"
                       >
-                        Book Now
+                        Lock this price
                       </Link>
                       <SocialShareButtons
                         title={p.name}

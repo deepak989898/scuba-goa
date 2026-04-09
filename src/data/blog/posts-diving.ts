@@ -354,6 +354,111 @@ If you want timing guidance, read [best time for scuba diving in Goa](/blog/best
     ],
   },
   {
+    slug: "scuba-diving-with-island-trip-goa",
+    title: "Scuba Diving with Island Trip in Goa",
+    excerpt:
+      "How to plan a scuba diving + island trip in Goa without rush: route flow, safety sequence, what is included, realistic timings, and booking tips for ready-to-travel guests.",
+    date: "2026-04-09",
+    readTime: "10 min",
+    metaTitle: "Scuba Diving with Island Trip in Goa | Packages, Timing & Price",
+    pillar: true,
+    keywords: [
+      "scuba diving with island trip Goa",
+      "Goa scuba island trip package",
+      "Grande Island trip with scuba",
+      "scuba diving in Goa",
+      "scuba diving price Goa",
+      "best scuba in Goa",
+    ],
+    content: `## Why this combo is popular
+
+If you are searching for **scuba diving with island trip in Goa**, you are usually not looking for a random activity list. You want one smooth day: boat transfer, guided try-dive, and a coastline/island experience that feels planned instead of chaotic. Done right, this combo gives first-time travelers a strong memory and a clear schedule.
+
+The key is sequencing. Scuba must come with briefing-first discipline and weather-aware timing. Island sightseeing should fit around that, not force rushed check-ins. Start with live package options on [booking](/booking), then compare context on [scuba diving](/services/scuba-diving) before paying.
+
+## What a practical day usually looks like
+
+For most guests, a beginner-friendly combo follows this flow:
+
+1. Reporting / pickup window (early morning preferred)
+2. Boat transfer and safety briefing
+3. Surface practice and guided scuba segment
+4. Recovery time, hydration, and media handling
+5. Island/coastline stop or related sightseeing leg
+
+Real operators adjust this by sea state, harbour traffic, and group comfort. If someone promises an exact minute-by-minute script regardless of weather, treat that as marketing, not operations reality.
+
+## Best timing for this package
+
+Morning departures are usually best for first-timers: calmer surface conditions, better thermal comfort, and less schedule drift. For seasonal planning, read [best time for scuba diving in Goa](/blog/best-time-for-scuba-diving-in-goa).
+
+If you visit on weekends or holidays, book earlier. This combo sells quickly because it attracts both adventure-first and sightseeing-first travelers.
+
+## Safety first: do not trade this for discounts
+
+Combo packages should still preserve scuba safety basics:
+
+- Full pre-dive briefing (signals, breathing, equalizing)
+- Instructor-led descent and conservative depth
+- Clear equipment checks
+- Weather reschedule policy
+- Honest medical disclosure before boarding
+
+If you need a deeper safety checklist, read [is scuba diving safe in Goa](/blog/is-scuba-diving-safe).
+
+## Scuba + island trip pricing in 2026
+
+Pricing varies by inclusions: transfer quality, instructor ratio, media, pickup zones, and season demand. A lower headline may exclude critical parts. Always confirm what is included in writing before payment.
+
+For full breakdown logic, see [scuba diving price guide 2026](/blog/scuba-diving-price-guide-2026).
+
+## What to confirm before you book
+
+- Reporting time and exact meeting pin
+- Pickup included or self-arrival
+- Underwater media inclusion (photo/video)
+- Island stop duration expectations
+- Refund/reschedule terms for rough sea
+- Total payable now vs balance later
+
+## Who this package is best for
+
+This combo is ideal if you want one high-value day and limited vacation time. It is less ideal if you prefer very slow travel pacing or get exhausted by packed itineraries. In that case, split scuba and sightseeing across separate days.
+
+## Book smarter, not later
+
+If your dates are fixed and you already know you want this combo, move fast on booking confirmation. Popular slots disappear first, especially on Friday-Sunday windows.
+
+Use [booking](/booking) to lock your slot with live pricing, then keep your WhatsApp reachable for final reporting details.`,
+    faqs: [
+      {
+        question: "Can I do scuba diving and island trip on the same day in Goa?",
+        answer:
+          "Yes, many packages combine them in one itinerary. Choose operators that keep proper scuba briefing and do not rush training just to fit sightseeing stops.",
+      },
+      {
+        question: "Is this combo suitable for beginners?",
+        answer:
+          "Usually yes, if the scuba portion is instructor-led and conservative. Always disclose medical conditions and ask about beginner handling before payment.",
+      },
+      {
+        question: "What is the typical price for scuba with island trip?",
+        answer:
+          "Price depends on transfer, media, operator ratio, and season demand. Compare total inclusion lists, not just headline numbers.",
+      },
+      {
+        question: "Should I book this package in advance?",
+        answer:
+          "Yes, especially for weekends and holiday periods. Morning slots and high-demand combo schedules can fill fast.",
+      },
+      {
+        question: "What if weather is rough on my date?",
+        answer:
+          "Good operators reschedule or provide policy-based alternatives. Confirm the weather cancellation rule before booking.",
+      },
+    ],
+  },
+  {
     slug: "best-scuba-diving-in-goa",
     title: "Best Scuba Diving in Goa: Sites, Safety & What to Expect",
     excerpt:

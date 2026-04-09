@@ -34,9 +34,10 @@ export default function BlogIndexPage() {
           Scuba diving in Goa — guides & blog
         </h1>
         <p className="mt-3 max-w-2xl text-ocean-700">
-          Start with our three pillar guides (best time, safety, scuba diving price Goa
-          for 2026), then explore tours, monsoon tips, and activity deep-dives—each
-          article links to live booking.
+          Start with our pillar guides (best time, safety, scuba diving with island trip,
+          and scuba diving price Goa for 2026), then explore comparison and intent pages
+          like Goa vs Andaman, couples planning, and family scuba—each article links to
+          live booking.
         </p>
         <ul className="mt-12 space-y-6">
           {blogPostsPillarFirst().map((p) => (

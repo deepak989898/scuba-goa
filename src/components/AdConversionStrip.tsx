@@ -52,6 +52,10 @@ export function AdConversionStrip() {
     ? `${top.name} from ₹${top.price.toLocaleString("en-IN")}`
     : "Live rates available in booking";
 
+  const urgencyMeta = top
+    ? `Offer window: today till 11:59 PM · Slots left: ${top.slotsLeft ?? 3}`
+    : "Offer window: today till 11:59 PM · High-demand dates go first";
+
   return (
     <section
       className="relative z-10 border-y border-amber-100/80 bg-amber-50/90 py-4 sm:py-5"
@@ -63,7 +67,12 @@ export function AdConversionStrip() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold text-amber-900 sm:text-base">{urgentLine}</p>
-              <p className="mt-1 text-xs text-amber-800 sm:text-sm">{priceLine}</p>
+              <p className="mt-1 text-lg font-extrabold tracking-tight text-ocean-900 sm:text-2xl">
+                {priceLine}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-red-700 sm:text-xs">
+                {urgencyMeta}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link

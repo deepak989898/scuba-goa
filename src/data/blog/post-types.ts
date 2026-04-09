@@ -8,6 +8,8 @@ export type BlogPost = {
   title: string;
   excerpt: string;
   date: string;
+  /** Optional explicit content refresh date (YYYY-MM-DD) for sitemap lastmod. */
+  updatedAt?: string;
   readTime: string;
   keywords: string[];
   /** Main article body: ## h2, ### h3, paragraphs, - lists, **bold**, [label](/path) links */

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { blogPosts, getPostBySlug } from "@/data/blog-posts";
+import { blogPosts, getPostBySlug, getRelatedBlogPosts } from "@/data/blog-posts";
 import { BlogContent } from "@/components/BlogContent";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
@@ -82,6 +82,34 @@ function articleJsonLd(p: {
   };
 }
 
+function breadcrumbJsonLd(p: { title: string; slug: string }) {
+  const base = SITE_URL.replace(/\/$/, "");
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${base}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Blog",
+        item: `${base}/blog`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: p.title,
+        item: `${base}/blog/${p.slug}`,
+      },
+    ],
+  };
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const p = getPostBySlug(slug);
@@ -89,6 +117,7 @@ export default async function BlogPostPage({ params }: Props) {
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const faqs = p.faqs ?? [];
+  const related = getRelatedBlogPosts(p.slug, 3);
 
   return (
     <article className="bg-white py-16 sm:py-20">
@@ -96,6 +125,12 @@ export default async function BlogPostPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(articleJsonLd(p)),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd(p)),
         }}
       />
       {faqs.length > 0 && (
@@ -161,6 +196,34 @@ export default async function BlogPostPage({ params }: Props) {
                 </div>
               ))}
             </dl>
+          </section>
+        )}
+
+        {related.length > 0 && (
+          <section className="mt-14 border-t border-ocean-100 pt-12" aria-labelledby="related-articles-heading">
+            <h2 id="related-articles-heading" className="font-display text-2xl font-bold text-ocean-900">
+              Related articles
+            </h2>
+            <p className="mt-2 text-sm text-ocean-700 sm:text-base">
+              Keep reading this topic cluster before booking.
+            </p>
+            <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((r) => (
+                <li key={r.slug}>
+                  <Link
+                    href={`/blog/${r.slug}`}
+                    className="block rounded-xl border border-ocean-100 bg-sand/40 p-4 transition hover:border-ocean-300"
+                  >
+                    <p className="text-[11px] text-ocean-500">
+                      {r.date} · {r.readTime}
+                    </p>
+                    <p className="mt-1.5 font-semibold leading-snug text-ocean-900">
+                      {r.title}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
