@@ -17,11 +17,15 @@ export function HeroSlideBackground({
   slideKey,
   onVideoEnded,
   shouldLoopWhenSingleSlide,
+  heroAudibleSpent,
+  onHeroAudibleConsumed,
 }: {
   slide: HeroSlide;
   slideKey: string;
   onVideoEnded: () => void;
   shouldLoopWhenSingleSlide: boolean;
+  heroAudibleSpent: boolean;
+  onHeroAudibleConsumed: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -36,6 +40,7 @@ export function HeroSlideBackground({
 
     let removeUnlock: (() => void) | undefined;
     let cancelled = false;
+    const detach: Array<() => void> = [];
 
     const stopAmbient = () => {
       const a = audioRef.current;
@@ -47,6 +52,21 @@ export function HeroSlideBackground({
 
     const run = () => {
       if (cancelled) return;
+
+      if (heroAudibleSpent) {
+        stopAmbient();
+        v.muted = true;
+        v.volume = 1;
+        void v.play().catch(() => {
+          removeUnlock = addUnlockSoundOnFirstPointer(() => {
+            if (cancelled) return;
+            v.muted = true;
+            void v.play();
+          });
+        });
+        return;
+      }
+
       const inferred = inferNativeVideoHasAudibleTrack(v);
       const forceAmbient = slide.useAmbientMusic === true;
       const useAmbient =
@@ -71,6 +91,12 @@ export function HeroSlideBackground({
           a.src = ambientSrc;
           a.loop = shouldLoopWhenSingleSlide;
           a.volume = HERO_AMBIENT_VOLUME;
+          const onAmbientPlaying = () => {
+            onHeroAudibleConsumed();
+            a.removeEventListener("playing", onAmbientPlaying);
+          };
+          a.addEventListener("playing", onAmbientPlaying);
+          detach.push(() => a.removeEventListener("playing", onAmbientPlaying));
         }
 
         const unlockAmbient = () => {
@@ -90,6 +116,15 @@ export function HeroSlideBackground({
 
       v.muted = false;
       v.volume = 1;
+      const onVideoAudible = () => {
+        if (!cancelled && !v.muted && v.volume > 0) {
+          onHeroAudibleConsumed();
+        }
+        v.removeEventListener("playing", onVideoAudible);
+      };
+      v.addEventListener("playing", onVideoAudible);
+      detach.push(() => v.removeEventListener("playing", onVideoAudible));
+
       const unlockVideo = () => {
         if (cancelled) return;
         v.muted = false;
@@ -112,6 +147,7 @@ export function HeroSlideBackground({
 
     return () => {
       cancelled = true;
+      detach.forEach((d) => d());
       removeUnlock?.();
       v.removeEventListener("loadedmetadata", run);
       stopAmbient();
@@ -123,6 +159,8 @@ export function HeroSlideBackground({
     ambientSrc,
     slide.useAmbientMusic,
     shouldLoopWhenSingleSlide,
+    heroAudibleSpent,
+    onHeroAudibleConsumed,
   ]);
 
   if (!vUrl) {
@@ -149,6 +187,8 @@ export function HeroSlideBackground({
         shouldLoop={shouldLoopWhenSingleSlide}
         ambientMusicSrc={ambientSrc}
         useAmbientMusic={slide.useAmbientMusic === true}
+        heroAudibleSpent={heroAudibleSpent}
+        onHeroAudibleConsumed={onHeroAudibleConsumed}
       />
     );
   }

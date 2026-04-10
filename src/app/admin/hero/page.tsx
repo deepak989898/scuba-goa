@@ -109,11 +109,6 @@ export default function AdminHeroPage() {
     kind: "video" | "poster",
   ) {
     if (!file) return;
-    const storage = getFirebaseStorageClient();
-    if (!storage) {
-      setUploadErr("Firebase Storage is not configured (bucket env var).");
-      return;
-    }
     const auth = getFirebaseAuth();
     if (!auth?.currentUser) {
       setUploadErr(
@@ -125,6 +120,42 @@ export default function AdminHeroPage() {
     setUploadBusy(kind);
     try {
       await auth.currentUser.getIdToken(true);
+      const token = await auth.currentUser.getIdToken();
+      const fd = new FormData();
+      fd.append("kind", kind);
+      fd.append("file", file);
+      const apiRes = await fetch("/api/admin/hero-media-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (apiRes.ok) {
+        const data = (await apiRes.json()) as { url?: string };
+        if (data.url) {
+          if (kind === "video") {
+            setForm((f) => ({ ...f, videoUrl: data.url! }));
+          } else {
+            setForm((f) => ({ ...f, imageUrl: data.url! }));
+          }
+          return;
+        }
+      }
+      if (apiRes.status === 401 || apiRes.status === 403) {
+        const err = await apiRes.json().catch(() => ({}));
+        setUploadErr(
+          String((err as { error?: string }).error ?? "Not authorized for server upload."),
+        );
+        return;
+      }
+
+      const storage = getFirebaseStorageClient();
+      if (!storage) {
+        setUploadErr(
+          "Firebase Storage is not configured (NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET), and server upload did not succeed.",
+        );
+        return;
+      }
+
       const safe = file.name.replace(/[^\w.-]+/g, "_");
       const folder = kind === "video" ? "hero/videos" : "hero/posters";
       const path = `${folder}/${Date.now()}_${safe}`;
@@ -140,7 +171,9 @@ export default function AdminHeroPage() {
       }
     } catch (e) {
       setUploadErr(
-        e instanceof Error ? e.message : "Upload failed. Check Storage rules.",
+        e instanceof Error
+          ? e.message
+          : "Upload failed. For production: set FIREBASE_SERVICE_ACCOUNT_KEY, or apply storage.cors.json to your bucket (see repo) for browser upload.",
       );
     } finally {
       setUploadBusy(null);

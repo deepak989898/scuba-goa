@@ -26,6 +26,8 @@ export function HeroYoutubeSlide({
   shouldLoop,
   ambientMusicSrc,
   useAmbientMusic,
+  heroAudibleSpent,
+  onHeroAudibleConsumed,
 }: {
   videoId: string;
   posterSrc: string;
@@ -34,6 +36,8 @@ export function HeroYoutubeSlide({
   shouldLoop: boolean;
   ambientMusicSrc?: string;
   useAmbientMusic?: boolean;
+  heroAudibleSpent: boolean;
+  onHeroAudibleConsumed: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -117,6 +121,10 @@ export function HeroYoutubeSlide({
               /* ignore */
             }
 
+            if (heroAudibleSpent) {
+              return;
+            }
+
             if (useAmbientMusic && !effectiveAmbientSrc) {
               return;
             }
@@ -129,6 +137,11 @@ export function HeroYoutubeSlide({
                 a.src = effectiveAmbientSrc;
                 a.loop = shouldLoop;
                 a.volume = HERO_AMBIENT_VOLUME;
+                const onAmbientPlaying = () => {
+                  onHeroAudibleConsumed();
+                  a.removeEventListener("playing", onAmbientPlaying);
+                };
+                a.addEventListener("playing", onAmbientPlaying);
                 const unlock = () => {
                   void a.play();
                 };
@@ -155,6 +168,7 @@ export function HeroYoutubeSlide({
               try {
                 e.target.unMute();
                 e.target.setVolume(100);
+                onHeroAudibleConsumed();
               } catch {
                 /* ignore */
               }
@@ -202,6 +216,8 @@ export function HeroYoutubeSlide({
     shouldLoop,
     useAmbientMusic,
     effectiveAmbientSrc,
+    heroAudibleSpent,
+    onHeroAudibleConsumed,
   ]);
 
   return (

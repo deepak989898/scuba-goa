@@ -52,5 +52,14 @@ export function getFirebaseAuth(): Auth | null {
 
 export function getFirebaseStorageClient(): FirebaseStorage | null {
   const app = getClientApp();
-  return app ? getStorage(app) : null;
+  if (!app) return null;
+  const b = firebaseConfig.storageBucket;
+  if (b) {
+    try {
+      return getStorage(app, `gs://${b}`);
+    } catch {
+      return getStorage(app);
+    }
+  }
+  return getStorage(app);
 }

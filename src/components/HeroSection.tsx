@@ -309,6 +309,10 @@ export function HeroSection() {
   );
   const [i, setI] = useState(0);
   const n = slides.length;
+  const [heroAudibleSpent, setHeroAudibleSpent] = useState(false);
+  const markHeroAudibleConsumed = useCallback(() => {
+    setHeroAudibleSpent(true);
+  }, []);
 
   const advanceSlide = useCallback(() => {
     setI((prev) => {
@@ -354,6 +358,8 @@ export function HeroSection() {
                 slideKey={slideKey}
                 onVideoEnded={advanceSlide}
                 shouldLoopWhenSingleSlide={n <= 1}
+                heroAudibleSpent={heroAudibleSpent}
+                onHeroAudibleConsumed={markHeroAudibleConsumed}
               />
             </motion.div>
           ) : null}
