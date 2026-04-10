@@ -8,7 +8,7 @@ import {
   HERO_AMBIENT_VOLUME,
   inferNativeVideoHasAudibleTrack,
 } from "@/lib/hero-audio";
-import type { HeroSlide } from "@/lib/hero-slides-default";
+import { getHeroVideoPosterSrc, type HeroSlide } from "@/lib/hero-slides-default";
 import { getYoutubeVideoId } from "@/lib/hero-video";
 
 export function HeroSlideBackground({
@@ -30,6 +30,7 @@ export function HeroSlideBackground({
   const vUrl = slide.videoUrl?.trim() ?? "";
   const ytId = vUrl ? getYoutubeVideoId(vUrl) : null;
   const ambientSrc = getHeroFallbackMusicSrc();
+  const videoPosterSrc = getHeroVideoPosterSrc(slide);
 
   useEffect(() => {
     if (!vUrl || ytId) return;
@@ -127,7 +128,7 @@ export function HeroSlideBackground({
     return (
       <HeroYoutubeSlide
         videoId={ytId}
-        posterSrc={slide.src}
+        posterSrc={videoPosterSrc}
         alt={slide.alt}
         onEnded={onVideoEnded}
         shouldLoop={shouldLoopWhenSingleSlide}
@@ -144,7 +145,7 @@ export function HeroSlideBackground({
         ref={videoRef}
         key={slideKey}
         className="absolute inset-0 h-full w-full object-cover object-center"
-        poster={slide.src}
+        poster={videoPosterSrc}
         src={vUrl}
         playsInline
         preload="auto"

@@ -56,8 +56,11 @@ export async function POST(req: Request) {
   }
 
   const kind = String(form.get("kind") ?? "").trim();
-  if (kind !== "video" && kind !== "poster") {
-    return NextResponse.json({ error: "kind must be video or poster" }, { status: 400 });
+  if (kind !== "video" && kind !== "poster" && kind !== "thumbnail") {
+    return NextResponse.json(
+      { error: "kind must be video, poster, or thumbnail" },
+      { status: 400 },
+    );
   }
 
   const file = form.get("file");
@@ -75,7 +78,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const folder = kind === "video" ? "hero/videos" : "hero/posters";
+  const folder =
+    kind === "video"
+      ? "hero/videos"
+      : kind === "thumbnail"
+        ? "hero/thumbnails"
+        : "hero/posters";
   const original =
     file instanceof File && file.name.trim()
       ? file.name.replace(/[^\w.-]+/g, "_")
@@ -84,7 +92,9 @@ export async function POST(req: Request) {
         : "upload.jpg";
   const objectPath = `${folder}/${Date.now()}_${original}`;
   const token = randomUUID();
-  const contentType = file.type || (kind === "video" ? "video/mp4" : "image/jpeg");
+  const contentType =
+    file.type ||
+    (kind === "video" ? "video/mp4" : "image/jpeg");
 
   const buffer = Buffer.from(await file.arrayBuffer());
 

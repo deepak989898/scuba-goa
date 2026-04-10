@@ -5,6 +5,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   updateDoc,
@@ -20,6 +21,7 @@ type Row = {
   id: string;
   imageUrl: string;
   videoUrl: string;
+  videoThumbnailUrl: string;
   alt: string;
   sortOrder: number;
   useAmbientMusic: boolean;
@@ -32,11 +34,14 @@ export default function AdminHeroPage() {
   const [form, setForm] = useState({
     imageUrl: "",
     videoUrl: "",
+    videoThumbnailUrl: "",
     alt: "",
     sortOrder: 0,
     useAmbientMusic: false,
   });
-  const [uploadBusy, setUploadBusy] = useState<"video" | "poster" | null>(null);
+  const [uploadBusy, setUploadBusy] = useState<
+    "video" | "poster" | "thumbnail" | null
+  >(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -48,6 +53,9 @@ export default function AdminHeroPage() {
         id: d.id,
         imageUrl: String(x.imageUrl ?? ""),
         videoUrl: String(x.videoUrl ?? x.videoURL ?? x.video_url ?? ""),
+        videoThumbnailUrl: String(
+          x.videoThumbnailUrl ?? x.video_thumbnail_url ?? "",
+        ),
         alt: String(x.alt ?? ""),
         sortOrder: Number(x.sortOrder ?? 0),
         useAmbientMusic: Boolean(x.useAmbientMusic),
@@ -68,10 +76,12 @@ export default function AdminHeroPage() {
   async function saveNew() {
     const img = form.imageUrl.trim();
     const vid = form.videoUrl.trim();
+    const thumb = form.videoThumbnailUrl.trim();
     if (!db || (!img && !vid)) return;
     await addDoc(collection(db, "heroSlides"), {
       imageUrl: img,
       videoUrl: vid,
+      ...(thumb ? { videoThumbnailUrl: thumb } : {}),
       alt: form.alt.trim() || "Hero slide",
       sortOrder: Number(form.sortOrder),
       useAmbientMusic: form.useAmbientMusic,
@@ -79,6 +89,7 @@ export default function AdminHeroPage() {
     setForm({
       imageUrl: "",
       videoUrl: "",
+      videoThumbnailUrl: "",
       alt: "",
       sortOrder: list.length,
       useAmbientMusic: false,
@@ -104,9 +115,18 @@ export default function AdminHeroPage() {
     await refresh();
   }
 
+  async function patchVideoThumbnail(id: string, url: string) {
+    if (!db) return;
+    const trimmed = url.trim();
+    await updateDoc(doc(db, "heroSlides", id), {
+      videoThumbnailUrl: trimmed ? trimmed : deleteField(),
+    });
+    await refresh();
+  }
+
   async function uploadHeroFile(
     file: File | null,
-    kind: "video" | "poster",
+    kind: "video" | "poster" | "thumbnail",
   ) {
     if (!file) return;
     const auth = getFirebaseAuth();
@@ -134,6 +154,8 @@ export default function AdminHeroPage() {
         if (data.url) {
           if (kind === "video") {
             setForm((f) => ({ ...f, videoUrl: data.url! }));
+          } else if (kind === "thumbnail") {
+            setForm((f) => ({ ...f, videoThumbnailUrl: data.url! }));
           } else {
             setForm((f) => ({ ...f, imageUrl: data.url! }));
           }
@@ -157,7 +179,12 @@ export default function AdminHeroPage() {
       }
 
       const safe = file.name.replace(/[^\w.-]+/g, "_");
-      const folder = kind === "video" ? "hero/videos" : "hero/posters";
+      const folder =
+        kind === "video"
+          ? "hero/videos"
+          : kind === "thumbnail"
+            ? "hero/thumbnails"
+            : "hero/posters";
       const path = `${folder}/${Date.now()}_${safe}`;
       const fileRef = ref(storage, path);
       await uploadBytes(fileRef, file, {
@@ -166,6 +193,8 @@ export default function AdminHeroPage() {
       const url = await getDownloadURL(fileRef);
       if (kind === "video") {
         setForm((f) => ({ ...f, videoUrl: url }));
+      } else if (kind === "thumbnail") {
+        setForm((f) => ({ ...f, videoThumbnailUrl: url }));
       } else {
         setForm((f) => ({ ...f, imageUrl: url }));
       }
@@ -194,9 +223,11 @@ export default function AdminHeroPage() {
         Homepage hero slider
       </h1>
       <p className="mt-2 text-sm text-ocean-600">
-        Slides rotate on the home hero. Add an image URL (recommended as poster), and
-        optionally a video URL or an uploaded file — direct MP4/WebM, Firebase URL, or a
-        YouTube / Shorts link. If this list is empty, the site uses built-in defaults. Lower
+        Slides rotate on the home hero. Add an image URL (default poster for videos), and
+        optionally a video. For videos you can set a separate{" "}
+        <strong>video thumbnail</strong> URL or upload — if empty, the image URL above is
+        used. YouTube / MP4 / WebM supported. If this list is empty, the site uses built-in
+        defaults. Lower
         sort order shows earlier. For silent videos (or Chrome, which cannot detect an audio
         track), set <code className="text-xs">NEXT_PUBLIC_HERO_FALLBACK_MUSIC_URL</code> and
         use &quot;Site music&quot; on that slide.
@@ -269,6 +300,37 @@ export default function AdminHeroPage() {
               <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
             ) : null}
           </div>
+          <label className="text-sm sm:col-span-2">
+            Video thumbnail URL (optional)
+            <input
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
+              value={form.videoThumbnailUrl}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, videoThumbnailUrl: e.target.value }))
+              }
+              placeholder="Shown before video plays — defaults to image URL above"
+              disabled={!form.videoUrl.trim()}
+            />
+          </label>
+          <div className="sm:col-span-2">
+            <p className="text-sm font-medium text-ocean-900">Video thumbnail upload</p>
+            <p className="text-xs text-ocean-600">
+              Optional — JPG/PNG/WebP stored under hero/thumbnails; used only when this slide
+              has a video.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              className="mt-1 block w-full text-sm text-ocean-700 file:mr-3 file:rounded-lg file:border-0 file:bg-ocean-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ocean-900 hover:file:bg-ocean-200"
+              disabled={uploadBusy !== null || !form.videoUrl.trim()}
+              onChange={(e) =>
+                void uploadHeroFile(e.target.files?.[0] ?? null, "thumbnail")
+              }
+            />
+            {uploadBusy === "thumbnail" ? (
+              <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
+            ) : null}
+          </div>
           <label className="flex cursor-pointer items-start gap-2 text-sm sm:col-span-2">
             <input
               type="checkbox"
@@ -331,6 +393,7 @@ export default function AdminHeroPage() {
                 <th className="p-3">Sort</th>
                 <th className="p-3">Preview</th>
                 <th className="p-3">Type</th>
+                <th className="p-3">Video thumb</th>
                 <th className="p-3">Site music</th>
                 <th className="p-3">Alt</th>
                 <th className="p-3">Actions</th>
@@ -350,22 +413,47 @@ export default function AdminHeroPage() {
                     />
                   </td>
                   <td className="p-3">
-                    {r.imageUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={r.imageUrl}
-                        alt=""
-                        className="h-14 w-24 rounded object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs text-ocean-500">—</span>
-                    )}
+                    {(() => {
+                      const poster =
+                        r.videoUrl.trim() && r.videoThumbnailUrl.trim()
+                          ? r.videoThumbnailUrl
+                          : r.imageUrl;
+                      return poster ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={poster}
+                          alt=""
+                          className="h-14 w-24 rounded object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs text-ocean-500">—</span>
+                      );
+                    })()}
                   </td>
                   <td className="max-w-[8rem] p-3 text-xs text-ocean-700">
                     {r.videoUrl.trim() ? (
                       <span className="font-semibold text-ocean-900">Video</span>
                     ) : (
                       <span>Image</span>
+                    )}
+                  </td>
+                  <td className="max-w-[10rem] p-2">
+                    {r.videoUrl.trim() ? (
+                      <input
+                        key={`vt-${r.id}-${r.videoThumbnailUrl}`}
+                        type="url"
+                        className="w-full rounded border border-ocean-200 px-1.5 py-1 text-[10px] font-mono text-ocean-800"
+                        defaultValue={r.videoThumbnailUrl}
+                        placeholder="Default: poster image"
+                        title="Video thumbnail URL — blur to save"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v === r.videoThumbnailUrl.trim()) return;
+                          void patchVideoThumbnail(r.id, v);
+                        }}
+                      />
+                    ) : (
+                      <span className="text-xs text-ocean-400">—</span>
                     )}
                   </td>
                   <td className="p-3">
@@ -390,6 +478,11 @@ export default function AdminHeroPage() {
                     {r.videoUrl.trim() ? (
                       <div className="mt-1 truncate font-mono text-[10px] text-ocean-500">
                         {r.videoUrl}
+                      </div>
+                    ) : null}
+                    {r.videoUrl.trim() && r.videoThumbnailUrl.trim() ? (
+                      <div className="mt-0.5 truncate font-mono text-[9px] text-ocean-400">
+                        thumb: {r.videoThumbnailUrl}
                       </div>
                     ) : null}
                   </td>

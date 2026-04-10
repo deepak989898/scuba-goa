@@ -335,7 +335,7 @@ export function HeroSection() {
 
   const current = slides[i] ?? slides[0];
   const slideKey = current
-    ? `${current.videoUrl ?? ""}|${current.src}|${i}`
+    ? `${current.videoUrl ?? ""}|${current.src}|${current.videoThumbnailUrl ?? ""}|${i}`
     : "hero-empty";
 
   return (

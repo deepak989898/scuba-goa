@@ -32,12 +32,17 @@ export function useHeroSlides() {
             const videoUrl = String(
               x.videoUrl ?? x.videoURL ?? x.video_url ?? "",
             ).trim();
+            const videoThumbnailUrl = String(
+              x.videoThumbnailUrl ?? x.video_thumbnail_url ?? "",
+            ).trim();
             return {
               id: d.id,
               src: String(x.imageUrl ?? "").trim(),
               alt: String(x.alt ?? "Hero image").trim() || "Hero image",
               sortOrder: Number(x.sortOrder ?? 0),
               videoUrl: videoUrl.length > 0 ? videoUrl : undefined,
+              videoThumbnailUrl:
+                videoThumbnailUrl.length > 0 ? videoThumbnailUrl : undefined,
               useAmbientMusic: Boolean(x.useAmbientMusic),
             };
           });
@@ -51,6 +56,7 @@ export function useHeroSlides() {
                   : "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1920&q=80",
               alt: r.alt,
               videoUrl: r.videoUrl,
+              videoThumbnailUrl: r.videoThumbnailUrl,
               useAmbientMusic: r.useAmbientMusic ? true : undefined,
             }));
           setSlides(list.length ? list : DEFAULT_HERO_SLIDES);
