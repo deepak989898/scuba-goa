@@ -6,6 +6,15 @@ import { HeroYoutubeSlide } from "@/components/HeroYoutubeSlide";
 import type { HeroSlide } from "@/lib/hero-slides-default";
 import { getYoutubeVideoId } from "@/lib/hero-video";
 
+function addUnlockSoundOnFirstPointer(unlock: () => void) {
+  const onPointer = () => {
+    unlock();
+    window.removeEventListener("pointerdown", onPointer, true);
+  };
+  window.addEventListener("pointerdown", onPointer, { capture: true, once: true });
+  return () => window.removeEventListener("pointerdown", onPointer, true);
+}
+
 export function HeroSlideBackground({
   slide,
   slideKey,
@@ -25,11 +34,34 @@ export function HeroSlideBackground({
     if (!vUrl || ytId) return;
     const v = videoRef.current;
     if (!v) return;
-    v.muted = true;
-    const p = v.play();
-    void p?.catch(() => {
-      /* autoplay may be blocked until gesture; muted usually succeeds */
-    });
+
+    let removeUnlock: (() => void) | undefined;
+
+    const tryPlayWithSound = async () => {
+      v.muted = false;
+      v.volume = 1;
+      try {
+        await v.play();
+      } catch {
+        v.muted = true;
+        try {
+          await v.play();
+        } catch {
+          /* still blocked */
+        }
+        removeUnlock = addUnlockSoundOnFirstPointer(() => {
+          v.muted = false;
+          v.volume = 1;
+          void v.play();
+        });
+      }
+    };
+
+    void tryPlayWithSound();
+
+    return () => {
+      removeUnlock?.();
+    };
   }, [slideKey, vUrl, ytId]);
 
   if (!vUrl) {
@@ -66,7 +98,6 @@ export function HeroSlideBackground({
       poster={slide.src}
       src={vUrl}
       autoPlay
-      muted
       playsInline
       preload="auto"
       loop={shouldLoopWhenSingleSlide}

@@ -9,7 +9,11 @@ import {
   getDocs,
   updateDoc,
 } from "firebase/firestore";
-import { getDb, getFirebaseStorageClient } from "@/lib/firebase";
+import {
+  getDb,
+  getFirebaseAuth,
+  getFirebaseStorageClient,
+} from "@/lib/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 type Row = {
@@ -94,9 +98,17 @@ export default function AdminHeroPage() {
       setUploadErr("Firebase Storage is not configured (bucket env var).");
       return;
     }
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      setUploadErr(
+        "Not signed in. Open /admin/login on this site, then try again.",
+      );
+      return;
+    }
     setUploadErr(null);
     setUploadBusy(kind);
     try {
+      await auth.currentUser.getIdToken(true);
       const safe = file.name.replace(/[^\w.-]+/g, "_");
       const folder = kind === "video" ? "hero/videos" : "hero/posters";
       const path = `${folder}/${Date.now()}_${safe}`;

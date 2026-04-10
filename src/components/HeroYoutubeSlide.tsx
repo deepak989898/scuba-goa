@@ -6,9 +6,16 @@ import { loadYoutubeIframeApi } from "@/lib/load-youtube-iframe-api";
 
 type YTPlayerInstance = { destroy: () => void };
 
+type YTPlayerTarget = {
+  mute: () => void;
+  unMute: () => void;
+  setVolume: (n: number) => void;
+  playVideo: () => void;
+};
+
 /**
- * Background YouTube player (muted autoplay). Fires `onEnded` when the video ends,
- * unless `shouldLoop` is true (single-slide hero).
+ * YouTube hero background: muted autoplay first (policy-friendly), then unmutes on the
+ * user’s first tap/click anywhere. Fires `onEnded` when the video ends unless `shouldLoop`.
  */
 export function HeroYoutubeSlide({
   videoId,
@@ -25,6 +32,7 @@ export function HeroYoutubeSlide({
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
+  const removeSoundUnlockRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +60,8 @@ export function HeroYoutubeSlide({
         /* ignore */
       }
       playerRef.current = null;
+      removeSoundUnlockRef.current?.();
+      removeSoundUnlockRef.current = null;
 
       const ENDED = YT.PlayerState?.ENDED ?? 0;
 
@@ -79,15 +89,34 @@ export function HeroYoutubeSlide({
         height: "100%",
         playerVars,
         events: {
-          onReady: (e: {
-            target: { playVideo: () => void; mute: () => void };
-          }) => {
+          onReady: (e: { target: YTPlayerTarget }) => {
             try {
               e.target.mute();
               e.target.playVideo();
             } catch {
               /* ignore */
             }
+            const unlock = () => {
+              try {
+                e.target.unMute();
+                e.target.setVolume(100);
+              } catch {
+                /* ignore */
+              }
+            };
+            const onPointer = () => {
+              unlock();
+              window.removeEventListener("pointerdown", onPointer, true);
+              removeSoundUnlockRef.current = null;
+            };
+            window.addEventListener("pointerdown", onPointer, {
+              capture: true,
+              once: true,
+            });
+            removeSoundUnlockRef.current = () => {
+              window.removeEventListener("pointerdown", onPointer, true);
+              removeSoundUnlockRef.current = null;
+            };
           },
           onStateChange: (e: { data: number }) => {
             if (!shouldLoop && e.data === ENDED) onEnded();
@@ -102,6 +131,8 @@ export function HeroYoutubeSlide({
 
     return () => {
       cancelled = true;
+      removeSoundUnlockRef.current?.();
+      removeSoundUnlockRef.current = null;
       try {
         playerRef.current?.destroy();
       } catch {

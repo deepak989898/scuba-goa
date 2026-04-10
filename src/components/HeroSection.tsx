@@ -321,13 +321,14 @@ export function HeroSection() {
     setI((x) => (n > 0 ? x % n : 0));
   }, [n]);
 
+  const currentHasVideo = Boolean(slides[i]?.videoUrl?.trim());
+
   useEffect(() => {
     if (n <= 1) return;
-    const slide = slides[i];
-    if (slide?.videoUrl?.trim()) return;
+    if (currentHasVideo) return;
     const t = window.setInterval(() => advanceSlide(), 5500);
     return () => window.clearInterval(t);
-  }, [n, i, slides, advanceSlide]);
+  }, [n, i, advanceSlide, currentHasVideo]);
 
   const current = slides[i] ?? slides[0];
   const slideKey = current

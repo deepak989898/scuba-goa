@@ -14,6 +14,12 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
+    // Homepage hero slider (posters + videos) from admin panel
+    match /hero/{kind}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Deny everything else by default
     match /{allPaths=**} {
       allow read, write: if false;
