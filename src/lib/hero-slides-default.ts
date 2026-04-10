@@ -1,5 +1,14 @@
-/** `src` is always the image URL (also used as video poster when `videoUrl` is set). */
-export type HeroSlide = { src: string; alt: string; videoUrl?: string };
+/**
+ * `src` is always the image URL (also used as video poster when `videoUrl` is set).
+ * `useAmbientMusic`: mute video and play `NEXT_PUBLIC_HERO_FALLBACK_MUSIC_URL` (for silent clips
+ * or when the browser cannot detect audio — e.g. Chrome).
+ */
+export type HeroSlide = {
+  src: string;
+  alt: string;
+  videoUrl?: string;
+  useAmbientMusic?: boolean;
+};
 
 export const DEFAULT_HERO_SLIDES: HeroSlide[] = [
   {

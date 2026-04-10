@@ -22,6 +22,7 @@ type Row = {
   videoUrl: string;
   alt: string;
   sortOrder: number;
+  useAmbientMusic: boolean;
 };
 
 export default function AdminHeroPage() {
@@ -33,6 +34,7 @@ export default function AdminHeroPage() {
     videoUrl: "",
     alt: "",
     sortOrder: 0,
+    useAmbientMusic: false,
   });
   const [uploadBusy, setUploadBusy] = useState<"video" | "poster" | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export default function AdminHeroPage() {
         videoUrl: String(x.videoUrl ?? x.videoURL ?? x.video_url ?? ""),
         alt: String(x.alt ?? ""),
         sortOrder: Number(x.sortOrder ?? 0),
+        useAmbientMusic: Boolean(x.useAmbientMusic),
       };
     });
     rows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
@@ -71,8 +74,15 @@ export default function AdminHeroPage() {
       videoUrl: vid,
       alt: form.alt.trim() || "Hero slide",
       sortOrder: Number(form.sortOrder),
+      useAmbientMusic: form.useAmbientMusic,
     });
-    setForm({ imageUrl: "", videoUrl: "", alt: "", sortOrder: list.length });
+    setForm({
+      imageUrl: "",
+      videoUrl: "",
+      alt: "",
+      sortOrder: list.length,
+      useAmbientMusic: false,
+    });
     await refresh();
   }
 
@@ -85,6 +95,12 @@ export default function AdminHeroPage() {
   async function patchSort(id: string, sortOrder: number) {
     if (!db) return;
     await updateDoc(doc(db, "heroSlides", id), { sortOrder });
+    await refresh();
+  }
+
+  async function patchUseAmbientMusic(id: string, useAmbientMusic: boolean) {
+    if (!db) return;
+    await updateDoc(doc(db, "heroSlides", id), { useAmbientMusic });
     await refresh();
   }
 
@@ -148,7 +164,9 @@ export default function AdminHeroPage() {
         Slides rotate on the home hero. Add an image URL (recommended as poster), and
         optionally a video URL or an uploaded file — direct MP4/WebM, Firebase URL, or a
         YouTube / Shorts link. If this list is empty, the site uses built-in defaults. Lower
-        sort order shows earlier.
+        sort order shows earlier. For silent videos (or Chrome, which cannot detect an audio
+        track), set <code className="text-xs">NEXT_PUBLIC_HERO_FALLBACK_MUSIC_URL</code> and
+        use &quot;Site music&quot; on that slide.
       </p>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
@@ -218,6 +236,25 @@ export default function AdminHeroPage() {
               <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
             ) : null}
           </div>
+          <label className="flex cursor-pointer items-start gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.useAmbientMusic}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, useAmbientMusic: e.target.checked }))
+              }
+              disabled={!form.videoUrl.trim()}
+            />
+            <span>
+              <span className="font-medium text-ocean-900">Site music</span>
+              <span className="mt-0.5 block text-xs font-normal text-ocean-600">
+                Mute this video and play{" "}
+                <code className="text-[10px]">NEXT_PUBLIC_HERO_FALLBACK_MUSIC_URL</code>{" "}
+                instead (silent clips, or when the browser cannot use the video&apos;s own audio).
+              </span>
+            </span>
+          </label>
           <label className="text-sm sm:col-span-2">
             Alt text
             <input
@@ -261,6 +298,7 @@ export default function AdminHeroPage() {
                 <th className="p-3">Sort</th>
                 <th className="p-3">Preview</th>
                 <th className="p-3">Type</th>
+                <th className="p-3">Site music</th>
                 <th className="p-3">Alt</th>
                 <th className="p-3">Actions</th>
               </tr>
@@ -296,6 +334,18 @@ export default function AdminHeroPage() {
                     ) : (
                       <span>Image</span>
                     )}
+                  </td>
+                  <td className="p-3">
+                    <input
+                      type="checkbox"
+                      title="Site music (muted video + fallback URL)"
+                      checked={r.useAmbientMusic}
+                      disabled={!r.videoUrl.trim()}
+                      onChange={(e) =>
+                        void patchUseAmbientMusic(r.id, e.target.checked)
+                      }
+                      aria-label="Use site music for this slide"
+                    />
                   </td>
                   <td className="max-w-xs p-3 text-xs text-ocean-700">
                     {r.alt}

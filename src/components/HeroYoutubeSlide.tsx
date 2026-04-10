@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { HERO_AMBIENT_VOLUME } from "@/lib/hero-audio";
 import { loadYoutubeIframeApi } from "@/lib/load-youtube-iframe-api";
 
 type YTPlayerInstance = { destroy: () => void };
@@ -14,8 +15,8 @@ type YTPlayerTarget = {
 };
 
 /**
- * YouTube hero background: muted autoplay first (policy-friendly), then unmutes on the
- * user’s first tap/click anywhere. Fires `onEnded` when the video ends unless `shouldLoop`.
+ * YouTube hero: muted autoplay. Either unmutes the iframe after first gesture (video’s own audio)
+ * or keeps it muted and plays `ambientMusicSrc` when `useAmbientMusic` is set / no separate track API.
  */
 export function HeroYoutubeSlide({
   videoId,
@@ -23,21 +24,36 @@ export function HeroYoutubeSlide({
   alt,
   onEnded,
   shouldLoop,
+  ambientMusicSrc,
+  useAmbientMusic,
 }: {
   videoId: string;
   posterSrc: string;
   alt: string;
   onEnded: () => void;
   shouldLoop: boolean;
+  ambientMusicSrc?: string;
+  useAmbientMusic?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
   const removeSoundUnlockRef = useRef<(() => void) | null>(null);
+
+  const effectiveAmbientSrc = ambientMusicSrc?.trim() ?? "";
 
   useEffect(() => {
     let cancelled = false;
     const mountEl = hostRef.current;
     if (!mountEl) return;
+
+    const stopAmbient = () => {
+      const a = audioRef.current;
+      if (!a) return;
+      a.pause();
+      a.removeAttribute("src");
+      void a.load();
+    };
 
     void loadYoutubeIframeApi().then(() => {
       if (cancelled || !hostRef.current) return;
@@ -54,6 +70,9 @@ export function HeroYoutubeSlide({
 
       if (!YT?.Player) return;
 
+      const host = hostRef.current;
+      if (!host) return;
+
       try {
         playerRef.current?.destroy();
       } catch {
@@ -62,6 +81,7 @@ export function HeroYoutubeSlide({
       playerRef.current = null;
       removeSoundUnlockRef.current?.();
       removeSoundUnlockRef.current = null;
+      stopAmbient();
 
       const ENDED = YT.PlayerState?.ENDED ?? 0;
 
@@ -83,7 +103,7 @@ export function HeroYoutubeSlide({
         playerVars.playlist = videoId;
       }
 
-      const player = new YT.Player(hostRef.current, {
+      const player = new YT.Player(host, {
         videoId,
         width: "100%",
         height: "100%",
@@ -96,6 +116,41 @@ export function HeroYoutubeSlide({
             } catch {
               /* ignore */
             }
+
+            if (useAmbientMusic && !effectiveAmbientSrc) {
+              return;
+            }
+
+            const useBed = Boolean(useAmbientMusic && effectiveAmbientSrc);
+
+            if (useBed) {
+              const a = audioRef.current;
+              if (a && effectiveAmbientSrc) {
+                a.src = effectiveAmbientSrc;
+                a.loop = shouldLoop;
+                a.volume = HERO_AMBIENT_VOLUME;
+                const unlock = () => {
+                  void a.play();
+                };
+                void a.play().catch(() => {
+                  const onPointer = () => {
+                    unlock();
+                    window.removeEventListener("pointerdown", onPointer, true);
+                    removeSoundUnlockRef.current = null;
+                  };
+                  window.addEventListener("pointerdown", onPointer, {
+                    capture: true,
+                    once: true,
+                  });
+                  removeSoundUnlockRef.current = () => {
+                    window.removeEventListener("pointerdown", onPointer, true);
+                    removeSoundUnlockRef.current = null;
+                  };
+                });
+              }
+              return;
+            }
+
             const unlock = () => {
               try {
                 e.target.unMute();
@@ -133,6 +188,7 @@ export function HeroYoutubeSlide({
       cancelled = true;
       removeSoundUnlockRef.current?.();
       removeSoundUnlockRef.current = null;
+      stopAmbient();
       try {
         playerRef.current?.destroy();
       } catch {
@@ -140,7 +196,13 @@ export function HeroYoutubeSlide({
       }
       playerRef.current = null;
     };
-  }, [videoId, onEnded, shouldLoop]);
+  }, [
+    videoId,
+    onEnded,
+    shouldLoop,
+    useAmbientMusic,
+    effectiveAmbientSrc,
+  ]);
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -162,6 +224,15 @@ export function HeroYoutubeSlide({
         ref={hostRef}
         className="absolute inset-0 z-[1] [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:min-h-full [&_iframe]:w-full [&_iframe]:min-w-full [&_iframe]:scale-[1.15]"
       />
+      {effectiveAmbientSrc ? (
+        <audio
+          ref={audioRef}
+          className="pointer-events-none absolute h-0 w-0 opacity-0"
+          aria-hidden
+          playsInline
+          preload="auto"
+        />
+      ) : null}
     </div>
   );
 }

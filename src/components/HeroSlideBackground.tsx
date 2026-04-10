@@ -3,17 +3,14 @@
 import { useEffect, useRef } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { HeroYoutubeSlide } from "@/components/HeroYoutubeSlide";
+import {
+  addUnlockSoundOnFirstPointer,
+  getHeroFallbackMusicSrc,
+  HERO_AMBIENT_VOLUME,
+  inferNativeVideoHasAudibleTrack,
+} from "@/lib/hero-audio";
 import type { HeroSlide } from "@/lib/hero-slides-default";
 import { getYoutubeVideoId } from "@/lib/hero-video";
-
-function addUnlockSoundOnFirstPointer(unlock: () => void) {
-  const onPointer = () => {
-    unlock();
-    window.removeEventListener("pointerdown", onPointer, true);
-  };
-  window.addEventListener("pointerdown", onPointer, { capture: true, once: true });
-  return () => window.removeEventListener("pointerdown", onPointer, true);
-}
 
 export function HeroSlideBackground({
   slide,
@@ -27,8 +24,10 @@ export function HeroSlideBackground({
   shouldLoopWhenSingleSlide: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const vUrl = slide.videoUrl?.trim() ?? "";
   const ytId = vUrl ? getYoutubeVideoId(vUrl) : null;
+  const ambientSrc = getHeroFallbackMusicSrc();
 
   useEffect(() => {
     if (!vUrl || ytId) return;
@@ -36,33 +35,95 @@ export function HeroSlideBackground({
     if (!v) return;
 
     let removeUnlock: (() => void) | undefined;
+    let cancelled = false;
 
-    const tryPlayWithSound = async () => {
+    const stopAmbient = () => {
+      const a = audioRef.current;
+      if (!a) return;
+      a.pause();
+      a.removeAttribute("src");
+      void a.load();
+    };
+
+    const run = () => {
+      if (cancelled) return;
+      const inferred = inferNativeVideoHasAudibleTrack(v);
+      const forceAmbient = slide.useAmbientMusic === true;
+      const useAmbient =
+        Boolean(ambientSrc) && (forceAmbient || inferred === "no-track");
+
+      stopAmbient();
+
+      if (forceAmbient && !ambientSrc) {
+        v.muted = true;
+        v.volume = 1;
+        void v.play().catch(() => {
+          removeUnlock = addUnlockSoundOnFirstPointer(() => void v.play());
+        });
+        return;
+      }
+
+      if (useAmbient && ambientSrc) {
+        const a = audioRef.current;
+        v.muted = true;
+        v.volume = 1;
+        if (a) {
+          a.src = ambientSrc;
+          a.loop = shouldLoopWhenSingleSlide;
+          a.volume = HERO_AMBIENT_VOLUME;
+        }
+
+        const unlockAmbient = () => {
+          if (cancelled) return;
+          void v.play();
+          if (audioRef.current) void audioRef.current.play();
+        };
+
+        void v.play().catch(() => {});
+        if (a) {
+          void a.play().catch(() => {
+            removeUnlock = addUnlockSoundOnFirstPointer(unlockAmbient);
+          });
+        }
+        return;
+      }
+
       v.muted = false;
       v.volume = 1;
-      try {
-        await v.play();
-      } catch {
+      const unlockVideo = () => {
+        if (cancelled) return;
+        v.muted = false;
+        v.volume = 1;
+        void v.play();
+      };
+
+      void v.play().catch(() => {
         v.muted = true;
-        try {
-          await v.play();
-        } catch {
-          /* still blocked */
-        }
-        removeUnlock = addUnlockSoundOnFirstPointer(() => {
-          v.muted = false;
-          v.volume = 1;
-          void v.play();
-        });
-      }
+        void v.play().catch(() => {});
+        removeUnlock = addUnlockSoundOnFirstPointer(unlockVideo);
+      });
     };
 
-    void tryPlayWithSound();
+    if (v.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      run();
+    } else {
+      v.addEventListener("loadedmetadata", run, { once: true });
+    }
 
     return () => {
+      cancelled = true;
       removeUnlock?.();
+      v.removeEventListener("loadedmetadata", run);
+      stopAmbient();
     };
-  }, [slideKey, vUrl, ytId]);
+  }, [
+    slideKey,
+    vUrl,
+    ytId,
+    ambientSrc,
+    slide.useAmbientMusic,
+    shouldLoopWhenSingleSlide,
+  ]);
 
   if (!vUrl) {
     return (
@@ -86,23 +147,33 @@ export function HeroSlideBackground({
         alt={slide.alt}
         onEnded={onVideoEnded}
         shouldLoop={shouldLoopWhenSingleSlide}
+        ambientMusicSrc={ambientSrc}
+        useAmbientMusic={slide.useAmbientMusic === true}
       />
     );
   }
 
   return (
-    <video
-      ref={videoRef}
-      key={slideKey}
-      className="absolute inset-0 h-full w-full object-cover object-center"
-      poster={slide.src}
-      src={vUrl}
-      autoPlay
-      playsInline
-      preload="auto"
-      loop={shouldLoopWhenSingleSlide}
-      onEnded={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
-      onError={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
-    />
+    <>
+      <video
+        ref={videoRef}
+        key={slideKey}
+        className="absolute inset-0 h-full w-full object-cover object-center"
+        poster={slide.src}
+        src={vUrl}
+        playsInline
+        preload="auto"
+        loop={shouldLoopWhenSingleSlide}
+        onEnded={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
+        onError={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
+      />
+      <audio
+        ref={audioRef}
+        className="pointer-events-none absolute h-0 w-0 opacity-0"
+        aria-hidden
+        playsInline
+        preload="auto"
+      />
+    </>
   );
 }
