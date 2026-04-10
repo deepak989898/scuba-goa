@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   addDoc,
   collection,
@@ -27,6 +27,8 @@ type Row = {
   useAmbientMusic: boolean;
 };
 
+type UploadKind = "video" | "poster" | "thumbnail";
+
 export default function AdminHeroPage() {
   const db = getDb();
   const [list, setList] = useState<Row[]>([]);
@@ -39,9 +41,10 @@ export default function AdminHeroPage() {
     sortOrder: 0,
     useAmbientMusic: false,
   });
-  const [uploadBusy, setUploadBusy] = useState<
-    "video" | "poster" | "thumbnail" | null
-  >(null);
+  const [uploadBusy, setUploadBusy] = useState<{
+    kind: UploadKind;
+    rowId?: string;
+  } | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -81,7 +84,7 @@ export default function AdminHeroPage() {
     await addDoc(collection(db, "heroSlides"), {
       imageUrl: img,
       videoUrl: vid,
-      ...(thumb ? { videoThumbnailUrl: thumb } : {}),
+      ...(vid && thumb ? { videoThumbnailUrl: thumb } : {}),
       alt: form.alt.trim() || "Hero slide",
       sortOrder: Number(form.sortOrder),
       useAmbientMusic: form.useAmbientMusic,
@@ -115,18 +118,65 @@ export default function AdminHeroPage() {
     await refresh();
   }
 
-  async function patchVideoThumbnail(id: string, url: string) {
+  async function patchHeroSlide(
+    id: string,
+    patch: Partial<
+      Pick<Row, "imageUrl" | "videoUrl" | "videoThumbnailUrl" | "alt">
+    >,
+  ) {
     if (!db) return;
-    const trimmed = url.trim();
-    await updateDoc(doc(db, "heroSlides", id), {
-      videoThumbnailUrl: trimmed ? trimmed : deleteField(),
-    });
+    const payload: Record<string, unknown> = {};
+    if (patch.imageUrl !== undefined) {
+      payload.imageUrl = patch.imageUrl.trim();
+    }
+    if (patch.videoUrl !== undefined) {
+      const v = patch.videoUrl.trim();
+      payload.videoUrl = v;
+    }
+    if (patch.videoThumbnailUrl !== undefined) {
+      const t = patch.videoThumbnailUrl.trim();
+      payload.videoThumbnailUrl = t ? t : deleteField();
+    }
+    if (patch.alt !== undefined) {
+      payload.alt = patch.alt.trim() || "Hero slide";
+    }
+    if (Object.keys(payload).length === 0) return;
+    await updateDoc(doc(db, "heroSlides", id), payload);
     await refresh();
+  }
+
+  async function applyUploadUrl(
+    url: string,
+    kind: UploadKind,
+    rowId?: string,
+  ) {
+    if (!db) return;
+    if (rowId) {
+      if (kind === "video") {
+        await updateDoc(doc(db, "heroSlides", rowId), { videoUrl: url });
+      } else if (kind === "thumbnail") {
+        await updateDoc(doc(db, "heroSlides", rowId), {
+          videoThumbnailUrl: url,
+        });
+      } else {
+        await updateDoc(doc(db, "heroSlides", rowId), { imageUrl: url });
+      }
+      await refresh();
+      return;
+    }
+    if (kind === "video") {
+      setForm((f) => ({ ...f, videoUrl: url }));
+    } else if (kind === "thumbnail") {
+      setForm((f) => ({ ...f, videoThumbnailUrl: url }));
+    } else {
+      setForm((f) => ({ ...f, imageUrl: url }));
+    }
   }
 
   async function uploadHeroFile(
     file: File | null,
-    kind: "video" | "poster" | "thumbnail",
+    kind: UploadKind,
+    rowId?: string,
   ) {
     if (!file) return;
     const auth = getFirebaseAuth();
@@ -137,7 +187,7 @@ export default function AdminHeroPage() {
       return;
     }
     setUploadErr(null);
-    setUploadBusy(kind);
+    setUploadBusy({ kind, rowId });
     try {
       await auth.currentUser.getIdToken(true);
       const token = await auth.currentUser.getIdToken();
@@ -152,13 +202,7 @@ export default function AdminHeroPage() {
       if (apiRes.ok) {
         const data = (await apiRes.json()) as { url?: string };
         if (data.url) {
-          if (kind === "video") {
-            setForm((f) => ({ ...f, videoUrl: data.url! }));
-          } else if (kind === "thumbnail") {
-            setForm((f) => ({ ...f, videoThumbnailUrl: data.url! }));
-          } else {
-            setForm((f) => ({ ...f, imageUrl: data.url! }));
-          }
+          await applyUploadUrl(data.url, kind, rowId);
           return;
         }
       }
@@ -191,13 +235,7 @@ export default function AdminHeroPage() {
         contentType: file.type || undefined,
       });
       const url = await getDownloadURL(fileRef);
-      if (kind === "video") {
-        setForm((f) => ({ ...f, videoUrl: url }));
-      } else if (kind === "thumbnail") {
-        setForm((f) => ({ ...f, videoThumbnailUrl: url }));
-      } else {
-        setForm((f) => ({ ...f, imageUrl: url }));
-      }
+      await applyUploadUrl(url, kind, rowId);
     } catch (e) {
       setUploadErr(
         e instanceof Error
@@ -208,6 +246,8 @@ export default function AdminHeroPage() {
       setUploadBusy(null);
     }
   }
+
+  const anyUpload = uploadBusy !== null;
 
   if (!db) {
     return (
@@ -226,11 +266,8 @@ export default function AdminHeroPage() {
         Slides rotate on the home hero. Add an image URL (default poster for videos), and
         optionally a video. For videos you can set a separate{" "}
         <strong>video thumbnail</strong> URL or upload — if empty, the image URL above is
-        used. YouTube / MP4 / WebM supported. If this list is empty, the site uses built-in
-        defaults. Lower
-        sort order shows earlier. For silent videos (or Chrome, which cannot detect an audio
-        track), set <code className="text-xs">NEXT_PUBLIC_HERO_FALLBACK_MUSIC_URL</code> and
-        use &quot;Site music&quot; on that slide.
+        used. You can upload a thumbnail anytime (even before adding the video URL). Edit
+        existing slides in the table below. YouTube / MP4 / WebM supported.
       </p>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
@@ -261,12 +298,15 @@ export default function AdminHeroPage() {
               type="file"
               accept="image/*"
               className="mt-1 block w-full text-sm text-ocean-700 file:mr-3 file:rounded-lg file:border-0 file:bg-ocean-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ocean-900 hover:file:bg-ocean-200"
-              disabled={uploadBusy !== null}
-              onChange={(e) =>
-                void uploadHeroFile(e.target.files?.[0] ?? null, "poster")
-              }
+              disabled={anyUpload}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                void uploadHeroFile(f, "poster").finally(() => {
+                  e.target.value = "";
+                });
+              }}
             />
-            {uploadBusy === "poster" ? (
+            {uploadBusy?.kind === "poster" && !uploadBusy.rowId ? (
               <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
             ) : null}
           </div>
@@ -291,12 +331,15 @@ export default function AdminHeroPage() {
               type="file"
               accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
               className="mt-1 block w-full text-sm text-ocean-700 file:mr-3 file:rounded-lg file:border-0 file:bg-ocean-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ocean-900 hover:file:bg-ocean-200"
-              disabled={uploadBusy !== null}
-              onChange={(e) =>
-                void uploadHeroFile(e.target.files?.[0] ?? null, "video")
-              }
+              disabled={anyUpload}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                void uploadHeroFile(f, "video").finally(() => {
+                  e.target.value = "";
+                });
+              }}
             />
-            {uploadBusy === "video" ? (
+            {uploadBusy?.kind === "video" && !uploadBusy.rowId ? (
               <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
             ) : null}
           </div>
@@ -309,25 +352,27 @@ export default function AdminHeroPage() {
                 setForm((f) => ({ ...f, videoThumbnailUrl: e.target.value }))
               }
               placeholder="Shown before video plays — defaults to image URL above"
-              disabled={!form.videoUrl.trim()}
             />
           </label>
           <div className="sm:col-span-2">
             <p className="text-sm font-medium text-ocean-900">Video thumbnail upload</p>
             <p className="text-xs text-ocean-600">
-              Optional — JPG/PNG/WebP stored under hero/thumbnails; used only when this slide
-              has a video.
+              JPG/PNG/WebP → hero/thumbnails. Works even if you have not pasted a video URL
+              yet; save the slide after you add the video.
             </p>
             <input
               type="file"
               accept="image/*"
               className="mt-1 block w-full text-sm text-ocean-700 file:mr-3 file:rounded-lg file:border-0 file:bg-ocean-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ocean-900 hover:file:bg-ocean-200"
-              disabled={uploadBusy !== null || !form.videoUrl.trim()}
-              onChange={(e) =>
-                void uploadHeroFile(e.target.files?.[0] ?? null, "thumbnail")
-              }
+              disabled={anyUpload}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                void uploadHeroFile(f, "thumbnail").finally(() => {
+                  e.target.value = "";
+                });
+              }}
             />
-            {uploadBusy === "thumbnail" ? (
+            {uploadBusy?.kind === "thumbnail" && !uploadBusy.rowId ? (
               <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
             ) : null}
           </div>
@@ -393,109 +438,200 @@ export default function AdminHeroPage() {
                 <th className="p-3">Sort</th>
                 <th className="p-3">Preview</th>
                 <th className="p-3">Type</th>
-                <th className="p-3">Video thumb</th>
                 <th className="p-3">Site music</th>
-                <th className="p-3">Alt</th>
                 <th className="p-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {list.map((r) => (
-                <tr key={r.id} className="border-b border-ocean-50">
-                  <td className="p-3">
-                    <input
-                      type="number"
-                      className="w-20 rounded border border-ocean-200 px-2 py-1"
-                      defaultValue={r.sortOrder}
-                      onBlur={(e) =>
-                        patchSort(r.id, Number(e.target.value) || 0)
-                      }
-                    />
-                  </td>
-                  <td className="p-3">
-                    {(() => {
-                      const poster =
-                        r.videoUrl.trim() && r.videoThumbnailUrl.trim()
-                          ? r.videoThumbnailUrl
-                          : r.imageUrl;
-                      return poster ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={poster}
-                          alt=""
-                          className="h-14 w-24 rounded object-cover"
-                        />
-                      ) : (
-                        <span className="text-xs text-ocean-500">—</span>
-                      );
-                    })()}
-                  </td>
-                  <td className="max-w-[8rem] p-3 text-xs text-ocean-700">
-                    {r.videoUrl.trim() ? (
-                      <span className="font-semibold text-ocean-900">Video</span>
-                    ) : (
-                      <span>Image</span>
-                    )}
-                  </td>
-                  <td className="max-w-[10rem] p-2">
-                    {r.videoUrl.trim() ? (
+                <Fragment key={r.id}>
+                  <tr className="border-b border-ocean-100">
+                    <td className="p-3 align-top">
                       <input
-                        key={`vt-${r.id}-${r.videoThumbnailUrl}`}
-                        type="url"
-                        className="w-full rounded border border-ocean-200 px-1.5 py-1 text-[10px] font-mono text-ocean-800"
-                        defaultValue={r.videoThumbnailUrl}
-                        placeholder="Default: poster image"
-                        title="Video thumbnail URL — blur to save"
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v === r.videoThumbnailUrl.trim()) return;
-                          void patchVideoThumbnail(r.id, v);
-                        }}
+                        type="number"
+                        className="w-20 rounded border border-ocean-200 px-2 py-1"
+                        defaultValue={r.sortOrder}
+                        onBlur={(e) =>
+                          patchSort(r.id, Number(e.target.value) || 0)
+                        }
                       />
-                    ) : (
-                      <span className="text-xs text-ocean-400">—</span>
-                    )}
-                  </td>
-                  <td className="p-3">
-                    <input
-                      type="checkbox"
-                      title="Site music (muted video + fallback URL)"
-                      checked={r.useAmbientMusic}
-                      disabled={!r.videoUrl.trim()}
-                      onChange={(e) =>
-                        void patchUseAmbientMusic(r.id, e.target.checked)
-                      }
-                      aria-label="Use site music for this slide"
-                    />
-                  </td>
-                  <td className="max-w-xs p-3 text-xs text-ocean-700">
-                    {r.alt}
-                    {r.imageUrl ? (
-                      <div className="mt-1 truncate font-mono text-[10px] text-ocean-500">
-                        {r.imageUrl}
+                    </td>
+                    <td className="p-3 align-top">
+                      {(() => {
+                        const poster =
+                          r.videoUrl.trim() && r.videoThumbnailUrl.trim()
+                            ? r.videoThumbnailUrl
+                            : r.imageUrl;
+                        return poster ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={poster}
+                            alt=""
+                            className="h-14 w-24 rounded object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs text-ocean-500">—</span>
+                        );
+                      })()}
+                    </td>
+                    <td className="p-3 align-top text-xs text-ocean-700">
+                      {r.videoUrl.trim() ? (
+                        <span className="font-semibold text-ocean-900">Video</span>
+                      ) : (
+                        <span>Image</span>
+                      )}
+                    </td>
+                    <td className="p-3 align-top">
+                      <input
+                        type="checkbox"
+                        title="Site music (muted video + fallback URL)"
+                        checked={r.useAmbientMusic}
+                        disabled={!r.videoUrl.trim()}
+                        onChange={(e) =>
+                          void patchUseAmbientMusic(r.id, e.target.checked)
+                        }
+                        aria-label="Use site music for this slide"
+                      />
+                    </td>
+                    <td className="p-3 align-top">
+                      <button
+                        type="button"
+                        className="text-red-600 hover:underline"
+                        onClick={() => remove(r.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-ocean-50 bg-ocean-50/40">
+                    <td colSpan={5} className="p-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ocean-700">
+                        Edit slide
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <label className="text-xs font-medium text-ocean-800">
+                          Image / poster URL
+                          <input
+                            key={`img-${r.id}-${r.imageUrl}`}
+                            type="url"
+                            className="mt-1 w-full rounded border border-ocean-200 px-2 py-1.5 text-xs"
+                            defaultValue={r.imageUrl}
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v === r.imageUrl.trim()) return;
+                              void patchHeroSlide(r.id, { imageUrl: v });
+                            }}
+                          />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="mt-1 block w-full text-[11px] text-ocean-700 file:mr-2 file:rounded file:border-0 file:bg-ocean-200 file:px-2 file:py-1 file:text-[11px] file:font-semibold"
+                            disabled={anyUpload}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              void uploadHeroFile(f, "poster", r.id).finally(
+                                () => {
+                                  e.target.value = "";
+                                },
+                              );
+                            }}
+                          />
+                          {uploadBusy?.rowId === r.id &&
+                          uploadBusy.kind === "poster" ? (
+                            <p className="mt-0.5 text-[10px] text-ocean-600">
+                              Uploading…
+                            </p>
+                          ) : null}
+                        </label>
+                        <label className="text-xs font-medium text-ocean-800">
+                          Video URL
+                          <input
+                            key={`vid-${r.id}-${r.videoUrl}`}
+                            type="url"
+                            className="mt-1 w-full rounded border border-ocean-200 px-2 py-1.5 text-xs"
+                            defaultValue={r.videoUrl}
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v === r.videoUrl.trim()) return;
+                              void patchHeroSlide(r.id, { videoUrl: v });
+                            }}
+                          />
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                            className="mt-1 block w-full text-[11px] text-ocean-700 file:mr-2 file:rounded file:border-0 file:bg-ocean-200 file:px-2 file:py-1 file:text-[11px] file:font-semibold"
+                            disabled={anyUpload}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              void uploadHeroFile(f, "video", r.id).finally(
+                                () => {
+                                  e.target.value = "";
+                                },
+                              );
+                            }}
+                          />
+                          {uploadBusy?.rowId === r.id &&
+                          uploadBusy.kind === "video" ? (
+                            <p className="mt-0.5 text-[10px] text-ocean-600">
+                              Uploading…
+                            </p>
+                          ) : null}
+                        </label>
+                        <label className="text-xs font-medium text-ocean-800">
+                          Video thumbnail URL
+                          <input
+                            key={`vt-${r.id}-${r.videoThumbnailUrl}`}
+                            type="url"
+                            className="mt-1 w-full rounded border border-ocean-200 px-2 py-1.5 text-xs"
+                            defaultValue={r.videoThumbnailUrl}
+                            placeholder="Optional — uses poster if empty"
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v === r.videoThumbnailUrl.trim()) return;
+                              void patchHeroSlide(r.id, {
+                                videoThumbnailUrl: v,
+                              });
+                            }}
+                          />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="mt-1 block w-full text-[11px] text-ocean-700 file:mr-2 file:rounded file:border-0 file:bg-ocean-200 file:px-2 file:py-1 file:text-[11px] file:font-semibold"
+                            disabled={anyUpload}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              void uploadHeroFile(f, "thumbnail", r.id).finally(
+                                () => {
+                                  e.target.value = "";
+                                },
+                              );
+                            }}
+                          />
+                          {uploadBusy?.rowId === r.id &&
+                          uploadBusy.kind === "thumbnail" ? (
+                            <p className="mt-0.5 text-[10px] text-ocean-600">
+                              Uploading…
+                            </p>
+                          ) : null}
+                        </label>
+                        <label className="text-xs font-medium text-ocean-800 sm:col-span-2 lg:col-span-3">
+                          Alt text
+                          <input
+                            key={`alt-${r.id}-${r.alt}`}
+                            type="text"
+                            className="mt-1 w-full rounded border border-ocean-200 px-2 py-1.5 text-xs"
+                            defaultValue={r.alt}
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v === r.alt.trim()) return;
+                              void patchHeroSlide(r.id, { alt: v });
+                            }}
+                          />
+                        </label>
                       </div>
-                    ) : null}
-                    {r.videoUrl.trim() ? (
-                      <div className="mt-1 truncate font-mono text-[10px] text-ocean-500">
-                        {r.videoUrl}
-                      </div>
-                    ) : null}
-                    {r.videoUrl.trim() && r.videoThumbnailUrl.trim() ? (
-                      <div className="mt-0.5 truncate font-mono text-[9px] text-ocean-400">
-                        thumb: {r.videoThumbnailUrl}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="p-3">
-                    <button
-                      type="button"
-                      className="text-red-600 hover:underline"
-                      onClick={() => remove(r.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
