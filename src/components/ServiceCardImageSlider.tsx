@@ -18,6 +18,8 @@ type Props = {
    * Prev/next/dot controls keep pointer events so the slider stays usable.
    */
   passthroughClicks?: boolean;
+  /** Dot indicators under multi-image sliders (homepage cards often hide these). */
+  showDots?: boolean;
 };
 
 export function ServiceCardImageSlider({
@@ -28,6 +30,7 @@ export function ServiceCardImageSlider({
   sizes,
   aspectClass = "aspect-[4/3]",
   passthroughClicks = false,
+  showDots = true,
 }: Props) {
   const list = useMemo(() => {
     const slides = images.map((u) => u.trim()).filter(Boolean);
@@ -123,23 +126,25 @@ export function ServiceCardImageSlider({
               <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
             </svg>
           </button>
-          <div
-            className="absolute bottom-2 left-0 right-0 z-10 flex justify-center gap-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {list.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                aria-label={`Photo ${idx + 1}`}
-                aria-current={idx === i}
-                className={`h-1.5 rounded-full transition-all ${
-                  idx === i ? "w-4 bg-white" : "w-1.5 bg-white/55 hover:bg-white/80"
-                }`}
-                onClick={dotClick(idx)}
-              />
-            ))}
-          </div>
+          {showDots ? (
+            <div
+              className="absolute bottom-2 left-0 right-0 z-10 flex justify-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {list.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  aria-label={`Photo ${idx + 1}`}
+                  aria-current={idx === i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    idx === i ? "w-4 bg-white" : "w-1.5 bg-white/55 hover:bg-white/80"
+                  }`}
+                  onClick={dotClick(idx)}
+                />
+              ))}
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

@@ -12,11 +12,11 @@ export function PackagesSection() {
 
   return (
     <section
-      className="bg-gradient-to-b from-ocean-50/80 to-white pt-[clamp(10rem,46vw,13.5rem)] pb-12 sm:pt-8 sm:pb-16"
+      className="bg-gradient-to-b from-ocean-50/80 to-white pt-[clamp(4.5rem,18vw,7rem)] pb-10 sm:pt-5 sm:pb-14"
       id="packages"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
           <div>
             <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl lg:text-4xl">
               Pick your dive — prices lock at checkout
@@ -34,7 +34,7 @@ export function PackagesSection() {
           </Link>
         </div>
         {loading ? (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-3">
             {[1, 2, 3].map((k) => (
               <div
                 key={k}
@@ -43,7 +43,7 @@ export function PackagesSection() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-3">
             {packages.map((p, idx) => {
               const cardImage =
                 p.imageUrl?.trim() ||

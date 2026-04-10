@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { HERO_AMBIENT_VOLUME } from "@/lib/hero-audio";
 import { loadYoutubeIframeApi } from "@/lib/load-youtube-iframe-api";
@@ -15,8 +15,7 @@ type YTPlayerTarget = {
 };
 
 /**
- * YouTube hero: muted autoplay. Either unmutes the iframe after first gesture (video’s own audio)
- * or keeps it muted and plays `ambientMusicSrc` when `useAmbientMusic` is set / no separate track API.
+ * YouTube hero: muted autoplay; sound follows `heroSoundEnabled` (user toggle).
  */
 export function HeroYoutubeSlide({
   videoId,
@@ -26,8 +25,7 @@ export function HeroYoutubeSlide({
   shouldLoop,
   ambientMusicSrc,
   useAmbientMusic,
-  heroAudibleSpent,
-  onHeroAudibleConsumed,
+  heroSoundEnabled,
 }: {
   videoId: string;
   posterSrc: string;
@@ -36,13 +34,13 @@ export function HeroYoutubeSlide({
   shouldLoop: boolean;
   ambientMusicSrc?: string;
   useAmbientMusic?: boolean;
-  heroAudibleSpent: boolean;
-  onHeroAudibleConsumed: () => void;
+  heroSoundEnabled: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
-  const removeSoundUnlockRef = useRef<(() => void) | null>(null);
+  const ytTargetRef = useRef<YTPlayerTarget | null>(null);
+  const [playerReady, setPlayerReady] = useState(false);
 
   const effectiveAmbientSrc = ambientMusicSrc?.trim() ?? "";
 
@@ -58,6 +56,9 @@ export function HeroYoutubeSlide({
       a.removeAttribute("src");
       void a.load();
     };
+
+    setPlayerReady(false);
+    ytTargetRef.current = null;
 
     void loadYoutubeIframeApi().then(() => {
       if (cancelled || !hostRef.current) return;
@@ -83,8 +84,6 @@ export function HeroYoutubeSlide({
         /* ignore */
       }
       playerRef.current = null;
-      removeSoundUnlockRef.current?.();
-      removeSoundUnlockRef.current = null;
       stopAmbient();
 
       const ENDED = YT.PlayerState?.ENDED ?? 0;
@@ -114,78 +113,24 @@ export function HeroYoutubeSlide({
         playerVars,
         events: {
           onReady: (e: { target: YTPlayerTarget }) => {
+            if (cancelled) return;
+            ytTargetRef.current = e.target;
             try {
               e.target.mute();
               e.target.playVideo();
             } catch {
               /* ignore */
             }
-
-            if (heroAudibleSpent) {
-              return;
-            }
-
-            if (useAmbientMusic && !effectiveAmbientSrc) {
-              return;
-            }
-
             const useBed = Boolean(useAmbientMusic && effectiveAmbientSrc);
-
             if (useBed) {
               const a = audioRef.current;
               if (a && effectiveAmbientSrc) {
                 a.src = effectiveAmbientSrc;
                 a.loop = shouldLoop;
                 a.volume = HERO_AMBIENT_VOLUME;
-                const onAmbientPlaying = () => {
-                  onHeroAudibleConsumed();
-                  a.removeEventListener("playing", onAmbientPlaying);
-                };
-                a.addEventListener("playing", onAmbientPlaying);
-                const unlock = () => {
-                  void a.play();
-                };
-                void a.play().catch(() => {
-                  const onPointer = () => {
-                    unlock();
-                    window.removeEventListener("pointerdown", onPointer, true);
-                    removeSoundUnlockRef.current = null;
-                  };
-                  window.addEventListener("pointerdown", onPointer, {
-                    capture: true,
-                    once: true,
-                  });
-                  removeSoundUnlockRef.current = () => {
-                    window.removeEventListener("pointerdown", onPointer, true);
-                    removeSoundUnlockRef.current = null;
-                  };
-                });
               }
-              return;
             }
-
-            const unlock = () => {
-              try {
-                e.target.unMute();
-                e.target.setVolume(100);
-                onHeroAudibleConsumed();
-              } catch {
-                /* ignore */
-              }
-            };
-            const onPointer = () => {
-              unlock();
-              window.removeEventListener("pointerdown", onPointer, true);
-              removeSoundUnlockRef.current = null;
-            };
-            window.addEventListener("pointerdown", onPointer, {
-              capture: true,
-              once: true,
-            });
-            removeSoundUnlockRef.current = () => {
-              window.removeEventListener("pointerdown", onPointer, true);
-              removeSoundUnlockRef.current = null;
-            };
+            setPlayerReady(true);
           },
           onStateChange: (e: { data: number }) => {
             if (!shouldLoop && e.data === ENDED) onEnded();
@@ -200,8 +145,8 @@ export function HeroYoutubeSlide({
 
     return () => {
       cancelled = true;
-      removeSoundUnlockRef.current?.();
-      removeSoundUnlockRef.current = null;
+      setPlayerReady(false);
+      ytTargetRef.current = null;
       stopAmbient();
       try {
         playerRef.current?.destroy();
@@ -216,8 +161,64 @@ export function HeroYoutubeSlide({
     shouldLoop,
     useAmbientMusic,
     effectiveAmbientSrc,
-    heroAudibleSpent,
-    onHeroAudibleConsumed,
+  ]);
+
+  useEffect(() => {
+    if (!playerReady) return;
+    const t = ytTargetRef.current;
+    if (!t) return;
+
+    if (useAmbientMusic && !effectiveAmbientSrc) {
+      try {
+        t.mute();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    const useBed = Boolean(useAmbientMusic && effectiveAmbientSrc);
+    const a = audioRef.current;
+
+    if (useBed && a && effectiveAmbientSrc) {
+      try {
+        t.mute();
+      } catch {
+        /* ignore */
+      }
+      if (!a.src) {
+        a.src = effectiveAmbientSrc;
+        a.loop = shouldLoop;
+        a.volume = HERO_AMBIENT_VOLUME;
+      }
+      if (heroSoundEnabled) {
+        void a.play().catch(() => {});
+      } else {
+        a.pause();
+      }
+      return;
+    }
+
+    if (heroSoundEnabled) {
+      try {
+        t.unMute();
+        t.setVolume(100);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      try {
+        t.mute();
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [
+    playerReady,
+    heroSoundEnabled,
+    useAmbientMusic,
+    effectiveAmbientSrc,
+    shouldLoop,
   ]);
 
   return (
@@ -240,7 +241,7 @@ export function HeroYoutubeSlide({
         ref={hostRef}
         className="absolute inset-0 z-[1] [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:min-h-full [&_iframe]:w-full [&_iframe]:min-w-full [&_iframe]:scale-[1.15]"
       />
-      {effectiveAmbientSrc ? (
+      {useAmbientMusic && effectiveAmbientSrc ? (
         <audio
           ref={audioRef}
           className="pointer-events-none absolute h-0 w-0 opacity-0"

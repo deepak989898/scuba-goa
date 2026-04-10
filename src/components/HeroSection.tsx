@@ -11,6 +11,7 @@ import {
   type FormEvent,
 } from "react";
 import { HeroSlideBackground } from "@/components/HeroSlideBackground";
+import { HeroVideoSoundToggle } from "@/components/HeroVideoSoundToggle";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
 import { usePackages } from "@/hooks/usePackages";
 import { whatsappLink } from "@/lib/constants";
@@ -309,10 +310,8 @@ export function HeroSection() {
   );
   const [i, setI] = useState(0);
   const n = slides.length;
-  const [heroAudibleSpent, setHeroAudibleSpent] = useState(false);
-  const markHeroAudibleConsumed = useCallback(() => {
-    setHeroAudibleSpent(true);
-  }, []);
+  /** User-controlled hero video / site-music sound (starts off = muted). */
+  const [heroSoundOn, setHeroSoundOn] = useState(false);
 
   const advanceSlide = useCallback(() => {
     setI((prev) => {
@@ -358,14 +357,22 @@ export function HeroSection() {
                 slideKey={slideKey}
                 onVideoEnded={advanceSlide}
                 shouldLoopWhenSingleSlide={n <= 1}
-                heroAudibleSpent={heroAudibleSpent}
-                onHeroAudibleConsumed={markHeroAudibleConsumed}
+                heroSoundEnabled={heroSoundOn}
               />
             </motion.div>
           ) : null}
         </AnimatePresence>
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
+
+      {currentHasVideo ? (
+        <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
+          <HeroVideoSoundToggle
+            soundOn={heroSoundOn}
+            onToggle={() => setHeroSoundOn((v) => !v)}
+          />
+        </div>
+      ) : null}
 
       {/* Mobile: keep hero image clean — no text on photo (CTAs: sticky bar + form + trust strip) */}
       <h1 className="sr-only">

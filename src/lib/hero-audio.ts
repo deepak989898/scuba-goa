@@ -23,12 +23,3 @@ export function inferNativeVideoHasAudibleTrack(
   if (tracks.length === 0) return "no-track";
   return "has-track";
 }
-
-export function addUnlockSoundOnFirstPointer(unlock: () => void) {
-  const onPointer = () => {
-    unlock();
-    window.removeEventListener("pointerdown", onPointer, true);
-  };
-  window.addEventListener("pointerdown", onPointer, { capture: true, once: true });
-  return () => window.removeEventListener("pointerdown", onPointer, true);
-}
