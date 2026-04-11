@@ -31,6 +31,18 @@ export const CONTACT_PHONE_HREF = `tel:+${phoneDigits()}`;
 
 export const CONTACT_PHONE_LABEL = (() => formatIndiaPhoneLabel(phoneDigits()))();
 
+/** Second call line (optional). Digits only with country code, e.g. 918354075026 */
+const secondPhoneDigits = () =>
+  (process.env.NEXT_PUBLIC_CONTACT_PHONE_SECOND ?? "918354075026").replace(
+    /\D/g,
+    "",
+  );
+
+export const CONTACT_PHONE_SECOND_HREF = `tel:+${secondPhoneDigits()}`;
+
+export const CONTACT_PHONE_SECOND_LABEL = (() =>
+  formatIndiaPhoneLabel(secondPhoneDigits()))();
+
 /**
  * Missed-call callback line (optional dedicated virtual number via env).
  * Defaults to the main WhatsApp / business number.
