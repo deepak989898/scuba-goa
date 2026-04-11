@@ -15,6 +15,13 @@ export function loadYoutubeIframeApi(): Promise<void> {
 
   if (!loadingPromise) {
     loadingPromise = new Promise((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+
       const prev = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => {
         try {
@@ -22,7 +29,7 @@ export function loadYoutubeIframeApi(): Promise<void> {
         } catch {
           /* ignore */
         }
-        resolve();
+        done();
       };
 
       const existing = document.querySelector<HTMLScriptElement>(
@@ -32,21 +39,24 @@ export function loadYoutubeIframeApi(): Promise<void> {
         const tag = document.createElement("script");
         tag.src = "https://www.youtube.com/iframe_api";
         tag.async = true;
+        tag.onerror = () => done();
         const first = document.getElementsByTagName("script")[0];
         first?.parentNode?.insertBefore(tag, first);
+        /** In-app browsers / strict networks may block YouTube — never leave this promise pending. */
+        window.setTimeout(() => done(), 12_000);
       } else if (window.YT?.Player) {
-        resolve();
+        done();
       } else {
         const start = Date.now();
         const poll = window.setInterval(() => {
           if (window.YT?.Player) {
             window.clearInterval(poll);
-            resolve();
+            done();
             return;
           }
           if (Date.now() - start > 15000) {
             window.clearInterval(poll);
-            resolve();
+            done();
           }
         }, 32);
       }

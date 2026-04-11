@@ -60,88 +60,97 @@ export function HeroYoutubeSlide({
     setPlayerReady(false);
     ytTargetRef.current = null;
 
-    void loadYoutubeIframeApi().then(() => {
-      if (cancelled || !hostRef.current) return;
+    void loadYoutubeIframeApi()
+      .then(() => {
+        if (cancelled || !hostRef.current) return;
 
-      const YT = window.YT as
-        | {
-            Player: new (
-              el: HTMLElement,
-              opts: Record<string, unknown>,
-            ) => YTPlayerInstance;
-            PlayerState: { ENDED: number };
-          }
-        | undefined;
-
-      if (!YT?.Player) return;
-
-      const host = hostRef.current;
-      if (!host) return;
-
-      try {
-        playerRef.current?.destroy();
-      } catch {
-        /* ignore */
-      }
-      playerRef.current = null;
-      stopAmbient();
-
-      const ENDED = YT.PlayerState?.ENDED ?? 0;
-
-      const playerVars: Record<string, string | number | undefined> = {
-        autoplay: 1,
-        mute: 1,
-        controls: 0,
-        playsinline: 1,
-        modestbranding: 1,
-        rel: 0,
-        showinfo: 0,
-        iv_load_policy: 3,
-        fs: 0,
-        cc_load_policy: 0,
-        origin: typeof window !== "undefined" ? window.location.origin : undefined,
-      };
-      if (shouldLoop) {
-        playerVars.loop = 1;
-        playerVars.playlist = videoId;
-      }
-
-      const player = new YT.Player(host, {
-        videoId,
-        width: "100%",
-        height: "100%",
-        playerVars,
-        events: {
-          onReady: (e: { target: YTPlayerTarget }) => {
-            if (cancelled) return;
-            ytTargetRef.current = e.target;
-            try {
-              e.target.mute();
-              e.target.playVideo();
-            } catch {
-              /* ignore */
+        const YT = window.YT as
+          | {
+              Player: new (
+                el: HTMLElement,
+                opts: Record<string, unknown>,
+              ) => YTPlayerInstance;
+              PlayerState: { ENDED: number };
             }
-            const useBed = Boolean(useAmbientMusic && effectiveAmbientSrc);
-            if (useBed) {
-              const a = audioRef.current;
-              if (a && effectiveAmbientSrc) {
-                a.src = effectiveAmbientSrc;
-                a.loop = shouldLoop;
-                a.volume = HERO_AMBIENT_VOLUME;
-              }
-            }
-            setPlayerReady(true);
-          },
-          onStateChange: (e: { data: number }) => {
-            if (!shouldLoop && e.data === ENDED) onEnded();
-          },
-          onError: () => {
-            if (!shouldLoop) onEnded();
-          },
-        },
+          | undefined;
+
+        if (!YT?.Player) return;
+
+        const host = hostRef.current;
+        if (!host) return;
+
+        try {
+          playerRef.current?.destroy();
+        } catch {
+          /* ignore */
+        }
+        playerRef.current = null;
+        stopAmbient();
+
+        const ENDED = YT.PlayerState?.ENDED ?? 0;
+
+        const playerVars: Record<string, string | number | undefined> = {
+          autoplay: 1,
+          mute: 1,
+          controls: 0,
+          playsinline: 1,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          iv_load_policy: 3,
+          fs: 0,
+          cc_load_policy: 0,
+          origin:
+            typeof window !== "undefined" ? window.location.origin : undefined,
+        };
+        if (shouldLoop) {
+          playerVars.loop = 1;
+          playerVars.playlist = videoId;
+        }
+
+        try {
+          const player = new YT.Player(host, {
+            videoId,
+            width: "100%",
+            height: "100%",
+            playerVars,
+            events: {
+              onReady: (e: { target: YTPlayerTarget }) => {
+                if (cancelled) return;
+                ytTargetRef.current = e.target;
+                try {
+                  e.target.mute();
+                  e.target.playVideo();
+                } catch {
+                  /* ignore */
+                }
+                const useBed = Boolean(useAmbientMusic && effectiveAmbientSrc);
+                if (useBed) {
+                  const a = audioRef.current;
+                  if (a && effectiveAmbientSrc) {
+                    a.src = effectiveAmbientSrc;
+                    a.loop = shouldLoop;
+                    a.volume = HERO_AMBIENT_VOLUME;
+                  }
+                }
+                setPlayerReady(true);
+              },
+              onStateChange: (e: { data: number }) => {
+                if (!shouldLoop && e.data === ENDED) onEnded();
+              },
+              onError: () => {
+                if (!shouldLoop) onEnded();
+              },
+            },
+          });
+          playerRef.current = player;
+        } catch {
+          /* In-app browsers / blocked embeds — fail silently */
+        }
+      })
+      .catch(() => {
+        /* loadYoutubeIframeApi rejected or unexpected */
       });
-      playerRef.current = player;
-    });
 
     return () => {
       cancelled = true;
