@@ -111,11 +111,12 @@ function HeroConversionCard({
         </a>
       </div>
 
-      <div className="mt-3 rounded-lg border border-white/15 bg-black/10 p-2 max-sm:border-ocean-100 max-sm:bg-ocean-50/80 sm:bg-white/5">
-        <p className="text-center text-[9px] font-semibold uppercase tracking-wide text-white/85 max-sm:text-ocean-700 sm:text-[10px] sm:text-white/80">
+      {/* Desktop/tablet only — keeps hero compact on mobile (sticky bar + WhatsApp booking button). */}
+      <div className="mt-3 hidden rounded-lg border border-white/15 bg-black/10 p-2 sm:block sm:bg-white/5">
+        <p className="text-center text-[10px] font-semibold uppercase tracking-wide text-white/80">
           Or enter mobile — opens WhatsApp
         </p>
-        <label className="mt-1 block text-[9px] font-medium text-white/90 max-sm:text-ocean-800 sm:text-xs sm:text-white/85">
+        <label className="mt-1 block text-[9px] font-medium text-white/85 sm:text-xs">
           Mobile (India)
           <input
             type="tel"
@@ -131,14 +132,14 @@ function HeroConversionCard({
           />
         </label>
         {phoneErr ? (
-          <p className="mt-1 text-center text-[9px] text-red-200 max-sm:text-red-700" role="alert">
+          <p className="mt-1 text-center text-[9px] text-red-200" role="alert">
             {phoneErr}
           </p>
         ) : null}
         <button
           type="button"
           onClick={openWhatsAppWithNumber}
-          className="mt-2 w-full touch-manipulation rounded-full border border-white/30 bg-white/10 py-2 text-[10px] font-bold text-white transition hover:bg-white/20 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:hover:bg-ocean-50 sm:text-xs"
+          className="mt-2 w-full touch-manipulation rounded-full border border-white/30 bg-white/10 py-2 text-[10px] font-bold text-white transition hover:bg-white/20 sm:text-xs"
         >
           Continue on WhatsApp
         </button>

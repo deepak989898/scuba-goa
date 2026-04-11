@@ -17,6 +17,7 @@ import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 export function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
+  const isHome = pathname === "/" || pathname === "";
 
   if (isAdmin) {
     return <>{children}</>;
@@ -30,7 +31,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       </main>
       <Footer />
       <CartFAB />
-      <WhatsAppFloat />
+      <WhatsAppFloat hideOnMobile={isHome} />
       <StickyBookBar />
       <LeadOfferPopup />
       <AiChatbot />
