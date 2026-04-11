@@ -33,6 +33,26 @@ export type BookingPayload = {
 };
 
 /** Single row in the shopping cart */
+/** Firestore `offers` — online checkout promo rules (admin-managed). */
+export type OfferDoc = {
+  id: string;
+  title: string;
+  description: string;
+  /** Uppercase, no spaces, e.g. COUPLE10 */
+  promoCode: string;
+  /** 1–50 = percent off cart subtotal before Razorpay. */
+  discountPercent: number;
+  /** Minimum cart units (people / line qty sum) for this code. Default 1. */
+  minCartUnits?: number;
+  /** Maximum cart units inclusive; omit for no upper cap. */
+  maxCartUnits?: number | null;
+  /** UI grouping: Couple, Group, Birthday, Seasonal, etc. */
+  category?: string;
+  sortOrder?: number;
+  /** When false, hidden from /offers and rejected at checkout. */
+  active?: boolean;
+};
+
 export type CartLine = {
   key: string;
   kind: "service" | "package";

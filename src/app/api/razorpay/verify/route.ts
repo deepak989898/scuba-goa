@@ -9,7 +9,9 @@ import {
   sendBookingConfirmationEmail,
 } from "@/lib/email";
 import { getAdminDb } from "@/lib/firebase-admin";
+import type { CartItemForPromo } from "@/lib/promo-pricing";
 import { isValidPayAmountPaise } from "@/lib/payment";
+import { validatePromoForOrder } from "@/lib/validate-promo-for-order";
 
 type BookingBody = Record<string, unknown> & {
   packageId: string;
@@ -26,7 +28,25 @@ type BookingBody = Record<string, unknown> & {
   payUnits?: number;
   cartItems?: unknown[];
   pickupLocation?: string;
+  /** Optional single online promo (must match server recomputation). */
+  promoCode?: string;
+  discountPercent?: number;
+  subtotalBeforeDiscountPaise?: number;
 };
+
+function parseCartItemsForPromo(raw: unknown): CartItemForPromo[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: CartItemForPromo[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== "object") return null;
+    const o = row as Record<string, unknown>;
+    out.push({
+      unitPrice: Number(o.unitPrice),
+      quantity: Number(o.quantity),
+    });
+  }
+  return out;
+}
 
 function normalizePhone(raw: unknown): string {
   const s = typeof raw === "string" ? raw : "";
@@ -115,6 +135,9 @@ export async function POST(req: Request) {
   let fullAmountPaise = Math.floor(Number(fullPaiseRaw));
   const payUnits = Math.max(1, Math.floor(Number(payUnitsRaw)));
 
+  const promoRaw =
+    typeof booking.promoCode === "string" ? booking.promoCode.trim() : "";
+
   if (hasStructured) {
     if (!Number.isFinite(fullAmountPaise) || fullAmountPaise < 100) {
       return NextResponse.json(
@@ -122,13 +145,40 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (!isValidPayAmountPaise(paidPaise, fullAmountPaise, payUnits)) {
+    if (promoRaw) {
+      const items = parseCartItemsForPromo(booking.cartItems);
+      if (!items?.length) {
+        return NextResponse.json(
+          { error: "Promo bookings require a valid cart on the server." },
+          { status: 400 }
+        );
+      }
+      const vr = await validatePromoForOrder({
+        promoCodeRaw: promoRaw,
+        cartItems: items,
+        payUnits,
+        claimedFullAmountPaise: fullAmountPaise,
+        claimedChargePaise: paidPaise,
+      });
+      if (!vr.ok) {
+        return NextResponse.json(
+          { error: vr.error === "NO_PROMO" ? "Invalid promo." : vr.error },
+          { status: 400 }
+        );
+      }
+    } else if (!isValidPayAmountPaise(paidPaise, fullAmountPaise, payUnits)) {
       return NextResponse.json(
         { error: "Paid amount does not match allowed minimum or full total" },
         { status: 400 }
       );
     }
   } else {
+    if (promoRaw) {
+      return NextResponse.json(
+        { error: "This payment shape does not support promo codes." },
+        { status: 400 }
+      );
+    }
     fullAmountPaise = paidPaise;
   }
 

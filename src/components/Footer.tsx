@@ -12,7 +12,7 @@ import {
 
 const quick = [
   { href: "/booking", label: "Book & pay online" },
-  { href: "/#packages", label: "Package offers" },
+  { href: "/offers", label: "Package offers" },
   { href: "/services", label: "All services" },
   { href: "/blog", label: "Travel blog" },
   { href: "/contact", label: "Contact" },

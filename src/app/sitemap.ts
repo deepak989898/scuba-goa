@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/booking",
     "/services",
     "/blog",
+    "/offers",
     "/admin/login",
   ];
   const staticLastMod: Record<string, string> = {
@@ -21,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/booking": "2026-04-09",
     "/services": "2026-04-03",
     "/blog": "2026-04-09",
+    "/offers": "2026-04-11",
     "/admin/login": "2026-03-26",
   };
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({

@@ -97,6 +97,26 @@ export function BookingForm() {
   /** Hide name / contact fields until the user has a cart and taps continue (less first-screen friction). */
   const [contactStepOpen, setContactStepOpen] = useState(false);
 
+  const [promoDraft, setPromoDraft] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{
+    code: string;
+    title: string;
+    discountPercent: number;
+    subtotalBeforeDiscountPaise: number;
+    discountedFullPaise: number;
+  } | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
+
+  const linesKey = useMemo(
+    () => lines.map((l) => `${l.key}:${l.quantity}`).join("|"),
+    [lines]
+  );
+
+  useEffect(() => {
+    setPromoApplied(null);
+    setPromoDraft("");
+  }, [linesKey]);
+
   const addFromEncodedOption = useCallback(
     (encoded: string) => {
       const parsed = parseBookingOption(encoded);
@@ -187,7 +207,10 @@ export function BookingForm() {
 
   const hasCart = cartReady && lines.length > 0;
 
-  const cartFullAmountPaise = Math.round(subtotalInr * 100);
+  const baseSubtotalPaise = Math.round(subtotalInr * 100);
+  const cartFullAmountPaise = promoApplied
+    ? promoApplied.discountedFullPaise
+    : baseSubtotalPaise;
   const cartMinPayPaise = hasCart
     ? computeMinPayPaise(itemCount, cartFullAmountPaise)
     : 0;
@@ -195,6 +218,59 @@ export function BookingForm() {
     payMode === "full" || cartMinPayPaise >= cartFullAmountPaise
       ? cartFullAmountPaise
       : cartMinPayPaise;
+
+  const cartItemsPayload = useMemo(
+    () =>
+      lines.map((l) => ({
+        kind: l.kind,
+        refId: l.refId,
+        name: l.name,
+        unitPrice: l.unitPrice,
+        quantity: l.quantity,
+        lineTotal: l.unitPrice * l.quantity,
+      })),
+    [lines]
+  );
+
+  async function applyPromoCode() {
+    if (!promoDraft.trim() || !hasCart) return;
+    setPromoBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          promoCode: promoDraft.trim(),
+          payUnits: itemCount,
+          payMode,
+          cartItems: cartItemsPayload.map((c) => ({
+            unitPrice: c.unitPrice,
+            quantity: c.quantity,
+          })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPromoApplied(null);
+        setMsg(typeof data.error === "string" ? data.error : "Invalid promo code.");
+        return;
+      }
+      setPromoApplied({
+        code: String(data.promoCode ?? "").toUpperCase(),
+        title: String(data.title ?? "Offer"),
+        discountPercent: Number(data.discountPercent ?? 0),
+        subtotalBeforeDiscountPaise: Number(data.subtotalBeforeDiscountPaise ?? 0),
+        discountedFullPaise: Number(data.discountedFullPaise ?? 0),
+      });
+      setMsg(null);
+    } catch {
+      setPromoApplied(null);
+      setMsg("Could not validate promo. Try again.");
+    } finally {
+      setPromoBusy(false);
+    }
+  }
 
   function onPickerChange(value: string) {
     if (!value) return;
@@ -245,6 +321,15 @@ export function BookingForm() {
           payUnits: itemCount,
           currency: "INR",
           receipt: `bk_cart_${Date.now()}`,
+          ...(promoApplied
+            ? {
+                promoCode: promoApplied.code,
+                cartItems: cartItemsPayload.map((c) => ({
+                  unitPrice: c.unitPrice,
+                  quantity: c.quantity,
+                })),
+              }
+            : {}),
         }),
       });
       const orderData = await orderRes.json();
@@ -263,6 +348,13 @@ export function BookingForm() {
         payUnits: itemCount,
         pickupLocation: pickupLocation.trim() || undefined,
         cartItems,
+        ...(promoApplied
+          ? {
+              promoCode: promoApplied.code,
+              discountPercent: promoApplied.discountPercent,
+              subtotalBeforeDiscountPaise: promoApplied.subtotalBeforeDiscountPaise,
+            }
+          : {}),
       };
 
       const options: Record<string, unknown> = {
@@ -456,10 +548,74 @@ export function BookingForm() {
               )}
             </div>
 
+            {hasCart ? (
+              <div className="mt-4 rounded-xl border border-amber-200/90 bg-amber-50/60 p-3 sm:p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+                  Promo code (optional · online checkout only)
+                </p>
+                <p className="mt-1 text-[11px] text-amber-950/80">
+                  One code per booking. See{" "}
+                  <a href="/offers" className="font-semibold underline">
+                    current offers
+                  </a>
+                  .
+                </p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border border-amber-200/80 bg-white px-3 py-2 text-sm text-ocean-900 placeholder:text-ocean-400"
+                    placeholder="e.g. COUPLE10"
+                    value={promoDraft}
+                    onChange={(e) => setPromoDraft(e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      disabled={promoBusy || !promoDraft.trim()}
+                      onClick={() => void applyPromoCode()}
+                      className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-amber-500 disabled:opacity-50"
+                    >
+                      {promoBusy ? "…" : "Apply"}
+                    </button>
+                    {promoApplied ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPromoApplied(null);
+                          setMsg(null);
+                        }}
+                        className="rounded-lg border border-amber-700/30 bg-white px-3 py-2 text-xs font-semibold text-amber-950"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                {promoApplied ? (
+                  <p className="mt-2 text-xs font-medium text-green-900">
+                    {promoApplied.title} — {promoApplied.discountPercent}% off. New cart
+                    total ₹{(promoApplied.discountedFullPaise / 100).toLocaleString("en-IN")}
+                    .
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             {hasCart && !contactStepOpen ? (
               <div className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 text-center">
                 <p className="text-sm font-semibold text-ocean-900">
-                  Cart total: ₹{subtotalInr.toLocaleString("en-IN")}
+                  {promoApplied ? (
+                    <>
+                      <span className="text-ocean-500 line-through">
+                        ₹{subtotalInr.toLocaleString("en-IN")}
+                      </span>{" "}
+                      → ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
+                    </>
+                  ) : (
+                    <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
+                  )}
                 </p>
                 <p className="mt-1 text-xs text-ocean-700">
                   Pay ₹{(cartMinPayPaise / 100).toLocaleString("en-IN")} now to lock (advance) ·
@@ -527,7 +683,21 @@ export function BookingForm() {
 
                 <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
                   <p className="text-lg font-bold text-ocean-900">
-                    Cart total: ₹{subtotalInr.toLocaleString("en-IN")}
+                    {promoApplied ? (
+                      <>
+                        <span className="text-base font-semibold text-ocean-600 line-through">
+                          ₹{subtotalInr.toLocaleString("en-IN")}
+                        </span>{" "}
+                        <span className="text-ocean-900">
+                          ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
+                        </span>
+                        <span className="mt-1 block text-xs font-normal text-green-800">
+                          {promoApplied.title} ({promoApplied.discountPercent}% off)
+                        </span>
+                      </>
+                    ) : (
+                      <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
+                    )}
                   </p>
                   {cartMinPayPaise < cartFullAmountPaise ? (
                     <>

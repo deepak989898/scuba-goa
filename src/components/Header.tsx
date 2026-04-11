@@ -10,7 +10,7 @@ import { TrustTopStrip } from "@/components/TrustTopStrip";
 
 const nav = [
   { href: "/", label: "Home" },
-  { href: "/#packages", label: "Offers" },
+  { href: "/offers", label: "Offers" },
   { href: "/services", label: "Services" },
   { href: "/booking", label: "Book" },
   { href: "/blog", label: "Blog" },

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
+import type { CartItemForPromo } from "@/lib/promo-pricing";
 import {
   computeMinPayPaise,
   isValidPayAmountPaise,
 } from "@/lib/payment";
+import { validatePromoForOrder } from "@/lib/validate-promo-for-order";
 
 export async function POST(req: Request) {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -32,6 +34,9 @@ export async function POST(req: Request) {
     fullAmountPaise?: number;
     /** Cart quantity units for advance minimum (₹199 × units, capped at total). */
     payUnits?: number;
+    /** Single optional online promo (validated server-side). */
+    promoCode?: string;
+    cartItems?: CartItemForPromo[];
   };
   try {
     body = await req.json();
@@ -55,6 +60,11 @@ export async function POST(req: Request) {
       : undefined;
   const payUnits =
     body.payUnits !== undefined ? Math.floor(Number(body.payUnits)) : undefined;
+  const promoTrim =
+    typeof body.promoCode === "string" ? body.promoCode.trim() : "";
+  const cartItems = Array.isArray(body.cartItems)
+    ? (body.cartItems as CartItemForPromo[])
+    : undefined;
 
   if (fullPaise !== undefined && payUnits !== undefined) {
     if (!Number.isFinite(fullPaise) || fullPaise < 100 || payUnits < 1) {
@@ -63,7 +73,23 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (!isValidPayAmountPaise(amount, fullPaise, payUnits)) {
+
+    if (promoTrim) {
+      const vr = await validatePromoForOrder({
+        promoCodeRaw: promoTrim,
+        cartItems,
+        payUnits,
+        claimedFullAmountPaise: fullPaise,
+        claimedChargePaise: amount,
+      });
+      if (!vr.ok) {
+        const msg =
+          vr.error === "NO_PROMO"
+            ? "Invalid promo request."
+            : vr.error;
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
+    } else if (!isValidPayAmountPaise(amount, fullPaise, payUnits)) {
       const minP = computeMinPayPaise(payUnits, fullPaise);
       return NextResponse.json(
         {

@@ -27,6 +27,17 @@ export default function AdminHomePage() {
           </p>
         </Link>
         <Link
+          href="/admin/offers"
+          className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
+        >
+          <h2 className="font-display text-lg font-semibold text-ocean-900">
+            Offers &amp; promos
+          </h2>
+          <p className="mt-2 text-sm text-ocean-600">
+            Promo codes for online checkout — couple, group, birthday, and custom rules.
+          </p>
+        </Link>
+        <Link
           href="/admin/services"
           className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
         >

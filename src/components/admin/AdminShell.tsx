@@ -72,6 +72,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               Packages
             </Link>
             <Link
+              href="/admin/offers"
+              className="text-ocean-700 hover:text-ocean-500"
+            >
+              Offers
+            </Link>
+            <Link
               href="/admin/services"
               className="text-ocean-700 hover:text-ocean-500"
             >
