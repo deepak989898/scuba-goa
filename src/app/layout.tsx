@@ -61,6 +61,13 @@ export const metadata: Metadata = {
     shortcut: ["/favicon.ico"],
   },
   robots: { index: true, follow: true },
+  ...(googleSiteVerification
+    ? {
+        verification: {
+          google: googleSiteVerification,
+        },
+      }
+    : {}),
 };
 
 export const viewport: Viewport = {
