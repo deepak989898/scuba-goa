@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { FieldValue } from "firebase-admin/firestore";
 import { generateBillPdf } from "@/lib/billPdf";
-import { sendBookingConfirmationEmail } from "@/lib/email";
+import {
+  sendBookingAdminNotificationEmail,
+  sendBookingConfirmationEmail,
+} from "@/lib/email";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { isValidPayAmountPaise } from "@/lib/payment";
 
@@ -222,6 +225,7 @@ export async function POST(req: Request) {
   }
 
   let emailSent = false;
+  let adminEmailSent = false;
   try {
     emailSent = await sendBookingConfirmationEmail({
       to: String(booking.email).trim(),
@@ -239,15 +243,47 @@ export async function POST(req: Request) {
     console.error("booking confirmation email failed", err);
   }
 
+  try {
+    adminEmailSent = await sendBookingAdminNotificationEmail({
+      customerName: String(booking.customerName),
+      customerEmail: String(booking.email).trim(),
+      phone: String(booking.phone),
+      packageName: String(booking.packageName),
+      date: String(booking.date),
+      people: Number(booking.people) || 0,
+      amountInr,
+      fullAmountInr: fullInr,
+      balanceInr,
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      paymentMode,
+      pickupLocation:
+        typeof booking.pickupLocation === "string"
+          ? booking.pickupLocation
+          : undefined,
+      cartItems: booking.cartItems,
+      pdfBytes,
+    });
+  } catch (err) {
+    console.error("admin booking notification email failed", err);
+  }
+
   const emailWarning = emailSent
     ? undefined
     : "Payment is successful, but confirmation email was not sent. Check RESEND_API_KEY and RESEND_FROM_EMAIL (use a verified sender like support@bookscubagoa.com).";
+
+  const adminEmailWarning =
+    process.env.RESEND_API_KEY && !adminEmailSent
+      ? "Business inbox notification failed (check BOOKING_ADMIN_NOTIFY_EMAIL, Resend, and that support@bookscubagoa.com can receive mail)."
+      : undefined;
 
   return NextResponse.json({
     ok: true,
     stored: true,
     emailSent,
+    adminEmailSent,
     warning: emailWarning,
+    adminEmailWarning,
     ...clientConfirm,
   });
 }

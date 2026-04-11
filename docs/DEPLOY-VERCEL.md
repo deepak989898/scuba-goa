@@ -88,7 +88,8 @@ After a successful Razorpay verify, the server sends a confirmation email if con
 |------|---------|
 | `RESEND_API_KEY` | API key from [Resend](https://resend.com/api-keys). Without this, payment still works but no email is sent (`emailSent: false` in API response). |
 | `RESEND_FROM_EMAIL` | Optional. Default is Resend’s test sender. For production, verify your domain in Resend and set a matching “From” address. |
-| `ADMIN_NOTIFY_EMAIL` | Optional. Extra BCC on booking emails (in addition to the fixed business BCC in code). |
+| `BOOKING_ADMIN_NOTIFY_EMAIL` | Optional. **To** address for a separate “new paid booking” email to staff (defaults to `NEXT_PUBLIC_CONTACT_EMAIL` / `support@bookscubagoa.com`). Needed because BCC to the same address as `RESEND_FROM_EMAIL` is often not delivered. |
+| `ADMIN_NOTIFY_EMAIL` | Optional. Extra BCC on the **customer** confirmation only (in addition to the fixed business BCC in code). |
 
 ### OpenAI (AI Help button — optional)
 
