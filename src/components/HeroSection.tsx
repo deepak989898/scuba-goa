@@ -2,39 +2,15 @@
 
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeroSlideBackground } from "@/components/HeroSlideBackground";
 import { HeroVideoSoundToggle } from "@/components/HeroVideoSoundToggle";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
 import { usePackages } from "@/hooks/usePackages";
+import { useServices } from "@/hooks/useServices";
 import { whatsappLink } from "@/lib/constants";
+import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 import type { PackageDoc } from "@/lib/types";
-
-const LEAD_SID_KEY = "bsg_marketing_sid";
-
-function getLeadSessionId(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    let id = sessionStorage.getItem(LEAD_SID_KEY);
-    if (!id) {
-      id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `m_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      sessionStorage.setItem(LEAD_SID_KEY, id);
-    }
-    return id;
-  } catch {
-    return `m_${Date.now()}`;
-  }
-}
 
 function lowestListedPackageInr(list: PackageDoc[]): number | null {
   const nums = list
@@ -44,258 +20,128 @@ function lowestListedPackageInr(list: PackageDoc[]): number | null {
   return Math.min(...nums);
 }
 
-function HeroQuickBookingPanel({
-  packages,
-  loading,
-  fromPriceInr,
+function HeroConversionCard({
+  headlinePriceInr,
+  priceLoading,
+  slotsToday,
 }: {
-  packages: PackageDoc[];
-  loading: boolean;
-  fromPriceInr: number | null;
+  headlinePriceInr: number | null;
+  priceLoading: boolean;
+  slotsToday: number | null;
 }) {
-  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [preferredDate, setPreferredDate] = useState("");
-  const [interestedItem, setInterestedItem] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [mobileFormOpen, setMobileFormOpen] = useState(false);
-  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const [phoneErr, setPhoneErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!mobileFormOpen) return;
-    const t = window.setTimeout(() => phoneInputRef.current?.focus(), 180);
-    return () => window.clearTimeout(t);
-  }, [mobileFormOpen]);
+  const priceLine =
+    headlinePriceInr != null &&
+    Number.isFinite(headlinePriceInr) &&
+    headlinePriceInr > 0
+      ? `₹${headlinePriceInr.toLocaleString("en-IN")}`
+      : null;
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 10) {
-      setMsg("Please enter a valid phone number.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch("/api/marketing/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          phone: phone.trim(),
-          interestedItem:
-            interestedItem.trim() || "Quick booking — hero",
-          preferredDate: preferredDate.trim(),
-          source: "hero_quick",
-          sessionId: getLeadSessionId(),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMsg(data.error ?? "Could not send. Try again.");
-        return;
-      }
-      setMsg("Thanks! We’ll contact you shortly.");
-      setPhone("");
-      setName("");
-      setPreferredDate("");
-      setInterestedItem("");
-    } catch {
-      setMsg("Something went wrong. Try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const wa = whatsappLink(
-    "Hi, I’d like to book scuba / a tour in Goa (from your website)."
+  const waBooking = whatsappLink(
+    "Hi, I want to book scuba diving in Goa. Please share slots for today or tomorrow."
   );
 
-  const inputClass =
-    "mt-0.5 w-full min-h-0 rounded-md border px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 sm:mt-1 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm border-white/25 bg-white/10 text-white placeholder:text-white/50 focus:border-cyan-300/80 focus:ring-cyan-300/60 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:placeholder:text-ocean-400 max-sm:focus:border-ocean-500 max-sm:focus:ring-ocean-400";
+  const bookPrimaryClass =
+    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:text-sm";
 
-  const bookSlotBtnClass =
-    "inline-flex min-h-11 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm";
+  const whatsappSecondaryClass =
+    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full border-2 border-emerald-400/90 bg-emerald-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-950/30 ring-1 ring-emerald-300/50 transition hover:bg-emerald-500 active:bg-emerald-700 sm:text-sm";
 
-  const whatsappSolidClass =
-    "inline-flex min-h-11 min-w-0 flex-1 touch-manipulation items-center justify-center rounded-full bg-emerald-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-950/30 ring-2 ring-emerald-400/60 transition hover:bg-emerald-500 active:bg-emerald-700 sm:min-h-11 sm:flex-none sm:px-5 sm:py-2.5 sm:text-sm";
+  const telInputClass =
+    "mt-1 w-full rounded-lg border border-white/25 bg-white/10 px-2 py-1.5 text-xs text-white placeholder:text-white/50 focus:border-cyan-300/80 focus:outline-none focus:ring-1 focus:ring-cyan-300/60 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:placeholder:text-ocean-400 max-sm:focus:border-ocean-500 max-sm:focus:ring-ocean-400 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm";
 
-  const showMobileFields = mobileFormOpen;
+  function openWhatsAppWithNumber() {
+    setPhoneErr(null);
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) {
+      setPhoneErr("Enter a valid 10-digit mobile.");
+      return;
+    }
+    const text = `Hi, I want to book scuba diving in Goa. My WhatsApp number: ${digits}. Please confirm slot and payment.`;
+    window.open(whatsappLink(text), "_blank", "noopener,noreferrer");
+  }
 
   return (
-    <div className="rounded-lg border border-white/20 bg-white/10 p-1.5 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
-      {fromPriceInr != null ? (
-        <p className="mb-1 text-center font-display text-sm font-bold tabular-nums text-cyan-600 max-sm:text-base max-sm:text-ocean-900 sm:mb-2 sm:text-lg sm:text-cyan-200">
-          From ₹{fromPriceInr.toLocaleString("en-IN")}
-          <span className="block text-[9px] font-semibold normal-case tracking-normal text-ocean-600 max-sm:text-[10px] sm:text-[10px] sm:text-cyan-100/90">
-            Live package price on site · ₹199 advance to lock
+    <div className="rounded-lg border border-white/20 bg-white/10 p-2 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
+      <p className="text-center font-display text-base font-extrabold tabular-nums leading-tight text-cyan-600 max-sm:text-ocean-900 sm:text-xl sm:text-cyan-100">
+        {priceLoading && !priceLine ? (
+          <span className="text-xs font-semibold text-white/80 max-sm:text-ocean-600">
+            Loading price…
           </span>
-        </p>
-      ) : loading ? (
-        <p className="mb-1 text-center text-[9px] font-medium text-ocean-600 max-sm:text-[10px] sm:mb-2 sm:text-xs sm:text-white/70">
-          Loading live prices…
+        ) : priceLine ? (
+          <>
+            Scuba diving in Goa @ {priceLine}
+            <span className="mt-1 block text-[10px] font-semibold normal-case tracking-normal text-ocean-700 max-sm:text-ocean-700 sm:text-xs sm:text-cyan-50/95">
+              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now · rest on the day at the
+              centre
+            </span>
+          </>
+        ) : (
+          <>
+            Scuba diving in Goa
+            <span className="mt-1 block text-[10px] font-semibold text-ocean-700 sm:text-cyan-100/90">
+              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now · rest on the day
+            </span>
+          </>
+        )}
+      </p>
+
+      <p className="mt-2 text-center text-[10px] font-medium leading-snug text-ocean-800 max-sm:text-ocean-800 sm:text-xs sm:text-white/90">
+        Beginner friendly · Safe · Certified trainers · Free photos &amp; videos
+      </p>
+      {slotsToday != null && slotsToday > 0 ? (
+        <p className="mt-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-amber-200 max-sm:text-amber-800 sm:text-xs sm:text-amber-200">
+          Only {slotsToday} slots left today
         </p>
       ) : null}
 
-      {/* Mobile: compact 3-button row — expands to full form */}
-      <div className="sm:hidden">
-        {!showMobileFields ? (
-          <div className="mt-2 space-y-2">
-            <p className="text-center text-[10px] font-extrabold uppercase tracking-wide text-ocean-800">
-              Quick actions
-            </p>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={() => setMobileFormOpen(true)}
-                className="flex min-h-11 touch-manipulation flex-col items-center justify-center rounded-xl bg-ocean-900 px-1 py-1.5 text-center text-[9px] font-extrabold uppercase leading-tight text-white shadow-md shadow-ocean-950/40 ring-1 ring-ocean-700 active:scale-[0.98]"
-              >
-                Call me
-              </button>
-              <Link
-                href="/booking"
-                className="flex min-h-11 touch-manipulation flex-col items-center justify-center rounded-xl bg-gradient-to-b from-cyan-400 to-cyan-600 px-1 py-1.5 text-center text-[9px] font-extrabold uppercase leading-tight text-slate-950 shadow-md shadow-cyan-900/40 ring-1 ring-cyan-300 active:scale-[0.98]"
-              >
-                Book slot
-              </Link>
-              <button
-                type="button"
-                onClick={() => setMobileFormOpen(true)}
-                className="flex min-h-11 touch-manipulation flex-col items-center justify-center rounded-xl bg-emerald-600 px-1 py-1.5 text-center text-[9px] font-extrabold uppercase leading-tight text-white shadow-md shadow-emerald-950/35 ring-1 ring-emerald-500 active:scale-[0.98]"
-              >
-                WhatsApp
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setMobileFormOpen(false);
-              setMsg(null);
-            }}
-            className="mb-2 text-left text-[11px] font-bold text-ocean-700 underline decoration-ocean-300 underline-offset-2"
-          >
-            ← Back to quick actions
-          </button>
-        )}
+      <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-3">
+        <Link href="/booking" className={bookPrimaryClass}>
+          Book now
+        </Link>
+        <a
+          href={waBooking}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={whatsappSecondaryClass}
+        >
+          WhatsApp booking
+        </a>
       </div>
 
-      <p
-        className={`text-center text-[9px] font-semibold uppercase tracking-wide text-white/90 max-sm:text-ocean-800 sm:text-xs sm:tracking-wider ${showMobileFields ? "max-sm:block" : "max-sm:hidden"} sm:block`}
-      >
-        Tell us you&apos;re in — we call back in ~60 sec
-      </p>
-      <p
-        className={`mt-1 text-center text-[10px] font-medium leading-snug text-ocean-700 max-sm:text-ocean-700 sm:mt-2 sm:text-xs sm:text-white/90 ${showMobileFields ? "max-sm:block" : "max-sm:hidden"} sm:block`}
-      >
-        <span className="sm:hidden">
-          Morning North Goa slots move fast — drop your number and we&apos;ll help you lock a
-          date.
-        </span>
-        <span className="hidden sm:inline">
-          Drop your number — we&apos;ll help you lock a morning slot before it&apos;s gone.
-        </span>
-      </p>
-      <form
-        onSubmit={submit}
-        className={`mt-1 grid grid-cols-2 gap-x-1.5 gap-y-1 sm:mt-4 sm:flex sm:flex-col sm:gap-3 ${showMobileFields ? "max-sm:grid" : "max-sm:hidden"}`}
-      >
-        <label className="col-span-2 block text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:text-xs">
-          Phone <span className="text-cyan-200 max-sm:text-cyan-600">*</span>
+      <div className="mt-3 rounded-lg border border-white/15 bg-black/10 p-2 max-sm:border-ocean-100 max-sm:bg-ocean-50/80 sm:bg-white/5">
+        <p className="text-center text-[9px] font-semibold uppercase tracking-wide text-white/85 max-sm:text-ocean-700 sm:text-[10px] sm:text-white/80">
+          Or enter mobile — opens WhatsApp
+        </p>
+        <label className="mt-1 block text-[9px] font-medium text-white/90 max-sm:text-ocean-800 sm:text-xs sm:text-white/85">
+          Mobile (India)
           <input
-            ref={phoneInputRef}
             type="tel"
             inputMode="tel"
             autoComplete="tel"
-            required
-            className={inputClass}
+            className={telInputClass}
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Mobile"
+            onChange={(e) => {
+              setPhone(e.target.value);
+              setPhoneErr(null);
+            }}
+            placeholder="10-digit number"
           />
         </label>
-        <label className="block min-w-0 text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:col-span-2 sm:text-xs">
-          Name
-          <input
-            type="text"
-            className={inputClass}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="—"
-            maxLength={80}
-          />
-        </label>
-        <label className="block min-w-0 text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:col-span-2 sm:text-xs">
-          <span className="max-sm:hidden">Preferred </span>date
-          <input
-            type="date"
-            className={`${inputClass} [color-scheme:dark] max-sm:[color-scheme:light] max-sm:pr-0`}
-            value={preferredDate}
-            onChange={(e) => setPreferredDate(e.target.value)}
-          />
-        </label>
-        <label className="col-span-2 block text-[9px] font-medium leading-tight text-white/90 max-sm:text-ocean-800 sm:text-xs">
-          <span className="max-sm:hidden">Interested in</span>
-          <span className="sm:hidden">Package</span>
-          <select
-            className={`${inputClass} text-white`}
-            value={interestedItem}
-            onChange={(e) => setInterestedItem(e.target.value)}
-            disabled={loading}
-          >
-            <option value="" className="bg-ocean-900 text-white">
-              {loading ? "Loading…" : "Package (optional)"}
-            </option>
-            {packages.map((p) => (
-              <option key={p.id} value={p.name} className="bg-ocean-900 text-white">
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {msg ? (
-          <p
-            className="col-span-2 text-center text-[9px] leading-tight text-cyan-100 max-sm:text-ocean-700 sm:text-xs"
-            role="status"
-          >
-            {msg}
+        {phoneErr ? (
+          <p className="mt-1 text-center text-[9px] text-red-200 max-sm:text-red-700" role="alert">
+            {phoneErr}
           </p>
         ) : null}
         <button
-          type="submit"
-          disabled={busy}
-          className="col-span-2 min-h-10 w-full touch-manipulation rounded-full bg-ocean-900 py-2 text-[10px] font-extrabold text-white shadow-lg shadow-ocean-950/40 ring-2 ring-cyan-400/50 transition hover:bg-ocean-800 active:brightness-95 disabled:opacity-50 max-sm:uppercase sm:min-h-11 sm:bg-cyan-500 sm:py-3 sm:font-bold sm:text-slate-950 sm:shadow-cyan-500/30 sm:ring-cyan-300/60 sm:hover:bg-cyan-400"
+          type="button"
+          onClick={openWhatsAppWithNumber}
+          className="mt-2 w-full touch-manipulation rounded-full border border-white/30 bg-white/10 py-2 text-[10px] font-bold text-white transition hover:bg-white/20 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:hover:bg-ocean-50 sm:text-xs"
         >
-          {busy ? (
-            <>
-              <span className="sm:hidden">Wait…</span>
-              <span className="hidden sm:inline">Sending…</span>
-            </>
-          ) : (
-            <>
-              <span className="sm:hidden">Send — call me back</span>
-              <span className="hidden sm:inline">Call me back — I want to book</span>
-            </>
-          )}
+          Continue on WhatsApp
         </button>
-      </form>
-      <div
-        className={`mt-1 flex gap-1 sm:mt-4 sm:gap-3 ${showMobileFields ? "max-sm:flex" : "max-sm:hidden"} sm:flex`}
-      >
-        <Link href="/booking" className={bookSlotBtnClass}>
-          <span className="sm:hidden">Book slot</span>
-          <span className="hidden sm:inline">Secure my slot</span>
-        </Link>
-        <a
-          href={wa}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={whatsappSolidClass}
-        >
-          WhatsApp
-        </a>
       </div>
     </div>
   );
@@ -304,10 +150,23 @@ function HeroQuickBookingPanel({
 export function HeroSection() {
   const { slides } = useHeroSlides();
   const { packages, loading: packagesLoading } = usePackages();
+  const { services, loading: servicesLoading } = useServices();
   const fromPriceInr = useMemo(
     () => lowestListedPackageInr(packages),
     [packages],
   );
+  const scuba = useMemo(
+    () => services.find((s) => s.slug === "scuba-diving"),
+    [services],
+  );
+  const headlinePriceInr = useMemo(() => {
+    const p = scuba?.priceFrom;
+    if (typeof p === "number" && Number.isFinite(p) && p > 0) return p;
+    return fromPriceInr;
+  }, [scuba, fromPriceInr]);
+  const priceLoading = packagesLoading || servicesLoading;
+  const slotsToday =
+    scuba?.slotsLeft != null && scuba.slotsLeft > 0 ? scuba.slotsLeft : null;
   const [i, setI] = useState(0);
   const n = slides.length;
   /** User-controlled hero video / site-music sound (starts off = muted). */
@@ -376,57 +235,58 @@ export function HeroSection() {
 
       {/* Mobile: keep hero image clean — no text on photo (CTAs: sticky bar + form + trust strip) */}
       <h1 className="sr-only">
-        Book Scuba Goa — scuba diving, tours &amp; water sports in North Goa.
-        {fromPriceInr != null
-          ? ` Packages from ₹${fromPriceInr.toLocaleString("en-IN")}.`
+        Scuba diving in Goa with Book Scuba Goa — beginner-friendly dives in North Goa.
+        {headlinePriceInr != null
+          ? ` Try-dive from ₹${headlinePriceInr.toLocaleString("en-IN")}.`
           : ""}{" "}
-        Pay online with Razorpay; WhatsApp confirmation.
+        Pay ₹{ADVANCE_BOOKING_INR} advance online with Razorpay; WhatsApp booking supported.
       </h1>
       {/* Desktop / tablet: conversion copy over hero */}
       <div className="pointer-events-none absolute inset-x-0 top-[5.25rem] z-[16] hidden justify-center px-3 sm:flex sm:inset-x-auto sm:left-0 sm:top-1/2 sm:w-full sm:-translate-y-[52%] sm:justify-start sm:px-6 sm:pl-8 lg:pl-12">
         <div className="pointer-events-auto w-full max-w-md text-center sm:max-w-lg sm:text-left lg:max-w-xl">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300 sm:text-xs sm:tracking-[0.22em]">
-            Limited morning slots · North Goa
+            North Goa · Same-day slots when available
           </p>
           <h2 className="mt-1 font-display text-lg font-bold leading-snug tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:mt-2 sm:text-3xl sm:leading-tight md:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
-            <span className="block sm:inline">Make this the trip you actually</span>{" "}
-            <span className="block sm:inline">breathed underwater</span>
+            {headlinePriceInr != null ? (
+              <>
+                <span className="block">Scuba diving in Goa</span>
+                <span className="block text-cyan-200">
+                  @ ₹{headlinePriceInr.toLocaleString("en-IN")}
+                </span>
+              </>
+            ) : (
+              <span className="block">Scuba diving in Goa — live rates inside</span>
+            )}
           </h2>
-          {fromPriceInr != null ? (
-            <p className="mt-2 font-display text-2xl font-bold tabular-nums tracking-tight text-cyan-200 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] sm:mt-3 sm:text-3xl md:text-4xl">
-              From ₹{fromPriceInr.toLocaleString("en-IN")}
-              <span className="mt-0.5 block font-sans text-[10px] font-semibold uppercase tracking-wider text-white/85 sm:text-xs">
-                Live site price · not a teaser rate
-              </span>
-            </p>
-          ) : packagesLoading ? (
-            <p className="mt-2 text-xs font-medium text-white/75 sm:mt-3 sm:text-sm">
-              Loading live prices…
+          <p className="mt-2 text-sm font-semibold leading-snug text-white/95 drop-shadow sm:mt-3 sm:text-lg">
+            Beginner friendly · Safe · Certified trainers · Free photos &amp; videos
+          </p>
+          {slotsToday != null ? (
+            <p className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-100 sm:mt-2 sm:text-xs">
+              Only {slotsToday} slots left today
             </p>
           ) : null}
-          <p className="mt-1.5 text-xs font-medium leading-snug text-white/95 drop-shadow sm:mt-3 sm:text-base sm:leading-relaxed md:text-lg">
-            ₹199 advance or full pay · Razorpay · WhatsApp confirm — turn &quot;someday&quot;
-            into a real slot on the boat.
+          <p className="mt-2 text-xs font-medium leading-snug text-cyan-100/95 drop-shadow sm:mt-3 sm:text-base">
+            Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now to lock your dive · pay the
+            rest on the day · Razorpay + WhatsApp confirm.
           </p>
-          <p className="mt-1 inline-flex rounded-full border border-red-300/60 bg-red-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-100 sm:mt-2 sm:text-xs">
-            Today only: weekend slots go first
-          </p>
-          <div className="mt-2.5 flex flex-wrap justify-center gap-2 sm:mt-6 sm:justify-start sm:gap-3">
+          <div className="mt-4 flex flex-wrap justify-center gap-2 sm:mt-6 sm:justify-start sm:gap-3">
             <Link
               href="/booking"
-              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-900/35 transition hover:bg-cyan-400 sm:px-6 sm:text-sm"
+              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-5 py-2 text-xs font-extrabold text-slate-950 shadow-lg shadow-cyan-900/35 transition hover:bg-cyan-400 sm:px-7 sm:text-sm"
             >
-              Secure my dive &amp; pay
+              Book now
             </Link>
             <a
               href={whatsappLink(
-                "Hi — I want to book from your website today. What slots do you have?"
+                "Hi, I want to book scuba diving in Goa. Please share slots for today or tomorrow."
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/75 bg-white/12 px-4 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/22 sm:px-6 sm:text-sm"
+              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/75 bg-white/12 px-5 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/22 sm:px-7 sm:text-sm"
             >
-              WhatsApp — I want today / tomorrow
+              WhatsApp booking
             </a>
           </div>
         </div>
@@ -441,10 +301,10 @@ export function HeroSection() {
           className="pointer-events-auto relative z-30 w-full min-w-0 max-w-none"
         >
           <div className="w-full min-w-0 translate-y-[60%]">
-            <HeroQuickBookingPanel
-              packages={packages}
-              loading={packagesLoading}
-              fromPriceInr={fromPriceInr}
+            <HeroConversionCard
+              headlinePriceInr={headlinePriceInr}
+              priceLoading={priceLoading}
+              slotsToday={slotsToday}
             />
           </div>
         </motion.div>
@@ -458,10 +318,10 @@ export function HeroSection() {
           transition={{ duration: 0.45 }}
           className="pointer-events-auto w-full max-w-sm md:max-w-md"
         >
-          <HeroQuickBookingPanel
-            packages={packages}
-            loading={packagesLoading}
-            fromPriceInr={fromPriceInr}
+          <HeroConversionCard
+            headlinePriceInr={headlinePriceInr}
+            priceLoading={priceLoading}
+            slotsToday={slotsToday}
           />
         </motion.div>
       </div>

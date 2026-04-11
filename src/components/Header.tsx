@@ -5,8 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { MISSED_CALL_TEL_HREF, whatsappLink } from "@/lib/constants";
-import { openLeadOfferPopup } from "@/lib/lead-offer-events";
+import { whatsappLink } from "@/lib/constants";
 import { TrustTopStrip } from "@/components/TrustTopStrip";
 
 const nav = [
@@ -79,22 +78,11 @@ export function Header() {
           >
             WhatsApp
           </a>
-          <button
-            type="button"
-            onClick={() => openLeadOfferPopup()}
-            className={
-              isHome
-                ? "hidden rounded-full bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-400 md:inline-flex"
-                : "hidden rounded-full bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-400 md:inline-flex"
-            }
-          >
-            ₹200 code
-          </button>
           <Link
             href="/booking"
             className="inline-flex min-h-11 min-w-[5.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
           >
-            Get a slot
+            Book now
           </Link>
           <button
             type="button"
@@ -127,7 +115,7 @@ export function Header() {
                 className="rounded-xl bg-ocean-gradient px-3 py-3 text-center text-sm font-bold text-white shadow-md"
                 onClick={() => setOpen(false)}
               >
-                Book &amp; pay online — ₹200 off
+                Book now — secure checkout
               </Link>
               {nav.map((item) => (
                 <Link
@@ -140,29 +128,14 @@ export function Header() {
                 </Link>
               ))}
               <a
-                href={whatsappLink()}
+                href={whatsappLink(
+                  "Hi, I want to book scuba diving in Goa. Please share today’s slots."
+                )}
                 className="rounded-lg px-3 py-2.5 text-cyan-300 hover:bg-slate-800"
                 onClick={() => setOpen(false)}
               >
-                WhatsApp chat
+                WhatsApp booking
               </a>
-              <a
-                href={MISSED_CALL_TEL_HREF}
-                className="rounded-lg px-3 py-2.5 text-amber-200 hover:bg-slate-800"
-                onClick={() => setOpen(false)}
-              >
-                Missed call (callback)
-              </a>
-              <button
-                type="button"
-                className="w-full rounded-lg border border-amber-400/80 bg-amber-500/15 px-3 py-2.5 text-left text-sm font-semibold text-amber-100 hover:bg-amber-500/25"
-                onClick={() => {
-                  setOpen(false);
-                  openLeadOfferPopup();
-                }}
-              >
-                Get ₹200 code on WhatsApp
-              </button>
             </div>
           </motion.div>
         )}

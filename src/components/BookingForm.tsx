@@ -94,6 +94,8 @@ export function BookingForm() {
   const [msg, setMsg] = useState<string | null>(null);
   const [payMode, setPayMode] = useState<"min" | "full">("min");
   const [leadSentAt, setLeadSentAt] = useState<number>(0);
+  /** Hide name / contact fields until the user has a cart and taps continue (less first-screen friction). */
+  const [contactStepOpen, setContactStepOpen] = useState(false);
 
   const addFromEncodedOption = useCallback(
     (encoded: string) => {
@@ -168,6 +170,10 @@ export function BookingForm() {
     addFromEncodedOption(encodePackageOption(pre));
     prePackageAdded.current = true;
   }, [cartReady, pre, packages, addFromEncodedOption]);
+
+  useEffect(() => {
+    if (lines.length === 0) setContactStepOpen(false);
+  }, [lines.length]);
 
   const packagesByCategory = useMemo(() => {
     const map = new Map<string, typeof packages>();
@@ -327,7 +333,7 @@ export function BookingForm() {
       : "Pay securely with Razorpay";
 
   useEffect(() => {
-    if (!cartReady || lines.length === 0) return;
+    if (!cartReady || lines.length === 0 || !contactStepOpen) return;
     if (!name.trim() || !phone.trim()) return;
     const now = Date.now();
     if (now - leadSentAt < 90_000) return;
@@ -349,7 +355,7 @@ export function BookingForm() {
       setLeadSentAt(Date.now());
     }, 800);
     return () => window.clearTimeout(t);
-  }, [cartReady, lines, name, phone, date, leadSentAt]);
+  }, [cartReady, lines, name, phone, date, leadSentAt, contactStepOpen]);
 
   return (
     <div className="mx-auto max-w-xl">
@@ -450,117 +456,138 @@ export function BookingForm() {
               )}
             </div>
 
-            <label className="block text-sm font-medium text-ocean-800">
-              Full name
-              <input
-                className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-              />
-            </label>
-            <label className="block text-sm font-medium text-ocean-800">
-              Email
-              <input
-                type="email"
-                className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </label>
-            <label className="block text-sm font-medium text-ocean-800">
-              Phone (WhatsApp)
-              <input
-                className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                autoComplete="tel"
-              />
-            </label>
-            <label className="block text-sm font-medium text-ocean-800">
-              Pickup location
-              <input
-                className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                value={pickupLocation}
-                onChange={(e) => setPickupLocation(e.target.value)}
-                placeholder="Hotel name, area, or full address"
-                autoComplete="street-address"
-              />
-            </label>
-            <label className="block text-sm font-medium text-ocean-800">
-              Date
-              <input
-                type="date"
-                className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </label>
-
-            {hasCart ? (
-              <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
-                <p className="text-lg font-bold text-ocean-900">
+            {hasCart && !contactStepOpen ? (
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 text-center">
+                <p className="text-sm font-semibold text-ocean-900">
                   Cart total: ₹{subtotalInr.toLocaleString("en-IN")}
                 </p>
-                {cartMinPayPaise < cartFullAmountPaise ? (
-                  <>
-                    <p className="text-sm text-ocean-700">
-                      Minimum advance: ₹
-                      {(cartMinPayPaise / 100).toLocaleString("en-IN")} (₹
-                      {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
-                      {itemCount} {itemCount === 1 ? "unit" : "units"} in cart)
-                    </p>
-                    <div className="flex flex-wrap gap-3 text-sm">
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="radio"
-                          name="payModeBooking"
-                          checked={payMode === "min"}
-                          onChange={() => setPayMode("min")}
-                          className="text-ocean-700"
-                        />
-                        Pay minimum (₹
-                        {(cartMinPayPaise / 100).toLocaleString("en-IN")})
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="radio"
-                          name="payModeBooking"
-                          checked={payMode === "full"}
-                          onChange={() => setPayMode("full")}
-                        />
-                        Pay full (₹
-                        {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
-                      </label>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-ocean-600">
-                    Cart total is below ₹{MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × units; you’ll pay the full amount.
-                  </p>
-                )}
+                <p className="mt-1 text-xs text-ocean-700">
+                  Pay ₹{(cartMinPayPaise / 100).toLocaleString("en-IN")} now to lock (advance) ·
+                  balance on the day, unless you choose full pay in the next step.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setContactStepOpen(true)}
+                  className="mt-4 w-full rounded-full bg-ocean-gradient py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110"
+                >
+                  Continue — enter details &amp; pay
+                </button>
               </div>
             ) : null}
-            {msg ? (
-              <p className="text-sm text-ocean-700" role="status">
-                {msg}
-              </p>
+
+            {hasCart && contactStepOpen ? (
+              <>
+                <label className="block text-sm font-medium text-ocean-800">
+                  Full name
+                  <input
+                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoComplete="name"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-ocean-800">
+                  Email
+                  <input
+                    type="email"
+                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-ocean-800">
+                  Phone (WhatsApp)
+                  <input
+                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    autoComplete="tel"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-ocean-800">
+                  Pickup location
+                  <input
+                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                    value={pickupLocation}
+                    onChange={(e) => setPickupLocation(e.target.value)}
+                    placeholder="Hotel name, area, or full address"
+                    autoComplete="street-address"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-ocean-800">
+                  Date
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </label>
+
+                <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
+                  <p className="text-lg font-bold text-ocean-900">
+                    Cart total: ₹{subtotalInr.toLocaleString("en-IN")}
+                  </p>
+                  {cartMinPayPaise < cartFullAmountPaise ? (
+                    <>
+                      <p className="text-sm text-ocean-700">
+                        Minimum advance: ₹
+                        {(cartMinPayPaise / 100).toLocaleString("en-IN")} (₹
+                        {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
+                        {itemCount} {itemCount === 1 ? "unit" : "units"} in cart)
+                      </p>
+                      <div className="flex flex-wrap gap-3 text-sm">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="payModeBooking"
+                            checked={payMode === "min"}
+                            onChange={() => setPayMode("min")}
+                            className="text-ocean-700"
+                          />
+                          Pay minimum (₹
+                          {(cartMinPayPaise / 100).toLocaleString("en-IN")})
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="payModeBooking"
+                            checked={payMode === "full"}
+                            onChange={() => setPayMode("full")}
+                          />
+                          Pay full (₹
+                          {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
+                        </label>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-ocean-600">
+                      Cart total is below ₹
+                      {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × units; you’ll pay
+                      the full amount.
+                    </p>
+                  )}
+                </div>
+                {msg ? (
+                  <p className="text-sm text-ocean-700" role="status">
+                    {msg}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={pay}
+                  disabled={busy}
+                  className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
+                >
+                  {payButtonLabel}
+                </button>
+                <p className="text-center text-xs text-ocean-600">
+                  Razorpay (UPI / card / netbanking) → instant confirm on this site + email when
+                  configured.
+                </p>
+              </>
             ) : null}
-            <button
-              type="button"
-              onClick={pay}
-              disabled={busy}
-              className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
-            >
-              {payButtonLabel}
-            </button>
-            <p className="text-center text-xs text-ocean-600">
-              Flow: <strong className="text-ocean-800">Book</strong> →{" "}
-              <strong className="text-ocean-800">Pay with Razorpay</strong> (UPI / card
-              / netbanking) → <strong className="text-ocean-800">Instant confirm</strong>{" "}
-              on this site + email when configured.
-            </p>
           </div>
         )}
       </div>

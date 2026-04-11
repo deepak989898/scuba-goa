@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
 import { whatsappLink } from "@/lib/constants";
+import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 
 export function AdConversionStrip() {
   const { packages } = usePackages();
@@ -45,16 +46,16 @@ export function AdConversionStrip() {
   }, [packages, services]);
 
   const urgentLine = top
-    ? `Don't let "we'll book later" win — only ${top.slotsLeft ?? 3} slots left for tomorrow on ${top.name}. Up to ₹500 off selected plans.`
-    : "Weekends fill first — high-demand slots are going now. Book today & grab up to ₹500 off selected plans.";
+    ? `Limited slots: about ${top.slotsLeft ?? 3} left on ${top.name}. Book now so your date doesn’t slip.`
+    : "Weekends fill first — lock your slot today before plans change.";
 
   const priceLine = top
-    ? `${top.name} from ₹${top.price.toLocaleString("en-IN")}`
-    : "Live rates available in booking";
+    ? `${top.name} — from ₹${top.price.toLocaleString("en-IN")} (pay ₹${ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance online to lock at checkout)`
+    : `See exact dive price on the next screen — pay ₹${ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance to lock`;
 
   const urgencyMeta = top
-    ? `Offer window: today till 11:59 PM · Slots left: ${top.slotsLeft ?? 3}`
-    : "Offer window: today till 11:59 PM · High-demand dates go first";
+    ? `Today · Slots left: ~${top.slotsLeft ?? 3}`
+    : "Today · High-demand dates go first";
 
   return (
     <section
@@ -70,7 +71,7 @@ export function AdConversionStrip() {
               <p className="mt-1 text-lg font-extrabold tracking-tight text-ocean-900 sm:text-2xl">
                 {priceLine}
               </p>
-              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-red-700 sm:text-xs">
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-900 sm:text-xs">
                 {urgencyMeta}
               </p>
             </div>
@@ -79,17 +80,17 @@ export function AdConversionStrip() {
                 href="/booking"
                 className="inline-flex rounded-full bg-ocean-gradient px-4 py-2 text-xs font-bold text-white shadow-sm sm:text-sm"
               >
-                Secure my slot
+                Book now
               </Link>
               <a
                 href={whatsappLink(
-                  "Hi, I came from Facebook ad. Please give best offer for tomorrow. People: , Pickup area: "
+                  "Hi, I came from your site/ad. I want to book scuba in Goa — please share today’s best slot and price."
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex rounded-full border border-ocean-300 bg-white px-4 py-2 text-xs font-bold text-ocean-800 sm:text-sm"
               >
-                WhatsApp — best price now
+                WhatsApp booking
               </a>
             </div>
           </div>

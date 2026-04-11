@@ -87,7 +87,7 @@ export function TrustTopStrip({ isHome }: Props) {
           href="/booking"
           className="shrink-0 touch-manipulation rounded-full bg-cyan-500 px-2.5 py-1.5 text-[10px] font-bold text-slate-950 shadow-sm transition hover:bg-cyan-400 active:opacity-90 sm:px-3 sm:py-1 sm:text-xs"
         >
-          Check slots
+          Book now
         </Link>
       </div>
     </div>

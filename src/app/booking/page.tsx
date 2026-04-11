@@ -26,19 +26,19 @@ export default function BookingPage() {
     <div className="bg-gradient-to-b from-ocean-50 to-white py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h1 className="text-center font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
-          Book now — pay online — instant confirm
+          Book now — clear price, small advance
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-center text-ocean-700">
-          Add packages or services to your cart.
+          Pick your dive below. You&apos;ll enter contact details only when you&apos;re ready to
+          pay.
         </p>
-        <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
-          <p className="text-sm font-semibold text-amber-900">
-            Advance booking from ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} per cart
-            unit — lock your slot with Razorpay in seconds.
+        <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-ocean-200 bg-ocean-50 px-4 py-4 text-center">
+          <p className="text-base font-bold text-ocean-900">
+            Full dive price is shown in your cart.
           </p>
-          <p className="mt-1 text-xs text-amber-800">
-            Limited-time ad offer: up to ₹500 off on selected plans (confirm during
-            booking/WhatsApp).
+          <p className="mt-1 text-sm font-semibold text-ocean-800">
+            Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} per person now (advance) · pay the
+            rest on the day at the centre.
           </p>
         </div>
         <div className="mt-10">
