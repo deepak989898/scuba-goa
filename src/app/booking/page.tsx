@@ -29,10 +29,7 @@ export default function BookingPage() {
           Book now — pay online — instant confirm
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-center text-ocean-700">
-          Add packages or services to your cart, enter your details, then checkout with
-          Razorpay (UPI, cards, netbanking). You can start with a small advance or pay
-          in full — after payment you get an on-screen confirmation and we follow up on
-          WhatsApp.
+          Add packages or services to your cart.
         </p>
         <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
           <p className="text-sm font-semibold text-amber-900">

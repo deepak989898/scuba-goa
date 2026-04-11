@@ -108,23 +108,28 @@ export function PackagesSection() {
                       <span>Booked {p.bookedToday} times today</span>
                     ) : null}
                   </div>
-                  <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:gap-3 sm:pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 flex-1">
+                  {/*
+                    Keep price + copy stacked (flex-col) at all breakpoints. A side-by-side
+                    row (sm:flex-row + flex-1) squeezed the price column in 2–3 column grids,
+                    and overflow-hidden on the card clipped the amount + forced one-word lines.
+                  */}
+                  <div className="mt-auto flex flex-col gap-2 pt-2 sm:gap-3 sm:pt-4">
+                    <div className="w-full min-w-0">
                       <div className="rounded-xl border-2 border-amber-400/60 bg-gradient-to-br from-slate-950 via-ocean-950 to-ocean-900 px-2.5 py-2 shadow-lg shadow-ocean-950/30 sm:px-3 sm:py-2.5">
                         <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-200 sm:text-xs">
                           Today&apos;s live price
                         </p>
-                        <p className="mt-0.5 font-display text-xl font-extrabold tabular-nums leading-none tracking-tight text-white sm:text-3xl">
+                        <p className="mt-0.5 font-display text-xl font-extrabold tabular-nums leading-none tracking-tight text-white sm:text-2xl lg:text-3xl">
                           ₹{p.price.toLocaleString("en-IN")}
                         </p>
                       </div>
-                      <p className="mt-1.5 text-[10px] font-bold text-red-700 sm:text-xs">
+                      <p className="mt-1.5 max-w-full text-pretty text-[10px] font-bold leading-snug text-red-700 sm:text-xs">
                         {p.slotsLeft != null
                           ? `Book now: only ${p.slotsLeft} slots left for this rate`
                           : "Book now to lock this rate"}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-1 sm:gap-2">
+                    <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
                       <AddToCartButton
                         variant="package"
                         id={p.id}

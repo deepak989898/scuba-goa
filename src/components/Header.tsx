@@ -79,17 +79,6 @@ export function Header() {
           >
             WhatsApp
           </a>
-          <a
-            href={MISSED_CALL_TEL_HREF}
-            title="Ring once — we WhatsApp you back"
-            className={
-              isHome
-                ? "hidden rounded-full border border-amber-700/90 bg-amber-400 px-3 py-2 text-sm font-semibold text-amber-950 shadow-md shadow-black/15 transition hover:bg-amber-300 md:inline-flex"
-                : "hidden rounded-full border border-amber-600/80 bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-400 md:inline-flex"
-            }
-          >
-            Missed call
-          </a>
           <button
             type="button"
             onClick={() => openLeadOfferPopup()}

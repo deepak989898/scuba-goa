@@ -6,17 +6,9 @@ import Script from "next/script";
 import { useCart } from "@/context/CartContext";
 import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
-import {
-  findPricedSubByCartKey,
-  getPricedSubServicesWithIndex,
-  getSubServiceCartKey,
-} from "@/lib/service-sub-helpers";
-import {
-  encodeServiceBaseOption,
-  encodePackageOption,
-  encodeServiceSubOption,
-  parseBookingOption,
-} from "@/lib/booking-selection";
+import { findPricedSubByCartKey, getSubServiceCartKey } from "@/lib/service-sub-helpers";
+import { encodePackageOption, parseBookingOption } from "@/lib/booking-selection";
+import { BookingPackagePicker } from "@/components/BookingPackagePicker";
 import { SITE_NAME } from "@/lib/constants";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 import { persistPaymentConfirmationFromApi } from "@/lib/payment-confirmation";
@@ -91,8 +83,6 @@ export function BookingForm() {
     clearCart,
   } = useCart();
 
-  /** Dropdown always returns to “Select…” after adding one line to the cart */
-  const [pickerValue, setPickerValue] = useState("");
   const prePackageAdded = useRef(false);
 
   const [name, setName] = useState("");
@@ -201,12 +191,8 @@ export function BookingForm() {
       : cartMinPayPaise;
 
   function onPickerChange(value: string) {
-    if (!value) {
-      setPickerValue("");
-      return;
-    }
+    if (!value) return;
     addFromEncodedOption(value);
-    setPickerValue("");
   }
 
   async function pay() {
@@ -382,68 +368,17 @@ export function BookingForm() {
             3. Pay (Razorpay) → instant confirm
           </li>
         </ol>
-        <p className="mt-2 text-sm text-ocean-600">
-          <span className="font-semibold text-ocean-800">Advance booking:</span> pay
-          ₹{MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")}{" "}
-          <span className="font-medium">per unit</span> in your cart (each line’s
-          quantity counts), or pay the full total. After Razorpay succeeds, your
-          booking is confirmed on the spot — you’ll see a confirmation screen and we
-          follow up on WhatsApp.
-        </p>
         {loading ? (
           <p className="mt-6 text-sm text-ocean-600">Loading packages…</p>
         ) : (
           <div className="mt-6 space-y-4">
-            <label className="block text-sm font-medium text-ocean-800">
-              Package or service option
-              <select
-                className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5 text-ocean-900"
-                value={pickerValue}
-                onChange={(e) => onPickerChange(e.target.value)}
-              >
-                <option value="">Select to add to cart…</option>
-                {packagesByCategory.map(([category, list]) => (
-                  <optgroup key={category} label={category}>
-                    {list.map((p) => (
-                      <option
-                        key={p.id}
-                        value={encodePackageOption(p.id)}
-                      >
-                        {p.name} — ₹{p.price.toLocaleString("en-IN")}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-                {services.map((s) => {
-                  const priced = getPricedSubServicesWithIndex(s);
-                  const showMainServiceOption =
-                    priced.length === 0 &&
-                    Number.isFinite(s.priceFrom) &&
-                    s.priceFrom > 0;
-                  return (
-                    <optgroup key={`svc-${s.slug}`} label={s.title}>
-                      {showMainServiceOption ? (
-                        <option value={encodeServiceBaseOption(s.slug)}>
-                          {s.title} (Main package) — ₹
-                          {s.priceFrom.toLocaleString("en-IN")}
-                        </option>
-                      ) : null}
-                      {priced.map(({ sub, index }) => (
-                        <option
-                          key={`${s.slug}-${getSubServiceCartKey(sub, index)}`}
-                          value={encodeServiceSubOption(
-                            s.slug,
-                            getSubServiceCartKey(sub, index)
-                          )}
-                        >
-                          {sub.title} — ₹
-                          {sub.priceFrom!.toLocaleString("en-IN")}
-                        </option>
-                      ))}
-                    </optgroup>
-                  );
-                })}
-              </select>
+            <label className="block cursor-pointer text-sm font-medium text-ocean-800">
+              <span className="mb-0.5 block">Package or service option</span>
+              <BookingPackagePicker
+                packagesByCategory={packagesByCategory}
+                services={services}
+                onSelect={onPickerChange}
+              />
             </label>
             <p className="text-xs text-ocean-600">
               Each choice adds one unit to your cart. Use +/− below for more people
