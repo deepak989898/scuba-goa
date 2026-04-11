@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPolicyPage() {
-  const updated = "26 Mar 2026";
+  const updated = "11 Apr 2026";
   return (
     <main className="bg-white">
       <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
@@ -35,8 +35,15 @@ export default function PrivacyPolicyPage() {
               provider and are not stored on our servers.
             </li>
             <li>
-              <strong>Usage data</strong>: basic analytics such as pages visited and
-              approximate session activity to improve the site and prevent abuse.
+              <strong>Usage data</strong>: we use{" "}
+              <strong>Google Analytics 4</strong> (Google) to understand how the site
+              is used—such as pages viewed, approximate geography, device type, and
+              traffic sources—and <strong>Microsoft Clarity</strong> (Microsoft) to
+              help us improve layout and usability through aggregated insights such as
+              clicks, scrolls, and optional session replays and heatmaps. These tools
+              may set cookies or similar technologies and receive technical data (for
+              example IP address in truncated form, depending on provider settings) as
+              described in their privacy policies.
             </li>
           </ul>
 
@@ -61,6 +68,11 @@ export default function PrivacyPolicyPage() {
               transactions.
             </li>
             <li>
+              <strong>Analytics providers</strong> (e.g., Google Analytics 4, Microsoft
+              Clarity) acting as processors, only to the extent needed to operate those
+              services.
+            </li>
+            <li>
               <strong>Legal/compliance</strong> if required by law or to protect our
               rights and users.
             </li>
@@ -76,7 +88,10 @@ export default function PrivacyPolicyPage() {
           <h2>Cookies</h2>
           <p>
             We may use essential cookies/local storage for site functionality (for
-            example, cart/session features) and limited analytics.
+            example, cart/session features). Where enabled, Google Analytics 4 and
+            Microsoft Clarity may use cookies or local storage to recognise browsers
+            and measure use of the site; you can control cookies through your browser
+            settings and use industry opt-out tools where available.
           </p>
 
           <h2>Your choices</h2>
@@ -88,6 +103,11 @@ export default function PrivacyPolicyPage() {
             <li>
               You can opt out of promotional communication by replying “STOP” on
               WhatsApp/email (if applicable).
+            </li>
+            <li>
+              For third-party analytics, you may use your browser’s cookie controls or
+              providers’ opt-out or privacy settings (see Google’s and Microsoft’s
+              documentation for Analytics and Clarity respectively).
             </li>
           </ul>
 
