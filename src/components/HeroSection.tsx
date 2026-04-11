@@ -10,6 +10,7 @@ import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
 import { whatsappLink } from "@/lib/constants";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
+import { resolveHeroBookingCardModel } from "@/lib/hero-slide-booking";
 import type { PackageDoc } from "@/lib/types";
 
 function lowestListedPackageInr(list: PackageDoc[]): number | null {
@@ -21,13 +22,23 @@ function lowestListedPackageInr(list: PackageDoc[]): number | null {
 }
 
 function HeroConversionCard({
+  bookHref,
+  headlineTitle,
   headlinePriceInr,
   priceLoading,
   slotsToday,
+  perksLine,
+  waPreset,
+  primaryCtaLabel,
 }: {
+  bookHref: string;
+  headlineTitle: string;
   headlinePriceInr: number | null;
   priceLoading: boolean;
   slotsToday: number | null;
+  perksLine: string;
+  waPreset: string;
+  primaryCtaLabel: string;
 }) {
   const [phone, setPhone] = useState("");
   const [phoneErr, setPhoneErr] = useState<string | null>(null);
@@ -39,9 +50,7 @@ function HeroConversionCard({
       ? `₹${headlinePriceInr.toLocaleString("en-IN")}`
       : null;
 
-  const waBooking = whatsappLink(
-    "Hi, I want to book scuba diving in Goa. Please share slots for today or tomorrow."
-  );
+  const waBooking = whatsappLink(waPreset);
 
   const bookPrimaryClass =
     "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:text-sm";
@@ -59,7 +68,7 @@ function HeroConversionCard({
       setPhoneErr("Enter a valid 10-digit mobile.");
       return;
     }
-    const text = `Hi, I want to book scuba diving in Goa. My WhatsApp number: ${digits}. Please confirm slot and payment.`;
+    const text = `${waPreset} My WhatsApp number: ${digits}. Please confirm slot and payment.`;
     window.open(whatsappLink(text), "_blank", "noopener,noreferrer");
   }
 
@@ -72,7 +81,11 @@ function HeroConversionCard({
           </span>
         ) : priceLine ? (
           <>
-            Scuba diving in Goa @ {priceLine}
+            <span className="block sm:inline">{headlineTitle}</span>
+            <span className="block text-cyan-700 max-sm:inline sm:text-cyan-200">
+              {" "}
+              @ {priceLine}
+            </span>
             <span className="mt-1 block text-[10px] font-semibold normal-case tracking-normal text-ocean-700 max-sm:text-ocean-700 sm:text-xs sm:text-cyan-50/95">
               Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now · rest on the day at the
               centre
@@ -80,7 +93,7 @@ function HeroConversionCard({
           </>
         ) : (
           <>
-            Scuba diving in Goa
+            {headlineTitle}
             <span className="mt-1 block text-[10px] font-semibold text-ocean-700 sm:text-cyan-100/90">
               Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now · rest on the day
             </span>
@@ -89,7 +102,7 @@ function HeroConversionCard({
       </p>
 
       <p className="mt-2 text-center text-[10px] font-medium leading-snug text-ocean-800 max-sm:text-ocean-800 sm:text-xs sm:text-white/90">
-        Beginner friendly · Safe · Certified trainers · Free photos &amp; videos
+        {perksLine}
       </p>
       {slotsToday != null && slotsToday > 0 ? (
         <p className="mt-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-amber-200 max-sm:text-amber-800 sm:text-xs sm:text-amber-200">
@@ -98,8 +111,8 @@ function HeroConversionCard({
       ) : null}
 
       <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-3">
-        <Link href="/booking" className={bookPrimaryClass}>
-          Book now
+        <Link href={bookHref} className={bookPrimaryClass}>
+          {primaryCtaLabel}
         </Link>
         <a
           href={waBooking}
@@ -166,7 +179,7 @@ export function HeroSection() {
     return fromPriceInr;
   }, [scuba, fromPriceInr]);
   const priceLoading = packagesLoading || servicesLoading;
-  const slotsToday =
+  const fallbackSlots =
     scuba?.slotsLeft != null && scuba.slotsLeft > 0 ? scuba.slotsLeft : null;
   const [i, setI] = useState(0);
   const n = slides.length;
@@ -197,6 +210,23 @@ export function HeroSection() {
   const slideKey = current
     ? `${current.videoUrl ?? ""}|${current.src}|${current.videoThumbnailUrl ?? ""}|${i}`
     : "hero-empty";
+
+  const bookingCard = useMemo(
+    () =>
+      resolveHeroBookingCardModel(current?.bookingOption, {
+        packages,
+        services,
+        fallbackHeadlinePrice: headlinePriceInr,
+        fallbackSlots,
+      }),
+    [
+      current?.bookingOption,
+      packages,
+      services,
+      headlinePriceInr,
+      fallbackSlots,
+    ],
+  );
 
   return (
     <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(52dvh,420px)] sm:z-auto sm:-mt-[5.25rem] sm:min-h-[88vh] sm:overflow-hidden sm:pt-[5.25rem]">
@@ -242,57 +272,6 @@ export function HeroSection() {
           : ""}{" "}
         Pay ₹{ADVANCE_BOOKING_INR} advance online with Razorpay; WhatsApp booking supported.
       </h1>
-      {/* Desktop / tablet: conversion copy over hero */}
-      <div className="pointer-events-none absolute inset-x-0 top-[5.25rem] z-[16] hidden justify-center px-3 sm:flex sm:inset-x-auto sm:left-0 sm:top-1/2 sm:w-full sm:-translate-y-[52%] sm:justify-start sm:px-6 sm:pl-8 lg:pl-12">
-        <div className="pointer-events-auto w-full max-w-md text-center sm:max-w-lg sm:text-left lg:max-w-xl">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300 sm:text-xs sm:tracking-[0.22em]">
-            North Goa · Same-day slots when available
-          </p>
-          <h2 className="mt-1 font-display text-lg font-bold leading-snug tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:mt-2 sm:text-3xl sm:leading-tight md:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
-            {headlinePriceInr != null ? (
-              <>
-                <span className="block">Scuba diving in Goa</span>
-                <span className="block text-cyan-200">
-                  @ ₹{headlinePriceInr.toLocaleString("en-IN")}
-                </span>
-              </>
-            ) : (
-              <span className="block">Scuba diving in Goa — live rates inside</span>
-            )}
-          </h2>
-          <p className="mt-2 text-sm font-semibold leading-snug text-white/95 drop-shadow sm:mt-3 sm:text-lg">
-            Beginner friendly · Safe · Certified trainers · Free photos &amp; videos
-          </p>
-          {slotsToday != null ? (
-            <p className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-100 sm:mt-2 sm:text-xs">
-              Only {slotsToday} slots left today
-            </p>
-          ) : null}
-          <p className="mt-2 text-xs font-medium leading-snug text-cyan-100/95 drop-shadow sm:mt-3 sm:text-base">
-            Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now to lock your dive · pay the
-            rest on the day · Razorpay + WhatsApp confirm.
-          </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2 sm:mt-6 sm:justify-start sm:gap-3">
-            <Link
-              href="/booking"
-              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-5 py-2 text-xs font-extrabold text-slate-950 shadow-lg shadow-cyan-900/35 transition hover:bg-cyan-400 sm:px-7 sm:text-sm"
-            >
-              Book now
-            </Link>
-            <a
-              href={whatsappLink(
-                "Hi, I want to book scuba diving in Goa. Please share slots for today or tomorrow."
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/75 bg-white/12 px-5 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/22 sm:px-7 sm:text-sm"
-            >
-              WhatsApp booking
-            </a>
-          </div>
-        </div>
-      </div>
-
       {/* Mobile: ~40% of form on hero, ~60% below hero (above urgency strip); bottom-aligned then translateY(60% of card height) */}
       <div className="pointer-events-none absolute inset-0 z-20 flex w-full items-end justify-center px-[14px] pb-0 sm:hidden">
         <motion.div
@@ -303,9 +282,14 @@ export function HeroSection() {
         >
           <div className="w-full min-w-0 translate-y-[60%]">
             <HeroConversionCard
-              headlinePriceInr={headlinePriceInr}
+              bookHref={bookingCard.bookHref}
+              headlineTitle={bookingCard.headlineTitle}
+              headlinePriceInr={bookingCard.headlinePriceInr}
               priceLoading={priceLoading}
-              slotsToday={slotsToday}
+              slotsToday={bookingCard.slotsToday}
+              perksLine={bookingCard.perksLine}
+              waPreset={bookingCard.waPreset}
+              primaryCtaLabel={bookingCard.primaryCtaLabel}
             />
           </div>
         </motion.div>
@@ -320,9 +304,14 @@ export function HeroSection() {
           className="pointer-events-auto w-full max-w-sm md:max-w-md"
         >
           <HeroConversionCard
-            headlinePriceInr={headlinePriceInr}
+            bookHref={bookingCard.bookHref}
+            headlineTitle={bookingCard.headlineTitle}
+            headlinePriceInr={bookingCard.headlinePriceInr}
             priceLoading={priceLoading}
-            slotsToday={slotsToday}
+            slotsToday={bookingCard.slotsToday}
+            perksLine={bookingCard.perksLine}
+            waPreset={bookingCard.waPreset}
+            primaryCtaLabel={bookingCard.primaryCtaLabel}
           />
         </motion.div>
       </div>

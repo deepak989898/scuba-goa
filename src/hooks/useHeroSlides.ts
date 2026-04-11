@@ -36,6 +36,9 @@ export function useHeroSlides() {
             const videoThumbnailUrl = String(
               x.videoThumbnailUrl ?? x.video_thumbnail_url ?? "",
             ).trim();
+            const bookingRaw = String(
+              x.bookingOption ?? x.booking_option ?? "",
+            ).trim();
             return {
               id: d.id,
               src: String(x.imageUrl ?? "").trim(),
@@ -45,6 +48,7 @@ export function useHeroSlides() {
               videoThumbnailUrl:
                 videoThumbnailUrl.length > 0 ? videoThumbnailUrl : undefined,
               useAmbientMusic: Boolean(x.useAmbientMusic),
+              bookingOption: bookingRaw.length > 0 ? bookingRaw : undefined,
             };
           });
           rows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
@@ -59,6 +63,7 @@ export function useHeroSlides() {
               videoUrl: r.videoUrl,
               videoThumbnailUrl: r.videoThumbnailUrl,
               useAmbientMusic: r.useAmbientMusic ? true : undefined,
+              bookingOption: r.bookingOption,
             }));
           setSlides(list.length ? list : DEFAULT_HERO_SLIDES);
         }

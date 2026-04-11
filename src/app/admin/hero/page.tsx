@@ -16,6 +16,19 @@ import {
   getFirebaseStorageClient,
 } from "@/lib/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import type { ServiceItem } from "@/data/services";
+import {
+  encodePackageOption,
+  encodeServiceBaseOption,
+  encodeServiceSubOption,
+} from "@/lib/booking-selection";
+import { docToService } from "@/lib/service-firestore";
+import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
+import type { PackageDoc } from "@/lib/types";
+import {
+  getPricedSubServicesWithIndex,
+  getSubServiceCartKey,
+} from "@/lib/service-sub-helpers";
 
 type Row = {
   id: string;
@@ -25,14 +38,20 @@ type Row = {
   alt: string;
   sortOrder: number;
   useAmbientMusic: boolean;
+  bookingOption: string;
 };
 
 type UploadKind = "video" | "poster" | "thumbnail";
+
+type BookingSelectOption = { value: string; label: string; group: string };
 
 export default function AdminHeroPage() {
   const db = getDb();
   const [list, setList] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [catalogPackages, setCatalogPackages] = useState<PackageDoc[]>([]);
+  const [catalogServices, setCatalogServices] = useState<ServiceItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [form, setForm] = useState({
     imageUrl: "",
     videoUrl: "",
@@ -40,6 +59,7 @@ export default function AdminHeroPage() {
     alt: "",
     sortOrder: 0,
     useAmbientMusic: false,
+    bookingOption: "",
   });
   const [uploadBusy, setUploadBusy] = useState<{
     kind: UploadKind;
@@ -62,6 +82,9 @@ export default function AdminHeroPage() {
         alt: String(x.alt ?? ""),
         sortOrder: Number(x.sortOrder ?? 0),
         useAmbientMusic: Boolean(x.useAmbientMusic),
+        bookingOption: String(
+          x.bookingOption ?? x.booking_option ?? "",
+        ).trim(),
       };
     });
     rows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
@@ -76,11 +99,106 @@ export default function AdminHeroPage() {
     refresh().finally(() => setLoading(false));
   }, [db, refresh]);
 
+  const loadBookingCatalog = useCallback(async () => {
+    if (!db) {
+      setCatalogLoading(false);
+      return;
+    }
+    setCatalogLoading(true);
+    try {
+      const [pkgSnap, svcSnap] = await Promise.all([
+        getDocs(collection(db, "packages")),
+        getDocs(collection(db, "services")),
+      ]);
+      const pkgs: PackageDoc[] = pkgSnap.docs.map((d) => {
+        const x = d.data() as Record<string, unknown>;
+        const imageTrim =
+          x.imageUrl != null ? String(x.imageUrl).trim() : "";
+        return {
+          id: d.id,
+          name: String(x.name ?? ""),
+          price: Number(x.price ?? 0),
+          duration: String(x.duration ?? ""),
+          includes: parseFirestoreIncludes(x.includes),
+          rating: Number(x.rating ?? 0),
+          slotsLeft: x.slotsLeft != null ? Number(x.slotsLeft) : undefined,
+          bookedToday: x.bookedToday != null ? Number(x.bookedToday) : undefined,
+          imageUrl: imageTrim || undefined,
+          category: x.category ? String(x.category) : undefined,
+          isCombo: Boolean(x.isCombo),
+          discountPct: x.discountPct != null ? Number(x.discountPct) : undefined,
+          limitedSlots: Boolean(x.limitedSlots),
+          active: x.active !== false,
+        };
+      });
+      pkgs.sort((a, b) => a.price - b.price);
+      const svcs: ServiceItem[] = [];
+      for (const d of svcSnap.docs) {
+        const s = docToService(d.id, d.data() as Record<string, unknown>);
+        if (s) svcs.push(s);
+      }
+      svcs.sort(
+        (a, b) =>
+          (a.sortOrder ?? 999) - (b.sortOrder ?? 999) ||
+          a.slug.localeCompare(b.slug),
+      );
+      setCatalogPackages(pkgs);
+      setCatalogServices(svcs);
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    void loadBookingCatalog();
+  }, [loadBookingCatalog]);
+
+  const bookingSelectOptions: BookingSelectOption[] = (() => {
+    const out: BookingSelectOption[] = [
+      {
+        value: "",
+        label: "Default — general / scuba booking page",
+        group: "Recommended",
+      },
+    ];
+    for (const p of catalogPackages) {
+      if (p.active === false) continue;
+      out.push({
+        value: encodePackageOption(p.id),
+        label: `${p.name} — ₹${p.price.toLocaleString("en-IN")}`,
+        group: "Packages",
+      });
+    }
+    for (const s of catalogServices) {
+      if (s.active === false) continue;
+      const subs = getPricedSubServicesWithIndex(s);
+      if (subs.length) {
+        for (const { sub, index } of subs) {
+          const key = getSubServiceCartKey(sub, index);
+          const price = sub.priceFrom ?? 0;
+          out.push({
+            value: encodeServiceSubOption(s.slug, key),
+            label: `${s.title} — ${sub.title} — ₹${price.toLocaleString("en-IN")}`,
+            group: "Services",
+          });
+        }
+      } else if (s.priceFrom > 0) {
+        out.push({
+          value: encodeServiceBaseOption(s.slug),
+          label: `${s.title} — ₹${s.priceFrom.toLocaleString("en-IN")}`,
+          group: "Services",
+        });
+      }
+    }
+    return out;
+  })();
+
   async function saveNew() {
     const img = form.imageUrl.trim();
     const vid = form.videoUrl.trim();
     const thumb = form.videoThumbnailUrl.trim();
     if (!db || (!img && !vid)) return;
+    const bo = form.bookingOption.trim();
     await addDoc(collection(db, "heroSlides"), {
       imageUrl: img,
       videoUrl: vid,
@@ -88,6 +206,7 @@ export default function AdminHeroPage() {
       alt: form.alt.trim() || "Hero slide",
       sortOrder: Number(form.sortOrder),
       useAmbientMusic: form.useAmbientMusic,
+      ...(bo ? { bookingOption: bo } : {}),
     });
     setForm({
       imageUrl: "",
@@ -96,6 +215,7 @@ export default function AdminHeroPage() {
       alt: "",
       sortOrder: list.length,
       useAmbientMusic: false,
+      bookingOption: "",
     });
     await refresh();
   }
@@ -115,6 +235,16 @@ export default function AdminHeroPage() {
   async function patchUseAmbientMusic(id: string, useAmbientMusic: boolean) {
     if (!db) return;
     await updateDoc(doc(db, "heroSlides", id), { useAmbientMusic });
+    await refresh();
+  }
+
+  async function patchBookingOption(id: string, bookingOption: string) {
+    if (!db) return;
+    const v = bookingOption.trim();
+    await updateDoc(
+      doc(db, "heroSlides", id),
+      v ? { bookingOption: v } : { bookingOption: deleteField() },
+    );
     await refresh();
   }
 
@@ -267,7 +397,9 @@ export default function AdminHeroPage() {
         optionally a video. For videos you can set a separate{" "}
         <strong>video thumbnail</strong> URL or upload — if empty, the image URL above is
         used. You can upload a thumbnail anytime (even before adding the video URL). Edit
-        existing slides in the table below. YouTube / MP4 / WebM supported.
+        existing slides in the table below. YouTube / MP4 / WebM supported. Use{" "}
+        <strong>Book CTA</strong> so each slide opens <code className="text-xs">/booking</code>{" "}
+        with the matching package or service already in the cart.
       </p>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
@@ -414,6 +546,38 @@ export default function AdminHeroPage() {
               }
             />
           </label>
+          <label className="text-sm sm:col-span-2">
+            <span className="font-medium text-ocean-900">Book CTA for this slide</span>
+            <span className="mt-0.5 block text-xs font-normal text-ocean-600">
+              When visitors tap Book on this slide, they go to checkout with this item
+              pre-added (packages and priced services).
+            </span>
+            <select
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2 text-sm"
+              value={form.bookingOption}
+              disabled={catalogLoading}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, bookingOption: e.target.value }))
+              }
+            >
+              {(["Recommended", "Packages", "Services"] as const).map((g) => {
+                const opts = bookingSelectOptions.filter((o) => o.group === g);
+                if (!opts.length) return null;
+                return (
+                  <optgroup key={g} label={g}>
+                    {opts.map((o, idx) => (
+                      <option key={`${g}-${idx}-${o.value}`} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+            {catalogLoading ? (
+              <p className="mt-1 text-xs text-ocean-500">Loading packages & services…</p>
+            ) : null}
+          </label>
         </div>
         <button
           type="button"
@@ -509,6 +673,39 @@ export default function AdminHeroPage() {
                         Edit slide
                       </p>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <label className="text-xs font-medium text-ocean-800 sm:col-span-2 lg:col-span-3">
+                          Book CTA (cart pre-fill for this slide)
+                          <select
+                            key={`bo-${r.id}-${r.bookingOption}`}
+                            className="mt-1 w-full rounded border border-ocean-200 px-2 py-1.5 text-xs"
+                            defaultValue={r.bookingOption}
+                            disabled={catalogLoading}
+                            onChange={(e) =>
+                              void patchBookingOption(r.id, e.target.value)
+                            }
+                          >
+                            {(
+                              ["Recommended", "Packages", "Services"] as const
+                            ).map((g) => {
+                              const opts = bookingSelectOptions.filter(
+                                (o) => o.group === g,
+                              );
+                              if (!opts.length) return null;
+                              return (
+                                <optgroup key={g} label={g}>
+                                  {opts.map((o, idx) => (
+                                    <option
+                                      key={`${g}-${idx}-${o.value}`}
+                                      value={o.value}
+                                    >
+                                      {o.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              );
+                            })}
+                          </select>
+                        </label>
                         <label className="text-xs font-medium text-ocean-800">
                           Image / poster URL
                           <input

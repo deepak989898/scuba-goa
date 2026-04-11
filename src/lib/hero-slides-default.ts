@@ -14,6 +14,11 @@ export type HeroSlide = {
   /** Admin-only override for video poster; if empty, `src` is used. */
   videoThumbnailUrl?: string;
   useAmbientMusic?: boolean;
+  /**
+   * Encoded booking target for this slide (`pkg|…`, `svcb|…`, `svc|…`) — see `booking-selection.ts`.
+   * When set, hero “Book” actions deep-link to `/booking?opt=…` and the card reflects that offer.
+   */
+  bookingOption?: string;
 };
 
 /** Poster/thumbnail shown for hero video slides (custom thumb → main image → default). */

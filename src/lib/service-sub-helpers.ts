@@ -41,7 +41,7 @@ export function serviceHasPricedSubServices(s: ServiceItem): boolean {
 }
 
 export function findPricedSubByCartKey(
-  services: ServiceItem[],
+  services: readonly ServiceItem[],
   slug: string,
   subKey: string
 ): { service: ServiceItem; sub: SubServiceItem; index: number } | null {

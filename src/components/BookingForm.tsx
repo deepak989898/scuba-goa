@@ -7,6 +7,7 @@ import { useCart } from "@/context/CartContext";
 import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
 import { findPricedSubByCartKey, getSubServiceCartKey } from "@/lib/service-sub-helpers";
+import { HERO_BOOKING_OPT_PARAM } from "@/lib/hero-slide-booking";
 import { encodePackageOption, parseBookingOption } from "@/lib/booking-selection";
 import { BookingPackagePicker } from "@/components/BookingPackagePicker";
 import { SITE_NAME } from "@/lib/constants";
@@ -67,9 +68,10 @@ function cartSummary(lines: CartLine[]): string {
 
 export function BookingForm() {
   const { packages, loading } = usePackages();
-  const { services } = useServices();
+  const { services, loading: servicesLoading } = useServices();
   const searchParams = useSearchParams();
   const pre = searchParams.get("package");
+  const preOpt = searchParams.get(HERO_BOOKING_OPT_PARAM);
 
   const {
     lines,
@@ -83,7 +85,7 @@ export function BookingForm() {
     clearCart,
   } = useCart();
 
-  const prePackageAdded = useRef(false);
+  const prefillFromQueryApplied = useRef(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -179,17 +181,41 @@ export function BookingForm() {
   );
 
   useEffect(() => {
-    if (
-      !cartReady ||
-      !pre ||
-      prePackageAdded.current ||
-      !packages.some((p) => p.id === pre)
-    ) {
+    if (!cartReady || prefillFromQueryApplied.current) return;
+    if (loading || servicesLoading) return;
+
+    const optRaw = preOpt?.trim();
+    if (optRaw) {
+      const parsed = parseBookingOption(optRaw);
+      if (!parsed) {
+        prefillFromQueryApplied.current = true;
+        return;
+      }
+      if (parsed.kind === "package") {
+        if (!packages.some((p) => p.id === parsed.id)) return;
+        addFromEncodedOption(optRaw);
+        prefillFromQueryApplied.current = true;
+        return;
+      }
+      addFromEncodedOption(optRaw);
+      prefillFromQueryApplied.current = true;
       return;
     }
-    addFromEncodedOption(encodePackageOption(pre));
-    prePackageAdded.current = true;
-  }, [cartReady, pre, packages, addFromEncodedOption]);
+
+    const pkgRaw = pre?.trim();
+    if (!pkgRaw) return;
+    if (!packages.some((p) => p.id === pkgRaw)) return;
+    addFromEncodedOption(encodePackageOption(pkgRaw));
+    prefillFromQueryApplied.current = true;
+  }, [
+    cartReady,
+    loading,
+    servicesLoading,
+    pre,
+    preOpt,
+    packages,
+    addFromEncodedOption,
+  ]);
 
   useEffect(() => {
     if (lines.length === 0) setContactStepOpen(false);
