@@ -1,4 +1,5 @@
 import type { BillPdfInput } from "@/lib/billPdf";
+import { buildPackageLinesForBill, normalizePickupLocation } from "@/lib/billPackageLines";
 
 export type BookingConfirmationEmailFields = {
   to: string;
@@ -46,11 +47,21 @@ export function bookingDocToBillPdfInput(
   const isPartial =
     paymentMode === "partial" || (balanceInr > 0 && fullInr > amountInr);
 
+  const packageLines = buildPackageLinesForBill({
+    packageName,
+    people,
+    payUnits: data.payUnits,
+    cartItems: data.cartItems,
+  });
+  const pickupLocation = normalizePickupLocation(data.pickupLocation);
+
   return {
     customerName,
     customerEmail,
     phone,
     packageName,
+    packageLines,
+    pickupLocation,
     date,
     people,
     amountPaidInr: amountInr,

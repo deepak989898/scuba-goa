@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { FieldValue } from "firebase-admin/firestore";
 import { generateBillPdf } from "@/lib/billPdf";
+import { buildPackageLinesForBill, normalizePickupLocation } from "@/lib/billPackageLines";
 import {
   sendBookingAdminNotificationEmail,
   sendBookingConfirmationEmail,
@@ -211,6 +212,13 @@ export async function POST(req: Request) {
       customerEmail: String(booking.email).trim(),
       phone: String(booking.phone),
       packageName: String(booking.packageName),
+      packageLines: buildPackageLinesForBill({
+        packageName: String(booking.packageName),
+        people: booking.people,
+        payUnits: booking.payUnits,
+        cartItems: booking.cartItems,
+      }),
+      pickupLocation: normalizePickupLocation(booking.pickupLocation),
       date: String(booking.date),
       people: Number(booking.people) || 0,
       amountPaidInr: amountInr,
