@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { whatsappLink } from "@/lib/constants";
@@ -60,6 +61,9 @@ const QUICK_PROMPTS = [
 ];
 
 export function AiChatbot() {
+  const pathname = usePathname();
+  const isHome = pathname === "/" || pathname === "";
+
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<string | null>(null);
   const [pickLang, setPickLang] = useState(true);
@@ -151,12 +155,21 @@ export function AiChatbot() {
     await askBot(text);
   }
 
+  /** On home + mobile, WhatsApp FAB is hidden — sit Help where WhatsApp was (no empty gap). */
+  const helpFabBottom = isHome
+    ? "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+env(safe-area-inset-bottom,0px))] max-sm:bottom-[calc(10.25rem-15px+env(safe-area-inset-bottom,0px))]"
+    : "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+env(safe-area-inset-bottom,0px))]";
+  /** Chat panel: above Help; on home mobile skip the space reserved for WhatsApp. */
+  const helpPanelBottom = isHome
+    ? "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))] max-sm:bottom-[calc(10.25rem-15px+3rem+0.5rem+env(safe-area-inset-bottom,0px))]"
+    : "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))]";
+
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-[calc(10.25rem-15px+3.5rem+0.625rem+env(safe-area-inset-bottom,0px))] right-4 z-[55] flex h-12 items-center gap-2 rounded-full border border-ocean-200 bg-white px-4 text-sm font-semibold text-ocean-800 shadow-lg md:bottom-8 md:right-[5.5rem]"
+        className={`fixed right-4 z-[55] flex h-12 items-center gap-2 rounded-full border border-ocean-200 bg-white px-4 text-sm font-semibold text-ocean-800 shadow-lg md:bottom-8 md:right-[5.5rem] ${helpFabBottom}`}
       >
         Help
       </button>
@@ -166,7 +179,7 @@ export function AiChatbot() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
-            className="fixed bottom-[calc(10.25rem-15px+3.5rem+0.625rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))] right-4 z-[55] flex w-[min(100vw-2.5rem,380px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-24 md:right-[5.5rem]"
+            className={`fixed right-4 z-[55] flex w-[min(100vw-2.5rem,380px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-24 md:right-[5.5rem] ${helpPanelBottom}`}
           >
             <div className="flex items-center justify-between border-b border-ocean-100 bg-ocean-50 px-4 py-3">
               <p className="text-sm font-semibold text-ocean-900">AI Help</p>
