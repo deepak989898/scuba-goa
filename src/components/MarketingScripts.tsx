@@ -27,6 +27,37 @@ export function MarketingScripts() {
     });
   }, [pathname, isAdmin]);
 
+  /** Clarity records the real browser host; tags help filter by canonical site in the Clarity UI. */
+  useEffect(() => {
+    if (isAdmin || !CLARITY_ID) return;
+    const expectedSite = (process.env.NEXT_PUBLIC_SITE_URL || "")
+      .replace(/\/$/, "")
+      .trim();
+    const applyTags = () => {
+      if (typeof window.clarity !== "function") return false;
+      const { protocol, host } = window.location;
+      const origin = `${protocol}//${host}`;
+      const path = pathname || "/";
+      try {
+        window.clarity("set", "bsg_origin", origin);
+        window.clarity("set", "bsg_path", path);
+        if (expectedSite) window.clarity("set", "bsg_expected_site", expectedSite);
+      } catch {
+        /* ignore */
+      }
+      return true;
+    };
+    if (applyTags()) return;
+    const interval = window.setInterval(() => {
+      if (applyTags()) window.clearInterval(interval);
+    }, 200);
+    const stop = window.setTimeout(() => window.clearInterval(interval), 8000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(stop);
+    };
+  }, [pathname, isAdmin]);
+
   if (isAdmin) return null;
 
   return (
@@ -48,7 +79,7 @@ gtag('config', '${GA_ID}', { send_page_view: false });
         </>
       ) : null}
       {CLARITY_ID ? (
-        <Script id="microsoft-clarity" strategy="afterInteractive">
+        <Script id="microsoft-clarity" type="text/javascript" strategy="afterInteractive">
           {`
 (function(c,l,a,r,i,t,y){
   c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
