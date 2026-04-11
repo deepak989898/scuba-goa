@@ -15,6 +15,7 @@ const quick = [
   { href: "/offers", label: "Package offers" },
   { href: "/services", label: "All services" },
   { href: "/blog", label: "Travel blog" },
+  { href: "/guides", label: "Guides" },
   { href: "/contact", label: "Contact" },
 ];
 

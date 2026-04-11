@@ -2,8 +2,9 @@ import type { MetadataRoute } from "next";
 import { blogPosts } from "@/data/blog-posts";
 import { fallbackServices } from "@/data/services";
 import { SITE_URL } from "@/lib/constants";
+import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
   const staticPaths = [
     "",
@@ -12,6 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/booking",
     "/services",
     "/blog",
+    "/guides",
     "/offers",
     "/admin/login",
   ];
@@ -22,14 +24,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/booking": "2026-04-09",
     "/services": "2026-04-03",
     "/blog": "2026-04-09",
+    "/guides": "2026-04-11",
     "/offers": "2026-04-11",
     "/admin/login": "2026-03-26",
   };
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: `${base}${path || "/"}`,
     lastModified: new Date(staticLastMod[path] ?? "2026-04-01"),
-    changeFrequency: path === "/blog" ? "weekly" : "daily",
-    priority: path === "" ? 1 : 0.8,
+    changeFrequency:
+      path === "/blog" || path === "/guides" ? "weekly" : "daily",
+    priority: path === "" ? 1 : path === "/guides" ? 0.78 : 0.8,
   }));
   for (const s of fallbackServices) {
     entries.push({
@@ -46,6 +50,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(modified),
       changeFrequency: "monthly",
       priority: 0.75,
+    });
+  }
+  const guides = await listPublishedSeoPagesServer();
+  for (const g of guides) {
+    entries.push({
+      url: `${base}/guides/${g.slug}`,
+      lastModified: new Date(g.updatedAt),
+      changeFrequency: "weekly",
+      priority: 0.82,
     });
   }
   return entries;

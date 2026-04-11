@@ -60,6 +60,17 @@ export default function AdminHomePage() {
           </p>
         </Link>
         <Link
+          href="/admin/seo-pages"
+          className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
+        >
+          <h2 className="font-display text-lg font-semibold text-ocean-900">
+            SEO guide pages
+          </h2>
+          <p className="mt-2 text-sm text-ocean-600">
+            Public URLs at /guides/… with meta titles, descriptions, images, and booking links.
+          </p>
+        </Link>
+        <Link
           href="/admin/gallery"
           className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
         >

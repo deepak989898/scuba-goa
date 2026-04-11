@@ -86,6 +86,9 @@ function AdminGate({ children }: { children: React.ReactNode }) {
             <Link href="/admin/hero" className="text-ocean-700 hover:text-ocean-500">
               Hero
             </Link>
+            <Link href="/admin/seo-pages" className="text-ocean-700 hover:text-ocean-500">
+              SEO guides
+            </Link>
             <Link
               href="/admin/gallery"
               className="text-ocean-700 hover:text-ocean-500"
