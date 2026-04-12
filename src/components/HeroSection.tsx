@@ -23,6 +23,7 @@ function lowestListedPackageInr(list: PackageDoc[]): number | null {
 
 function HeroConversionCard({
   bookHref,
+  detailsHref,
   headlineTitle,
   headlinePriceInr,
   priceLoading,
@@ -32,6 +33,7 @@ function HeroConversionCard({
   primaryCtaLabel,
 }: {
   bookHref: string;
+  detailsHref: string;
   headlineTitle: string;
   headlinePriceInr: number | null;
   priceLoading: boolean;
@@ -50,13 +52,11 @@ function HeroConversionCard({
       ? `₹${headlinePriceInr.toLocaleString("en-IN")}`
       : null;
 
-  const waBooking = whatsappLink(waPreset);
-
   const bookPrimaryClass =
     "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:text-sm";
 
-  const whatsappSecondaryClass =
-    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full border-2 border-emerald-400/90 bg-emerald-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-950/30 ring-1 ring-emerald-300/50 transition hover:bg-emerald-500 active:bg-emerald-700 sm:text-sm";
+  const detailsSecondaryClass =
+    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-white/10 px-4 py-2.5 text-xs font-extrabold text-white shadow-md backdrop-blur-sm ring-1 ring-white/30 transition hover:bg-white/20 active:bg-white/15 sm:text-sm max-sm:border-ocean-300 max-sm:bg-white max-sm:text-ocean-800 max-sm:ring-ocean-200 max-sm:hover:bg-ocean-50";
 
   const telInputClass =
     "mt-1 w-full rounded-lg border border-white/25 bg-white/10 px-2 py-1.5 text-xs text-white placeholder:text-white/50 focus:border-cyan-300/80 focus:outline-none focus:ring-1 focus:ring-cyan-300/60 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:placeholder:text-ocean-400 max-sm:focus:border-ocean-500 max-sm:focus:ring-ocean-400 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm";
@@ -114,14 +114,9 @@ function HeroConversionCard({
         <Link href={bookHref} className={bookPrimaryClass}>
           {primaryCtaLabel}
         </Link>
-        <a
-          href={waBooking}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={whatsappSecondaryClass}
-        >
-          WhatsApp booking
-        </a>
+        <Link href={detailsHref} className={detailsSecondaryClass}>
+          See more details
+        </Link>
       </div>
 
       {/* Desktop/tablet only — keeps hero compact on mobile (sticky bar + WhatsApp booking button). */}
@@ -283,6 +278,7 @@ export function HeroSection() {
           <div className="w-full min-w-0 translate-y-[60%]">
             <HeroConversionCard
               bookHref={bookingCard.bookHref}
+              detailsHref={bookingCard.detailsHref}
               headlineTitle={bookingCard.headlineTitle}
               headlinePriceInr={bookingCard.headlinePriceInr}
               priceLoading={priceLoading}
@@ -305,6 +301,7 @@ export function HeroSection() {
         >
           <HeroConversionCard
             bookHref={bookingCard.bookHref}
+            detailsHref={bookingCard.detailsHref}
             headlineTitle={bookingCard.headlineTitle}
             headlinePriceInr={bookingCard.headlinePriceInr}
             priceLoading={priceLoading}

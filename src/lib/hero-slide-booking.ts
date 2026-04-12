@@ -13,6 +13,8 @@ const DEFAULT_WA =
 
 export type HeroBookingCardModel = {
   bookHref: string;
+  /** Service detail URL for “See more details”; packages fall back to `/services`. */
+  detailsHref: string;
   headlineTitle: string;
   headlinePriceInr: number | null;
   slotsToday: number | null;
@@ -51,12 +53,13 @@ export function resolveHeroBookingCardModel(
   if (!opt) {
     return {
       bookHref: "/booking",
+      detailsHref: "/services/scuba-diving",
       headlineTitle: "Scuba diving in Goa",
       headlinePriceInr: ctx.fallbackHeadlinePrice,
       slotsToday: ctx.fallbackSlots,
       perksLine: DEFAULT_PERKS,
       waPreset: DEFAULT_WA,
-      primaryCtaLabel: "Book now",
+      primaryCtaLabel: "Book this now",
     };
   }
 
@@ -66,6 +69,16 @@ export function resolveHeroBookingCardModel(
   }
 
   const href = buildHeroBookingHref(opt);
+  const detailsForPackage = (p: PackageDoc): string => {
+    const hay = `${p.name} ${p.id} ${p.category ?? ""}`.toLowerCase();
+    if (hay.includes("scuba") || hay.includes("dive")) return "/services/scuba-diving";
+    if (hay.includes("water sport") || hay.includes("watersport"))
+      return "/services/water-sports";
+    if (hay.includes("north") && hay.includes("tour")) return "/services/north-goa-tour";
+    if (hay.includes("south") && hay.includes("tour")) return "/services/south-goa-tour";
+    if (hay.includes("dudhsagar")) return "/services/dudhsagar-trip";
+    return "/services";
+  };
 
   if (parsed.kind === "package") {
     const p = ctx.packages.find((x) => x.id === parsed.id);
@@ -73,6 +86,7 @@ export function resolveHeroBookingCardModel(
       return {
         ...resolveHeroBookingCardModel(undefined, ctx),
         bookHref: href,
+        detailsHref: "/services",
         primaryCtaLabel: "Book this now",
       };
     }
@@ -81,6 +95,7 @@ export function resolveHeroBookingCardModel(
       "Book online · Razorpay + WhatsApp confirm";
     return {
       bookHref: href,
+      detailsHref: detailsForPackage(p),
       headlineTitle: p.name,
       headlinePriceInr:
         Number.isFinite(p.price) && p.price > 0 ? p.price : null,
@@ -102,6 +117,7 @@ export function resolveHeroBookingCardModel(
       return {
         ...resolveHeroBookingCardModel(undefined, ctx),
         bookHref: href,
+        detailsHref: `/services/${parsed.slug}`,
         primaryCtaLabel: "Book this now",
       };
     }
@@ -113,6 +129,7 @@ export function resolveHeroBookingCardModel(
       s.short.trim();
     return {
       bookHref: href,
+      detailsHref: `/services/${s.slug}`,
       headlineTitle: `${s.title} — ${sub.title}`,
       headlinePriceInr: Number.isFinite(price) && price > 0 ? price : null,
       slotsToday:
@@ -132,6 +149,7 @@ export function resolveHeroBookingCardModel(
     return {
       ...resolveHeroBookingCardModel(undefined, ctx),
       bookHref: href,
+      detailsHref: `/services/${parsed.slug}`,
       primaryCtaLabel: "Book this now",
     };
   }
@@ -139,6 +157,7 @@ export function resolveHeroBookingCardModel(
     perksFromList(s.includes, 4) || s.short.trim() || DEFAULT_PERKS;
   return {
     bookHref: href,
+    detailsHref: `/services/${s.slug}`,
     headlineTitle: s.title,
     headlinePriceInr:
       Number.isFinite(s.priceFrom) && s.priceFrom > 0 ? s.priceFrom : null,
