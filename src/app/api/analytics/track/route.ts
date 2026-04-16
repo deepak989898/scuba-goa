@@ -11,6 +11,7 @@ const PAGE_LABEL_MAX = 256;
 const LANG_MAX = 48;
 const TZ_MAX = 80;
 const DIM_MAX = 10000;
+const GUIDE_INDEX_KEY = "__guides_index__";
 
 type TrackEventType = "view" | "leave" | "heartbeat" | "click";
 
@@ -29,6 +30,16 @@ function clampDim(raw: unknown): number | null {
   const r = Math.round(n);
   if (r < 0 || r > DIM_MAX) return null;
   return r;
+}
+
+function parseGuideTrafficKey(path: string): { key: string; slug: string; path: string } | null {
+  if (path === "/guides") {
+    return { key: GUIDE_INDEX_KEY, slug: "", path };
+  }
+  const m = /^\/guides\/([a-z0-9-]+)$/.exec(path);
+  if (!m) return null;
+  const slug = m[1];
+  return { key: slug, slug, path };
 }
 
 export async function POST(req: Request) {
@@ -167,6 +178,46 @@ export async function POST(req: Request) {
     await db.collection("pageViews").add(pageViewPayload);
 
     await sessionRef.set(sessionPayload, { merge: true });
+
+    const guideKey = parseGuideTrafficKey(path);
+    if (eventType === "view" && guideKey) {
+      const trafficRef = db.collection("analyticsGuideTraffic").doc(guideKey.key);
+      const visitorRef = db
+        .collection("analyticsGuideTrafficVisitors")
+        .doc(`${guideKey.key}__${sessionId || "anon"}`);
+
+      await db.runTransaction(async (tx) => {
+        tx.set(
+          trafficRef,
+          {
+            key: guideKey.key,
+            slug: guideKey.slug,
+            path: guideKey.path,
+            updatedAt: FieldValue.serverTimestamp(),
+            views: FieldValue.increment(1),
+          },
+          { merge: true },
+        );
+
+        const visitorSnap = await tx.get(visitorRef);
+        if (!visitorSnap.exists) {
+          tx.set(visitorRef, {
+            key: guideKey.key,
+            slug: guideKey.slug,
+            path: guideKey.path,
+            sessionId: sessionId || "anon",
+            createdAt: FieldValue.serverTimestamp(),
+          });
+          tx.set(
+            trafficRef,
+            {
+              visitors: FieldValue.increment(1),
+            },
+            { merge: true },
+          );
+        }
+      });
+    }
   } catch (e) {
     console.error("pageViews write failed", e);
     return NextResponse.json({ error: "Track failed" }, { status: 500 });

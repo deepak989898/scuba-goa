@@ -39,10 +39,21 @@ import {
 
 type BookingSelectOption = { value: string; label: string; group: string };
 
+type GuideTraffic = { views: number; visitors: number };
+
 export default function AdminSeoPagesPage() {
   const db = getDb();
   const [list, setList] = useState<SeoPageFirestore[]>([]);
   const [loading, setLoading] = useState(true);
+  const [guideTrafficBySlug, setGuideTrafficBySlug] = useState<
+    Record<string, GuideTraffic>
+  >({});
+  const [guidesIndexTraffic, setGuidesIndexTraffic] = useState<GuideTraffic>({
+    views: 0,
+    visitors: 0,
+  });
+  const [trafficLoading, setTrafficLoading] = useState(true);
+  const [trafficError, setTrafficError] = useState<string | null>(null);
   const [catalogPackages, setCatalogPackages] = useState<PackageDoc[]>([]);
   const [catalogServices, setCatalogServices] = useState<ServiceItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -76,6 +87,48 @@ export default function AdminSeoPagesPage() {
     }
     rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     setList(rows);
+  }, [db]);
+
+  const loadGuideTraffic = useCallback(async () => {
+    if (!db) {
+      setTrafficLoading(false);
+      return;
+    }
+    setTrafficError(null);
+    setTrafficLoading(true);
+    try {
+      const snap = await getDocs(collection(db, "analyticsGuideTraffic"));
+      const record: Record<string, GuideTraffic> = {};
+      let index: GuideTraffic = { views: 0, visitors: 0 };
+      for (const row of snap.docs) {
+        const data = row.data() as Record<string, unknown>;
+        const path = String(data.path ?? "").trim();
+        const slug = String(data.slug ?? "").trim();
+        const views = Number(data.views ?? 0);
+        const visitors = Number(data.visitors ?? 0);
+        const traffic = {
+          views: Number.isFinite(views) ? Math.max(0, Math.round(views)) : 0,
+          visitors: Number.isFinite(visitors) ? Math.max(0, Math.round(visitors)) : 0,
+        };
+        if (path === "/guides") {
+          index = traffic;
+          continue;
+        }
+        if (slug) record[slug] = traffic;
+      }
+      setGuideTrafficBySlug(record);
+      setGuidesIndexTraffic(index);
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === "object" && "code" in e
+          ? `${String((e as { code?: string }).code)}: ${String((e as { message?: string }).message ?? e)}`
+          : String(e);
+      setTrafficError(msg);
+      setGuideTrafficBySlug({});
+      setGuidesIndexTraffic({ views: 0, visitors: 0 });
+    } finally {
+      setTrafficLoading(false);
+    }
   }, [db]);
 
   const loadBookingCatalog = useCallback(async () => {
@@ -137,8 +190,21 @@ export default function AdminSeoPagesPage() {
   }, [db, refresh]);
 
   useEffect(() => {
+    void loadGuideTraffic();
+  }, [loadGuideTraffic]);
+
+  useEffect(() => {
     void loadBookingCatalog();
   }, [loadBookingCatalog]);
+
+  const sortedList = useMemo(() => {
+    return [...list].sort((a, b) => {
+      const ta = guideTrafficBySlug[a.slug]?.views ?? 0;
+      const tb = guideTrafficBySlug[b.slug]?.views ?? 0;
+      if (tb !== ta) return tb - ta;
+      return b.updatedAt.localeCompare(a.updatedAt);
+    });
+  }, [list, guideTrafficBySlug]);
 
   const bookingSelectOptions: BookingSelectOption[] = useMemo(() => {
     const out: BookingSelectOption[] = [
@@ -544,9 +610,45 @@ export default function AdminSeoPagesPage() {
       </div>
 
       <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
-        <h2 className="border-b border-ocean-100 bg-ocean-50 px-4 py-3 font-semibold text-ocean-900">
-          Existing pages
-        </h2>
+        <div className="flex flex-col gap-2 border-b border-ocean-100 bg-ocean-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="font-semibold text-ocean-900">Existing pages</h2>
+          <button
+            type="button"
+            disabled={trafficLoading || !db}
+            onClick={() => void loadGuideTraffic()}
+            className="self-start rounded-full border border-ocean-300 bg-white px-3 py-1 text-xs font-semibold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
+          >
+            {trafficLoading ? "Loading traffic…" : "Refresh traffic"}
+          </button>
+        </div>
+        <div className="border-b border-ocean-100 bg-white px-4 py-3 text-xs text-ocean-600">
+          <p>
+            <strong className="text-ocean-800">/guides</strong> (all guides index):{" "}
+            {trafficLoading ? (
+              "…"
+            ) : (
+              <>
+                <span className="font-semibold text-ocean-900">
+                  {guidesIndexTraffic.views.toLocaleString("en-IN")}
+                </span>{" "}
+                page views ·{" "}
+                <span className="font-semibold text-ocean-900">
+                  {guidesIndexTraffic.visitors.toLocaleString("en-IN")}
+                </span>{" "}
+                unique visitors
+              </>
+            )}
+          </p>
+          <p className="mt-1">
+            Per-guide numbers are stored as running totals from live{" "}
+            <code className="text-[10px]">view</code> events on{" "}
+            <code className="text-[10px]">/guides/your-slug</code>. Sorting is by page views
+            (highest first) so you can spot growing pages quickly.
+          </p>
+          {trafficError ? (
+            <p className="mt-2 font-mono text-[11px] text-red-700">{trafficError}</p>
+          ) : null}
+        </div>
         {loading ? (
           <p className="p-6 text-ocean-600">Loading…</p>
         ) : list.length === 0 ? (
@@ -557,18 +659,30 @@ export default function AdminSeoPagesPage() {
               <tr>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Headline</th>
+                <th className="p-3 text-right">Page views</th>
+                <th className="p-3 text-right">Visitors</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {list.map((r) => (
+              {sortedList.map((r) => (
                 <Fragment key={r.slug}>
                   <tr className="border-b border-ocean-100">
                     <td className="p-3 align-top font-mono text-xs text-ocean-800">
                       {r.slug}
                     </td>
                     <td className="p-3 align-top text-ocean-900">{r.headline}</td>
+                    <td className="p-3 align-top text-right tabular-nums text-ocean-900">
+                      {trafficLoading
+                        ? "—"
+                        : (guideTrafficBySlug[r.slug]?.views ?? 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="p-3 align-top text-right tabular-nums text-ocean-800">
+                      {trafficLoading
+                        ? "—"
+                        : (guideTrafficBySlug[r.slug]?.visitors ?? 0).toLocaleString("en-IN")}
+                    </td>
                     <td className="p-3 align-top">
                       {r.published ? (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
@@ -611,7 +725,7 @@ export default function AdminSeoPagesPage() {
                   </tr>
                   {editing?.slug === r.slug ? (
                     <tr className="border-b border-ocean-50 bg-ocean-50/50">
-                      <td colSpan={4} className="p-4">
+                      <td colSpan={6} className="p-4">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ocean-700">
                           Edit — slug is fixed ({editing.slug})
                         </p>
