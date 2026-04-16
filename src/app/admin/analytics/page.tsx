@@ -20,8 +20,11 @@ type Row = {
   id: string;
   path: string;
   sessionId: string;
-  eventType: "view" | "leave" | "heartbeat" | "";
+  eventType: "view" | "leave" | "heartbeat" | "click" | "";
   pageLabel: string;
+  clickLabel?: string;
+  clickTarget?: string;
+  clickHref?: string;
   enteredAtMs: number | null;
   leftAtMs: number | null;
   durationMs: number | null;
@@ -193,10 +196,14 @@ export default function AdminAnalyticsPage() {
             eventType:
               data.eventType === "view" ||
               data.eventType === "leave" ||
-              data.eventType === "heartbeat"
+              data.eventType === "heartbeat" ||
+              data.eventType === "click"
                 ? data.eventType
                 : "",
             pageLabel: String(data.pageLabel ?? ""),
+            clickLabel: String(data.clickLabel ?? ""),
+            clickTarget: String(data.clickTarget ?? ""),
+            clickHref: String(data.clickHref ?? ""),
             enteredAtMs: toNumberOrNull(data.enteredAtMs),
             leftAtMs: toNumberOrNull(data.leftAtMs),
             durationMs: toNumberOrNull(data.durationMs),
@@ -731,6 +738,16 @@ export default function AdminAnalyticsPage() {
                               </span>
                             ) : null}
                           </div>
+                          {r.eventType === "click" ? (
+                            <p className="mt-1 text-xs text-ocean-700">
+                              Click:{" "}
+                              <span className="font-medium text-ocean-900">
+                                {r.clickLabel || "(no label)"}
+                              </span>
+                              {r.clickTarget ? ` · ${r.clickTarget}` : ""}
+                              {r.clickHref ? ` · ${r.clickHref}` : ""}
+                            </p>
+                          ) : null}
                           <p className="mt-1 break-all font-mono text-sm font-semibold text-ocean-900">
                             {r.path || "—"}
                           </p>
@@ -824,7 +841,18 @@ export default function AdminAnalyticsPage() {
                           time {formatMs(r.durationMs)}
                         </span>
                       ) : null}
+                      {r.eventType === "click" ? (
+                        <span className="text-ocean-700">
+                          click: {r.clickLabel || "(no label)"}
+                          {r.clickTarget ? ` (${r.clickTarget})` : ""}
+                        </span>
+                      ) : null}
                     </div>
+                    {r.eventType === "click" && r.clickHref ? (
+                      <p className="mt-0.5 break-all text-xs text-ocean-600">
+                        target: {r.clickHref}
+                      </p>
+                    ) : null}
                     {formatGeoLine({
                       geoCity: r.geoCity,
                       geoRegion: r.geoRegion,

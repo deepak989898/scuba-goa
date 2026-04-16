@@ -12,10 +12,10 @@ const LANG_MAX = 48;
 const TZ_MAX = 80;
 const DIM_MAX = 10000;
 
-type TrackEventType = "view" | "leave" | "heartbeat";
+type TrackEventType = "view" | "leave" | "heartbeat" | "click";
 
 function isTrackEventType(v: string): v is TrackEventType {
-  return v === "view" || v === "leave" || v === "heartbeat";
+  return v === "view" || v === "leave" || v === "heartbeat" || v === "click";
 }
 
 function toFiniteNumber(raw: unknown): number | null {
@@ -45,6 +45,9 @@ export async function POST(req: Request) {
     enteredAtMs?: number;
     leftAtMs?: number;
     durationMs?: number;
+    clickLabel?: string;
+    clickTarget?: string;
+    clickHref?: string;
     screenWidth?: number;
     screenHeight?: number;
     viewportWidth?: number;
@@ -83,6 +86,12 @@ export async function POST(req: Request) {
     typeof body.pageLabel === "string"
       ? body.pageLabel.slice(0, PAGE_LABEL_MAX)
       : "";
+  const clickLabel =
+    typeof body.clickLabel === "string" ? body.clickLabel.slice(0, 140) : "";
+  const clickTarget =
+    typeof body.clickTarget === "string" ? body.clickTarget.slice(0, 32) : "";
+  const clickHref =
+    typeof body.clickHref === "string" ? body.clickHref.slice(0, 500) : "";
   const enteredAtMs = toFiniteNumber(body.enteredAtMs);
   const leftAtMs = toFiniteNumber(body.leftAtMs);
   const durationMsRaw = toFiniteNumber(body.durationMs);
@@ -150,6 +159,9 @@ export async function POST(req: Request) {
   if (viewportHeight != null) pageViewPayload.viewportHeight = viewportHeight;
   if (language) pageViewPayload.language = language;
   if (timeZone) pageViewPayload.timeZone = timeZone;
+  if (clickLabel) pageViewPayload.clickLabel = clickLabel;
+  if (clickTarget) pageViewPayload.clickTarget = clickTarget;
+  if (clickHref) pageViewPayload.clickHref = clickHref;
 
   try {
     await db.collection("pageViews").add(pageViewPayload);

@@ -8,7 +8,7 @@ const SESSION_KEY = "bsg_analytics_sid";
 const lastTrackAt = new Map<string, number>();
 const HEARTBEAT_MS = 30_000;
 
-type EventType = "view" | "leave" | "heartbeat";
+type EventType = "view" | "leave" | "heartbeat" | "click";
 
 type VisitState = { path: string; enteredAtMs: number; pageLabel: string };
 
@@ -35,6 +35,9 @@ function track(
     sessionId: string;
     eventType: EventType;
     pageLabel?: string;
+    clickLabel?: string;
+    clickTarget?: string;
+    clickHref?: string;
     enteredAtMs?: number;
     leftAtMs?: number;
     durationMs?: number;
@@ -138,9 +141,41 @@ export function AnalyticsTracker() {
 
     document.addEventListener("visibilitychange", onHidden);
 
+    const onDocumentClick = (ev: MouseEvent) => {
+      const target = ev.target;
+      if (!(target instanceof Element)) return;
+      const clickable = target.closest("a,button,[role='button'],[data-analytics-click]");
+      if (!(clickable instanceof Element)) return;
+
+      const rawText =
+        clickable instanceof HTMLAnchorElement || clickable instanceof HTMLButtonElement
+          ? clickable.innerText || clickable.textContent || ""
+          : clickable.textContent || "";
+      const clickLabel = rawText.replace(/\s+/g, " ").trim().slice(0, 140);
+      const clickTarget = clickable.tagName.toLowerCase();
+      const clickHref =
+        clickable instanceof HTMLAnchorElement
+          ? (clickable.getAttribute("href") || "").slice(0, 500)
+          : "";
+
+      const current = visitRef.current;
+      track({
+        path: current?.path || key,
+        sessionId,
+        eventType: "click",
+        pageLabel: current?.pageLabel || pageLabel,
+        clickLabel,
+        clickTarget,
+        clickHref,
+      });
+    };
+
+    document.addEventListener("click", onDocumentClick, { passive: true });
+
     return () => {
       window.clearInterval(hb);
       document.removeEventListener("visibilitychange", onHidden);
+      document.removeEventListener("click", onDocumentClick);
     };
   }, [pathname]);
 
