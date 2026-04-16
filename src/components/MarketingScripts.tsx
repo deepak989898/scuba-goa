@@ -8,10 +8,9 @@ import Script from "next/script";
  * Google Analytics 4: users, geo, device, traffic sources (standard GA4 reports).
  * Microsoft Clarity: session replay, clicks, heatmaps.
  *
- * GA4 uses `afterInteractive` so `gtag.js` loads soon after hydration (Real-Time and
- * standard reports are much more reliable than `lazyOnload`, which can run very late or
- * race client navigations). Clarity stays on `lazyOnload` to reduce early “Script error”
- * noise in some in-app browsers.
+ * GA4 and Clarity both use `afterInteractive` so tracking can start quickly on
+ * short sessions and in-app browsers. This improves parity with server-side
+ * analytics events shown in /admin/analytics.
  *
  * Skips /admin so staff sessions are not recorded.
  */
@@ -130,6 +129,41 @@ export function MarketingScripts() {
     };
   }, [pathname, isAdmin]);
 
+  useEffect(() => {
+    if (isAdmin || !CLARITY_ID) return;
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    let cancelled = false;
+    let tries = 0;
+    let retryId: number | undefined;
+    const MAX_TRIES = 5;
+    const RETRY_MS = 1500;
+
+    const ensureClarityScript = () => {
+      if (cancelled) return;
+      if (typeof window.clarity === "function") return;
+      const src = `https://www.clarity.ms/tag/${encodeURIComponent(CLARITY_ID)}`;
+      const existing = document.querySelector(
+        `script[src="${src}"]`,
+      ) as HTMLScriptElement | null;
+      if (!existing) {
+        const s = document.createElement("script");
+        s.async = true;
+        s.src = src;
+        (document.head || document.body).appendChild(s);
+      }
+      tries += 1;
+      if (tries < MAX_TRIES) {
+        retryId = window.setTimeout(ensureClarityScript, RETRY_MS);
+      }
+    };
+
+    ensureClarityScript();
+    return () => {
+      cancelled = true;
+      if (retryId !== undefined) window.clearTimeout(retryId);
+    };
+  }, [isAdmin]);
+
   if (isAdmin) return null;
 
   return (
@@ -153,7 +187,11 @@ export function MarketingScripts() {
         </Script>
       ) : null}
       {CLARITY_ID ? (
-        <Script id="microsoft-clarity" type="text/javascript" strategy="lazyOnload">
+        <Script
+          id="microsoft-clarity"
+          type="text/javascript"
+          strategy="afterInteractive"
+        >
           {`
 try {
 (function(c,l,a,r,i,t,y){
