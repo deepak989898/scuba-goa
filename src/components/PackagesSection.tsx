@@ -47,7 +47,7 @@ export function PackagesSection() {
             {packages.map((p, idx) => {
               const cardImage =
                 p.imageUrl?.trim() ||
-                "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=75";
+                "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=720&q=65";
               return (
               <motion.article
                 key={p.id}

@@ -47,7 +47,7 @@ export type ServiceItem = {
 };
 
 const u = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=75`;
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=640&q=65`;
 
 /** Default data when Firestore `services` collection is empty */
 export const fallbackServices: ServiceItem[] = [

@@ -13,7 +13,7 @@ export const fallbackPackages: PackageDoc[] = [
     limitedSlots: true,
     category: "Scuba",
     imageUrl:
-      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=75",
+      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=720&q=65",
   },
   {
     id: "fb-2",
@@ -27,7 +27,7 @@ export const fallbackPackages: PackageDoc[] = [
     limitedSlots: true,
     category: "Tours",
     imageUrl:
-      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=900&q=75",
+      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=720&q=65",
   },
   {
     id: "fb-3",
@@ -40,7 +40,7 @@ export const fallbackPackages: PackageDoc[] = [
     bookedToday: 11,
     category: "Adventure",
     imageUrl:
-      "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=900&q=75",
+      "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=720&q=65",
   },
   {
     id: "fb-4",
@@ -56,7 +56,7 @@ export const fallbackPackages: PackageDoc[] = [
     limitedSlots: true,
     category: "Combo",
     imageUrl:
-      "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=900&q=75",
+      "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=720&q=65",
   },
   {
     id: "fb-5",
@@ -68,7 +68,7 @@ export const fallbackPackages: PackageDoc[] = [
     slotsLeft: 12,
     category: "Nightlife",
     imageUrl:
-      "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&w=900&q=75",
+      "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&w=720&q=65",
   },
   {
     id: "fb-6",
@@ -81,6 +81,6 @@ export const fallbackPackages: PackageDoc[] = [
     limitedSlots: true,
     category: "Adventure",
     imageUrl:
-      "https://images.unsplash.com/photo-1502680390469-be75c86b636f?auto=format&fit=crop&w=900&q=75",
+      "https://images.unsplash.com/photo-1502680390469-be75c86b636f?auto=format&fit=crop&w=720&q=65",
   },
 ];

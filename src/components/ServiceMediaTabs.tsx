@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import type { ServiceItem } from "@/data/services";
 
 type TabType = "posts" | "reels" | "videos";
@@ -61,12 +62,15 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
               key={url}
               type="button"
               onClick={() => setZoomImageUrl(url)}
-              className="block overflow-hidden rounded-xl border border-ocean-100 text-left"
+              className="relative block h-48 w-full overflow-hidden rounded-xl border border-ocean-100 text-left"
             >
-              <img
+              <CmsRemoteImage
                 src={url}
                 alt={service.title}
-                className="h-48 w-full object-cover transition-transform duration-200 hover:scale-[1.02]"
+                fill
+                sizes="(max-width: 640px) 100vw, 50vw"
+                className="object-cover transition-transform duration-200 hover:scale-[1.02]"
+                loading="lazy"
               />
             </button>
           ))}
@@ -109,12 +113,19 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
           >
             Close
           </button>
-          <img
-            src={zoomImageUrl}
-            alt={`${service.title} preview`}
-            className="max-h-[90vh] max-w-[95vw] rounded-xl object-contain"
+          <div
+            className="relative h-[90vh] w-[95vw]"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <CmsRemoteImage
+              src={zoomImageUrl}
+              alt={`${service.title} preview`}
+              fill
+              sizes="95vw"
+              className="rounded-xl object-contain"
+              priority
+            />
+          </div>
         </div>
       ) : null}
     </section>

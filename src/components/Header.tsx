@@ -47,7 +47,9 @@ export function Header() {
             alt="Book Scuba Goa"
             width={650}
             height={238}
+            sizes="(max-width: 640px) 180px, 220px"
             className="h-12 w-auto sm:h-14"
+            quality={70}
             priority
           />
         </Link>

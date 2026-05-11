@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useHomeGallery } from "@/hooks/useHomeGallery";
@@ -13,14 +13,42 @@ function videoSrcForThumbnailFrame(url: string) {
   return `${t}#t=0.001`;
 }
 
-/** When admin did not set posterUrl, show a frame from the video file */
+/**
+ * When admin did not set posterUrl, show a frame from the video file.
+ * Defers the metadata fetch until the thumbnail scrolls into view so the
+ * gallery does not download N video headers on initial page load.
+ */
 function AutoVideoThumbnail({ src, label }: { src: string; label: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || armed) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setArmed(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setArmed(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [armed]);
+
   return (
     <video
-      src={videoSrcForThumbnailFrame(src)}
+      ref={ref}
+      src={armed ? videoSrcForThumbnailFrame(src) : undefined}
       muted
       playsInline
-      preload="metadata"
+      preload={armed ? "metadata" : "none"}
       className="pointer-events-none absolute inset-0 h-full w-full object-cover"
       aria-hidden
       title={label}

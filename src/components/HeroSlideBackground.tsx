@@ -148,7 +148,10 @@ export function HeroSlideBackground({
         poster={videoPosterSrc}
         src={vUrl}
         playsInline
-        preload="auto"
+        // Was "auto" — that downloads the full hero clip (often 10-30 MB) on every
+        // page load and dominates the network payload. "metadata" fetches only the
+        // first chunk needed to start playback; the poster keeps the hero visible.
+        preload="metadata"
         loop={shouldLoopWhenSingleSlide}
         onEnded={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
         onError={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}

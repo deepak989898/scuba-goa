@@ -56,6 +56,18 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    /** Aggregated guide traffic counters (server writes only). */
+    match /analyticsGuideTraffic/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    /** Per guide+session dedupe records for unique visitor counting (server writes only). */
+    match /analyticsGuideTrafficVisitors/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
     match /ratings/{id} {
       allow read: if resource.data.approved == true
         || (request.auth != null

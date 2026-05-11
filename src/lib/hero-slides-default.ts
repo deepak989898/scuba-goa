@@ -1,5 +1,5 @@
 const DEFAULT_HERO_POSTER_FALLBACK =
-  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1920&q=80";
+  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=70";
 
 /**
  * `src` is the main image URL (fallback poster for video if `videoThumbnailUrl` is unset).
@@ -32,15 +32,15 @@ export function getHeroVideoPosterSrc(slide: HeroSlide): string {
 
 export const DEFAULT_HERO_SLIDES: HeroSlide[] = [
   {
-    src: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1920&q=80",
+    src: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=70",
     alt: "Scuba diving in clear water",
   },
   {
-    src: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80",
+    src: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=70",
     alt: "Goa beach coastline",
   },
   {
-    src: "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=1920&q=80",
+    src: "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=1600&q=70",
     alt: "Water sports at sea",
   },
 ];

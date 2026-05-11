@@ -11,7 +11,7 @@ import {
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=75";
+  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1024&q=65";
 
 const waMessage =
   "Hi, I read your About page. I want to know more about scuba in Goa and booking.";
@@ -92,6 +92,7 @@ export default function AboutPage() {
                 fill
                 className="object-cover object-center"
                 sizes="(max-width: 1024px) 100vw, 50vw"
+                quality={65}
                 priority
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ocean-950/50 via-transparent to-transparent" />

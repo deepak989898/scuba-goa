@@ -15,7 +15,9 @@ type Props = {
 };
 
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px";
-const DEFAULT_QUALITY = 78;
+// 65 keeps photos visually crisp once Next.js re-encodes to AVIF/WebP while
+// shaving ~30-40% off vs. the previous 78. Hero/poster usage can override.
+const DEFAULT_QUALITY = 65;
 
 /**
  * Local `/` assets and known CDN hosts use next/image (compression + modern formats).
