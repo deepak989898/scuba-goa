@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import Script from "next/script";
 import { useEffect, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
@@ -208,19 +207,14 @@ export function CartFAB() {
         strategy="afterInteractive"
       />
 
-      <AnimatePresence>
-        {showFab && (
-          <motion.button
+      {showFab ? (
+          <button
             type="button"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 24 }}
             onClick={() => {
               setOpen(true);
               setMsg(null);
             }}
-            className="fixed bottom-[calc(10.25rem-15px+env(safe-area-inset-bottom,0px))] left-4 z-[58] flex h-14 w-14 items-center justify-center rounded-full bg-ocean-800 text-white shadow-lg shadow-ocean-900/30 transition hover:bg-ocean-700 md:bottom-8 md:left-8 md:h-16 md:w-16"
+            className="fixed bottom-[calc(6.5rem+0.75rem+env(safe-area-inset-bottom,0px))] left-4 z-[58] flex h-14 w-14 items-center justify-center rounded-full bg-ocean-800 text-white shadow-lg shadow-ocean-900/30 transition hover:bg-ocean-700 md:bottom-8 md:left-8 md:h-16 md:w-16"
             aria-label={`Open cart, ${itemCount} items`}
           >
             <svg
@@ -239,18 +233,12 @@ export function CartFAB() {
             <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-ocean-900">
               {itemCount > 99 ? "99+" : itemCount}
             </span>
-          </motion.button>
-        )}
-      </AnimatePresence>
+          </button>
+        ) : null}
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            key="cart-drawer"
+      {open ? (
+          <div
             className="fixed inset-0 z-[59] flex justify-end"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           >
             <button
               type="button"
@@ -261,14 +249,10 @@ export function CartFAB() {
                 setCheckoutOpen(false);
               }}
             />
-            <motion.aside
+            <aside
               role="dialog"
               aria-modal="true"
               aria-label="Shopping cart"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
               className="relative z-10 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
             >
               <div className="flex items-center justify-between border-b border-ocean-100 px-4 py-4">
@@ -476,10 +460,9 @@ export function CartFAB() {
                   </div>
                 )}
               </div>
-            </motion.aside>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </aside>
+          </div>
+        ) : null}
     </>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useHomeGallery } from "@/hooks/useHomeGallery";
 import type { HomeGalleryItem } from "@/lib/home-gallery-default";
@@ -141,52 +140,44 @@ export function GallerySection() {
           Photos and short reels from trips — curated from the admin panel.
         </p>
         {loading ? (
-          <p className="mt-8 text-sm text-ocean-600">Loading gallery…</p>
+          <p className="mt-8 text-sm font-medium text-ocean-700">Loading gallery…</p>
         ) : !current ? (
-          <p className="mt-8 text-sm text-ocean-600">No gallery items yet.</p>
+          <p className="mt-8 text-sm font-medium text-ocean-700">No gallery items yet.</p>
         ) : (
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-ocean-100 lg:col-span-2 lg:aspect-auto lg:min-h-[320px]">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={active}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0"
-                >
-                  {current.type === "video" ? (
-                    <div
-                      className="absolute inset-0"
+              <div key={active} className="absolute inset-0">
+                {current.type === "video" ? (
+                  <div
+                    className="absolute inset-0"
+                    onContextMenu={(e) => e.preventDefault()}
+                  >
+                    <video
+                      key={`${current.mediaUrl}-${mainVideoPoster || "auto-thumb"}`}
+                      className="h-full w-full object-cover"
+                      src={mainVideoSrc}
+                      poster={mainVideoPoster || undefined}
+                      controls
+                      controlsList="nodownload"
+                      disablePictureInPicture
+                      playsInline
+                      preload="metadata"
                       onContextMenu={(e) => e.preventDefault()}
                     >
-                      <video
-                        key={`${current.mediaUrl}-${mainVideoPoster || "auto-thumb"}`}
-                        className="h-full w-full object-cover"
-                        src={mainVideoSrc}
-                        poster={mainVideoPoster || undefined}
-                        controls
-                        controlsList="nodownload"
-                        disablePictureInPicture
-                        playsInline
-                        preload="metadata"
-                        onContextMenu={(e) => e.preventDefault()}
-                      >
-                        {current.alt}
-                      </video>
-                    </div>
-                  ) : (
-                    <CmsRemoteImage
-                      src={current.mediaUrl}
-                      alt={current.alt}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width:1024px) 100vw, 66vw"
-                      loading="lazy"
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
+                      {current.alt}
+                    </video>
+                  </div>
+                ) : (
+                  <CmsRemoteImage
+                    src={current.mediaUrl}
+                    alt={current.alt}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width:1024px) 100vw, 66vw"
+                    loading="lazy"
+                  />
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2 lg:grid-cols-2">
               {items.map((item, i) => (

@@ -8,9 +8,9 @@ import Script from "next/script";
  * Google Analytics 4: users, geo, device, traffic sources (standard GA4 reports).
  * Microsoft Clarity: session replay, clicks, heatmaps.
  *
- * GA4 and Clarity both use `afterInteractive` so tracking can start quickly on
- * short sessions and in-app browsers. This improves parity with server-side
- * analytics events shown in /admin/analytics.
+ * GA4 and Clarity both use `lazyOnload` so tracking does not compete with the
+ * first render/hydration work on mobile. It is better to miss a few milliseconds
+ * of heatmap timing than to make the booking page feel slow.
  *
  * Skips /admin so staff sessions are not recorded.
  */
@@ -56,6 +56,7 @@ export function MarketingScripts() {
     if (isAdmin || !GA_ID) return;
     let cancelled = false;
     let pollId: number | undefined;
+    let tries = 0;
 
     const sendPageView = () => {
       if (typeof window.gtag !== "function") return false;
@@ -73,28 +74,14 @@ export function MarketingScripts() {
     const tick = () => {
       if (cancelled) return;
       if (sendPageView()) return;
-      pollId = window.setTimeout(tick, 50);
+      tries += 1;
+      if (tries < 5) pollId = window.setTimeout(tick, 1000);
     };
 
     tick();
-    let giveUpId: number | undefined;
-    giveUpId = window.setTimeout(() => {
-      cancelled = true;
-      if (pollId !== undefined) window.clearTimeout(pollId);
-      if (
-        process.env.NODE_ENV === "development" &&
-        typeof window.gtag !== "function"
-      ) {
-        console.warn(
-          "[MarketingScripts] gtag.js did not become available within 12s — check ad blockers, CSP, and that NEXT_PUBLIC_GA_MEASUREMENT_ID is set on this build.",
-        );
-      }
-    }, 12_000);
-
     return () => {
       cancelled = true;
       if (pollId !== undefined) window.clearTimeout(pollId);
-      if (giveUpId !== undefined) window.clearTimeout(giveUpId);
     };
   }, [pathname, isAdmin]);
 
@@ -129,47 +116,12 @@ export function MarketingScripts() {
     };
   }, [pathname, isAdmin]);
 
-  useEffect(() => {
-    if (isAdmin || !CLARITY_ID) return;
-    if (typeof window === "undefined" || typeof document === "undefined") return;
-    let cancelled = false;
-    let tries = 0;
-    let retryId: number | undefined;
-    const MAX_TRIES = 5;
-    const RETRY_MS = 1500;
-
-    const ensureClarityScript = () => {
-      if (cancelled) return;
-      if (typeof window.clarity === "function") return;
-      const src = `https://www.clarity.ms/tag/${encodeURIComponent(CLARITY_ID)}`;
-      const existing = document.querySelector(
-        `script[src="${src}"]`,
-      ) as HTMLScriptElement | null;
-      if (!existing) {
-        const s = document.createElement("script");
-        s.async = true;
-        s.src = src;
-        (document.head || document.body).appendChild(s);
-      }
-      tries += 1;
-      if (tries < MAX_TRIES) {
-        retryId = window.setTimeout(ensureClarityScript, RETRY_MS);
-      }
-    };
-
-    ensureClarityScript();
-    return () => {
-      cancelled = true;
-      if (retryId !== undefined) window.clearTimeout(retryId);
-    };
-  }, [isAdmin]);
-
   if (isAdmin) return null;
 
   return (
     <>
       {GA_ID ? (
-        <Script id="ga4-gtag" strategy="afterInteractive">
+        <Script id="ga4-gtag" strategy="lazyOnload">
           {`
 (function () {
   var id = ${JSON.stringify(GA_ID)};
@@ -190,7 +142,7 @@ export function MarketingScripts() {
         <Script
           id="microsoft-clarity"
           type="text/javascript"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         >
           {`
 try {

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeroSlideBackground } from "@/components/HeroSlideBackground";
 import { HeroVideoSoundToggle } from "@/components/HeroVideoSoundToggle";
@@ -76,7 +75,7 @@ function HeroConversionCard({
     <div className="rounded-lg border border-white/20 bg-white/10 p-2 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
       <p className="text-center font-display text-base font-extrabold tabular-nums leading-tight text-cyan-600 max-sm:text-ocean-900 sm:text-xl sm:text-cyan-100">
         {priceLoading && !priceLine ? (
-          <span className="text-xs font-semibold text-white/80 max-sm:text-ocean-600">
+          <span className="text-xs font-semibold text-white/80 max-sm:text-ocean-700">
             Loading price…
           </span>
         ) : priceLine ? (
@@ -227,26 +226,17 @@ export function HeroSection() {
     <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(52dvh,420px)] sm:z-auto sm:-mt-[5.25rem] sm:min-h-[88vh] sm:overflow-hidden sm:pt-[5.25rem]">
       {/* Clip slides to hero box only; section can overflow on mobile for straddle card */}
       <div className="absolute inset-0 overflow-hidden">
-        <AnimatePresence mode="wait">
-          {current ? (
-            <motion.div
-              key={slideKey}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.8 }}
-              className="absolute inset-0"
-            >
-              <HeroSlideBackground
-                slide={current}
-                slideKey={slideKey}
-                onVideoEnded={advanceSlide}
-                shouldLoopWhenSingleSlide={n <= 1}
-                heroSoundEnabled={heroSoundOn}
-              />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {current ? (
+          <div key={slideKey} className="absolute inset-0">
+            <HeroSlideBackground
+              slide={current}
+              slideKey={slideKey}
+              onVideoEnded={advanceSlide}
+              shouldLoopWhenSingleSlide={n <= 1}
+              heroSoundEnabled={heroSoundOn}
+            />
+          </div>
+        ) : null}
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
 
@@ -269,12 +259,7 @@ export function HeroSection() {
       </h1>
       {/* Mobile: ~40% of form on hero, ~60% below hero (above urgency strip); bottom-aligned then translateY(60% of card height) */}
       <div className="pointer-events-none absolute inset-0 z-20 flex w-full items-end justify-center px-[14px] pb-0 sm:hidden">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.45 }}
-          className="pointer-events-auto relative z-30 w-full min-w-0 max-w-none"
-        >
+        <div className="pointer-events-auto relative z-30 w-full min-w-0 max-w-none">
           <div className="w-full min-w-0 translate-y-[60%]">
             <HeroConversionCard
               bookHref={bookingCard.bookHref}
@@ -288,17 +273,12 @@ export function HeroSection() {
               primaryCtaLabel={bookingCard.primaryCtaLabel}
             />
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* sm+: bottom-right in hero */}
       <div className="pointer-events-none absolute inset-0 z-10 hidden items-end justify-end p-6 pb-8 sm:flex lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="pointer-events-auto w-full max-w-sm md:max-w-md"
-        >
+        <div className="pointer-events-auto w-full max-w-sm md:max-w-md">
           <HeroConversionCard
             bookHref={bookingCard.bookHref}
             detailsHref={bookingCard.detailsHref}
@@ -310,7 +290,7 @@ export function HeroSection() {
             waPreset={bookingCard.waPreset}
             primaryCtaLabel={bookingCard.primaryCtaLabel}
           />
-        </motion.div>
+        </div>
       </div>
     </section>
   );

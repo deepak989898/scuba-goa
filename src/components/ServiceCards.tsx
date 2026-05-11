@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { ServiceCardImageSlider } from "@/components/ServiceCardImageSlider";
 import { useServices } from "@/hooks/useServices";
@@ -53,19 +52,15 @@ export function ServiceCards() {
           </p>
         </div>
         <div className="grid grid-cols-2 items-stretch gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-          {services.map((s, idx) => {
+          {services.map((s) => {
             const cardImgs = serviceDetailImages(s);
             const multi = cardImgs.filter(Boolean).length > 1;
             const imgSizes =
               "(max-width:640px) 50vw, (max-width:1024px) 50vw, 25vw";
 
             return (
-              <motion.article
+              <article
                 key={s.slug}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: Math.min(idx * 0.04, 0.3) }}
                 className="u-depth-card group relative flex h-full min-h-0 flex-col overflow-visible rounded-2xl border border-ocean-100 bg-sand"
               >
                 <Link
@@ -146,7 +141,7 @@ export function ServiceCards() {
                     </span>
                   </div>
                 </div>
-              </motion.article>
+              </article>
             );
           })}
         </div>

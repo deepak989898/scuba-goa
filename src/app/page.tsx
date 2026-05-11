@@ -1,17 +1,29 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { PaymentSuccessBanner } from "@/components/PaymentSuccessBanner";
 import { HeroSection } from "@/components/HeroSection";
-import { AdConversionStrip } from "@/components/AdConversionStrip";
-import { ServiceCards } from "@/components/ServiceCards";
-import { PackagesSection } from "@/components/PackagesSection";
 import { TrustSection } from "@/components/TrustSection";
 import { HomeBookingCTASection } from "@/components/HomeBookingCTASection";
-import { GallerySection } from "@/components/GallerySection";
 import { BlogPreview } from "@/components/BlogPreview";
-import { RatingsSection } from "@/components/RatingsSection";
 import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
+
+const AdConversionStrip = dynamic(() =>
+  import("@/components/AdConversionStrip").then((m) => m.AdConversionStrip),
+);
+const ServiceCards = dynamic(() =>
+  import("@/components/ServiceCards").then((m) => m.ServiceCards),
+);
+const PackagesSection = dynamic(() =>
+  import("@/components/PackagesSection").then((m) => m.PackagesSection),
+);
+const GallerySection = dynamic(() =>
+  import("@/components/GallerySection").then((m) => m.GallerySection),
+);
+const RatingsSection = dynamic(() =>
+  import("@/components/RatingsSection").then((m) => m.RatingsSection),
+);
 
 export const metadata: Metadata = {
   title: `${SITE_NAME} | Scuba Diving in Goa — Price, Packages & Booking`,

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { whatsappLink } from "@/lib/constants";
 
@@ -155,14 +154,19 @@ export function AiChatbot() {
     await askBot(text);
   }
 
-  /** On home + mobile, WhatsApp FAB is hidden — sit Help where WhatsApp was (no empty gap). */
-  const helpFabBottom = isHome
-    ? "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+env(safe-area-inset-bottom,0px))] max-sm:bottom-[calc(10.25rem-15px+env(safe-area-inset-bottom,0px))]"
-    : "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+env(safe-area-inset-bottom,0px))]";
-  /** Chat panel: above Help; on home mobile skip the space reserved for WhatsApp. */
-  const helpPanelBottom = isHome
-    ? "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))] max-sm:bottom-[calc(10.25rem-15px+3rem+0.5rem+env(safe-area-inset-bottom,0px))]"
-    : "bottom-[calc(10.25rem-15px+3.5rem+0.625rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))]";
+  /**
+   * Mobile sticky bar is ~6.5rem + safe-area tall. WhatsApp FAB is now hidden
+   * on mobile across the whole site (sticky bar carries WhatsApp), so the
+   * Help FAB can sit just above the bar without leaving a gap.
+   */
+  const helpFabBottom =
+    "bottom-[calc(6.5rem+0.75rem+env(safe-area-inset-bottom,0px))]";
+  /** Chat panel sits ~3.5rem above the Help FAB so they don't overlap. */
+  const helpPanelBottom =
+    "bottom-[calc(6.5rem+0.75rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))]";
+  // `isHome` is no longer needed for positioning, but keep the variable read so
+  // future re-tweaks (eg. a home-only secondary button) have it on hand.
+  void isHome;
 
   return (
     <>
@@ -173,12 +177,8 @@ export function AiChatbot() {
       >
         Help
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
+      {open ? (
+          <div
             className={`fixed right-4 z-[55] flex w-[min(100vw-2.5rem,380px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-24 md:right-[5.5rem] ${helpPanelBottom}`}
           >
             <div className="flex items-center justify-between border-b border-ocean-100 bg-ocean-50 px-4 py-3">
@@ -307,9 +307,8 @@ export function AiChatbot() {
                 </div>
               </>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        ) : null}
     </>
   );
 }

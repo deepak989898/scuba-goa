@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { usePackages } from "@/hooks/usePackages";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
@@ -22,13 +21,9 @@ export function ComboOffers() {
           when you pick a combo package.
         </p>
         <div className="mt-8 grid gap-6 md:grid-cols-2">
-          {combos.map((c, i) => (
-            <motion.div
+          {combos.map((c) => (
+            <div
               key={c.id}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.06 }}
               className="u-depth-card-dark rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -68,7 +63,7 @@ export function ComboOffers() {
                   Grab combo
                 </Link>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

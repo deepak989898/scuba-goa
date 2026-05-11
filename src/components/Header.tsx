@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { whatsappLink } from "@/lib/constants";
 import { TrustTopStrip } from "@/components/TrustTopStrip";
 
@@ -104,45 +103,38 @@ export function Header() {
         </div>
       </div>
       <TrustTopStrip isHome={isHome} />
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="z-[60] border-t border-slate-700 bg-slate-950 md:hidden"
-          >
-            <div className="flex flex-col gap-1 px-4 py-3">
+      {open ? (
+        <div className="z-[60] border-t border-slate-700 bg-slate-950 md:hidden">
+          <div className="flex flex-col gap-1 px-4 py-3">
+            <Link
+              href="/booking"
+              className="rounded-xl bg-ocean-gradient px-3 py-3 text-center text-sm font-bold text-white shadow-md"
+              onClick={() => setOpen(false)}
+            >
+              Book now — secure checkout
+            </Link>
+            {nav.map((item) => (
               <Link
-                href="/booking"
-                className="rounded-xl bg-ocean-gradient px-3 py-3 text-center text-sm font-bold text-white shadow-md"
+                key={item.href}
+                href={item.href}
+                className="rounded-lg px-3 py-2.5 text-slate-100 hover:bg-slate-800"
                 onClick={() => setOpen(false)}
               >
-                Book now — secure checkout
+                {item.label}
               </Link>
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-lg px-3 py-2.5 text-slate-100 hover:bg-slate-800"
-                  onClick={() => setOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <a
-                href={whatsappLink(
-                  "Hi, I want to book scuba diving in Goa. Please share today’s slots."
-                )}
-                className="rounded-lg px-3 py-2.5 text-cyan-300 hover:bg-slate-800"
-                onClick={() => setOpen(false)}
-              >
-                WhatsApp booking
-              </a>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            ))}
+            <a
+              href={whatsappLink(
+                "Hi, I want to book scuba diving in Goa. Please share today’s slots."
+              )}
+              className="rounded-lg px-3 py-2.5 text-cyan-300 hover:bg-slate-800"
+              onClick={() => setOpen(false)}
+            >
+              WhatsApp booking
+            </a>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }

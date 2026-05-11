@@ -349,7 +349,7 @@ export function RatingsSection() {
                       <p className="font-semibold text-ocean-900">
                         {d.authorName}
                       </p>
-                      <p className="text-xs text-ocean-600">
+                      <p className="text-xs font-medium text-ocean-700">
                         Google review · {d.place}
                       </p>
                     </div>
@@ -372,7 +372,7 @@ export function RatingsSection() {
           <h3 className="font-display text-center text-base font-semibold text-ocean-900 sm:text-lg">
             Rate your experience
           </h3>
-          <p className="mt-1 text-center text-xs text-ocean-600 sm:text-sm">
+          <p className="mt-1 text-center text-xs text-ocean-700 sm:text-sm">
             Tap a star to begin — city, name, and comment appear after you choose a
             rating.
           </p>

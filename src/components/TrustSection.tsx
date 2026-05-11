@@ -1,7 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
-
 export function TrustSection() {
   const pillars = [
     {
@@ -25,13 +21,8 @@ export function TrustSection() {
       aria-labelledby="trust-heading"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center"
-        >
-          <p className="text-xs font-semibold uppercase tracking-widest text-ocean-500 sm:text-sm">
+        <div className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-ocean-700 sm:text-sm">
             Why people stop scrolling and actually book
           </p>
           <h2
@@ -45,13 +36,8 @@ export function TrustSection() {
             a real crew, and Razorpay-backed payment. Ask for credentials before you pay;
             we expect that.
           </p>
-        </motion.div>
-        <motion.ul
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-3 sm:gap-6"
-        >
+        </div>
+        <ul className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-3 sm:gap-6">
           {pillars.map((p) => (
             <li
               key={p.title}
@@ -63,7 +49,7 @@ export function TrustSection() {
               <p className="mt-1.5 text-xs text-ocean-700 sm:text-sm">{p.body}</p>
             </li>
           ))}
-        </motion.ul>
+        </ul>
       </div>
     </section>
   );

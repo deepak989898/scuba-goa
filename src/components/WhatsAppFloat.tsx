@@ -2,18 +2,19 @@
 
 import { whatsappLink } from "@/lib/constants";
 
-type Props = {
-  /** When true, hide this FAB below the `sm` breakpoint (mobile). Use on home to avoid duplicating the sticky “WhatsApp booking” bar. */
-  hideOnMobile?: boolean;
-};
-
-export function WhatsAppFloat({ hideOnMobile = false }: Props) {
+/**
+ * Desktop-only WhatsApp FAB. The mobile sticky bottom bar already exposes a
+ * full-width WhatsApp button, so on phones this floating circle would only
+ * duplicate the same action and cover content. Kept visible from the `md`
+ * breakpoint up where the sticky bar is hidden.
+ */
+export function WhatsAppFloat() {
   return (
     <a
       href={whatsappLink()}
       target="_blank"
       rel="noopener noreferrer"
-      className={`fixed bottom-[calc(10.25rem-15px+env(safe-area-inset-bottom,0px))] right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-emerald-900/30 transition hover:scale-105 md:bottom-8 md:right-8 ${hideOnMobile ? "max-sm:hidden" : ""}`}
+      className="fixed bottom-8 right-8 z-[60] hidden h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-emerald-900/30 transition hover:scale-105 md:flex"
       aria-label="Chat on WhatsApp"
     >
       <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">

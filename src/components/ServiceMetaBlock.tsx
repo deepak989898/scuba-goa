@@ -40,7 +40,7 @@ export function ServiceMetaBlock({
 
   return (
     <div className="mt-1.5 space-y-1 sm:mt-2 sm:space-y-2">
-      <p className="text-xs text-ocean-600 sm:text-sm">{s.duration}</p>
+      <p className="text-xs font-medium text-ocean-700 sm:text-sm">{s.duration}</p>
       <p className="text-xs font-medium text-amber-700 sm:text-sm">
         ⭐ {s.rating.toFixed(1)} rated
       </p>
@@ -54,8 +54,8 @@ export function ServiceMetaBlock({
       <div
         className={
           variant === "cardGrid"
-            ? "flex min-h-[2.125rem] flex-col justify-end gap-0.5 text-[10px] text-ocean-600 sm:min-h-[2.25rem] sm:text-xs"
-            : "flex flex-col gap-0.5 text-[10px] text-ocean-600 sm:text-xs"
+            ? "flex min-h-[2.125rem] flex-col justify-end gap-0.5 text-[10px] font-medium text-ocean-700 sm:min-h-[2.25rem] sm:text-xs"
+            : "flex flex-col gap-0.5 text-[10px] font-medium text-ocean-700 sm:text-xs"
         }
       >
         <div className="flex flex-wrap gap-1.5 sm:gap-2">

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { usePackages } from "@/hooks/usePackages";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
@@ -44,17 +43,13 @@ export function PackagesSection() {
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-3">
-            {packages.map((p, idx) => {
+            {packages.map((p) => {
               const cardImage =
                 p.imageUrl?.trim() ||
                 "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=720&q=65";
               return (
-              <motion.article
+              <article
                 key={p.id}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.05 }}
                 className="u-depth-card flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white"
               >
                 <div className="relative aspect-[3/2] sm:aspect-[5/4]">
@@ -78,13 +73,13 @@ export function PackagesSection() {
                   ) : null}
                 </div>
                 <div className="flex flex-1 flex-col p-2.5 sm:p-5">
-                  <p className="text-[9px] font-medium uppercase tracking-wide text-ocean-500 sm:text-xs">
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-ocean-700 sm:text-xs">
                     {p.category ?? "Goa"}
                   </p>
                   <h3 className="mt-0.5 font-display text-sm font-semibold leading-snug text-ocean-900 sm:mt-1 sm:text-xl">
                     {p.name}
                   </h3>
-                  <p className="mt-0.5 text-[11px] text-ocean-600 sm:mt-1 sm:text-sm">{p.duration}</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-ocean-700 sm:mt-1 sm:text-sm">{p.duration}</p>
                   <p className="mt-1 text-[11px] font-medium text-amber-700 sm:mt-2 sm:text-sm">
                     ⭐ {p.rating.toFixed(1)} rated
                   </p>
@@ -98,7 +93,7 @@ export function PackagesSection() {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-2 flex flex-wrap items-center gap-1 text-[9px] text-ocean-600 sm:mt-4 sm:gap-2 sm:text-xs">
+                  <div className="mt-2 flex flex-wrap items-center gap-1 text-[9px] text-ocean-800 sm:mt-4 sm:gap-2 sm:text-xs">
                     {p.slotsLeft != null ? (
                       <span className="font-semibold text-red-600">
                         Only {p.slotsLeft} slots left
@@ -153,7 +148,7 @@ export function PackagesSection() {
                     </div>
                   </div>
                 </div>
-              </motion.article>
+              </article>
             );
             })}
           </div>

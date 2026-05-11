@@ -16,7 +16,7 @@ export function BlogPreview() {
           </div>
           <Link
             href="/blog"
-            className="text-xs font-semibold text-ocean-600 hover:text-ocean-800 sm:text-sm"
+            className="text-xs font-semibold text-ocean-700 hover:text-ocean-900 sm:text-sm"
           >
             All articles →
           </Link>
@@ -28,7 +28,7 @@ export function BlogPreview() {
                 href={`/blog/${p.slug}`}
                 className="u-depth-card block rounded-2xl border border-ocean-100 bg-sand p-4 hover:border-ocean-300 sm:p-5"
               >
-                <p className="text-[10px] text-ocean-500 sm:text-xs">
+                <p className="text-[10px] font-medium text-ocean-700 sm:text-xs">
                   {p.date} · {p.readTime}
                 </p>
                 <h3 className="mt-1.5 font-display text-base font-semibold leading-snug text-ocean-900 sm:mt-2 sm:text-lg">
