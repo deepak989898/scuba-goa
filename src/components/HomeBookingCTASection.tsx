@@ -13,9 +13,13 @@ export function HomeBookingCTASection() {
   );
 
   return (
+    // Hidden on phones — the persistent sticky bottom bar (Call / WhatsApp /
+    // Book Today) already covers this conversion step on mobile and a second
+    // full-bleed CTA below the gallery felt repetitive there. Shown from
+    // `sm:` upward as a high-impact closing CTA on tablets and desktop.
     <section
       id="book"
-      className="relative overflow-hidden bg-gradient-to-b from-ocean-900 to-ocean-950 py-14 sm:py-20"
+      className="relative hidden overflow-hidden bg-gradient-to-b from-ocean-900 to-ocean-950 sm:block sm:py-20"
       aria-labelledby="home-book-cta-heading"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />

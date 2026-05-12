@@ -32,7 +32,7 @@ export function Footer() {
   return (
     <footer className="border-t border-slate-800 bg-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           <div>
             <p className="font-display text-xl font-semibold text-slate-100">
               {SITE_NAME}
@@ -42,29 +42,39 @@ export function Footer() {
               adventure—book fast with WhatsApp or secure online pay.
             </p>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-100">Quick links</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-200">
-              {quick.map((q) => (
-                <li key={q.href}>
-                  <Link href={q.href} className="hover:text-cyan-300">
-                    {q.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-100">Legal</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-200">
-              {legal.map((q) => (
-                <li key={q.href}>
-                  <Link href={q.href} className="hover:text-cyan-300">
-                    {q.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {/*
+            Quick links + Legal share a single bordered card on every
+            breakpoint — Quick links on the left, Legal on the right. The
+            two-column inner grid keeps both stacks readable from 320 px
+            phones up to wide desktops.
+          */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Quick links</p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                  {quick.map((q) => (
+                    <li key={q.href}>
+                      <Link href={q.href} className="hover:text-cyan-300">
+                        {q.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Legal</p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                  {legal.map((q) => (
+                    <li key={q.href}>
+                      <Link href={q.href} className="hover:text-cyan-300">
+                        {q.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-100">Contact</p>
@@ -120,7 +130,7 @@ export function Footer() {
               </li>
             </ul>
           </div>
-          <div className="md:col-span-2 lg:col-span-1">
+          <div>
             <p className="text-sm font-semibold text-slate-100">Location</p>
             <address className="mt-2 not-italic text-xs leading-relaxed text-slate-200">
               {OFFICE_ADDRESS_LINES.map((line) => (

@@ -15,9 +15,13 @@ export function TrustSection() {
   ];
 
   return (
+    // Hidden on phones — the sticky bottom bar already exposes Call,
+    // WhatsApp, and Book Today, and the homepage flow on mobile is
+    // intentionally streamlined. Shown from `sm:` (≥ 640 px) upward where
+    // there is enough vertical space for the three pillars to feel useful.
     <section
       id="trust"
-      className="bg-white pt-8 pb-14 sm:pt-10 sm:pb-20"
+      className="hidden bg-white sm:block sm:pt-10 sm:pb-20"
       aria-labelledby="trust-heading"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
