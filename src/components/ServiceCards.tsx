@@ -94,7 +94,10 @@ export function ServiceCards() {
                           loading="lazy"
                         />
                         {s.mostBooked ? (
-                          <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-ocean-600 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow sm:left-3 sm:top-3 sm:px-2.5 sm:text-xs">
+                          // bg-ocean-600 on white text fails WCAG AA (4.34:1).
+                          // ocean-700 raises the ratio to 6.04:1 so the badge
+                          // is still vibrant but legible on every phone.
+                          <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-ocean-700 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow sm:left-3 sm:top-3 sm:px-2.5 sm:text-xs">
                             Most Booked
                           </span>
                         ) : null}

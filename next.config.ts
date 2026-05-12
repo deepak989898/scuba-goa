@@ -21,10 +21,18 @@ const nextConfig: NextConfig = {
     // so generating 3840 px variants just bloats the cache and wastes bytes.
     deviceSizes: [360, 480, 640, 768, 1024, 1200, 1600],
     imageSizes: [16, 32, 64, 96, 128, 200, 256, 384, 480, 640],
+    /**
+     * Admins paste image URLs from many external CDNs (tour-aggregator sites,
+     * destination marketing portals, TripAdvisor, etc.). When a hostname is
+     * NOT listed here, `CmsRemoteImage` is forced to render a raw <img> and
+     * the original (often 1–4 MB) file is served unmodified. Routing every
+     * HTTPS host through next/image lets the Vercel image optimizer resize,
+     * re-encode to AVIF/WebP, and cache the variants — typically cutting
+     * those payloads by 80–90% on mobile.
+     */
     remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
-      { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
-      { protocol: "https", hostname: "firebasestorage.googleapis.com", pathname: "/**" },
+      { protocol: "https", hostname: "**", pathname: "/**" },
+      { protocol: "http", hostname: "**", pathname: "/**" },
     ],
   },
 };

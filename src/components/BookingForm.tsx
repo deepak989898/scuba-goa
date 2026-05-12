@@ -597,7 +597,7 @@ export function BookingForm() {
                       type="button"
                       disabled={promoBusy || !promoDraft.trim()}
                       onClick={() => void applyPromoCode()}
-                      className="min-h-11 touch-manipulation rounded-full bg-amber-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-500 disabled:opacity-50"
+                      className="min-h-11 touch-manipulation rounded-full bg-amber-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50"
                     >
                       {promoBusy ? "…" : "Apply"}
                     </button>

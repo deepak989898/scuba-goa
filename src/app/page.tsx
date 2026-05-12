@@ -3,12 +3,14 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { PaymentSuccessBanner } from "@/components/PaymentSuccessBanner";
 import { HeroSection } from "@/components/HeroSection";
-import { TrustSection } from "@/components/TrustSection";
-import { HomeBookingCTASection } from "@/components/HomeBookingCTASection";
-import { BlogPreview } from "@/components/BlogPreview";
-import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 
+/**
+ * Everything below the hero is split into its own chunk so the homepage JS
+ * payload PageSpeed measures on first paint stays small. With ~150 KB of
+ * "unused JavaScript" reported on mobile, splitting the below-the-fold
+ * sections lets the browser parse them only when they are about to render.
+ */
 const AdConversionStrip = dynamic(() =>
   import("@/components/AdConversionStrip").then((m) => m.AdConversionStrip),
 );
@@ -23,6 +25,18 @@ const GallerySection = dynamic(() =>
 );
 const RatingsSection = dynamic(() =>
   import("@/components/RatingsSection").then((m) => m.RatingsSection),
+);
+const TrustSection = dynamic(() =>
+  import("@/components/TrustSection").then((m) => m.TrustSection),
+);
+const HomeBookingCTASection = dynamic(() =>
+  import("@/components/HomeBookingCTASection").then((m) => m.HomeBookingCTASection),
+);
+const BlogPreview = dynamic(() =>
+  import("@/components/BlogPreview").then((m) => m.BlogPreview),
+);
+const HomeScubaInfoSection = dynamic(() =>
+  import("@/components/HomeScubaInfoSection").then((m) => m.HomeScubaInfoSection),
 );
 
 export const metadata: Metadata = {

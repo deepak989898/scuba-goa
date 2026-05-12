@@ -234,7 +234,7 @@ export function AiChatbot() {
                       key={i}
                       className={
                         m.role === "user"
-                          ? "ml-4 rounded-lg bg-ocean-600 px-3 py-2 text-white"
+                          ? "ml-4 rounded-lg bg-ocean-700 px-3 py-2 text-white"
                           : "mr-4 rounded-lg bg-ocean-50 px-3 py-2 text-ocean-900"
                       }
                     >
@@ -279,7 +279,7 @@ export function AiChatbot() {
                   <button
                     type="button"
                     onClick={send}
-                    className="min-h-11 touch-manipulation rounded-full bg-ocean-600 px-4 py-3 text-sm font-semibold text-white"
+                    className="min-h-11 touch-manipulation rounded-full bg-ocean-700 px-4 py-3 text-sm font-semibold text-white"
                   >
                     Send
                   </button>

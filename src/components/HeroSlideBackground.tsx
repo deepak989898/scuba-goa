@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { HeroYoutubeSlide } from "@/components/HeroYoutubeSlide";
+import { useShouldRenderHeroVideo } from "@/hooks/useShouldRenderHeroVideo";
 import {
   getHeroFallbackMusicSrc,
   HERO_AMBIENT_VOLUME,
@@ -31,9 +32,10 @@ export function HeroSlideBackground({
   const ytId = vUrl ? getYoutubeVideoId(vUrl) : null;
   const ambientSrc = getHeroFallbackMusicSrc();
   const videoPosterSrc = getHeroVideoPosterSrc(slide);
+  const shouldRenderVideo = useShouldRenderHeroVideo();
 
   useEffect(() => {
-    if (!vUrl || ytId) return;
+    if (!vUrl || ytId || !shouldRenderVideo) return;
     const v = videoRef.current;
     if (!v) return;
 
@@ -108,12 +110,13 @@ export function HeroSlideBackground({
     slide.useAmbientMusic,
     shouldLoopWhenSingleSlide,
     heroSoundEnabled,
+    shouldRenderVideo,
   ]);
 
-  if (!vUrl) {
+  if (!vUrl || !shouldRenderVideo) {
     return (
       <CmsRemoteImage
-        src={slide.src}
+        src={videoPosterSrc || slide.src}
         alt={slide.alt}
         fill
         priority

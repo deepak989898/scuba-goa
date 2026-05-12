@@ -7,6 +7,7 @@ import { HeroVideoSoundToggle } from "@/components/HeroVideoSoundToggle";
 import { useHeroSlides } from "@/hooks/useHeroSlides";
 import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
+import { useShouldRenderHeroVideo } from "@/hooks/useShouldRenderHeroVideo";
 import { whatsappLink } from "@/lib/constants";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 import { resolveHeroBookingCardModel } from "@/lib/hero-slide-booking";
@@ -191,14 +192,18 @@ export function HeroSection() {
     setI((x) => (n > 0 ? x % n : 0));
   }, [n]);
 
+  const videoActuallyPlays = useShouldRenderHeroVideo();
   const currentHasVideo = Boolean(slides[i]?.videoUrl?.trim());
+  // On mobile / Save-Data we render the poster instead of the <video>, so the
+  // `onEnded` callback never fires. Keep the slider moving with the timer.
+  const useTimerAdvance = !currentHasVideo || !videoActuallyPlays;
 
   useEffect(() => {
     if (n <= 1) return;
-    if (currentHasVideo) return;
+    if (!useTimerAdvance) return;
     const t = window.setInterval(() => advanceSlide(), 5500);
     return () => window.clearInterval(t);
-  }, [n, i, advanceSlide, currentHasVideo]);
+  }, [n, i, advanceSlide, useTimerAdvance]);
 
   const current = slides[i] ?? slides[0];
   const slideKey = current
@@ -240,7 +245,7 @@ export function HeroSection() {
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
 
-      {currentHasVideo ? (
+      {currentHasVideo && videoActuallyPlays ? (
         <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
           <HeroVideoSoundToggle
             soundOn={heroSoundOn}

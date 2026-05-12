@@ -150,7 +150,7 @@ export default function AdminRatingsPage() {
                 <div>
                   <p className="font-semibold text-ocean-900">
                     {r.authorName}{" "}
-                    <span className="text-amber-600">
+                    <span className="text-amber-700">
                       {"★".repeat(Math.min(5, Math.max(0, r.rating)))}
                     </span>
                   </p>

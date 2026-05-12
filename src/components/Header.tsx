@@ -74,7 +74,7 @@ export function Header() {
             rel="noopener noreferrer"
             className={
               isHome
-                ? "hidden rounded-full border border-emerald-700/90 bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-black/20 transition hover:bg-emerald-500 sm:inline-flex"
+                ? "hidden rounded-full border border-emerald-800/90 bg-emerald-700 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-black/20 transition hover:bg-emerald-600 sm:inline-flex"
                 : "hidden rounded-full border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 sm:inline-flex"
             }
           >

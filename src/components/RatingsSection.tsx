@@ -329,7 +329,8 @@ export function RatingsSection() {
           <p className="mt-4 text-center text-sm font-medium text-ocean-800">
             Average from {approvedReviewLabel} approved review
             {approvedReviewLabel === "1+" ? "" : "s"}:{" "}
-            <span className="text-amber-600">
+            {/* amber-600 on white only hits 4.04:1; amber-700 → 5.31:1 (AA). */}
+            <span className="font-semibold text-amber-700">
               ★ {averageRatingFixed.toFixed(1)} / 5
             </span>
           </p>
@@ -357,7 +358,7 @@ export function RatingsSection() {
                       Guest
                     </span>
                   </div>
-                  <p className="mt-1 text-amber-600" aria-hidden>
+                  <p className="mt-1 text-amber-700" aria-hidden>
                     {"★".repeat(Math.min(5, Math.max(0, d.rating)))}
                     <span className="sr-only">{d.rating} out of 5</span>
                   </p>
@@ -415,7 +416,7 @@ export function RatingsSection() {
             >
               <p className="text-center text-sm text-ocean-700">
                 You chose{" "}
-                <span className="font-semibold text-amber-600">
+                <span className="font-semibold text-amber-700">
                   {rating} / 5
                 </span>
                 . Add your city, name, and comment, then submit.

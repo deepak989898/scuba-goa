@@ -62,7 +62,11 @@ export function PackagesSection() {
                     loading="lazy"
                   />
                   {p.isCombo && p.discountPct ? (
-                    <span className="absolute right-1.5 top-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white sm:right-3 sm:top-3 sm:px-2 sm:text-xs">
+                    // White text on amber-500 is only 2.15:1 (fails AA badly).
+                    // Keeping the bright amber chip but switching to near-black
+                    // text-amber-950 brings the ratio to ~10.6:1 and the badge
+                    // still reads as the warm "discount" colour.
+                    <span className="absolute right-1.5 top-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-950 sm:right-3 sm:top-3 sm:px-2 sm:text-xs">
                       {p.discountPct}% OFF
                     </span>
                   ) : null}

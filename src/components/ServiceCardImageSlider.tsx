@@ -95,7 +95,7 @@ export function ServiceCardImageSlider({
         </div>
       ))}
       {mostBooked ? (
-        <span className="pointer-events-none absolute left-1.5 top-1.5 z-10 rounded-full bg-ocean-600 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow sm:left-3 sm:top-3 sm:px-2.5 sm:text-xs">
+        <span className="pointer-events-none absolute left-1.5 top-1.5 z-10 rounded-full bg-ocean-700 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow sm:left-3 sm:top-3 sm:px-2.5 sm:text-xs">
           Most Booked
         </span>
       ) : null}

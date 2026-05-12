@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
-import { MarketingScripts } from "@/components/MarketingScripts";
+import { DeferredMarketingScripts } from "@/components/DeferredMarketingScripts";
 import { Providers } from "@/components/Providers";
 import { SiteChrome } from "@/components/SiteChrome";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
@@ -88,7 +88,7 @@ export default function RootLayout({
         <Providers>
           <SiteChrome>{children}</SiteChrome>
         </Providers>
-        <MarketingScripts />
+        <DeferredMarketingScripts />
       </body>
     </html>
   );
