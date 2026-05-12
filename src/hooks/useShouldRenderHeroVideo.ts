@@ -2,42 +2,49 @@
 
 import { useEffect, useState } from "react";
 
-/**
- * Below this viewport width the hero <video> is never mounted. Mobile users
- * were downloading the full 3–5 MB clip on first paint — `preload="metadata"`
- * isn't enough because autoplay forces the full fetch. The poster image
- * (AVIF/WebP via next/image) keeps the hero visually rich on small screens.
- */
-export const HERO_VIDEO_MIN_VIEWPORT_PX = 768;
-
 type Conn = {
   saveData?: boolean;
   effectiveType?: "slow-2g" | "2g" | "3g" | "4g" | "5g";
 };
 
 /**
- * Returns `true` only when the viewport is wide enough AND the connection
- * isn't reporting Save-Data or a slow effective type. Always `false` on the
- * server so SSR markup is identical for everyone (no hydration mismatch).
+ * The hero <video> renders on every viewport, including phones — owners want
+ * the cinematic loop to be visible everywhere. We still skip it when:
+ *
+ *  - `navigator.connection.saveData` is on (user opted into reduced data), or
+ *  - `effectiveType` is `slow-2g` / `2g` (cell network is too weak to stream).
+ *
+ * `3g` is intentionally allowed so that typical Indian 4G/LTE phones — which
+ * sometimes downgrade to 3g briefly — still get the video. We always return
+ * `false` on the server so SSR markup is identical for everyone and there is
+ * no hydration mismatch; the effect flips it on after mount.
  */
 export function useShouldRenderHeroVideo(): boolean {
   const [render, setRender] = useState(false);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mq = window.matchMedia(`(min-width: ${HERO_VIDEO_MIN_VIEWPORT_PX}px)`);
     const nav = navigator as Navigator & { connection?: Conn };
+
     const evaluate = () => {
       const conn = nav.connection;
-      const slowNetwork =
+      const tooSlow =
         conn?.saveData === true ||
         conn?.effectiveType === "slow-2g" ||
-        conn?.effectiveType === "2g" ||
-        conn?.effectiveType === "3g";
-      setRender(mq.matches && !slowNetwork);
+        conn?.effectiveType === "2g";
+      setRender(!tooSlow);
     };
+
     evaluate();
-    mq.addEventListener("change", evaluate);
-    return () => mq.removeEventListener("change", evaluate);
+
+    type ConnectionWithListener = Conn & {
+      addEventListener?: (type: "change", listener: () => void) => void;
+      removeEventListener?: (type: "change", listener: () => void) => void;
+    };
+    const conn = nav.connection as ConnectionWithListener | undefined;
+    conn?.addEventListener?.("change", evaluate);
+    return () => conn?.removeEventListener?.("change", evaluate);
   }, []);
+
   return render;
 }

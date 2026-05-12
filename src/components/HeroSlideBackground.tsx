@@ -144,16 +144,25 @@ export function HeroSlideBackground({
 
   return (
     <>
+      {/*
+        iOS Safari and most Android browsers only honor autoplay when the
+        video element carries `autoplay muted playsinline` declaratively. The
+        effect above still drives audio behaviour when the user enables sound;
+        the declarative `muted` keeps the initial load mobile-autoplay-safe.
+
+        `preload="metadata"` (instead of "auto") avoids fetching the full clip
+        on every page load — the browser only pulls enough bytes to start
+        playback, and the poster image keeps the hero visible until then.
+      */}
       <video
         ref={videoRef}
         key={slideKey}
         className="absolute inset-0 h-full w-full object-cover object-center"
         poster={videoPosterSrc}
         src={vUrl}
+        autoPlay
+        muted
         playsInline
-        // Was "auto" — that downloads the full hero clip (often 10-30 MB) on every
-        // page load and dominates the network payload. "metadata" fetches only the
-        // first chunk needed to start playback; the poster keeps the hero visible.
         preload="metadata"
         loop={shouldLoopWhenSingleSlide}
         onEnded={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
