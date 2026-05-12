@@ -22,8 +22,9 @@ Open [http://localhost:3000](http://localhost:3000).
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Server order creation + signature verify |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Must match `RAZORPAY_KEY_ID` exactly — see [docs/RAZORPAY-TEST.md](docs/RAZORPAY-TEST.md) |
 | `OPENAI_API_KEY` | Optional AI concierge |
-| `NEXT_PUBLIC_CONTACT_PHONE_PRIMARY` | Primary call/contact number, international digits, no `+` (e.g. `918354075026` for +91 83540 75026) |
-| `NEXT_PUBLIC_WHATSAPP_NUMBER` | International digits, no `+` (e.g. `919217290871` for +91 92172 90871) |
+| `NEXT_PUBLIC_CONTACT_PHONE_PRIMARY` | Primary call/contact number, international digits, no `+` (e.g. `918354075026` for +91 83540 75026). Also used as the default WhatsApp number when `NEXT_PUBLIC_WHATSAPP_NUMBER` is unset. |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | Optional. International digits, no `+`. Defaults to `NEXT_PUBLIC_CONTACT_PHONE_PRIMARY` so calls and WhatsApp messages reach the same line. Set explicitly to route WhatsApp to a different handset. |
+| `NEXT_PUBLIC_CONTACT_PHONE_SECOND` | Optional secondary call line shown in footer / contact page (e.g. `919217290871`). |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for SEO / sitemap |
 
 ## Admin: packages, services, bookings

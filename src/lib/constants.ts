@@ -13,17 +13,21 @@ export const PRIMARY_SEO_KEYWORDS = [
 export const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "support@bookscubagoa.com";
 
-/** WhatsApp messaging line. International digits only, no + (e.g. 919217290871). */
-export const WHATSAPP_NUMBER =
-  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "919217290871";
-
-const whatsappDigits = () => WHATSAPP_NUMBER.replace(/\D/g, "");
-
 /** Primary call/contact line. International digits only, no + (e.g. 918354075026). */
 export const CONTACT_PHONE_NUMBER =
   process.env.NEXT_PUBLIC_CONTACT_PHONE_PRIMARY ?? "918354075026";
 
 const primaryPhoneDigits = () => CONTACT_PHONE_NUMBER.replace(/\D/g, "");
+
+/**
+ * WhatsApp messaging line. International digits only, no + (e.g. 918354075026).
+ * Defaults to the primary call number so admin receives both calls and
+ * WhatsApp messages on the same handset unless explicitly overridden via env.
+ */
+export const WHATSAPP_NUMBER =
+  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? CONTACT_PHONE_NUMBER;
+
+const whatsappDigits = () => WHATSAPP_NUMBER.replace(/\D/g, "");
 
 function formatIndiaPhoneLabel(digits: string): string {
   if (digits.length === 12 && digits.startsWith("91")) {
@@ -38,9 +42,9 @@ export const CONTACT_PHONE_HREF = `tel:+${primaryPhoneDigits()}`;
 export const CONTACT_PHONE_LABEL = (() =>
   formatIndiaPhoneLabel(primaryPhoneDigits()))();
 
-/** Secondary contact line, used for WhatsApp messaging by default. */
+/** Secondary call line (e.g. backup mobile). Defaults to 919217290871. */
 const secondPhoneDigits = () =>
-  (process.env.NEXT_PUBLIC_CONTACT_PHONE_SECOND ?? WHATSAPP_NUMBER).replace(
+  (process.env.NEXT_PUBLIC_CONTACT_PHONE_SECOND ?? "919217290871").replace(
     /\D/g,
     "",
   );
