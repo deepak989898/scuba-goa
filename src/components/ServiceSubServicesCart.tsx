@@ -57,7 +57,7 @@ export function ServiceSubServicesCart({ service: s }: Props) {
                 </ul>
               ) : null}
               {sub.slotsLeft != null || sub.bookedToday != null ? (
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-ocean-600">
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-ocean-700">
                   {sub.slotsLeft != null ? (
                     <span className="font-semibold text-red-600">
                       Only {sub.slotsLeft} slots left

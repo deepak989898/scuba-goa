@@ -39,7 +39,7 @@ export function ServiceDetailSections({ service: s }: { service: ServiceItem }) 
   }
 
   return (
-    <p className="text-base text-ocean-600">
+    <p className="text-base text-ocean-700">
       See options below or reach us on WhatsApp for timings and pickup.
     </p>
   );

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Script from "next/script";
 import { useCart } from "@/context/CartContext";
 import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
@@ -11,6 +10,7 @@ import { HERO_BOOKING_OPT_PARAM } from "@/lib/hero-slide-booking";
 import { encodePackageOption, parseBookingOption } from "@/lib/booking-selection";
 import { BookingPackagePicker } from "@/components/BookingPackagePicker";
 import { SITE_NAME } from "@/lib/constants";
+import { loadRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 import { persistPaymentConfirmationFromApi } from "@/lib/payment-confirmation";
 import {
@@ -320,11 +320,6 @@ export function BookingForm() {
       return;
     }
 
-    if (!window.Razorpay) {
-      setMsg("Payment script still loading—try again in a second.");
-      return;
-    }
-
     const summary = cartSummary(lines);
     const cartItems = lines.map((l) => ({
       kind: l.kind,
@@ -337,6 +332,11 @@ export function BookingForm() {
 
     setBusy(true);
     try {
+      await loadRazorpayCheckout();
+      const Razorpay = window.Razorpay;
+      if (!Razorpay) {
+        throw new Error("Payment checkout could not start. Please try again.");
+      }
       const key = await resolveRazorpayKeyId();
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
@@ -432,7 +432,7 @@ export function BookingForm() {
         theme: { color: "#0284c7" },
       };
 
-      const rzp = new window.Razorpay(options);
+      const rzp = new Razorpay(options);
       attachRazorpayPaymentFailed(rzp, (m) => {
         setMsg(m);
         setBusy(false);
@@ -477,10 +477,6 @@ export function BookingForm() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
-      />
       <div className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
         <h2 className="font-display text-xl font-semibold text-ocean-900">
           Book in 60 seconds
@@ -493,7 +489,7 @@ export function BookingForm() {
           </li>
         </ol>
         {loading ? (
-          <p className="mt-6 text-sm text-ocean-600">Loading packages…</p>
+          <p className="mt-6 text-sm text-ocean-700">Loading packages…</p>
         ) : (
           <div className="mt-6 space-y-4">
             <label className="block cursor-pointer text-sm font-medium text-ocean-800">
@@ -504,7 +500,7 @@ export function BookingForm() {
                 onSelect={onPickerChange}
               />
             </label>
-            <p className="text-xs text-ocean-600">
+            <p className="text-xs text-ocean-700">
               Each choice adds one unit to your cart. Use +/− below for more people
               or repeat bookings of the same item.
             </p>
@@ -514,9 +510,9 @@ export function BookingForm() {
                 Your cart (this page &amp; site-wide)
               </p>
               {!cartReady ? (
-                <p className="mt-2 text-xs text-ocean-600">Loading cart…</p>
+                <p className="mt-2 text-xs text-ocean-700">Loading cart…</p>
               ) : lines.length === 0 ? (
-                <p className="mt-2 text-sm text-ocean-600">
+                <p className="mt-2 text-sm text-ocean-700">
                   No items yet. Pick a package or service from the dropdown above —
                   it will appear here so you can change quantity or remove it.
                 </p>
@@ -529,7 +525,7 @@ export function BookingForm() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-ocean-900">{line.name}</p>
-                        <p className="text-xs text-ocean-600">
+                        <p className="text-xs text-ocean-700">
                           ₹{line.unitPrice.toLocaleString("en-IN")} each · line{" "}
                           ₹{(line.unitPrice * line.quantity).toLocaleString("en-IN")}
                         </p>
@@ -538,7 +534,7 @@ export function BookingForm() {
                         <div className="flex items-center gap-1 rounded-lg border border-ocean-200">
                           <button
                             type="button"
-                            className="h-8 w-8 text-ocean-800"
+                          className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
                             aria-label="Decrease quantity"
                             onClick={() =>
                               setQuantity(line.key, line.quantity - 1)
@@ -551,7 +547,7 @@ export function BookingForm() {
                           </span>
                           <button
                             type="button"
-                            className="h-8 w-8 text-ocean-800"
+                          className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
                             aria-label="Increase quantity"
                             onClick={() =>
                               setQuantity(line.key, line.quantity + 1)
@@ -562,7 +558,7 @@ export function BookingForm() {
                         </div>
                         <button
                           type="button"
-                          className="text-xs font-semibold text-red-600 hover:underline"
+                          className="min-h-11 touch-manipulation rounded-full px-4 py-3 text-sm font-bold text-red-700 hover:bg-red-50"
                           onClick={() => removeLine(line.key)}
                         >
                           Remove
@@ -601,7 +597,7 @@ export function BookingForm() {
                       type="button"
                       disabled={promoBusy || !promoDraft.trim()}
                       onClick={() => void applyPromoCode()}
-                      className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-amber-500 disabled:opacity-50"
+                      className="min-h-11 touch-manipulation rounded-full bg-amber-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-500 disabled:opacity-50"
                     >
                       {promoBusy ? "…" : "Apply"}
                     </button>
@@ -612,7 +608,7 @@ export function BookingForm() {
                           setPromoApplied(null);
                           setMsg(null);
                         }}
-                        className="rounded-lg border border-amber-700/30 bg-white px-3 py-2 text-xs font-semibold text-amber-950"
+                        className="min-h-11 touch-manipulation rounded-full border border-amber-700/30 bg-white px-4 py-3 text-sm font-bold text-amber-950"
                       >
                         Remove
                       </button>
@@ -711,7 +707,7 @@ export function BookingForm() {
                   <p className="text-lg font-bold text-ocean-900">
                     {promoApplied ? (
                       <>
-                        <span className="text-base font-semibold text-ocean-600 line-through">
+                        <span className="text-base font-semibold text-ocean-700 line-through">
                           ₹{subtotalInr.toLocaleString("en-IN")}
                         </span>{" "}
                         <span className="text-ocean-900">
@@ -758,7 +754,7 @@ export function BookingForm() {
                       </div>
                     </>
                   ) : (
-                    <p className="text-sm text-ocean-600">
+                    <p className="text-sm text-ocean-700">
                       Cart total is below ₹
                       {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × units; you’ll pay
                       the full amount.
@@ -778,7 +774,7 @@ export function BookingForm() {
                 >
                   {payButtonLabel}
                 </button>
-                <p className="text-center text-xs text-ocean-600">
+                <p className="text-center text-xs text-ocean-700">
                   Razorpay (UPI / card / netbanking) → instant confirm on this site + email when
                   configured.
                 </p>

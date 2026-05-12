@@ -17,7 +17,7 @@ const points: { title: string; body: ReactNode }[] = [
       <>
         Many of our experiences include coordinated hotel pickup so you are not negotiating
         last-minute taxis at crowded beach points. Confirm pickup zones when you{" "}
-        <Link href="/booking" className="font-semibold text-ocean-600 hover:text-ocean-800">
+        <Link href="/booking" className="font-semibold text-ocean-700 hover:text-ocean-800">
           book online
         </Link>
         .
@@ -30,7 +30,7 @@ const points: { title: string; body: ReactNode }[] = [
       <>
         We focus on transparent inclusions—taxes, media, boat transfer, and time in water—so
         you compare apples to apples. See live package cards on{" "}
-        <Link href="/services" className="font-semibold text-ocean-600 hover:text-ocean-800">
+        <Link href="/services" className="font-semibold text-ocean-700 hover:text-ocean-800">
           all services
         </Link>{" "}
         before you pay.
@@ -54,11 +54,11 @@ export function BlogWhyChooseSection() {
       <p className="mt-3 text-sm leading-relaxed text-ocean-700 sm:text-base">
         Goa has many operators. The difference is predictable scheduling, verified gear cycles,
         and support when weather shifts. Use this site to{" "}
-        <Link href="/booking" className="font-semibold text-ocean-600 hover:text-ocean-800">
+        <Link href="/booking" className="font-semibold text-ocean-700 hover:text-ocean-800">
           book online
         </Link>{" "}
         with clear meeting times—or browse{" "}
-        <Link href="/services" className="font-semibold text-ocean-600 hover:text-ocean-800">
+        <Link href="/services" className="font-semibold text-ocean-700 hover:text-ocean-800">
           all services
         </Link>{" "}
         including scuba, tours, and water sports.

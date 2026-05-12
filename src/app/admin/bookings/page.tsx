@@ -353,9 +353,9 @@ export default function AdminBookingsPage() {
         </p>
       ) : null}
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-8 text-ocean-700">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="mt-8 text-ocean-600">No bookings yet.</p>
+        <p className="mt-8 text-ocean-700">No bookings yet.</p>
       ) : (
         <ul className="mt-8 space-y-6">
           {rows.map((r) => {
@@ -380,7 +380,7 @@ export default function AdminBookingsPage() {
                       {String(r.packageName ?? "—")}
                     </p>
                   </div>
-                  <div className="text-right text-xs text-ocean-600">
+                  <div className="text-right text-xs text-ocean-700">
                     <p className="font-medium text-ocean-800">Booking recorded</p>
                     <p>{formatDateTimeAmPm(r.createdAt)}</p>
                   </div>
@@ -438,7 +438,7 @@ export default function AdminBookingsPage() {
                 </dl>
 
                 <div className="mt-4 rounded-xl bg-ocean-50/80 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ocean-600">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
                     Payment
                   </p>
                   <p className="mt-1 text-ocean-800">
@@ -447,14 +447,14 @@ export default function AdminBookingsPage() {
                     {fullPaise > paidPaise ? (
                       <>
                         {" "}
-                        <span className="text-ocean-600">
+                        <span className="text-ocean-700">
                           · Full order {rupeesFromPaise(r.fullAmountPaise)} · Balance{" "}
                           {rupeesFromPaise(r.balancePaise)}
                         </span>
                       </>
                     ) : null}
                   </p>
-                  <p className="mt-1 text-xs text-ocean-600">
+                  <p className="mt-1 text-xs text-ocean-700">
                     Mode: {String(r.paymentMode ?? "—")}
                     {r.razorpayPaymentId ? (
                       <> · Payment ID {String(r.razorpayPaymentId)}</>
@@ -583,7 +583,7 @@ export default function AdminBookingsPage() {
                 title="Booking bill PDF"
               />
             </object>
-            <p className="flex-shrink-0 border-t border-ocean-100 px-4 py-2 text-center text-xs text-ocean-600">
+            <p className="flex-shrink-0 border-t border-ocean-100 px-4 py-2 text-center text-xs text-ocean-700">
               If the preview is blank, use <strong>Open in new tab</strong> or{" "}
               <strong>Download</strong> — some browsers block inline PDFs.
             </p>

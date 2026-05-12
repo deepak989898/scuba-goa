@@ -123,7 +123,7 @@ export default function AdminGalleryPage() {
       <h1 className="font-display text-3xl font-bold text-ocean-900">
         Homepage gallery
       </h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         Images and video reels for the home &quot;Gallery &amp; moments&quot; block.
         Use direct URLs (Firebase Storage, Cloudinary, etc.). For videos, add a{" "}
         <strong>poster</strong> image URL for thumbnails. Lower sort order appears
@@ -204,9 +204,9 @@ export default function AdminGalleryPage() {
 
       <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-600">Loading…</p>
+          <p className="p-6 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-600">
+          <p className="p-6 text-ocean-700">
             No items — homepage uses built-in default photos until you add some.
           </p>
         ) : (

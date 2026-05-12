@@ -60,7 +60,7 @@ export function PaymentSuccessBanner() {
             <span className="font-semibold text-ocean-900">Paid now:</span> ₹
             {confirm.paidInr.toLocaleString("en-IN")}
             {confirm.paymentMode === "partial" ? (
-              <span className="text-ocean-600">
+              <span className="text-ocean-700">
                 {" "}
                 (advance) · Balance ₹{confirm.balanceInr.toLocaleString("en-IN")} on
                 full booking ₹{confirm.fullInr.toLocaleString("en-IN")}
@@ -70,12 +70,12 @@ export function PaymentSuccessBanner() {
           <li className="font-mono text-[11px] text-ocean-700 sm:text-xs">
             Payment ID: {confirm.paymentId}
           </li>
-          <li className="font-mono text-[11px] text-ocean-600 sm:text-xs">
+          <li className="font-mono text-[11px] text-ocean-700 sm:text-xs">
             Order: {confirm.orderId}
           </li>
         </ul>
       ) : (
-        <p className="mt-2 text-xs text-ocean-600">
+        <p className="mt-2 text-xs text-ocean-700">
           Confirmation details loaded when verify API returns; check email / WhatsApp
           if this box is empty.
         </p>
@@ -88,7 +88,7 @@ export function PaymentSuccessBanner() {
       >
         Send WhatsApp confirmation
       </a>
-      <p className="mt-3 text-xs text-ocean-600">
+      <p className="mt-3 text-xs text-ocean-700">
         Email with PDF bill is sent when outgoing mail is configured on the server.
       </p>
       {warning ? (

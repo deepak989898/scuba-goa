@@ -139,7 +139,7 @@ export default async function SeoGuidePage({ params }: Props) {
         }}
       />
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <nav className="text-sm text-ocean-600" aria-label="Breadcrumb">
+        <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
           <Link href="/" className="hover:text-ocean-800">
             Home
           </Link>
@@ -154,7 +154,7 @@ export default async function SeoGuidePage({ params }: Props) {
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <Link
             href="/guides"
-            className="inline-block text-sm font-semibold text-ocean-600 hover:text-ocean-800"
+            className="inline-block text-sm font-semibold text-ocean-700 hover:text-ocean-800"
           >
             ← All guides
           </Link>
@@ -187,7 +187,7 @@ export default async function SeoGuidePage({ params }: Props) {
         </p>
 
         {page.bodyContent.trim() ? (
-          <div className="prose prose-ocean mt-10 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-600">
+          <div className="prose prose-ocean mt-10 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
             <BlogContent content={page.bodyContent} />
           </div>
         ) : null}

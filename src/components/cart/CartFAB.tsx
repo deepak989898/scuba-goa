@@ -1,10 +1,10 @@
 "use client";
 
-import Script from "next/script";
 import { useEffect, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { useCart } from "@/context/CartContext";
 import { SITE_NAME } from "@/lib/constants";
+import { loadRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 import { persistPaymentConfirmationFromApi } from "@/lib/payment-confirmation";
 import {
@@ -93,12 +93,13 @@ export function CartFAB() {
       setMsg("Your cart is empty.");
       return;
     }
-    if (!window.Razorpay) {
-      setMsg("Payment script loading—try again.");
-      return;
-    }
     setBusy(true);
     try {
+      await loadRazorpayCheckout();
+      const Razorpay = window.Razorpay;
+      if (!Razorpay) {
+        throw new Error("Payment checkout could not start. Please try again.");
+      }
       const key = await resolveRazorpayKeyId();
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
@@ -188,7 +189,7 @@ export function CartFAB() {
         theme: { color: "#0284c7" },
       };
 
-      const rzp = new window.Razorpay(options);
+      const rzp = new Razorpay(options);
       attachRazorpayPaymentFailed(rzp, (msg) => {
         setMsg(msg);
         setBusy(false);
@@ -202,11 +203,6 @@ export function CartFAB() {
 
   return (
     <>
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
-      />
-
       {showFab ? (
           <button
             type="button"
@@ -261,7 +257,7 @@ export function CartFAB() {
                 </h2>
                 <button
                   type="button"
-                  className="rounded-full p-2 text-ocean-600 hover:bg-ocean-50"
+                  className="rounded-full p-2 text-ocean-700 hover:bg-ocean-50"
                   onClick={() => {
                     setOpen(false);
                     setCheckoutOpen(false);
@@ -293,7 +289,7 @@ export function CartFAB() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-ocean-900">{line.name}</p>
                         {line.duration ? (
-                          <p className="text-xs text-ocean-600">{line.duration}</p>
+                          <p className="text-xs text-ocean-700">{line.duration}</p>
                         ) : null}
                         {line.includes && line.includes.length > 0 ? (
                           <ul className="mt-1 flex flex-wrap gap-1">
@@ -313,7 +309,7 @@ export function CartFAB() {
                         <div className="mt-2 flex items-center gap-2">
                           <button
                             type="button"
-                            className="h-8 w-8 rounded-lg border border-ocean-200 text-ocean-800"
+                            className="h-11 w-11 touch-manipulation rounded-lg border border-ocean-200 text-base font-bold text-ocean-800"
                             onClick={() =>
                               setQuantity(line.key, line.quantity - 1)
                             }
@@ -326,7 +322,7 @@ export function CartFAB() {
                           </span>
                           <button
                             type="button"
-                            className="h-8 w-8 rounded-lg border border-ocean-200 text-ocean-800"
+                            className="h-11 w-11 touch-manipulation rounded-lg border border-ocean-200 text-base font-bold text-ocean-800"
                             onClick={() =>
                               setQuantity(line.key, line.quantity + 1)
                             }
@@ -336,7 +332,7 @@ export function CartFAB() {
                           </button>
                           <button
                             type="button"
-                            className="ml-auto text-xs font-semibold text-red-600"
+                            className="ml-auto min-h-11 touch-manipulation rounded-full px-4 py-3 text-sm font-bold text-red-700 hover:bg-red-50"
                             onClick={() => removeLine(line.key)}
                           >
                             Remove
@@ -430,7 +426,7 @@ export function CartFAB() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-ocean-600">
+                      <p className="text-xs text-ocean-700">
                         Cart total is below the per-item minimum; you’ll pay the full
                         amount.
                       </p>
@@ -452,7 +448,7 @@ export function CartFAB() {
                     </button>
                     <button
                       type="button"
-                      className="w-full text-sm font-medium text-ocean-600"
+                      className="w-full text-sm font-medium text-ocean-700"
                       onClick={() => setCheckoutOpen(false)}
                     >
                       ← Back to cart

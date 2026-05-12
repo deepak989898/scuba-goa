@@ -29,7 +29,7 @@ export default async function GuidesIndexPage() {
   return (
     <div className="bg-sand/30 py-14 sm:py-20">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <nav className="text-sm text-ocean-600" aria-label="Breadcrumb">
+        <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
           <Link href="/" className="hover:text-ocean-800">
             Home
           </Link>
@@ -45,7 +45,7 @@ export default async function GuidesIndexPage() {
         </p>
 
         {guides.length === 0 ? (
-          <p className="mt-10 rounded-xl border border-ocean-100 bg-white p-6 text-ocean-600">
+          <p className="mt-10 rounded-xl border border-ocean-100 bg-white p-6 text-ocean-700">
             New guides will appear here once your team publishes them from the admin panel
             (SEO pages).
           </p>
@@ -63,7 +63,7 @@ export default async function GuidesIndexPage() {
                   <p className="mt-2 font-display text-lg font-semibold text-ocean-900">
                     {g.headline}
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-ocean-600">Read guide →</p>
+                  <p className="mt-2 text-sm font-semibold text-ocean-700">Read guide →</p>
                 </Link>
               </li>
             ))}

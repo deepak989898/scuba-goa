@@ -142,7 +142,7 @@ export default async function BlogPostPage({ params }: Props) {
         />
       )}
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <nav className="text-sm text-ocean-600" aria-label="Breadcrumb">
+        <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
           <Link href="/" className="hover:text-ocean-800">
             Home
           </Link>
@@ -155,7 +155,7 @@ export default async function BlogPostPage({ params }: Props) {
         </nav>
         <Link
           href="/blog"
-          className="mt-4 inline-block text-sm font-semibold text-ocean-600 hover:text-ocean-800"
+          className="mt-4 inline-block text-sm font-semibold text-ocean-700 hover:text-ocean-800"
         >
           ← All articles
         </Link>
@@ -166,7 +166,7 @@ export default async function BlogPostPage({ params }: Props) {
           {p.title}
         </h1>
         <p className="mt-4 text-lg text-ocean-700">{p.excerpt}</p>
-        <div className="prose prose-ocean mt-10 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-600">
+        <div className="prose prose-ocean mt-10 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
           <BlogContent content={p.content} />
         </div>
 

@@ -66,6 +66,7 @@ export default function AdminHeroPage() {
     rowId?: string;
   } | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const [uploadInfo, setUploadInfo] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!db) return;
@@ -317,6 +318,7 @@ export default function AdminHeroPage() {
       return;
     }
     setUploadErr(null);
+    setUploadInfo(null);
     setUploadBusy({ kind, rowId });
     try {
       await auth.currentUser.getIdToken(true);
@@ -330,9 +332,23 @@ export default function AdminHeroPage() {
         body: fd,
       });
       if (apiRes.ok) {
-        const data = (await apiRes.json()) as { url?: string };
+        const data = (await apiRes.json()) as {
+          url?: string;
+          bytes?: number;
+          contentType?: string;
+        };
         if (data.url) {
           await applyUploadUrl(data.url, kind, rowId);
+          if (
+            (kind === "poster" || kind === "thumbnail") &&
+            typeof data.bytes === "number"
+          ) {
+            const kb = Math.max(1, Math.round(data.bytes / 1024));
+            const original = Math.round(file.size / 1024);
+            setUploadInfo(
+              `Hero ${kind} optimized → WebP, ${kb} KB (was ${original} KB), max 1200 px.`,
+            );
+          }
           return;
         }
       }
@@ -392,7 +408,7 @@ export default function AdminHeroPage() {
       <h1 className="font-display text-3xl font-bold text-ocean-900">
         Homepage hero slider
       </h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         Slides rotate on the home hero. Add an image URL (default poster for videos), and
         optionally a video. For videos you can set a separate{" "}
         <strong>video thumbnail</strong> URL or upload — if empty, the image URL above is
@@ -404,9 +420,18 @@ export default function AdminHeroPage() {
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Add slide</h2>
+        <p className="mt-2 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-900">
+          Hero posters &amp; thumbnails are auto-converted on upload: WebP, max 1200 px wide,
+          target under 200 KB. Drop in a high-res JPG/PNG — the server handles the rest.
+        </p>
         {uploadErr ? (
           <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
             {uploadErr}
+          </p>
+        ) : null}
+        {uploadInfo ? (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {uploadInfo}
           </p>
         ) : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -423,7 +448,7 @@ export default function AdminHeroPage() {
           </label>
           <div className="sm:col-span-2">
             <p className="text-sm font-medium text-ocean-900">Poster image upload</p>
-            <p className="text-xs text-ocean-600">
+            <p className="text-xs text-ocean-700">
               Optional — fills the image URL field with a Firebase download link.
             </p>
             <input
@@ -439,7 +464,7 @@ export default function AdminHeroPage() {
               }}
             />
             {uploadBusy?.kind === "poster" && !uploadBusy.rowId ? (
-              <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
+              <p className="mt-1 text-xs text-ocean-700">Uploading…</p>
             ) : null}
           </div>
           <label className="text-sm sm:col-span-2">
@@ -455,7 +480,7 @@ export default function AdminHeroPage() {
           </label>
           <div className="sm:col-span-2">
             <p className="text-sm font-medium text-ocean-900">Hero video upload</p>
-            <p className="text-xs text-ocean-600">
+            <p className="text-xs text-ocean-700">
               MP4 or WebM — stored in Firebase Storage; URL is pasted into the field
               automatically.
             </p>
@@ -472,7 +497,7 @@ export default function AdminHeroPage() {
               }}
             />
             {uploadBusy?.kind === "video" && !uploadBusy.rowId ? (
-              <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
+              <p className="mt-1 text-xs text-ocean-700">Uploading…</p>
             ) : null}
           </div>
           <label className="text-sm sm:col-span-2">
@@ -488,7 +513,7 @@ export default function AdminHeroPage() {
           </label>
           <div className="sm:col-span-2">
             <p className="text-sm font-medium text-ocean-900">Video thumbnail upload</p>
-            <p className="text-xs text-ocean-600">
+            <p className="text-xs text-ocean-700">
               JPG/PNG/WebP → hero/thumbnails. Works even if you have not pasted a video URL
               yet; save the slide after you add the video.
             </p>
@@ -505,7 +530,7 @@ export default function AdminHeroPage() {
               }}
             />
             {uploadBusy?.kind === "thumbnail" && !uploadBusy.rowId ? (
-              <p className="mt-1 text-xs text-ocean-600">Uploading…</p>
+              <p className="mt-1 text-xs text-ocean-700">Uploading…</p>
             ) : null}
           </div>
           <label className="flex cursor-pointer items-start gap-2 text-sm sm:col-span-2">
@@ -520,7 +545,7 @@ export default function AdminHeroPage() {
             />
             <span>
               <span className="font-medium text-ocean-900">Site music</span>
-              <span className="mt-0.5 block text-xs font-normal text-ocean-600">
+              <span className="mt-0.5 block text-xs font-normal text-ocean-700">
                 Mute this video and play{" "}
                 <code className="text-[10px]">NEXT_PUBLIC_HERO_FALLBACK_MUSIC_URL</code>{" "}
                 instead (silent clips, or when the browser cannot use the video&apos;s own audio).
@@ -548,7 +573,7 @@ export default function AdminHeroPage() {
           </label>
           <label className="text-sm sm:col-span-2">
             <span className="font-medium text-ocean-900">Book CTA for this slide</span>
-            <span className="mt-0.5 block text-xs font-normal text-ocean-600">
+            <span className="mt-0.5 block text-xs font-normal text-ocean-700">
               When visitors tap Book on this slide, they go to checkout with this item
               pre-added (packages and priced services).
             </span>
@@ -590,9 +615,9 @@ export default function AdminHeroPage() {
 
       <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-600">Loading…</p>
+          <p className="p-6 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-600">
+          <p className="p-6 text-ocean-700">
             No slides — homepage uses code defaults. Add one above.
           </p>
         ) : (
@@ -735,7 +760,7 @@ export default function AdminHeroPage() {
                           />
                           {uploadBusy?.rowId === r.id &&
                           uploadBusy.kind === "poster" ? (
-                            <p className="mt-0.5 text-[10px] text-ocean-600">
+                            <p className="mt-0.5 text-[10px] text-ocean-700">
                               Uploading…
                             </p>
                           ) : null}
@@ -769,7 +794,7 @@ export default function AdminHeroPage() {
                           />
                           {uploadBusy?.rowId === r.id &&
                           uploadBusy.kind === "video" ? (
-                            <p className="mt-0.5 text-[10px] text-ocean-600">
+                            <p className="mt-0.5 text-[10px] text-ocean-700">
                               Uploading…
                             </p>
                           ) : null}
@@ -806,7 +831,7 @@ export default function AdminHeroPage() {
                           />
                           {uploadBusy?.rowId === r.id &&
                           uploadBusy.kind === "thumbnail" ? (
-                            <p className="mt-0.5 text-[10px] text-ocean-600">
+                            <p className="mt-0.5 text-[10px] text-ocean-700">
                               Uploading…
                             </p>
                           ) : null}

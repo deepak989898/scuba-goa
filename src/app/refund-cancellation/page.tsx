@@ -14,7 +14,7 @@ export default function RefundCancellationPage() {
         <h1 className="font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
           Refund &amp; Cancellation Policy
         </h1>
-        <p className="mt-2 text-sm text-ocean-600">Last updated: {updated}</p>
+        <p className="mt-2 text-sm text-ocean-700">Last updated: {updated}</p>
 
         <div className="prose prose-slate mt-8 max-w-none prose-headings:font-display prose-headings:text-ocean-900 prose-a:text-ocean-700">
           <p>

@@ -78,7 +78,7 @@ export function BookingPackagePicker({
         onClick={() => setOpen((o) => !o)}
         className="mt-1 flex w-full min-h-[2.75rem] items-center justify-between gap-2 rounded-xl border border-ocean-200 bg-white px-3 py-2.5 text-left text-sm text-ocean-800 shadow-sm transition hover:border-ocean-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
       >
-        <span className="truncate text-ocean-600">
+        <span className="truncate text-ocean-700">
           Select to add to cart…
         </span>
         <span
@@ -139,7 +139,7 @@ export function BookingPackagePicker({
                       >
                         <span className="min-w-0 flex-1 font-medium leading-snug">
                           {s.title}{" "}
-                          <span className="font-normal text-ocean-600">
+                          <span className="font-normal text-ocean-700">
                             (Main package)
                           </span>
                         </span>

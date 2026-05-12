@@ -176,7 +176,7 @@ export function AdminLoginForm() {
       className="mx-auto mt-16 max-w-md rounded-2xl border border-ocean-100 bg-white p-8 shadow-sm"
     >
       <h1 className="font-display text-2xl font-bold text-ocean-900">Admin login</h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         Firebase Auth + <code className="text-xs">admins/&lt;uid&gt;</code> doc
         required.
       </p>

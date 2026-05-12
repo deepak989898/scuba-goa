@@ -160,7 +160,7 @@ export default function AdminPackagesPage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ocean-900">Packages</h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         Includes scuba, tours, casinos, clubs, flyboarding, bungee. Uncheck{" "}
         <strong>Active</strong> to hide a package from the public site (booking,
         homepage, combos) without deleting it.
@@ -209,7 +209,7 @@ export default function AdminPackagesPage() {
                 setForm((f) => ({ ...f, includes: e.target.value }))
               }
             />
-            <span className="mt-1 block text-xs text-ocean-600">
+            <span className="mt-1 block text-xs text-ocean-700">
               All items appear as tags on the package card (no limit).
             </span>
           </label>
@@ -267,7 +267,7 @@ export default function AdminPackagesPage() {
               }
               placeholder="https://… (direct image link; any host)"
             />
-            <span className="mt-1 block text-xs text-ocean-600">
+            <span className="mt-1 block text-xs text-ocean-700">
               Use a full <code className="text-[10px]">https://</code> link to the image
               file. The homepage uses a flexible loader so hosts do not need to be
               listed in Next.js config.
@@ -342,7 +342,7 @@ export default function AdminPackagesPage() {
 
       <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-600">Loading…</p>
+          <p className="p-6 text-ocean-700">Loading…</p>
         ) : (
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 bg-ocean-50 text-ocean-800">
@@ -381,7 +381,7 @@ export default function AdminPackagesPage() {
                   <td className="p-3">
                     <button
                       type="button"
-                      className="text-ocean-600 hover:underline"
+                      className="text-ocean-700 hover:underline"
                       onClick={() => startEdit(p)}
                     >
                       Edit

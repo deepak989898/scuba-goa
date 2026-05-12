@@ -16,7 +16,7 @@ export function BlogPreview() {
           </div>
           <Link
             href="/blog"
-            className="text-xs font-semibold text-ocean-700 hover:text-ocean-900 sm:text-sm"
+            className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 shadow-sm hover:border-ocean-300 hover:bg-ocean-50 hover:text-blue-800"
           >
             All articles →
           </Link>

@@ -56,7 +56,7 @@ export default function AboutPage() {
         <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ocean-600 sm:text-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ocean-700 sm:text-sm">
                 About us
               </p>
               <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ocean-900 sm:text-4xl lg:text-[2.35rem] lg:leading-tight">
@@ -212,7 +212,7 @@ export default function AboutPage() {
             </div>
           </section>
 
-          <p className="mx-auto mt-12 max-w-2xl text-center text-sm text-ocean-600 sm:mt-14">
+          <p className="mx-auto mt-12 max-w-2xl text-center text-sm text-ocean-700 sm:mt-14">
             Ready to pick a date?{" "}
             <Link href="/services" className="font-semibold text-ocean-700 underline-offset-2 hover:underline">
               Browse services

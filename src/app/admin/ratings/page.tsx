@@ -118,7 +118,7 @@ export default function AdminRatingsPage() {
       <h1 className="font-display text-3xl font-bold text-ocean-900">
         Reviews & ratings
       </h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         New submissions are hidden until you approve them. Only approved reviews
         appear on the homepage.
       </p>
@@ -136,9 +136,9 @@ export default function AdminRatingsPage() {
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-8 text-ocean-700">Loading…</p>
       ) : loadError ? null : rows.length === 0 ? (
-        <p className="mt-8 text-ocean-600">No reviews yet.</p>
+        <p className="mt-8 text-ocean-700">No reviews yet.</p>
       ) : (
         <ul className="mt-8 space-y-4">
           {rows.map((r) => (
@@ -157,7 +157,7 @@ export default function AdminRatingsPage() {
                   <p className="mt-1 text-xs text-ocean-500">
                     {formatTs(r.createdAt)}
                     {r.city ? (
-                      <span className="text-ocean-600"> · {r.city}</span>
+                      <span className="text-ocean-700"> · {r.city}</span>
                     ) : null}
                   </p>
                 </div>

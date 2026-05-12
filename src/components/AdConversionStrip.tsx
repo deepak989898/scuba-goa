@@ -78,7 +78,7 @@ export function AdConversionStrip() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/booking"
-                className="inline-flex rounded-full bg-ocean-gradient px-4 py-2 text-xs font-bold text-white shadow-sm sm:text-sm"
+                className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full bg-ocean-gradient px-4 py-3 text-sm font-bold text-white shadow-sm"
               >
                 Book now
               </Link>
@@ -88,7 +88,7 @@ export function AdConversionStrip() {
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex rounded-full border border-ocean-300 bg-white px-4 py-2 text-xs font-bold text-ocean-800 sm:text-sm"
+                className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-ocean-300 bg-white px-4 py-3 text-sm font-bold text-ocean-800"
               >
                 WhatsApp booking
               </a>

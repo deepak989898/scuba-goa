@@ -27,7 +27,7 @@ export function PackagesSection() {
           </div>
           <Link
             href="/booking"
-            className="text-xs font-bold text-ocean-700 hover:text-ocean-900 sm:text-sm"
+            className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 shadow-sm hover:border-ocean-300 hover:bg-ocean-50 hover:text-blue-800"
           >
             Open full checkout →
           </Link>
@@ -136,7 +136,7 @@ export function PackagesSection() {
                       />
                       <Link
                         href={`/booking?package=${encodeURIComponent(p.id)}`}
-                        className="inline-flex items-center justify-center rounded-full border-2 border-cyan-300/80 bg-ocean-gradient px-2.5 py-1 text-center text-[10px] font-extrabold text-white shadow-lg shadow-ocean-950/35 transition hover:brightness-110 active:brightness-95 sm:px-4 sm:py-2 sm:text-sm"
+                        className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full border-2 border-cyan-300/80 bg-ocean-gradient px-4 py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-ocean-950/35 transition hover:brightness-110 active:brightness-95"
                       >
                         Lock this price
                       </Link>

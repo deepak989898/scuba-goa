@@ -187,7 +187,7 @@ export function AiChatbot() {
                 {lang && !pickLang ? (
                   <button
                     type="button"
-                    className="text-xs font-medium text-ocean-600 underline"
+                    className="min-h-11 touch-manipulation rounded-full px-4 py-3 text-sm font-bold text-blue-700 underline"
                     onClick={openLanguageMenu}
                   >
                     Language
@@ -195,7 +195,7 @@ export function AiChatbot() {
                 ) : null}
                 <button
                   type="button"
-                  className="text-ocean-600"
+                  className="text-ocean-700"
                   onClick={() => setOpen(false)}
                   aria-label="Close"
                 >
@@ -209,7 +209,7 @@ export function AiChatbot() {
                 <p className="text-sm font-medium text-ocean-900">
                   Which language should we use?
                 </p>
-                <p className="text-xs text-ocean-600">
+                <p className="text-xs text-ocean-700">
                   The assistant will reply in the language you choose so it is
                   easier to understand.
                 </p>
@@ -246,7 +246,7 @@ export function AiChatbot() {
                   ) : null}
                   {!loading && messages.length <= 2 ? (
                     <div className="mt-3 space-y-2">
-                      <p className="text-xs font-semibold text-ocean-600">
+                      <p className="text-xs font-semibold text-ocean-700">
                         Quick sales assistant
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -254,7 +254,7 @@ export function AiChatbot() {
                           <button
                             key={q}
                             type="button"
-                            className="rounded-full border border-ocean-200 bg-ocean-50 px-3 py-1.5 text-xs font-medium text-ocean-800 hover:border-ocean-400"
+                          className="min-h-11 touch-manipulation rounded-full border border-ocean-200 bg-ocean-50 px-4 py-3 text-sm font-bold text-ocean-800 hover:border-ocean-400"
                             onClick={() => sendPreset(q)}
                           >
                             {q}
@@ -279,7 +279,7 @@ export function AiChatbot() {
                   <button
                     type="button"
                     onClick={send}
-                    className="rounded-full bg-ocean-600 px-4 py-2 text-sm font-semibold text-white"
+                    className="min-h-11 touch-manipulation rounded-full bg-ocean-600 px-4 py-3 text-sm font-semibold text-white"
                   >
                     Send
                   </button>
@@ -287,7 +287,7 @@ export function AiChatbot() {
                 <div className="flex flex-wrap items-center gap-2 border-t border-ocean-100 bg-ocean-50/70 px-3 py-2">
                   <Link
                     href="/booking"
-                    className="rounded-full bg-ocean-700 px-3 py-1.5 text-xs font-semibold text-white"
+                    className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full bg-ocean-700 px-4 py-3 text-sm font-bold text-white"
                   >
                     Book now
                   </Link>
@@ -297,11 +297,11 @@ export function AiChatbot() {
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-full border border-ocean-300 bg-white px-3 py-1.5 text-xs font-semibold text-ocean-800"
+                    className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-ocean-300 bg-white px-4 py-3 text-sm font-bold text-ocean-800"
                   >
                     WhatsApp closer
                   </a>
-                  <span className="text-[11px] text-ocean-600">
+                  <span className="text-[11px] text-ocean-700">
                     Limited-time offer may apply on selected plans.
                   </span>
                 </div>

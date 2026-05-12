@@ -87,7 +87,7 @@ export default async function OffersPage() {
                           {o.title}
                         </p>
                         <p className="mt-1 text-sm text-ocean-700">{o.description}</p>
-                        <p className="mt-2 text-xs font-medium text-ocean-600">
+                        <p className="mt-2 text-xs font-medium text-ocean-700">
                           {o.discountPercent}% off cart total · applies to: {tierLabel(o)}
                         </p>
                         <p className="mt-1 font-mono text-base font-bold tracking-wide text-cyan-800">
@@ -105,7 +105,7 @@ export default async function OffersPage() {
           </div>
         )}
 
-        <p className="mt-12 text-center text-xs text-ocean-600">
+        <p className="mt-12 text-center text-xs text-ocean-700">
           {SITE_NAME} — discounts apply to your online cart total before payment. Walk-in or
           WhatsApp-only deals may differ.
         </p>

@@ -35,9 +35,9 @@ type Props = (ServiceProps | PackageProps) & {
 /** Shared look for cart CTAs on cards (AddToCartButton + ServiceCardAddToCart). */
 export function addToCartButtonClasses(size: "sm" | "md"): string {
   if (size === "sm") {
-    return "min-h-8 rounded-full border-2 border-cyan-300/90 bg-ocean-800 px-2 py-1 text-[10px] font-extrabold text-white shadow-md shadow-ocean-950/30 transition hover:bg-ocean-700 hover:border-cyan-200 active:brightness-95 sm:min-h-11 sm:px-3 sm:py-2 sm:text-xs";
+    return "min-h-11 rounded-full border-2 border-cyan-300/90 bg-ocean-800 px-4 py-3 text-sm font-extrabold text-white shadow-md shadow-ocean-950/30 transition hover:bg-ocean-700 hover:border-cyan-200 active:brightness-95";
   }
-  return "min-h-9 rounded-full border-2 border-cyan-400 bg-ocean-gradient px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-ocean-950/35 transition hover:brightness-110 active:brightness-95 sm:min-h-11 sm:px-4 sm:py-2 sm:text-sm";
+  return "min-h-11 rounded-full border-2 border-cyan-400 bg-ocean-gradient px-4 py-3 text-sm font-bold text-white shadow-lg shadow-ocean-950/35 transition hover:brightness-110 active:brightness-95";
 }
 
 export function AddToCartButton(props: Props) {

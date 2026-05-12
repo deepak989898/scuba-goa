@@ -146,7 +146,7 @@ function HeroConversionCard({
         <button
           type="button"
           onClick={openWhatsAppWithNumber}
-          className="mt-2 w-full touch-manipulation rounded-full border border-white/30 bg-white/10 py-2 text-[10px] font-bold text-white transition hover:bg-white/20 sm:text-xs"
+          className="mt-2 flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
         >
           Continue on WhatsApp
         </button>

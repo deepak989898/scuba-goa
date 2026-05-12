@@ -455,7 +455,7 @@ export default function AdminSeoPagesPage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ocean-900">SEO guide pages</h1>
-      <p className="mt-2 max-w-3xl text-sm text-ocean-600">
+      <p className="mt-2 max-w-3xl text-sm text-ocean-700">
         Create public URLs at{" "}
         <code className="rounded bg-ocean-50 px-1 text-xs">/guides/your-slug</code> with proper
         titles, meta descriptions, optional hero and Open Graph images, and an optional
@@ -594,7 +594,7 @@ export default function AdminSeoPagesPage() {
             />
             <span>
               <span className="font-medium text-ocean-900">Published</span>
-              <span className="mt-0.5 block text-xs text-ocean-600">
+              <span className="mt-0.5 block text-xs text-ocean-700">
                 Only published pages are visible on the public site and in the sitemap.
               </span>
             </span>
@@ -621,7 +621,7 @@ export default function AdminSeoPagesPage() {
             {trafficLoading ? "Loading traffic…" : "Refresh traffic"}
           </button>
         </div>
-        <div className="border-b border-ocean-100 bg-white px-4 py-3 text-xs text-ocean-600">
+        <div className="border-b border-ocean-100 bg-white px-4 py-3 text-xs text-ocean-700">
           <p>
             <strong className="text-ocean-800">/guides</strong> (all guides index):{" "}
             {trafficLoading ? (
@@ -650,9 +650,9 @@ export default function AdminSeoPagesPage() {
           ) : null}
         </div>
         {loading ? (
-          <p className="p-6 text-ocean-600">Loading…</p>
+          <p className="p-6 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-600">No SEO pages yet.</p>
+          <p className="p-6 text-ocean-700">No SEO pages yet.</p>
         ) : (
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 text-ocean-800">
@@ -885,7 +885,7 @@ export default function AdminSeoPagesPage() {
                             Cancel
                           </button>
                           {uploadBusy ? (
-                            <span className="self-center text-xs text-ocean-600">
+                            <span className="self-center text-xs text-ocean-700">
                               Uploading…
                             </span>
                           ) : null}

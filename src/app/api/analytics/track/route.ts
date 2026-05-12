@@ -42,6 +42,20 @@ function parseGuideTrafficKey(path: string): { key: string; slug: string; path: 
   return { key: slug, slug, path };
 }
 
+/**
+ * Best-effort analytics ingest.
+ *
+ * This endpoint is called from every public page (view + leave + heartbeat +
+ * click). It must NEVER return a 5xx to the browser, otherwise:
+ *
+ * - DevTools spams the console with `POST /api/analytics/track 500`.
+ * - Web Vitals look worse than they are.
+ * - End users sometimes see the "request failed" badge in our error overlay.
+ *
+ * Strategy: do the writes inside a try/catch and always reply with 204. If the
+ * Admin SDK is unavailable (env not set, project disabled, quota exceeded) we
+ * silently no-op. Diagnostics still land in Vercel logs via console.error.
+ */
 export async function POST(req: Request) {
   const db = getAdminDb();
   if (!db) {
@@ -174,54 +188,67 @@ export async function POST(req: Request) {
   if (clickTarget) pageViewPayload.clickTarget = clickTarget;
   if (clickHref) pageViewPayload.clickHref = clickHref;
 
+  /**
+   * Primary write (pageView + session). Wrap in try/catch and swallow — never
+   * surface a 5xx to the client.
+   */
   try {
-    await db.collection("pageViews").add(pageViewPayload);
+    await Promise.all([
+      db.collection("pageViews").add(pageViewPayload),
+      sessionRef.set(sessionPayload, { merge: true }),
+    ]);
+  } catch (e) {
+    console.error("pageViews write failed", e);
+    return new NextResponse(null, { status: 204 });
+  }
 
-    await sessionRef.set(sessionPayload, { merge: true });
+  /**
+   * Guide-traffic aggregation runs in the background. Awaiting the transaction
+   * inline added ~150–400 ms to every "view" event and any failure (contention,
+   * cold start) would surface as a 500 in the browser. Fire-and-forget keeps
+   * the response snappy and the console clean.
+   */
+  const guideKey = parseGuideTrafficKey(path);
+  if (eventType === "view" && guideKey) {
+    const trafficRef = db.collection("analyticsGuideTraffic").doc(guideKey.key);
+    const visitorRef = db
+      .collection("analyticsGuideTrafficVisitors")
+      .doc(`${guideKey.key}__${sessionId || "anon"}`);
 
-    const guideKey = parseGuideTrafficKey(path);
-    if (eventType === "view" && guideKey) {
-      const trafficRef = db.collection("analyticsGuideTraffic").doc(guideKey.key);
-      const visitorRef = db
-        .collection("analyticsGuideTrafficVisitors")
-        .doc(`${guideKey.key}__${sessionId || "anon"}`);
+    db.runTransaction(async (tx) => {
+      tx.set(
+        trafficRef,
+        {
+          key: guideKey.key,
+          slug: guideKey.slug,
+          path: guideKey.path,
+          updatedAt: FieldValue.serverTimestamp(),
+          views: FieldValue.increment(1),
+        },
+        { merge: true },
+      );
 
-      await db.runTransaction(async (tx) => {
+      const visitorSnap = await tx.get(visitorRef);
+      if (!visitorSnap.exists) {
+        tx.set(visitorRef, {
+          key: guideKey.key,
+          slug: guideKey.slug,
+          path: guideKey.path,
+          sessionId: sessionId || "anon",
+          createdAt: FieldValue.serverTimestamp(),
+        });
         tx.set(
           trafficRef,
           {
-            key: guideKey.key,
-            slug: guideKey.slug,
-            path: guideKey.path,
-            updatedAt: FieldValue.serverTimestamp(),
-            views: FieldValue.increment(1),
+            visitors: FieldValue.increment(1),
           },
           { merge: true },
         );
-
-        const visitorSnap = await tx.get(visitorRef);
-        if (!visitorSnap.exists) {
-          tx.set(visitorRef, {
-            key: guideKey.key,
-            slug: guideKey.slug,
-            path: guideKey.path,
-            sessionId: sessionId || "anon",
-            createdAt: FieldValue.serverTimestamp(),
-          });
-          tx.set(
-            trafficRef,
-            {
-              visitors: FieldValue.increment(1),
-            },
-            { merge: true },
-          );
-        }
-      });
-    }
-  } catch (e) {
-    console.error("pageViews write failed", e);
-    return NextResponse.json({ error: "Track failed" }, { status: 500 });
+      }
+    }).catch((e) => {
+      console.error("analyticsGuideTraffic txn failed", e);
+    });
   }
 
-  return NextResponse.json({ ok: true });
+  return new NextResponse(null, { status: 204 });
 }

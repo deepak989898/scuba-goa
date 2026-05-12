@@ -433,7 +433,7 @@ export default function AdminOffersPage() {
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-8 text-ocean-700">Loading…</p>
       ) : (
         <ul className="mt-8 space-y-3">
           {list.map((o) => (
@@ -443,7 +443,7 @@ export default function AdminOffersPage() {
             >
               <div>
                 <p className="font-semibold text-ocean-900">{o.title}</p>
-                <p className="text-xs text-ocean-600">
+                <p className="text-xs text-ocean-700">
                   <span className="font-mono font-bold text-cyan-800">{o.promoCode}</span> ·{" "}
                   {o.discountPercent}% · units {o.minCartUnits ?? 1}
                   {o.maxCartUnits != null ? `–${o.maxCartUnits}` : "+"}

@@ -55,7 +55,7 @@ function parseInline(text: string): ReactNode[] {
         <Link
           key={key++}
           href={href}
-          className="font-semibold text-ocean-600 underline decoration-ocean-300 underline-offset-2 hover:text-ocean-800"
+          className="font-semibold text-ocean-700 underline decoration-ocean-300 underline-offset-2 hover:text-ocean-800"
         >
           {parseInline(label)}
         </Link>
@@ -63,7 +63,7 @@ function parseInline(text: string): ReactNode[] {
         <a
           key={key++}
           href={href}
-          className="font-semibold text-ocean-600 underline decoration-ocean-300 underline-offset-2 hover:text-ocean-800"
+          className="font-semibold text-ocean-700 underline decoration-ocean-300 underline-offset-2 hover:text-ocean-800"
           rel="noopener noreferrer"
           target="_blank"
         >

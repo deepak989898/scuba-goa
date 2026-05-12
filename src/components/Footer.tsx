@@ -37,14 +37,14 @@ export function Footer() {
             <p className="font-display text-xl font-semibold text-slate-100">
               {SITE_NAME}
             </p>
-            <p className="mt-3 max-w-xs text-sm text-slate-300">
+            <p className="mt-3 max-w-xs text-sm text-slate-200">
               Premium scuba diving, Goa tour packages, water sports, nightlife &
               adventure—book fast with WhatsApp or secure online pay.
             </p>
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-100">Quick links</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">
+            <ul className="mt-3 space-y-2 text-sm text-slate-200">
               {quick.map((q) => (
                 <li key={q.href}>
                   <Link href={q.href} className="hover:text-cyan-300">
@@ -56,7 +56,7 @@ export function Footer() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-100">Legal</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">
+            <ul className="mt-3 space-y-2 text-sm text-slate-200">
               {legal.map((q) => (
                 <li key={q.href}>
                   <Link href={q.href} className="hover:text-cyan-300">
@@ -68,7 +68,7 @@ export function Footer() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-100">Contact</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">
+            <ul className="mt-3 space-y-2 text-sm text-slate-200">
               <li className="text-slate-200">
                 {OFFICE_ADDRESS_LINES.map((line) => (
                   <span key={line} className="block">
@@ -103,9 +103,9 @@ export function Footer() {
                   </a>
                 </li>
               ) : null}
-              <li className="text-xs text-slate-400">
+              <li className="text-xs text-slate-200">
                 Missed-call callback: ring once on{" "}
-                <a href={MISSED_CALL_TEL_HREF} className="text-slate-300 hover:text-cyan-300">
+                <a href={MISSED_CALL_TEL_HREF} className="text-slate-200 hover:text-cyan-300">
                   {MISSED_CALL_DISPLAY_LABEL}
                 </a>{" "}
                 — we WhatsApp you back from your caller ID.
@@ -122,7 +122,7 @@ export function Footer() {
           </div>
           <div className="md:col-span-2 lg:col-span-1">
             <p className="text-sm font-semibold text-slate-100">Location</p>
-            <address className="mt-2 not-italic text-xs leading-relaxed text-slate-300">
+            <address className="mt-2 not-italic text-xs leading-relaxed text-slate-200">
               {OFFICE_ADDRESS_LINES.map((line) => (
                 <span key={line} className="block">
                   {line}
@@ -132,7 +132,7 @@ export function Footer() {
             <OfficeMapEmbed className="mt-3" height={200} />
           </div>
         </div>
-        <p className="mt-10 text-center text-xs text-slate-400">
+        <p className="mt-10 text-center text-xs text-slate-200">
           © {new Date().getFullYear()} {SITE_NAME}. Scuba diving Goa · Water
           sports Goa booking · Goa tour packages.
         </p>

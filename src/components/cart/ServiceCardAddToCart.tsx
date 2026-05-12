@@ -153,7 +153,7 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
           <button
             type="button"
             role="menuitem"
-            className="w-full px-3 py-2.5 text-left text-xs text-ocean-900 transition hover:bg-cyan-50 sm:text-sm"
+            className="min-h-11 w-full touch-manipulation px-4 py-3 text-left text-sm text-ocean-900 transition hover:bg-cyan-50"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

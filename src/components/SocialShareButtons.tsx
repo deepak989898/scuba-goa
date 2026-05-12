@@ -51,7 +51,7 @@ export function SocialShareButtons({
 
   const base =
     "inline-flex items-center justify-center rounded-full font-semibold text-white";
-  const size = compact ? "h-7 w-7 text-[10px]" : "h-8 w-8 text-xs";
+  const size = "h-11 w-11 text-sm";
 
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className ?? ""}`} role="group" aria-label={`Share ${title}`}>
@@ -85,7 +85,7 @@ export function SocialShareButtons({
         <InstagramIcon />
       </button>
       {igHint ? (
-        <span className="text-[10px] text-ocean-600">
+        <span className="text-[10px] text-ocean-700">
           Link copied. Paste it in your Instagram story/bio/DM.
         </span>
       ) : null}

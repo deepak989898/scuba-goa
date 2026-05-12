@@ -67,7 +67,7 @@ export function StickyBookBar() {
             <span className="text-[13px] font-extrabold leading-tight">Book Today</span>
           </Link>
         </div>
-        <p className="mt-1.5 text-center text-[10px] font-medium leading-snug text-slate-300">
+        <p className="mt-1.5 text-center text-[10px] font-medium leading-snug text-slate-100">
           Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance · Instant Razorpay confirmation
         </p>
       </div>

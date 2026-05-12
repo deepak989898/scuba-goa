@@ -422,7 +422,7 @@ export default function AdminAnalyticsPage() {
       <h1 className="font-display text-3xl font-bold text-ocean-900">
         Analytics
       </h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         Visitor activity from the public site. Times are <strong>IST</strong> in
         12-hour AM/PM format. Numbers use the latest{" "}
         {SAMPLE_LIMIT.toLocaleString("en-IN")} events.
@@ -442,11 +442,11 @@ export default function AdminAnalyticsPage() {
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-8 text-ocean-700">Loading…</p>
       ) : loadError ? null : (
         <>
           <div className="mt-8 rounded-2xl border border-ocean-200 bg-ocean-50/80 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ocean-600">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
               Today ({todayIstYmd} · IST)
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -457,7 +457,7 @@ export default function AdminAnalyticsPage() {
                 <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
                   {stats.onlineNow}
                 </p>
-                <p className="mt-1 text-xs text-ocean-600">
+                <p className="mt-1 text-xs text-ocean-700">
                   Active in last 2 minutes
                 </p>
               </div>
@@ -468,7 +468,7 @@ export default function AdminAnalyticsPage() {
                 <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
                   {stats.todaySessions}
                 </p>
-                <p className="mt-1 text-xs text-ocean-600">
+                <p className="mt-1 text-xs text-ocean-700">
                   Distinct browsers/tabs that loaded a page today
                 </p>
               </div>
@@ -479,7 +479,7 @@ export default function AdminAnalyticsPage() {
                 <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
                   {stats.todayPageViews}
                 </p>
-                <p className="mt-1 text-xs text-ocean-600">
+                <p className="mt-1 text-xs text-ocean-700">
                   Total tracked page loads today
                 </p>
               </div>
@@ -500,7 +500,7 @@ export default function AdminAnalyticsPage() {
                       key={label}
                       className="rounded-lg bg-sand/80 px-3 py-2 text-ocean-900"
                     >
-                      <span className="block text-xs text-ocean-600">{label}</span>
+                      <span className="block text-xs text-ocean-700">{label}</span>
                       <span className="text-lg font-bold">{n}</span>
                     </li>
                   ))}
@@ -519,7 +519,7 @@ export default function AdminAnalyticsPage() {
               no location. Screen size comes from the visitor&apos;s browser.
             </p>
             {stats.onlineSessions.length === 0 ? (
-              <p className="mt-3 text-sm text-ocean-600">No users online now.</p>
+              <p className="mt-3 text-sm text-ocean-700">No users online now.</p>
             ) : (
               <ul className="mt-3 space-y-2 text-sm">
                 {stats.onlineSessions.map((s) => (
@@ -531,7 +531,7 @@ export default function AdminAnalyticsPage() {
                       <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
                         Online
                       </span>
-                      <span className="font-mono text-xs text-ocean-600">
+                      <span className="font-mono text-xs text-ocean-700">
                         {s.sessionId.slice(0, 14)}…
                       </span>
                       <span className="text-xs text-ocean-500">
@@ -542,7 +542,7 @@ export default function AdminAnalyticsPage() {
                       {s.lastPath || "—"}
                     </p>
                     {shortenPageLabel(s.pageLabel) ? (
-                      <p className="mt-0.5 text-xs text-ocean-600" title={s.pageLabel}>
+                      <p className="mt-0.5 text-xs text-ocean-700" title={s.pageLabel}>
                         {shortenPageLabel(s.pageLabel)}
                       </p>
                     ) : null}
@@ -557,7 +557,7 @@ export default function AdminAnalyticsPage() {
                       geoRegion: s.geoRegion,
                       geoCountry: s.geoCountry,
                     }) ? (
-                      <p className="mt-0.5 text-xs text-ocean-600">
+                      <p className="mt-0.5 text-xs text-ocean-700">
                         Location:{" "}
                         {formatGeoLine({
                           geoCity: s.geoCity,
@@ -567,7 +567,7 @@ export default function AdminAnalyticsPage() {
                       </p>
                     ) : null}
                     {formatScreenViewportLine(s) ? (
-                      <p className="mt-0.5 text-xs text-ocean-600">
+                      <p className="mt-0.5 text-xs text-ocean-700">
                         {formatScreenViewportLine(s)}
                       </p>
                     ) : null}
@@ -607,7 +607,7 @@ export default function AdminAnalyticsPage() {
             <h2 className="font-display text-lg font-semibold text-ocean-900">
               Device mix (page views in sample)
             </h2>
-            <p className="mt-1 text-xs text-ocean-600">
+            <p className="mt-1 text-xs text-ocean-700">
               From User-Agent on each request — not 100% exact, but good for trends.
             </p>
             <ul className="mt-4 grid gap-2 sm:grid-cols-4 text-sm">
@@ -654,7 +654,7 @@ export default function AdminAnalyticsPage() {
               Today visitor list (click to inspect timeline)
             </h2>
             {stats.todayVisitorSummaries.length === 0 ? (
-              <p className="mt-4 text-ocean-600">No visitors recorded today.</p>
+              <p className="mt-4 text-ocean-700">No visitors recorded today.</p>
             ) : (
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <ul className="max-h-[30rem] space-y-2 overflow-y-auto text-sm">
@@ -670,7 +670,7 @@ export default function AdminAnalyticsPage() {
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-mono text-xs text-ocean-600">
+                          <span className="font-mono text-xs text-ocean-700">
                             {s.sessionId.slice(0, 14)}…
                           </span>
                           <div className="flex flex-wrap items-center gap-1.5">
@@ -688,9 +688,9 @@ export default function AdminAnalyticsPage() {
                           Last: {s.lastPath}
                         </p>
                         {s.lastPageShort ? (
-                          <p className="mt-0.5 text-xs text-ocean-600">{s.lastPageShort}</p>
+                          <p className="mt-0.5 text-xs text-ocean-700">{s.lastPageShort}</p>
                         ) : null}
-                        <p className="mt-1 text-xs text-ocean-600">
+                        <p className="mt-1 text-xs text-ocean-700">
                           Events: {s.pageEvents} · Time on site:{" "}
                           {formatMs(s.totalDurationMs)}
                         </p>
@@ -699,7 +699,7 @@ export default function AdminAnalyticsPage() {
                           {s.deviceLabel ? ` · ${s.deviceLabel}` : ""}
                         </p>
                         {s.geoLine ? (
-                          <p className="mt-0.5 text-xs text-ocean-600">
+                          <p className="mt-0.5 text-xs text-ocean-700">
                             Location: {s.geoLine}
                           </p>
                         ) : null}
@@ -715,7 +715,7 @@ export default function AdminAnalyticsPage() {
                     Timeline for {selectedSessionId.slice(0, 12)}…
                   </h3>
                   {selectedTimeline.length === 0 ? (
-                    <p className="mt-3 text-sm text-ocean-600">
+                    <p className="mt-3 text-sm text-ocean-700">
                       No events for this visitor.
                     </p>
                   ) : (
@@ -726,7 +726,7 @@ export default function AdminAnalyticsPage() {
                           className="rounded-lg border border-ocean-100 bg-white px-3 py-2"
                         >
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-xs text-ocean-600">
+                            <span className="font-mono text-xs text-ocean-700">
                               {formatTs(r.createdAt)}
                             </span>
                             <span className="rounded-md bg-ocean-100 px-2 py-0.5 text-xs font-semibold text-ocean-900">
@@ -753,7 +753,7 @@ export default function AdminAnalyticsPage() {
                           </p>
                           {shortenPageLabel(r.pageLabel) ? (
                             <p
-                              className="mt-0.5 text-xs text-ocean-600"
+                              className="mt-0.5 text-xs text-ocean-700"
                               title={r.pageLabel}
                             >
                               {shortenPageLabel(r.pageLabel)}
@@ -770,7 +770,7 @@ export default function AdminAnalyticsPage() {
                             geoRegion: r.geoRegion,
                             geoCountry: r.geoCountry,
                           }) ? (
-                            <p className="mt-0.5 text-xs text-ocean-600">
+                            <p className="mt-0.5 text-xs text-ocean-700">
                               Location:{" "}
                               {formatGeoLine({
                                 geoCity: r.geoCity,
@@ -805,7 +805,7 @@ export default function AdminAnalyticsPage() {
               Recent raw activity events
             </h2>
             {rows.length === 0 ? (
-              <p className="mt-4 text-ocean-600">
+              <p className="mt-4 text-ocean-700">
                 No page events yet. Deploy with Admin SDK env and browse the site.
               </p>
             ) : (
@@ -816,7 +816,7 @@ export default function AdminAnalyticsPage() {
                     className="rounded-xl border border-ocean-100 bg-white px-3 py-2 text-ocean-800"
                   >
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="font-mono text-xs text-ocean-600">
+                      <span className="font-mono text-xs text-ocean-700">
                         {formatTs(r.createdAt)}
                       </span>
                       <span className="text-ocean-300">·</span>
@@ -849,7 +849,7 @@ export default function AdminAnalyticsPage() {
                       ) : null}
                     </div>
                     {r.eventType === "click" && r.clickHref ? (
-                      <p className="mt-0.5 break-all text-xs text-ocean-600">
+                      <p className="mt-0.5 break-all text-xs text-ocean-700">
                         target: {r.clickHref}
                       </p>
                     ) : null}
@@ -858,7 +858,7 @@ export default function AdminAnalyticsPage() {
                       geoRegion: r.geoRegion,
                       geoCountry: r.geoCountry,
                     }) ? (
-                      <p className="mt-1 text-xs text-ocean-600">
+                      <p className="mt-1 text-xs text-ocean-700">
                         Location:{" "}
                         {formatGeoLine({
                           geoCity: r.geoCity,

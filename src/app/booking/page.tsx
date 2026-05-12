@@ -42,7 +42,7 @@ export default function BookingPage() {
           </p>
         </div>
         <div className="mt-10">
-          <Suspense fallback={<p className="text-center text-ocean-600">Loading…</p>}>
+          <Suspense fallback={<p className="text-center text-ocean-700">Loading…</p>}>
             <BookingForm />
           </Suspense>
         </div>

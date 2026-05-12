@@ -164,7 +164,7 @@ export default function AdminMarketingPage() {
       <h1 className="font-display text-3xl font-bold text-ocean-900">
         Marketing Automation
       </h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         Broadcast offers, festival deals, and abandoned-user follow-up queue. Leads are
         captured automatically from booking intent.
       </p>
@@ -259,14 +259,14 @@ export default function AdminMarketingPage() {
         <h2 className="font-display text-lg font-semibold text-ocean-900">
           Abandoned User Follow-up
         </h2>
-        <p className="mt-1 text-xs text-ocean-600">
+        <p className="mt-1 text-xs text-ocean-700">
           Leads with booking intent but not converted yet. Send personalized follow-up
           in one click.
         </p>
         {loading ? (
-          <p className="mt-4 text-sm text-ocean-600">Loading leads…</p>
+          <p className="mt-4 text-sm text-ocean-700">Loading leads…</p>
         ) : abandoned.length === 0 ? (
-          <p className="mt-4 text-sm text-ocean-600">No abandoned leads currently.</p>
+          <p className="mt-4 text-sm text-ocean-700">No abandoned leads currently.</p>
         ) : (
           <ul className="mt-4 space-y-2">
             {abandoned.map((l) => {

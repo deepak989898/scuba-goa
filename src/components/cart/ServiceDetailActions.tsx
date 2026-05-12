@@ -27,7 +27,7 @@ export function ServiceDetailActions({ service: s }: Props) {
       <div className="rounded-2xl border border-ocean-100 bg-sand/80 p-6">
         <ServiceMetaBlock s={s} />
         {pricedSubsOnly ? (
-          <p className="mt-4 text-sm text-ocean-600">
+          <p className="mt-4 text-sm text-ocean-700">
             Add to cart from an option below—each variant has its own price.
           </p>
         ) : null}

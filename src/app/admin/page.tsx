@@ -22,7 +22,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Packages
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Add / edit scuba, tours, nightlife, adventure SKUs.
           </p>
         </Link>
@@ -33,7 +33,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Offers &amp; promos
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Promo codes for online checkout — couple, group, birthday, and custom rules.
           </p>
         </Link>
@@ -44,7 +44,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Services
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Edit home &amp; /services cards (slug = URL). Overrides code defaults.
           </p>
         </Link>
@@ -55,7 +55,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Hero slider
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Homepage hero images: add, reorder, delete.
           </p>
         </Link>
@@ -66,7 +66,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             SEO guide pages
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Public URLs at /guides/… with meta titles, descriptions, images, and booking links.
           </p>
         </Link>
@@ -77,7 +77,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Gallery & reels
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Homepage gallery: images and video URLs, reorder with up/down.
           </p>
         </Link>
@@ -88,7 +88,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Bookings
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Paid orders with Razorpay payment IDs.
           </p>
         </Link>
@@ -99,7 +99,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Analytics
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Page views and session counts from the public site.
           </p>
         </Link>
@@ -110,7 +110,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Marketing automation
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Broadcast offers, festival campaigns, and abandoned-user follow-up queue.
           </p>
         </Link>
@@ -121,7 +121,7 @@ export default function AdminHomePage() {
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Reviews
           </h2>
-          <p className="mt-2 text-sm text-ocean-600">
+          <p className="mt-2 text-sm text-ocean-700">
             Approve or delete guest ratings for the homepage.
           </p>
         </Link>

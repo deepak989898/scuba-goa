@@ -90,7 +90,7 @@ export function ServicesGrid() {
               <ServiceCardAddToCart service={s} size="sm" />
               <Link
                 href={`/services/${s.slug}`}
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-xs font-extrabold text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300"
+                className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-3 text-sm font-extrabold text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300"
               >
                 View details
               </Link>

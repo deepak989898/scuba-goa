@@ -335,7 +335,7 @@ export default function AdminServicesPage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ocean-900">Services</h1>
-      <p className="mt-2 text-sm text-ocean-600">
+      <p className="mt-2 text-sm text-ocean-700">
         Home page &amp; /services cards. Document ID = URL slug (e.g.{" "}
         <code className="text-xs">scuba-diving</code>). Turn off{" "}
         <strong>Active</strong> to hide a service everywhere on the public site
@@ -415,7 +415,7 @@ export default function AdminServicesPage() {
               onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
               placeholder="https://… (direct link to .jpg / .webp etc.)"
             />
-            <span className="mt-1 block text-xs text-ocean-600">
+            <span className="mt-1 block text-xs text-ocean-700">
               Use a full <code className="text-[10px]">https://</code> URL. Any host
               works; for files in <code className="text-[10px]">/public</code> use a
               path like <code className="text-[10px]">/your-file.jpg</code>.
@@ -454,7 +454,7 @@ export default function AdminServicesPage() {
                 setForm((f) => ({ ...f, includes: e.target.value }))
               }
             />
-            <span className="mt-1 block text-xs text-ocean-600">
+            <span className="mt-1 block text-xs text-ocean-700">
               All items show on cards and detail; separate with commas.
             </span>
           </label>
@@ -474,7 +474,7 @@ export default function AdminServicesPage() {
             <p className="text-sm font-semibold text-ocean-900">
               Detail media tabs (Posts / Reels / Videos)
             </p>
-            <p className="mt-1 text-xs text-ocean-600">
+            <p className="mt-1 text-xs text-ocean-700">
               Upload files to Firebase Storage or paste URLs below. These appear on
               the service detail page bottom section.
             </p>
@@ -565,7 +565,7 @@ export default function AdminServicesPage() {
                 Add sub-service
               </button>
             </div>
-            <p className="mt-1 text-xs text-ocean-600">
+            <p className="mt-1 text-xs text-ocean-700">
               Optional variants on the detail page. Set a price (&gt; 0) to show Add to
               cart. Optional cart id keeps a stable cart key if you reorder rows.
             </p>
@@ -781,9 +781,9 @@ export default function AdminServicesPage() {
 
       <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-600">Loading…</p>
+          <p className="p-6 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-600">
+          <p className="p-6 text-ocean-700">
             No Firestore documents — website shows default services from code. Add one
             above to override.
           </p>
@@ -825,7 +825,7 @@ export default function AdminServicesPage() {
                   <td className="p-3">
                     <button
                       type="button"
-                      className="text-ocean-600 hover:underline"
+                      className="text-ocean-700 hover:underline"
                       onClick={() => startEdit(s)}
                     >
                       Edit

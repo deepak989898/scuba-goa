@@ -32,7 +32,7 @@ export function PromoCopyButton({ code }: { code: string }) {
     <button
       type="button"
       onClick={() => void copy()}
-      className="rounded-lg border border-ocean-200 bg-white px-3 py-1.5 text-xs font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50"
+      className="min-h-11 touch-manipulation rounded-full border border-ocean-200 bg-white px-4 py-3 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50"
     >
       {done ? "Copied" : "Copy code"}
     </button>

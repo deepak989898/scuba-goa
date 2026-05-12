@@ -128,7 +128,7 @@ export function ServiceCards() {
                     </span>
                     <Link
                       href={`/services/${s.slug}`}
-                      className="pointer-events-auto inline-flex min-h-8 min-w-0 items-center justify-center rounded-full bg-cyan-500 px-2.5 py-1 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300 sm:min-h-11 sm:px-4 sm:py-2 sm:text-xs sm:normal-case sm:tracking-normal"
+                      className="pointer-events-auto inline-flex min-h-11 min-w-0 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-3 text-center text-sm font-extrabold text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300"
                     >
                       See &amp; book
                     </Link>

@@ -31,7 +31,7 @@ export default function ContactPage() {
         <li>
           <a
             href={whatsappLink()}
-            className="font-semibold text-ocean-600 hover:underline"
+            className="font-semibold text-ocean-700 hover:underline"
           >
             WhatsApp concierge
           </a>
@@ -40,14 +40,14 @@ export default function ContactPage() {
           <span className="font-semibold text-ocean-900">Phone</span>
           <ul className="mt-2 list-none space-y-2 pl-0 text-ocean-800">
             <li>
-              <a href={CONTACT_PHONE_HREF} className="text-ocean-600 hover:underline">
+              <a href={CONTACT_PHONE_HREF} className="text-ocean-700 hover:underline">
                 Primary call &amp; WhatsApp: {CONTACT_PHONE_LABEL}
               </a>
             </li>
             <li>
               <a
                 href={CONTACT_PHONE_SECOND_HREF}
-                className="text-ocean-600 hover:underline"
+                className="text-ocean-700 hover:underline"
               >
                 Secondary call line: {CONTACT_PHONE_SECOND_LABEL}
               </a>
@@ -56,7 +56,7 @@ export default function ContactPage() {
         </li>
         <li>
           Email:{" "}
-          <a href={`mailto:${CONTACT_EMAIL}`} className="text-ocean-600">
+          <a href={`mailto:${CONTACT_EMAIL}`} className="text-ocean-700">
             {CONTACT_EMAIL}
           </a>
         </li>
@@ -87,7 +87,7 @@ export default function ContactPage() {
         >
           Find us
         </h2>
-        <p className="mt-2 text-sm text-ocean-600">
+        <p className="mt-2 text-sm text-ocean-700">
           Near Tito&apos;s Lane, Baga — same pin as our map listing (Scuba Diving with
           Island Trip).
         </p>
