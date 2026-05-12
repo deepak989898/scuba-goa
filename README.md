@@ -22,6 +22,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Server order creation + signature verify |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Must match `RAZORPAY_KEY_ID` exactly — see [docs/RAZORPAY-TEST.md](docs/RAZORPAY-TEST.md) |
 | `OPENAI_API_KEY` | Optional AI concierge |
+| `NEXT_PUBLIC_CONTACT_PHONE_PRIMARY` | Primary call/contact number, international digits, no `+` (e.g. `918354075026` for +91 83540 75026) |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | International digits, no `+` (e.g. `919217290871` for +91 92172 90871) |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for SEO / sitemap |
 

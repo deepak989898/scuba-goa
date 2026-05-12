@@ -4,10 +4,12 @@ import {
   CONTACT_EMAIL,
   CONTACT_PHONE_HREF,
   CONTACT_PHONE_LABEL,
+  CONTACT_PHONE_SECOND_LABEL,
   MISSED_CALL_DISPLAY_LABEL,
   MISSED_CALL_TEL_HREF,
   OFFICE_ADDRESS_LINES,
   SITE_NAME,
+  whatsappLink,
 } from "@/lib/constants";
 
 const quick = [
@@ -75,7 +77,17 @@ export function Footer() {
               </li>
               <li>
                 <a href={CONTACT_PHONE_HREF} className="hover:text-cyan-300">
-                  {CONTACT_PHONE_LABEL}
+                  Primary: {CONTACT_PHONE_LABEL}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={whatsappLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-cyan-300"
+                >
+                  WhatsApp: {CONTACT_PHONE_SECOND_LABEL}
                 </a>
               </li>
               {MISSED_CALL_TEL_HREF !== CONTACT_PHONE_HREF ? (

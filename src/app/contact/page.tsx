@@ -4,7 +4,6 @@ import {
   CONTACT_EMAIL,
   CONTACT_PHONE_HREF,
   CONTACT_PHONE_LABEL,
-  CONTACT_PHONE_SECOND_HREF,
   CONTACT_PHONE_SECOND_LABEL,
   OFFICE_ADDRESS_LINES,
   OFFICE_ADDRESS_SINGLELINE,
@@ -41,15 +40,17 @@ export default function ContactPage() {
           <ul className="mt-2 list-none space-y-2 pl-0 text-ocean-800">
             <li>
               <a href={CONTACT_PHONE_HREF} className="text-ocean-600 hover:underline">
-                {CONTACT_PHONE_LABEL}
+                Primary call number: {CONTACT_PHONE_LABEL}
               </a>
             </li>
             <li>
               <a
-                href={CONTACT_PHONE_SECOND_HREF}
+                href={whatsappLink()}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-ocean-600 hover:underline"
               >
-                {CONTACT_PHONE_SECOND_LABEL}
+                WhatsApp messaging: {CONTACT_PHONE_SECOND_LABEL}
               </a>
             </li>
           </ul>

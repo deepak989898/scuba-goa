@@ -13,11 +13,17 @@ export const PRIMARY_SEO_KEYWORDS = [
 export const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "support@bookscubagoa.com";
 
-/** International digits only, no + (e.g. 919217290871 for India +91 92172 90871) */
+/** WhatsApp messaging line. International digits only, no + (e.g. 919217290871). */
 export const WHATSAPP_NUMBER =
   process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "919217290871";
 
-const phoneDigits = () => WHATSAPP_NUMBER.replace(/\D/g, "");
+const whatsappDigits = () => WHATSAPP_NUMBER.replace(/\D/g, "");
+
+/** Primary call/contact line. International digits only, no + (e.g. 918354075026). */
+export const CONTACT_PHONE_NUMBER =
+  process.env.NEXT_PUBLIC_CONTACT_PHONE_PRIMARY ?? "918354075026";
+
+const primaryPhoneDigits = () => CONTACT_PHONE_NUMBER.replace(/\D/g, "");
 
 function formatIndiaPhoneLabel(digits: string): string {
   if (digits.length === 12 && digits.startsWith("91")) {
@@ -26,14 +32,15 @@ function formatIndiaPhoneLabel(digits: string): string {
   return `+${digits}`;
 }
 
-/** Same number for tel: links in footer / contact */
-export const CONTACT_PHONE_HREF = `tel:+${phoneDigits()}`;
+/** Primary tel: link in footer, contact page, and mobile sticky call button. */
+export const CONTACT_PHONE_HREF = `tel:+${primaryPhoneDigits()}`;
 
-export const CONTACT_PHONE_LABEL = (() => formatIndiaPhoneLabel(phoneDigits()))();
+export const CONTACT_PHONE_LABEL = (() =>
+  formatIndiaPhoneLabel(primaryPhoneDigits()))();
 
-/** Second call line (optional). Digits only with country code, e.g. 918354075026 */
+/** Secondary contact line, used for WhatsApp messaging by default. */
 const secondPhoneDigits = () =>
-  (process.env.NEXT_PUBLIC_CONTACT_PHONE_SECOND ?? "918354075026").replace(
+  (process.env.NEXT_PUBLIC_CONTACT_PHONE_SECOND ?? WHATSAPP_NUMBER).replace(
     /\D/g,
     "",
   );
@@ -48,7 +55,7 @@ export const CONTACT_PHONE_SECOND_LABEL = (() =>
  * Defaults to the main WhatsApp / business number.
  */
 const missedCallDigits = () =>
-  (process.env.NEXT_PUBLIC_MISSED_CALL_NUMBER ?? WHATSAPP_NUMBER).replace(
+  (process.env.NEXT_PUBLIC_MISSED_CALL_NUMBER ?? CONTACT_PHONE_NUMBER).replace(
     /\D/g,
     ""
   );
@@ -64,7 +71,7 @@ export function whatsappLink(message?: string): string {
   const text = message
     ? encodeURIComponent(message)
     : WHATSAPP_DEFAULT_MESSAGE;
-  return `https://wa.me/${phoneDigits()}?text=${text}`;
+  return `https://wa.me/${whatsappDigits()}?text=${text}`;
 }
 
 /** Opens a chat with the customer's number (digits only in URL). Returns null if the number looks invalid. */

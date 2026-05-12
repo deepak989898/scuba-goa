@@ -33,6 +33,7 @@ Add **every** variable your app needs. Use **Production** (and **Preview** if yo
 | Name | Example | Notes |
 |------|---------|--------|
 | `NEXT_PUBLIC_SITE_URL` | `https://bookscubagoa.com` | Your canonical live URL (no trailing slash). |
+| `NEXT_PUBLIC_CONTACT_PHONE_PRIMARY` | `918354075026` | Primary call/contact number, country code + number, no `+`. |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | `919217290871` | Country code + number, no `+`. |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | `support@bookscubagoa.com` | Optional; shown in footer. |
 
