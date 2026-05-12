@@ -9,6 +9,7 @@ import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
 import { useShouldRenderHeroVideo } from "@/hooks/useShouldRenderHeroVideo";
 import { whatsappLink } from "@/lib/constants";
+import { trackMetaWhatsAppClick } from "@/lib/meta-pixel";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 import { resolveHeroBookingCardModel } from "@/lib/hero-slide-booking";
 import type { PackageDoc } from "@/lib/types";
@@ -69,6 +70,7 @@ function HeroConversionCard({
       return;
     }
     const text = `${waPreset} My WhatsApp number: ${digits}. Please confirm slot and payment.`;
+    trackMetaWhatsAppClick();
     window.open(whatsappLink(text), "_blank", "noopener,noreferrer");
   }
 

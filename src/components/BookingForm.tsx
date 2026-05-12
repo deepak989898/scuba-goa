@@ -13,6 +13,7 @@ import { SITE_NAME } from "@/lib/constants";
 import { loadRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import { attachRazorpayPaymentFailed } from "@/lib/razorpayCheckout";
 import { persistPaymentConfirmationFromApi } from "@/lib/payment-confirmation";
+import { trackMetaPurchase } from "@/lib/meta-pixel";
 import {
   computeMinPayPaise,
   MIN_PAYMENT_PER_PERSON_INR,
@@ -416,6 +417,12 @@ export function BookingForm() {
               return;
             }
             persistPaymentConfirmationFromApi(out);
+            trackMetaPurchase({
+              valueInr: cartChargePaise / 100,
+              numItems: itemCount,
+              contentIds: lines.map((l) => String(l.refId ?? l.key)),
+              contentName: summary.slice(0, 120),
+            });
             if (out.warning) {
               try {
                 sessionStorage.setItem("paymentNotice", String(out.warning));

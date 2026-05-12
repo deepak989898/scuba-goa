@@ -78,6 +78,31 @@ export function whatsappLink(message?: string): string {
   return `https://wa.me/${whatsappDigits()}?text=${text}`;
 }
 
+/** True when `href` opens a chat to this site’s configured WhatsApp line (`wa.me/<digits>`). */
+export function isBusinessWhatsAppHref(href: string): boolean {
+  const target = whatsappDigits();
+  try {
+    const u = new URL(href);
+    if (u.hostname !== "wa.me") return false;
+    const pathDigits = u.pathname.replace(/\D/g, "");
+    return pathDigits === target;
+  } catch {
+    return false;
+  }
+}
+
+/** True for primary, secondary, or missed-call `tel:` links (Meta / ads attribution). */
+export function isBusinessTelHref(href: string): boolean {
+  const t = href.trim().toLowerCase();
+  if (!t.startsWith("tel:")) return false;
+  const digits = t.slice(4).replace(/\D/g, "");
+  return (
+    digits === primaryPhoneDigits() ||
+    digits === secondPhoneDigits() ||
+    digits === missedCallDigits()
+  );
+}
+
 /** Opens a chat with the customer's number (digits only in URL). Returns null if the number looks invalid. */
 export function customerWhatsappLink(phoneRaw: string, message: string): string | null {
   let d = phoneRaw.replace(/\D/g, "");

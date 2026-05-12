@@ -15,6 +15,7 @@ import {
   whatsappLink,
 } from "@/lib/constants";
 import { BSG_OPEN_OFFER_EVENT } from "@/lib/lead-offer-events";
+import { trackMetaWhatsAppClick } from "@/lib/meta-pixel";
 
 const STORAGE_KEY = "bsg_offer_popup_v1";
 const LEAD_SID_KEY = "bsg_marketing_sid";
@@ -244,6 +245,7 @@ export function LeadOfferPopup() {
       const wa = whatsappLink(
         `Hi Book Scuba Goa — I want the ₹200 website discount. My WhatsApp number: +91 ${digits.slice(0, 5)} ${digits.slice(5)}.`
       );
+      trackMetaWhatsAppClick();
       window.open(wa, "_blank", "noopener,noreferrer");
     } catch {
       setMsg("Something went wrong. Use WhatsApp below.");
