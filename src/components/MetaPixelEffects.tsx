@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   classifyMetaOutboundHref,
   trackMetaPhoneCallClick,
@@ -9,41 +9,36 @@ import {
 } from "@/lib/meta-pixel";
 
 /**
- * SPA PageView + outbound WhatsApp / business tel clicks (capture phase so
- * events fire before the browser follows the link).
+ * Client-side route changes only: {@link MetaPixelRoot} inline snippet already
+ * sends the first `PageView`. Next.js App Router navigations need an extra
+ * `PageView` so funnels stay accurate.
+ *
+ * Also: outbound WhatsApp / business tel clicks (capture phase so events fire
+ * before the browser follows the link).
  */
 export function MetaPixelEffects() {
   const pathname = usePathname();
   const isAdmin = Boolean(pathname?.startsWith("/admin"));
+  const lastTrackedPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (isAdmin) return;
+    const path = pathname || "/";
 
-    const sendPageView = () => {
-      const f = typeof window.fbq === "function" ? window.fbq : undefined;
-      if (!f) return false;
-      try {
-        f("track", "PageView");
-      } catch {
-        /* ignore */
-      }
-      return true;
-    };
+    if (lastTrackedPathRef.current === null) {
+      lastTrackedPathRef.current = path;
+      return;
+    }
+    if (lastTrackedPathRef.current === path) return;
+    lastTrackedPathRef.current = path;
 
-    let cancelled = false;
-    let pollId: number | undefined;
-    let tries = 0;
-    const tick = () => {
-      if (cancelled) return;
-      if (sendPageView()) return;
-      tries += 1;
-      if (tries < 8) pollId = window.setTimeout(tick, 400);
-    };
-    tick();
-    return () => {
-      cancelled = true;
-      if (pollId !== undefined) window.clearTimeout(pollId);
-    };
+    const f = typeof window.fbq === "function" ? window.fbq : undefined;
+    if (!f) return;
+    try {
+      f("track", "PageView");
+    } catch {
+      /* ignore */
+    }
   }, [pathname, isAdmin]);
 
   useEffect(() => {

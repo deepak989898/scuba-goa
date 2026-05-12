@@ -3,16 +3,15 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Script from "next/script";
-import { MetaPixelEffects } from "@/components/MetaPixelEffects";
 
 /**
  * Google Analytics 4: users, geo, device, traffic sources (standard GA4 reports).
  * Microsoft Clarity: session replay, clicks, heatmaps.
- * Meta (Facebook) Pixel: ads attribution, remarketing, Purchase + custom events.
  *
- * GA4, Clarity, and Meta all use `lazyOnload` so tracking does not compete with the
- * first render/hydration work on mobile. It is better to miss a few milliseconds
- * of heatmap timing than to make the booking page feel slow.
+ * GA4 and Clarity use `lazyOnload` so tracking does not compete with the first
+ * render/hydration work on mobile. The Meta Pixel is loaded separately in
+ * {@link MetaPixelRoot} (`afterInteractive`) so Meta’s URL scanner and event
+ * setup tool can detect it without waiting for a scroll or tap.
  *
  * Skips /admin so staff sessions are not recorded.
  */
@@ -42,25 +41,6 @@ function readGaMeasurementId(): string {
 const GA_ID = readGaMeasurementId();
 const CLARITY_ID = (process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || "").trim();
 
-function readMetaPixelId(): string {
-  const raw = (process.env.NEXT_PUBLIC_META_PIXEL_ID || "")
-    .trim()
-    .replace(/^['"]+|['"]+$/g, "");
-  if (!raw) return "";
-  if (process.env.NODE_ENV === "development") {
-    const ok = /^\d{10,20}$/.test(raw);
-    if (!ok) {
-      console.warn(
-        "[MarketingScripts] NEXT_PUBLIC_META_PIXEL_ID should be numeric (Meta Pixel ID). Value:",
-        raw,
-      );
-    }
-  }
-  return raw;
-}
-
-const META_PIXEL_ID = readMetaPixelId();
-
 export function MarketingScripts() {
   const pathname = usePathname();
   const isAdmin = Boolean(pathname?.startsWith("/admin"));
@@ -69,11 +49,6 @@ export function MarketingScripts() {
     if (!GA_ID) {
       console.info(
         "[MarketingScripts] GA4 is off — set NEXT_PUBLIC_GA_MEASUREMENT_ID (or NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) in .env.local / Vercel.",
-      );
-    }
-    if (!META_PIXEL_ID) {
-      console.info(
-        "[MarketingScripts] Meta Pixel off — set NEXT_PUBLIC_META_PIXEL_ID for Facebook / Instagram ads tracking.",
       );
     }
   }, [isAdmin]);
@@ -180,25 +155,6 @@ try {
 } catch (e) { /* ignore */ }
           `.trim()}
         </Script>
-      ) : null}
-      {META_PIXEL_ID ? (
-        <>
-          <Script id="meta-pixel-fbq" strategy="lazyOnload">
-            {`
-(function () {
-  var id = ${JSON.stringify(META_PIXEL_ID)};
-  if (!id) return;
-  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-  document,'script','https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', id);
-})();
-            `.trim()}
-          </Script>
-          <MetaPixelEffects />
-        </>
       ) : null}
     </>
   );

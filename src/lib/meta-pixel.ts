@@ -1,5 +1,12 @@
 import { isBusinessTelHref, isBusinessWhatsAppHref } from "@/lib/constants";
 
+/** Build-time `NEXT_PUBLIC_META_PIXEL_ID` (Meta’s numeric Pixel ID, no spaces). */
+export function readMetaPixelIdFromEnv(): string {
+  return (process.env.NEXT_PUBLIC_META_PIXEL_ID || "")
+    .trim()
+    .replace(/^['"]+|['"]+$/g, "");
+}
+
 /**
  * Meta (Facebook) Pixel — browser events for Ads + Custom Conversions.
  *
