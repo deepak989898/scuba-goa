@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
+import { buildServiceShareMetadata } from "@/lib/og-service-metadata";
 import { ServiceDetailGallery } from "@/components/ServiceDetailGallery";
 import { ServiceDetailSections } from "@/components/ServiceDetailSections";
 import { ServiceSubServicesCart } from "@/components/ServiceSubServicesCart";
@@ -38,12 +39,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: scubaDesc.slice(0, 320),
       keywords: [...PRIMARY_SEO_KEYWORDS, s.title, "try dive Goa", "Grande Island"],
       alternates: { canonical },
-      openGraph: {
+      ...buildServiceShareMetadata(s, {
         title: `Scuba diving in Goa | ${SITE_NAME}`,
-        description: scubaDesc.slice(0, 200),
-        url: canonical,
-        type: "website",
-      },
+        description: scubaDesc,
+        canonical,
+      }),
     };
   }
 
@@ -52,6 +52,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: desc.slice(0, 320),
     keywords: [s.title, "Goa", "booking"],
     alternates: { canonical },
+    ...buildServiceShareMetadata(s, {
+      title: `${s.title} | ${SITE_NAME}`,
+      description: desc,
+      canonical,
+    }),
   };
 }
 

@@ -1,16 +1,38 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PromoCopyButton } from "@/components/PromoCopyButton";
+import { fallbackPackages } from "@/data/fallback-packages";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import { absoluteOgImageUrl } from "@/lib/og-image-url";
 import { fetchActiveOffersPublic } from "@/lib/server-offers";
 
 export const dynamic = "force-dynamic";
+
+const offersShareImage = fallbackPackages[0]?.imageUrl
+  ? absoluteOgImageUrl(fallbackPackages[0].imageUrl)
+  : undefined;
 
 export const metadata: Metadata = {
   title: "Offers & promo codes",
   description: `Online-only promo codes for ${SITE_NAME}. Copy a code and paste it on the booking page before Razorpay checkout.`,
   alternates: {
     canonical: `${SITE_URL.replace(/\/$/, "")}/offers`,
+  },
+  openGraph: {
+    title: `Offers & promo codes | ${SITE_NAME}`,
+    description: `Online-only promo codes for ${SITE_NAME}.`,
+    url: `${SITE_URL.replace(/\/$/, "")}/offers`,
+    type: "website",
+    siteName: SITE_NAME,
+    images: offersShareImage
+      ? [{ url: offersShareImage, width: 1200, height: 630, alt: `${SITE_NAME} offers` }]
+      : undefined,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `Offers & promo codes | ${SITE_NAME}`,
+    description: `Online-only promo codes for ${SITE_NAME}.`,
+    images: offersShareImage ? [offersShareImage] : undefined,
   },
 };
 
