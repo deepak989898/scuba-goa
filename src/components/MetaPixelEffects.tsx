@@ -9,8 +9,8 @@ import {
 } from "@/lib/meta-pixel";
 
 /**
- * Client-side route changes only: {@link MetaPixelRoot} sends the first `PageView`
- * once the user has engaged (scroll/tap/key). Next.js App Router navigations need an extra
+ * Client-side route changes only: {@link MetaPixelRoot} inline snippet already
+ * sends the first `PageView`. Next.js App Router navigations need an extra
  * `PageView` so funnels stay accurate.
  *
  * Also: outbound WhatsApp / business tel clicks (capture phase so events fire

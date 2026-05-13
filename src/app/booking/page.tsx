@@ -1,16 +1,25 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BookingForm } from "@/components/BookingForm";
-import { buildBookingMetadata } from "@/lib/booking-metadata";
+import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}): Promise<Metadata> {
-  return buildBookingMetadata(await searchParams);
-}
+export const metadata: Metadata = {
+  title: `Book Scuba Diving in Goa — Pay Online | ${SITE_NAME}`,
+  description:
+    "Book scuba diving in Goa online: live scuba diving price Goa, cart checkout with Razorpay (UPI, cards, netbanking). Best scuba in Goa packages—no login required.",
+  keywords: [...PRIMARY_SEO_KEYWORDS, "book scuba Goa", "Razorpay scuba"],
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/booking`,
+  },
+  openGraph: {
+    title: `Book scuba diving in Goa | ${SITE_NAME}`,
+    description:
+      "Secure checkout for scuba diving in Goa and tours—compare scuba diving price Goa and pay in minutes.",
+    url: `${SITE_URL.replace(/\/$/, "")}/booking`,
+    type: "website",
+  },
+};
 
 export default function BookingPage() {
   return (

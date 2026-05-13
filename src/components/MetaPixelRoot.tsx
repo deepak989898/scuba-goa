@@ -4,23 +4,22 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Script from "next/script";
 import { MetaPixelEffects } from "@/components/MetaPixelEffects";
-import { useAfterFirstInteraction } from "@/hooks/useAfterFirstInteraction";
 import { readMetaPixelIdFromEnv } from "@/lib/meta-pixel";
 
 const META_PIXEL_ID = readMetaPixelIdFromEnv();
 
 /**
- * Meta Pixel loads after the first scroll/tap/key (same trigger as deferred GTM).
- * That removes Facebook’s legacy polyfill bundle (~30+ KiB) from the critical path
- * and clears the “Legacy JavaScript” audit in Lighthouse for cold loads.
- * Engaged visitors still get `PageView` almost immediately after interacting.
+ * Meta Pixel loads here (not inside {@link DeferredMarketingScripts}) so:
+ * - Meta’s “set up events” / URL scanner finds `fbq` without requiring a scroll or tap first.
+ * - `lazyOnload` keeps Facebook JS off the critical path so LCP is not competing
+ *   with short-TTL `fbevents.js` (PageSpeed). Real users still get attribution
+ *   after the window load event.
  *
  * `/admin` is excluded so staff traffic is not attributed to ads.
  */
 export function MetaPixelRoot() {
   const pathname = usePathname();
   const isAdmin = Boolean(pathname?.startsWith("/admin"));
-  const engaged = useAfterFirstInteraction();
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development" || isAdmin) return;
@@ -38,14 +37,14 @@ export function MetaPixelRoot() {
     }
   }, [isAdmin]);
 
-  if (isAdmin || !META_PIXEL_ID || !engaged) return null;
+  if (isAdmin || !META_PIXEL_ID) return null;
 
   const idJson = JSON.stringify(META_PIXEL_ID);
   const noscriptSrc = `https://www.facebook.com/tr?id=${encodeURIComponent(META_PIXEL_ID)}&ev=PageView&noscript=1`;
 
   return (
     <>
-      <Script id="meta-pixel-fbq" strategy="afterInteractive">
+      <Script id="meta-pixel-fbq" strategy="lazyOnload">
         {`
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
