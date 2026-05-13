@@ -45,12 +45,13 @@ export function Header() {
           <Image
             src="/book-scuba-goa-logo-transparent.png"
             alt="Book Scuba Goa"
-            width={650}
-            height={238}
-            sizes="(max-width: 640px) 180px, 220px"
+            width={240}
+            height={88}
+            sizes="(max-width: 640px) 132px, 152px"
             className="h-12 w-auto sm:h-14"
-            quality={70}
-            priority
+            quality={65}
+            priority={!isHome}
+            fetchPriority={isHome ? "low" : "high"}
           />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">

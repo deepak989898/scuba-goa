@@ -54,6 +54,7 @@ export function CmsRemoteImage({
         className={className}
         sizes={sizes ?? DEFAULT_SIZES}
         priority={priority}
+        fetchPriority={priority ? "high" : undefined}
         quality={quality}
         loading={priority ? undefined : loading ?? "lazy"}
       />

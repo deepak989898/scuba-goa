@@ -9,8 +9,8 @@ import {
 } from "@/lib/hero-slides-default";
 
 export function useHeroSlides() {
-  /** Start empty so the built-in defaults never flash before Firestore responds. */
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  /** Start with defaults so the hero paints immediately (Firestore replaces when ready). */
+  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_HERO_SLIDES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

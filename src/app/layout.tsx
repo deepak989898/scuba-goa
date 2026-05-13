@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Outfit } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { DeferredMarketingScripts } from "@/components/DeferredMarketingScripts";
 import { MetaPixelRoot } from "@/components/MetaPixelRoot";
@@ -12,12 +12,6 @@ const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
 const dm = DM_Sans({
   subsets: ["latin"],
   variable: "--font-dm-sans",
-  display: "swap",
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -84,7 +78,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dm.variable} ${outfit.variable}`}>
+    <html lang="en" className={dm.variable}>
+      <head>
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+      </head>
       <body className="site-3d min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
         <Providers>
           <SiteChrome>{children}</SiteChrome>

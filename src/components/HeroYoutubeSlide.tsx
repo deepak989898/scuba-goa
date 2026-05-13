@@ -239,7 +239,7 @@ export function HeroYoutubeSlide({
             alt={alt}
             fill
             priority
-            quality={75}
+            quality={72}
             className="object-cover object-center"
             sizes="100vw"
             aria-hidden
