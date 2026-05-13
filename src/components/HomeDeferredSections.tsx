@@ -19,10 +19,6 @@ const RatingsSection = dynamic(
   () => import("@/components/RatingsSection").then((m) => m.RatingsSection),
   { ssr: false, loading: () => null },
 );
-const GallerySection = dynamic(
-  () => import("@/components/GallerySection").then((m) => m.GallerySection),
-  { ssr: false, loading: () => null },
-);
 
 /**
  * These sections are below the first mobile viewport and are all client-heavy:
@@ -40,7 +36,7 @@ export function HomeDeferredSections() {
         aria-hidden
         className="bg-white py-8 text-center text-sm text-ocean-700"
       >
-        Scroll to explore packages, reviews, gallery, and Goa experiences.
+        Scroll to explore packages, reviews, and Goa experiences.
       </div>
     );
   }
@@ -51,7 +47,6 @@ export function HomeDeferredSections() {
       <PackagesSection />
       <AdConversionStrip />
       <RatingsSection />
-      <GallerySection />
     </>
   );
 }

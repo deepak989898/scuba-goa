@@ -78,7 +78,7 @@ export default function AdminHomePage() {
             Gallery & reels
           </h2>
           <p className="mt-2 text-sm text-ocean-700">
-            Homepage gallery: images and video URLs, reorder with up/down.
+            Public gallery page: images and video URLs, reorder with up/down.
           </p>
         </Link>
         <Link

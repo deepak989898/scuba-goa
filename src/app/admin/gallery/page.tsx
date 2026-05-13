@@ -121,11 +121,14 @@ export default function AdminGalleryPage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ocean-900">
-        Homepage gallery
+        Gallery
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
-        Images and video reels for the home &quot;Gallery &amp; moments&quot; block.
-        Use direct URLs (Firebase Storage, Cloudinary, etc.). For videos, add a{" "}
+        Images and short video reels for the public{" "}
+        <a href="/gallery" className="font-semibold text-ocean-800 underline-offset-2 hover:underline">
+          /gallery
+        </a>{" "}
+        page. Use direct URLs (Firebase Storage, Cloudinary, etc.). For videos, add a{" "}
         <strong>poster</strong> image URL for thumbnails. Lower sort order appears
         first. Use Move up / down to reorder quickly.
       </p>

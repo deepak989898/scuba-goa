@@ -15,6 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/blog",
     "/guides",
     "/offers",
+    "/gallery",
     "/admin/login",
   ];
   const staticLastMod: Record<string, string> = {
@@ -26,6 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/blog": "2026-04-09",
     "/guides": "2026-04-11",
     "/offers": "2026-04-11",
+    "/gallery": "2026-05-13",
     "/admin/login": "2026-03-26",
   };
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
