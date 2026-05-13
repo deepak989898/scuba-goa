@@ -6,8 +6,6 @@ import { SITE_NAME, SITE_URL } from "@/lib/constants";
 type Props = {
   title: string;
   path: string;
-  /** Shown in WhatsApp text and helps match OG preview (detail page must set og:* tags). */
-  priceFrom?: number;
   className?: string;
   compact?: boolean;
 };
@@ -15,7 +13,6 @@ type Props = {
 export function SocialShareButtons({
   title,
   path,
-  priceFrom,
   className,
   compact = false,
 }: Props) {
@@ -26,16 +23,8 @@ export function SocialShareButtons({
     typeof window !== "undefined"
       ? `${window.location.origin}${p}`
       : `${SITE_URL.replace(/\/$/, "")}${p}`;
-  const priceLine =
-    priceFrom != null &&
-    Number.isFinite(priceFrom) &&
-    priceFrom > 0
-      ? `From ₹${priceFrom.toLocaleString("en-IN")}+`
-      : "";
-  const waBody = priceLine
-    ? `${title}\n${priceLine}\n${SITE_NAME}\n${url}`
-    : `${title} | ${SITE_NAME}\n${url}`;
-  const wa = `https://wa.me/?text=${encodeURIComponent(waBody)}`;
+  const text = `${title} | ${SITE_NAME}`;
+  const wa = `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
   const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
 
   async function shareToInstagram() {

@@ -137,7 +137,6 @@ export function ServiceCards() {
                       <SocialShareButtons
                         title={s.title}
                         path={`/services/${s.slug}`}
-                        priceFrom={s.priceFrom}
                         compact
                       />
                     </span>
