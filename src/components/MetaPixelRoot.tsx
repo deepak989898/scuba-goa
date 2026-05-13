@@ -9,14 +9,11 @@ import { readMetaPixelIdFromEnv } from "@/lib/meta-pixel";
 const META_PIXEL_ID = readMetaPixelIdFromEnv();
 
 /**
- * Meta Pixel loads here (not inside {@link DeferredMarketingScripts}) so it
- * stays separate from GA/Clarity. `/admin` is excluded so staff traffic is not
- * attributed to ads.
+ * Meta Pixel loads here (not inside {@link DeferredMarketingScripts}) so:
+ * - Meta’s “set up events” / URL scanner finds `fbq` without requiring a scroll or tap first.
+ * - `afterInteractive` matches Meta’s recommended timing better than `lazyOnload`.
  *
- * `lazyOnload` runs `fbevents.js` after the full page load so it competes less
- * with LCP than `afterInteractive`. Meta’s URL scanner still sees `fbq` once
- * the script runs; third-party cache TTL on Facebook’s CDN cannot be changed
- * from this app.
+ * `/admin` is excluded so staff traffic is not attributed to ads.
  */
 export function MetaPixelRoot() {
   const pathname = usePathname();
@@ -45,7 +42,7 @@ export function MetaPixelRoot() {
 
   return (
     <>
-      <Script id="meta-pixel-fbq" strategy="lazyOnload">
+      <Script id="meta-pixel-fbq" strategy="afterInteractive">
         {`
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?

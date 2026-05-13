@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans } from "next/font/google";
+import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 import { DeferredMarketingScripts } from "@/components/DeferredMarketingScripts";
 import { MetaPixelRoot } from "@/components/MetaPixelRoot";
@@ -12,6 +12,12 @@ const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
 const dm = DM_Sans({
   subsets: ["latin"],
   variable: "--font-dm-sans",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -78,12 +84,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={dm.variable}>
-      <head>
-        {/* Warm DNS before deferred analytics / pixel scripts run (tiny win on cold loads). */}
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        <link rel="dns-prefetch" href="https://connect.facebook.net" />
-      </head>
+    <html lang="en" className={`${dm.variable} ${outfit.variable}`}>
       <body className="site-3d min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
         <Providers>
           <SiteChrome>{children}</SiteChrome>

@@ -120,9 +120,9 @@ export function HeroSlideBackground({
         alt={slide.alt}
         fill
         priority
-        quality={68}
+        quality={82}
         className="object-cover object-center"
-        sizes="(max-width: 640px) 100vw, (max-width: 1280px) 100vw, 1600px"
+        sizes="100vw"
       />
     );
   }

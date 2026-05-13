@@ -42,15 +42,14 @@ export function Header() {
           aria-label="Book Scuba Goa home"
         >
           <Image
-            src="/book-scuba-goa-logo-transparent.webp"
+            src="/book-scuba-goa-logo-transparent.png"
             alt="Book Scuba Goa"
-            width={360}
-            height={132}
-            sizes="(max-width: 640px) 120px, 156px"
+            width={650}
+            height={238}
+            sizes="(max-width: 640px) 180px, 220px"
             className="h-12 w-auto sm:h-14"
-            quality={62}
+            quality={70}
             priority
-            fetchPriority="high"
           />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
