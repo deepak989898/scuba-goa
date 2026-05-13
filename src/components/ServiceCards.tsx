@@ -6,7 +6,6 @@ import { ServiceCardImageSlider } from "@/components/ServiceCardImageSlider";
 import { useServices } from "@/hooks/useServices";
 import { ServiceCardAddToCart } from "@/components/cart/ServiceCardAddToCart";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
-import { ServiceShortClamp } from "@/components/ServiceShortClamp";
 import { serviceDetailImages } from "@/lib/service-images";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
 
@@ -113,7 +112,6 @@ export function ServiceCards() {
                     <h3 className="line-clamp-2 min-h-[2.5rem] font-display text-sm font-semibold leading-snug text-ocean-900 sm:min-h-[2.75rem] sm:text-lg">
                       {s.title}
                     </h3>
-                    <ServiceShortClamp slug={s.slug} text={s.short} />
                     <ServiceMetaBlock s={s} variant="cardGrid" />
                     <div className="mt-1.5 rounded-xl border-2 border-ocean-600 bg-gradient-to-br from-amber-50 via-white to-cyan-50 px-2.5 py-2 shadow-md ring-1 ring-ocean-200/80 sm:mt-3 sm:px-3 sm:py-2.5">
                       <p className="text-[9px] font-extrabold uppercase tracking-wider text-ocean-800 sm:text-[10px]">
@@ -139,6 +137,7 @@ export function ServiceCards() {
                       <SocialShareButtons
                         title={s.title}
                         path={`/services/${s.slug}`}
+                        priceFrom={s.priceFrom}
                         compact
                       />
                     </span>

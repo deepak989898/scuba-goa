@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
+import { absoluteOgImageUrl } from "@/lib/og-absolute-url";
 import { ServiceDetailGallery } from "@/components/ServiceDetailGallery";
 import { ServiceDetailSections } from "@/components/ServiceDetailSections";
 import { ServiceSubServicesCart } from "@/components/ServiceSubServicesCart";
@@ -25,14 +26,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!s) return { title: "Service" };
   const baseUrl = SITE_URL.replace(/\/$/, "");
   const canonical = `${baseUrl}/services/${slug}`;
+  const ogImage = absoluteOgImageUrl(s.image);
   const fromDetail = s.detailContent?.split(/\n\s*\n+/)[0]?.trim().slice(0, 155);
   const desc =
     (fromDetail && fromDetail.length > 0 ? fromDetail : s.short) +
     ` — book ${s.title.toLowerCase()} in Goa with WhatsApp or Razorpay.`;
+  const priceBit =
+    Number.isFinite(s.priceFrom) && s.priceFrom > 0
+      ? `From ₹${s.priceFrom.toLocaleString("en-IN")}+. `
+      : "";
+
+  const ogTwitterImages = {
+    openGraph: {
+      images: [{ url: ogImage, alt: s.title }],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      images: [ogImage],
+    },
+  };
 
   if (slug === "scuba-diving") {
     const scubaDesc =
       "Scuba diving in Goa: book try dives and packages with clear scuba diving price Goa, trained crews, and secure Razorpay checkout. Best scuba in Goa—compare inclusions before you pay.";
+    const ogDescription = `${priceBit}${scubaDesc}`.slice(0, 200);
     return {
       title: `Scuba Diving in Goa — Book Try Dive & Packages | ${SITE_NAME}`,
       description: scubaDesc.slice(0, 320),
@@ -40,18 +57,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       alternates: { canonical },
       openGraph: {
         title: `Scuba diving in Goa | ${SITE_NAME}`,
-        description: scubaDesc.slice(0, 200),
+        description: ogDescription,
         url: canonical,
+        siteName: SITE_NAME,
         type: "website",
+        ...ogTwitterImages.openGraph,
+      },
+      twitter: {
+        title: `Scuba diving in Goa | ${SITE_NAME}`,
+        description: ogDescription,
+        ...ogTwitterImages.twitter,
       },
     };
   }
+
+  const ogTitle = `${s.title} | ${SITE_NAME}`;
+  const ogDescription = `${priceBit}${desc}`.slice(0, 200);
 
   return {
     title: s.title,
     description: desc.slice(0, 320),
     keywords: [s.title, "Goa", "booking"],
     alternates: { canonical },
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      url: canonical,
+      siteName: SITE_NAME,
+      type: "website",
+      ...ogTwitterImages.openGraph,
+    },
+    twitter: {
+      title: ogTitle,
+      description: ogDescription,
+      ...ogTwitterImages.twitter,
+    },
   };
 }
 
@@ -78,7 +118,11 @@ export default async function ServiceDetailPage({ params }: Props) {
             Share this service
           </p>
           <div className="mt-2">
-            <SocialShareButtons title={s.title} path={`/services/${s.slug}`} />
+            <SocialShareButtons
+              title={s.title}
+              path={`/services/${s.slug}`}
+              priceFrom={s.priceFrom}
+            />
           </div>
         </div>
         <div className="mt-10">
