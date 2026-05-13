@@ -45,6 +45,11 @@ export default function AdminServicesPage() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [subRows, setSubRows] = useState<SubServiceFormRow[]>([]);
+  /** Inline price drafts for quick-edit column (document slug → input string) */
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [savingPriceSlug, setSavingPriceSlug] = useState<string | null>(null);
+  const [bulkDeltaInr, setBulkDeltaInr] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
   const triedAutoSeed = useRef(false);
 
   const empty = {
@@ -255,6 +260,7 @@ export default function AdminServicesPage() {
     setForm(empty);
     setSubRows([]);
     setEditingSlug(null);
+    setPriceDrafts({});
     await refresh();
   }
 
@@ -322,6 +328,67 @@ export default function AdminServicesPage() {
     const next = s.active === false;
     await updateDoc(doc(db, "services", s.slug), { active: next });
     await refresh();
+  }
+
+  function priceDraftFor(s: ServiceItem): string {
+    const d = priceDrafts[s.slug];
+    if (d !== undefined) return d;
+    return String(s.priceFrom ?? 0);
+  }
+
+  async function saveQuickPrice(s: ServiceItem) {
+    if (!db) return;
+    const raw = priceDrafts[s.slug] ?? String(s.priceFrom);
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) {
+      setFormError("Enter a valid price (0 or more).");
+      return;
+    }
+    setFormError(null);
+    setSavingPriceSlug(s.slug);
+    try {
+      await updateDoc(doc(db, "services", s.slug), { priceFrom: Math.round(n) });
+      setFormError(null);
+      setPriceDrafts((prev) => {
+        const next = { ...prev };
+        delete next[s.slug];
+        return next;
+      });
+      await refresh();
+    } catch (e) {
+      setFormError(
+        e instanceof Error ? e.message : "Could not save price. Try again."
+      );
+    } finally {
+      setSavingPriceSlug(null);
+    }
+  }
+
+  async function applyBulkPriceDelta() {
+    if (!db || list.length === 0) return;
+    const delta = Number(bulkDeltaInr);
+    if (!Number.isFinite(delta) || delta === 0) {
+      setFormError("Enter a non-zero amount to add (use negative to reduce).");
+      return;
+    }
+    setFormError(null);
+    setBulkSaving(true);
+    try {
+      for (const s of list) {
+        const nextPrice = Math.max(0, Math.round(Number(s.priceFrom ?? 0) + delta));
+        await updateDoc(doc(db, "services", s.slug), { priceFrom: nextPrice });
+      }
+      setFormError(null);
+      setBulkDeltaInr("");
+      setPriceDrafts({});
+      await refresh();
+    } catch (e) {
+      setFormError(
+        e instanceof Error ? e.message : "Bulk update failed. Try again."
+      );
+    } finally {
+      setBulkSaving(false);
+    }
   }
 
   if (!db) {
@@ -779,7 +846,38 @@ export default function AdminServicesPage() {
         </div>
       </div>
 
-      <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
+      <div className="mt-10 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+        <h2 className="font-semibold text-ocean-900">Quick price (existing services)</h2>
+        <p className="mt-1 text-sm text-ocean-700">
+          Change the main <strong>From ₹</strong> shown on cards—saved instantly to
+          Firestore. Sub-service variant prices are still edited in the full form below.
+        </p>
+        {loading || list.length === 0 ? null : (
+          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-ocean-100 bg-ocean-50/40 p-4">
+            <label className="text-sm text-ocean-900">
+              Add to <strong>all</strong> services (₹)
+              <input
+                type="number"
+                className="mt-1 block w-36 rounded-lg border border-ocean-200 bg-white px-2 py-2"
+                value={bulkDeltaInr}
+                onChange={(e) => setBulkDeltaInr(e.target.value)}
+                placeholder="e.g. 100 or -50"
+                disabled={bulkSaving}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={bulkSaving || list.length === 0}
+              onClick={() => void applyBulkPriceDelta()}
+              className="min-h-11 rounded-full bg-ocean-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {bulkSaving ? "Applying…" : "Apply to all"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
           <p className="p-6 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
@@ -794,7 +892,7 @@ export default function AdminServicesPage() {
                 <th className="p-3">Slug</th>
                 <th className="p-3">Title</th>
                 <th className="p-3">Status</th>
-                <th className="p-3">From ₹</th>
+                <th className="min-w-[200px] p-3">From ₹ (quick edit)</th>
                 <th className="p-3">Actions</th>
               </tr>
             </thead>
@@ -821,7 +919,39 @@ export default function AdminServicesPage() {
                       {s.active === false ? "Inactive" : "Active"}
                     </button>
                   </td>
-                  <td className="p-3">{s.priceFrom}</td>
+                  <td className="p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="w-28 rounded-lg border border-ocean-200 px-2 py-1.5 font-medium tabular-nums"
+                        value={priceDraftFor(s)}
+                        onChange={(e) =>
+                          setPriceDrafts((prev) => ({
+                            ...prev,
+                            [s.slug]: e.target.value,
+                          }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void saveQuickPrice(s);
+                          }
+                        }}
+                        disabled={savingPriceSlug === s.slug}
+                        aria-label={`Price from INR for ${s.slug}`}
+                      />
+                      <button
+                        type="button"
+                        className="rounded-lg bg-ocean-800 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                        disabled={savingPriceSlug === s.slug}
+                        onClick={() => void saveQuickPrice(s)}
+                      >
+                        {savingPriceSlug === s.slug ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </td>
                   <td className="p-3">
                     <button
                       type="button"
