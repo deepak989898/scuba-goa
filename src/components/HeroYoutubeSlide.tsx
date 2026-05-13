@@ -239,9 +239,9 @@ export function HeroYoutubeSlide({
             alt={alt}
             fill
             priority
-            quality={75}
+            quality={68}
             className="object-cover object-center"
-            sizes="100vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 100vw, 1600px"
             aria-hidden
           />
         </div>

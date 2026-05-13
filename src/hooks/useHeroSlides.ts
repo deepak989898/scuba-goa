@@ -9,8 +9,13 @@ import {
 } from "@/lib/hero-slides-default";
 
 export function useHeroSlides() {
-  /** Start empty so the built-in defaults never flash before Firestore responds. */
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  /**
+   * Seed with defaults immediately so SSR + first paint include the hero image URL.
+   * Waiting on Firestore left `slides` empty for seconds — PSI reported ~4s LCP
+   * “resource load delay” because the browser had nothing to fetch yet.
+   * CMS data still replaces this list once Firestore responds.
+   */
+  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_HERO_SLIDES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

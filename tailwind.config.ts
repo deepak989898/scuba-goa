@@ -25,7 +25,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
-        display: ["var(--font-outfit)", "system-ui", "sans-serif"],
+        // Same stack as sans — avoids a second blocking Google Font on LCP (was Outfit).
+        display: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "ocean-gradient":

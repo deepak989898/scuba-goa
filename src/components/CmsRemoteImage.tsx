@@ -17,7 +17,7 @@ type Props = {
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px";
 // 65 keeps photos visually crisp once Next.js re-encodes to AVIF/WebP while
 // shaving ~30-40% off vs. the previous 78. Hero/poster usage can override.
-const DEFAULT_QUALITY = 65;
+const DEFAULT_QUALITY = 62;
 
 /**
  * Local `/` assets and known CDN hosts use next/image (compression + modern formats).
@@ -54,6 +54,7 @@ export function CmsRemoteImage({
         className={className}
         sizes={sizes ?? DEFAULT_SIZES}
         priority={priority}
+        fetchPriority={priority ? "high" : undefined}
         quality={quality}
         loading={priority ? undefined : loading ?? "lazy"}
       />

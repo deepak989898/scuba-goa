@@ -173,7 +173,8 @@ export function GallerySection() {
                     alt={current.alt}
                     fill
                     className="object-cover"
-                    sizes="(max-width:1024px) 100vw, 66vw"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) min(100vw, 720px), min(920px, 66vw)"
+                    quality={62}
                     loading="lazy"
                   />
                 )}
