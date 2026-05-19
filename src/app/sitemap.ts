@@ -3,6 +3,7 @@ import { blogPosts } from "@/data/blog-posts";
 import { fallbackServices } from "@/data/services";
 import { SITE_URL } from "@/lib/constants";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
@@ -45,6 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.85,
     });
   }
+  const staticBlogSlugs = new Set(blogPosts.map((p) => p.slug));
   for (const p of blogPosts) {
     const modified = p.updatedAt ?? p.date;
     entries.push({
@@ -52,6 +54,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(modified),
       changeFrequency: "monthly",
       priority: 0.75,
+    });
+  }
+  const fsBlogs = await listPublishedBlogPostsServer();
+  for (const p of fsBlogs) {
+    if (staticBlogSlugs.has(p.slug)) continue;
+    entries.push({
+      url: `${base}/blog/${p.slug}`,
+      lastModified: new Date(p.updatedAt),
+      changeFrequency: "weekly",
+      priority: 0.76,
     });
   }
   const guides = await listPublishedSeoPagesServer();

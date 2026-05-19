@@ -1,41 +1,62 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { blogPosts, getPostBySlug, getRelatedBlogPosts } from "@/data/blog-posts";
+import { blogPosts } from "@/data/blog-posts";
 import { BlogContent } from "@/components/BlogContent";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import {
+  getBlogPostBySlugMerged,
+  getRelatedBlogPostsMerged,
+} from "@/lib/blog-posts-unified";
+import { getPublishedBlogPostBySlug, listPublishedBlogSlugsServer } from "@/lib/blog-posts-server";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export function generateStaticParams() {
-  return blogPosts.map((p) => ({ slug: p.slug }));
+export const dynamicParams = true;
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const staticSlugs = blogPosts.map((p) => p.slug);
+  const fsSlugs = await listPublishedBlogSlugsServer();
+  const seen = new Set(staticSlugs);
+  const merged = [...staticSlugs];
+  for (const s of fsSlugs) {
+    if (!seen.has(s)) merged.push(s);
+  }
+  return merged.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const p = getPostBySlug(slug);
+  const p = await getBlogPostBySlugMerged(slug);
   if (!p) return { title: "Article" };
+  const fs = await getPublishedBlogPostBySlug(slug);
   const canonical = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const title = p.metaTitle ?? `${p.title} | ${SITE_NAME}`;
+  const description = fs?.metaDescription ?? p.excerpt;
+  const ogImage = fs?.ogImageUrl?.trim();
   return {
-    title,
-    description: p.excerpt,
-    keywords: p.keywords,
+    title: fs?.metaTitle ?? title,
+    description,
+    keywords: fs?.keywords?.length ? fs.keywords : p.keywords,
     alternates: { canonical },
     openGraph: {
       title: p.title,
-      description: p.excerpt,
+      description,
       type: "article",
       url: canonical,
       siteName: SITE_NAME,
       publishedTime: p.date,
-      modifiedTime: p.date,
+      modifiedTime: fs?.updatedAt ?? p.date,
+      ...(ogImage ? { images: [{ url: ogImage, alt: p.title }] } : {}),
     },
     twitter: {
-      card: "summary_large_image",
+      card: ogImage ? "summary_large_image" : "summary",
       title: p.title,
-      description: p.excerpt,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
     },
     robots: { index: true, follow: true },
   };
@@ -66,6 +87,7 @@ function articleJsonLd(p: {
   date: string;
   slug: string;
   keywords?: string[];
+  imageUrl?: string;
 }) {
   const url = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   return {
@@ -76,6 +98,7 @@ function articleJsonLd(p: {
     datePublished: p.date,
     dateModified: p.date,
     keywords: p.keywords?.length ? p.keywords.join(", ") : undefined,
+    ...(p.imageUrl ? { image: [p.imageUrl] } : {}),
     author: { "@type": "Organization", name: SITE_NAME },
     publisher: { "@type": "Organization", name: SITE_NAME },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
@@ -112,19 +135,26 @@ function breadcrumbJsonLd(p: { title: string; slug: string }) {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const p = getPostBySlug(slug);
+  const p = await getBlogPostBySlugMerged(slug);
   if (!p) notFound();
+  const fs = await getPublishedBlogPostBySlug(slug);
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const faqs = p.faqs ?? [];
-  const related = getRelatedBlogPosts(p.slug, 3);
+  const related = await getRelatedBlogPostsMerged(p.slug, 3);
+  const featuredImage = fs?.featuredImageUrl?.trim();
 
   return (
     <article className="bg-white py-16 sm:py-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(articleJsonLd(p)),
+          __html: JSON.stringify(
+            articleJsonLd({
+              ...p,
+              imageUrl: featuredImage || fs?.ogImageUrl,
+            }),
+          ),
         }}
       />
       <script
@@ -166,6 +196,18 @@ export default async function BlogPostPage({ params }: Props) {
           {p.title}
         </h1>
         <p className="mt-4 text-lg text-ocean-700">{p.excerpt}</p>
+        {featuredImage ? (
+          <div className="relative mt-8 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-ocean-100">
+            <Image
+              src={featuredImage}
+              alt={p.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 672px"
+              priority
+            />
+          </div>
+        ) : null}
         <div className="prose prose-ocean mt-10 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
           <BlogContent content={p.content} />
         </div>

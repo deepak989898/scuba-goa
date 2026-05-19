@@ -1,0 +1,157 @@
+/**
+ * Firestore `blogPosts` — auto + manual SEO blogs at `/blog/[slug]`.
+ * Document ID = slug.
+ */
+
+import type { BlogFaq } from "@/data/blog/post-types";
+
+export type BlogLanguage = "en" | "hi" | "hinglish";
+
+export type BlogPostFirestore = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  metaTitle: string;
+  metaDescription: string;
+  keywords: string[];
+  content: string;
+  faqs: BlogFaq[];
+  date: string;
+  updatedAt: string;
+  readTime: string;
+  featuredImageUrl: string;
+  ogImageUrl: string;
+  language: BlogLanguage;
+  published: boolean;
+  source: "auto" | "manual";
+  serviceSlug: string;
+  pillar: boolean;
+  createdAt: string;
+  publishedAt?: string;
+  /** Future: hreflang cluster id */
+  localeGroupId?: string;
+};
+
+export function normalizeBlogSlugInput(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120);
+}
+
+export function isValidBlogSlug(slug: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length >= 3;
+}
+
+function parseKeywords(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map((x) => String(x).trim()).filter(Boolean);
+  }
+  if (typeof raw === "string") {
+    return raw
+      .split(/[,|\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function parseFaqs(raw: unknown): BlogFaq[] {
+  if (!Array.isArray(raw)) return [];
+  const out: BlogFaq[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const q = String((item as { question?: string }).question ?? "").trim();
+    const a = String((item as { answer?: string }).answer ?? "").trim();
+    if (q && a) out.push({ question: q, answer: a });
+  }
+  return out;
+}
+
+export function parseBlogPostFromFirestore(
+  docId: string,
+  data: Record<string, unknown> | undefined,
+  options: { requirePublished: boolean },
+): BlogPostFirestore | null {
+  if (!data) return null;
+  if (options.requirePublished && data.published !== true) return null;
+  if (options.requirePublished && !isValidBlogSlug(docId)) return null;
+
+  const title = String(data.title ?? "").trim();
+  if (options.requirePublished && !title) return null;
+
+  const content = String(data.content ?? "").trim();
+  const excerptRaw = String(data.excerpt ?? "").trim();
+  const excerpt =
+    excerptRaw ||
+    (content ? content.replace(/\s+/g, " ").trim().slice(0, 158) : title);
+
+  const langRaw = String(data.language ?? "hinglish").trim();
+  const language: BlogLanguage =
+    langRaw === "en" || langRaw === "hi" || langRaw === "hinglish"
+      ? langRaw
+      : "hinglish";
+
+  return {
+    slug: docId,
+    title,
+    excerpt,
+    metaTitle: String(data.metaTitle ?? "").trim() || title,
+    metaDescription:
+      String(data.metaDescription ?? "").trim() || excerpt,
+    keywords: parseKeywords(data.keywords),
+    content,
+    faqs: parseFaqs(data.faqs),
+    date: String(data.date ?? new Date().toISOString().slice(0, 10)).trim(),
+    updatedAt: String(data.updatedAt ?? new Date().toISOString()).trim(),
+    readTime: String(data.readTime ?? "6 min read").trim(),
+    featuredImageUrl: String(data.featuredImageUrl ?? "").trim(),
+    ogImageUrl: String(data.ogImageUrl ?? data.featuredImageUrl ?? "").trim(),
+    language,
+    published: data.published === true,
+    source: data.source === "manual" ? "manual" : "auto",
+    serviceSlug: String(data.serviceSlug ?? "").trim(),
+    pillar: data.pillar === true,
+    createdAt: String(data.createdAt ?? new Date().toISOString()).trim(),
+    publishedAt:
+      data.publishedAt != null
+        ? String(data.publishedAt).trim()
+        : undefined,
+    localeGroupId:
+      data.localeGroupId != null
+        ? String(data.localeGroupId).trim()
+        : undefined,
+  };
+}
+
+export function blogPostToFirestorePayload(
+  post: Omit<BlogPostFirestore, "updatedAt"> & { updatedAt?: string },
+): Record<string, unknown> {
+  const updatedAt = post.updatedAt ?? new Date().toISOString();
+  return {
+    slug: post.slug,
+    title: post.title,
+    excerpt: post.excerpt,
+    metaTitle: post.metaTitle,
+    metaDescription: post.metaDescription,
+    keywords: post.keywords,
+    content: post.content,
+    faqs: post.faqs,
+    date: post.date,
+    readTime: post.readTime,
+    featuredImageUrl: post.featuredImageUrl,
+    ogImageUrl: post.ogImageUrl,
+    language: post.language,
+    published: post.published,
+    source: post.source,
+    serviceSlug: post.serviceSlug,
+    pillar: post.pillar,
+    updatedAt,
+    ...(post.createdAt ? { createdAt: post.createdAt } : {}),
+    ...(post.publishedAt ? { publishedAt: post.publishedAt } : {}),
+    ...(post.localeGroupId ? { localeGroupId: post.localeGroupId } : {}),
+  };
+}

@@ -90,6 +90,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               SEO guides
             </Link>
             <Link
+              href="/admin/blog-automation"
+              className="text-ocean-700 hover:text-ocean-500"
+            >
+              Blog auto
+            </Link>
+            <Link
               href="/admin/gallery"
               className="text-ocean-700 hover:text-ocean-500"
             >

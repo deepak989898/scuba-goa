@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { blogPostsPillarFirst } from "@/data/blog-posts";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
+import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Scuba Diving in Goa Blog — Price, Safety & Best Time | Book Scuba Goa",
@@ -26,7 +29,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogIndexPage() {
+export default async function BlogIndexPage() {
+  const merged = await getAllBlogPostsMerged();
+  const pillarSlugs = new Set(
+    blogPostsPillarFirst().map((p) => p.slug),
+  );
+  const pillarFirst = [
+    ...merged.filter((p) => pillarSlugs.has(p.slug)),
+    ...merged.filter((p) => !pillarSlugs.has(p.slug)),
+  ];
   return (
     <div className="bg-sand py-16 sm:py-20">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
@@ -40,7 +51,7 @@ export default function BlogIndexPage() {
           live booking.
         </p>
         <ul className="mt-12 space-y-6">
-          {blogPostsPillarFirst().map((p) => (
+          {pillarFirst.map((p) => (
             <li key={p.slug}>
               <Link
                 href={`/blog/${p.slug}`}
