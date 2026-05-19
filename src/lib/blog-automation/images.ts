@@ -59,6 +59,64 @@ function buildBrandBarBackground(width: number, barHeight: number): Buffer {
   return Buffer.from(svg);
 }
 
+/** Full-width bottom bar with logo (left) + site URL (right), nothing cropped. */
+async function buildBrandBarLayer(
+  width: number,
+  barHeight: number,
+): Promise<Buffer> {
+  const padY = 10;
+  const padX = 16;
+  const innerH = barHeight - padY * 2;
+
+  const composites: sharp.OverlayOptions[] = [
+    { input: buildBrandBarBackground(width, barHeight), top: 0, left: 0 },
+  ];
+
+  const logoRaw = await loadBrandLogoBuffer();
+  const logoMaxW = Math.round(width * 0.42);
+  const logoBuf = await sharp(logoRaw)
+    .resize(logoMaxW, innerH, { fit: "inside", withoutEnlargement: true })
+    .png()
+    .toBuffer();
+  const logoMeta = await sharp(logoBuf).metadata();
+  const logoW = logoMeta.width ?? logoMaxW;
+  const logoH = logoMeta.height ?? innerH;
+  composites.push({
+    input: logoBuf,
+    top: padY + Math.round((innerH - logoH) / 2),
+    left: padX,
+  });
+
+  const hostPng = await readPublicAsset(BAR_HOST_PNG);
+  if (hostPng) {
+    const hostMaxW = Math.round(width * 0.32);
+    const hostBuf = await sharp(hostPng)
+      .resize(hostMaxW, innerH, { fit: "inside", withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    const hostMeta = await sharp(hostBuf).metadata();
+    const hostW = hostMeta.width ?? hostMaxW;
+    const hostH = hostMeta.height ?? innerH;
+    composites.push({
+      input: hostBuf,
+      top: padY + Math.round((innerH - hostH) / 2),
+      left: Math.max(padX + logoW + 12, width - hostW - padX),
+    });
+  }
+
+  return sharp({
+    create: {
+      width,
+      height: barHeight,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer();
+}
+
 /** Resize to WebP + bottom brand bar (logo left, site URL right). No text watermark. */
 export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const resizedBuf = await sharp(photoBuffer)
@@ -69,51 +127,14 @@ export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const meta = await sharp(resizedBuf).metadata();
   const width = meta.width ?? MAX_WIDTH;
   const height = meta.height ?? Math.round(width * 0.56);
-  const barHeight = Math.max(56, Math.round(height * 0.12));
+  const barHeight = Math.max(80, Math.round(height * 0.14));
 
-  const composites: sharp.OverlayOptions[] = [
-    {
-      input: buildBrandBarBackground(width, barHeight),
-      top: height - barHeight,
-      left: 0,
-    },
-  ];
+  const barLayer = await buildBrandBarLayer(width, barHeight);
 
-  const hostPng = await readPublicAsset(BAR_HOST_PNG);
-  if (hostPng) {
-    const hostH = Math.round(barHeight * 0.55);
-    const hostBuf = await sharp(hostPng)
-      .resize(undefined, hostH, { fit: "inside", withoutEnlargement: true })
-      .png()
-      .toBuffer();
-    const hostMeta = await sharp(hostBuf).metadata();
-    const hostW = hostMeta.width ?? 200;
-    const hostImgH = hostMeta.height ?? hostH;
-    composites.push({
-      input: hostBuf,
-      top: height - barHeight + Math.round((barHeight - hostImgH) / 2),
-      left: width - hostW - 16,
-    });
-  }
-
-  const logoRaw = await loadBrandLogoBuffer();
-  const logoMaxH = Math.round(barHeight * 0.82);
-  const logoMaxW = Math.round(width * 0.22);
-  const logoBuf = await sharp(logoRaw)
-    .resize(logoMaxW, logoMaxH, { fit: "inside", withoutEnlargement: true })
-    .png()
+  return sharp(resizedBuf)
+    .composite([{ input: barLayer, top: height - barHeight, left: 0 }])
+    .webp({ quality: WEBP_QUALITY })
     .toBuffer();
-  const logoMeta = await sharp(logoBuf).metadata();
-  const logoH = logoMeta.height ?? logoMaxH;
-  const logoTop = height - barHeight + Math.round((barHeight - logoH) / 2);
-
-  composites.push({
-    input: logoBuf,
-    top: Math.max(0, logoTop),
-    left: 14,
-  });
-
-  return sharp(resizedBuf).composite(composites).webp({ quality: WEBP_QUALITY }).toBuffer();
 }
 
 async function uploadWebpToStorage(

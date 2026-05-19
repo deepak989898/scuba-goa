@@ -197,12 +197,14 @@ export default async function BlogPostPage({ params }: Props) {
         </h1>
         <p className="mt-4 text-lg text-ocean-700">{p.excerpt}</p>
         {featuredImage ? (
-          <div className="relative mt-8 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-ocean-100">
+          <div className="relative mt-8 w-full overflow-hidden rounded-2xl border border-ocean-100 bg-ocean-900">
             <Image
               src={featuredImage}
               alt={p.title}
-              fill
-              className="object-cover"
+              width={1200}
+              height={675}
+              className="h-auto w-full"
+              style={{ width: "100%", height: "auto" }}
               sizes="(max-width: 768px) 100vw, 672px"
               priority
             />
