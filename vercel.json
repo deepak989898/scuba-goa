@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/blog-publish",
-      "schedule": "*/30 * * * *"
+      "schedule": "30 3 * * *"
     }
   ]
 }

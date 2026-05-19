@@ -231,8 +231,8 @@ export default function AdminBlogAutomationPage() {
             different IST time for each daily post. Queued admin titles publish first, in order.
           </p>
           <p className="mt-2 text-xs font-medium text-ocean-600">
-            Build: v2-multi-slot-watermark — if you do not see time pickers below, hard-refresh
-            (Ctrl+Shift+R) or redeploy the latest commit on Vercel.
+            Build: v2-multi-slot-watermark (May 2026) — you should see time pickers below, not
+            “Preferred hour”. Hard-refresh (Ctrl+Shift+R) after Vercel shows this commit live.
           </p>
         </div>
         <Link
