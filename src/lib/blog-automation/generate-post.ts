@@ -121,9 +121,12 @@ export async function generateAndPublishOneBlog(options?: {
       });
       featuredImageUrl = uploaded.featuredImageUrl;
       ogImageUrl = uploaded.ogImageUrl;
-    } catch {
-      featuredImageUrl = photo.url;
-      ogImageUrl = photo.url;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Image branding failed";
+      console.error("[blog-automation] branded image failed:", msg);
+      throw new Error(
+        `Could not save branded blog image (logo/watermark). ${msg}`,
+      );
     }
   }
 
