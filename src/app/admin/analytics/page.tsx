@@ -468,13 +468,10 @@ export default function AdminAnalyticsPage() {
     );
 
     const rowsBySession = new Map<string, Row[]>();
-    const dayPageViews = new Map<string, number>();
 
     for (const r of rows) {
       const ts = toTimestamp(r.createdAt);
       if (!ts || !r.sessionId) continue;
-      const day = istCalendarDate(ts);
-      dayPageViews.set(day, (dayPageViews.get(day) ?? 0) + 1);
       const list = rowsBySession.get(r.sessionId) ?? [];
       list.push(r);
       rowsBySession.set(r.sessionId, list);
@@ -503,7 +500,7 @@ export default function AdminAnalyticsPage() {
       list.sort((a, b) => b.arrivedAtMs - a.arrivedAtMs);
     }
 
-    const allDays = new Set([...dayPageViews.keys(), todayIstYmd]);
+    const allDays = new Set([...visitorsByDay.keys(), todayIstYmd]);
     const dayGroupsRaw: DayGroup[] = [...allDays]
       .sort((a, b) => b.localeCompare(a))
       .slice(0, MAX_DAYS)
@@ -512,7 +509,7 @@ export default function AdminAnalyticsPage() {
         return {
           date,
           label: formatDayLabel(date, todayIstYmd),
-          pageViews: dayPageViews.get(date) ?? 0,
+          pageViews: allVisitors.reduce((acc, v) => acc + v.pageViews, 0),
           visitors: allVisitors,
           totalVisitors: allVisitors.length,
           totalBots: allVisitors.filter((v) => v.isBot).length,
@@ -523,14 +520,7 @@ export default function AdminAnalyticsPage() {
       const visible = day.visitors.filter((v) =>
         matchesVisitorFilter(v.isBot, visitorFilter)
       );
-      const visibleIds = new Set(visible.map((v) => v.sessionId));
-      let pageViews = 0;
-      for (const r of rows) {
-        const ts = toTimestamp(r.createdAt);
-        if (!ts || !r.sessionId || !visibleIds.has(r.sessionId)) continue;
-        if (istCalendarDate(ts) !== day.date) continue;
-        pageViews++;
-      }
+      const pageViews = visible.reduce((acc, v) => acc + v.pageViews, 0);
       return { ...day, visitors: visible, pageViews };
     });
 
@@ -890,7 +880,8 @@ export default function AdminAnalyticsPage() {
                                     <p className="mt-1.5 text-xs text-ocean-700">
                                       {v.uniquePages} page
                                       {v.uniquePages === 1 ? "" : "s"} ·{" "}
-                                      {v.pageViews} views ·{" "}
+                                      {v.pageViews} page view
+                                      {v.pageViews === 1 ? "" : "s"} ·{" "}
                                       {v.deviceCategory}
                                       {v.deviceLabel ? ` · ${v.deviceLabel}` : ""}
                                     </p>
