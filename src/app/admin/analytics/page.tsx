@@ -17,9 +17,23 @@ import {
   shortenPageLabel,
 } from "@/lib/analytics-display";
 import {
+  botLabelFromUserAgent,
+  resolveIsBot,
+} from "@/lib/analytics-bot";
+import {
   trafficChannelStyles,
   type TrafficChannel,
 } from "@/lib/analytics-traffic";
+
+type VisitorKindFilter = "human" | "bot" | "both";
+
+function matchesVisitorFilter(
+  isBot: boolean,
+  filter: VisitorKindFilter
+): boolean {
+  if (filter === "both") return true;
+  return filter === "bot" ? isBot : !isBot;
+}
 
 type Row = {
   id: string;
@@ -31,6 +45,8 @@ type Row = {
   durationMs: number | null;
   deviceCategory: DeviceCategory | "";
   deviceLabel: string;
+  uaSnippet: string;
+  isBot?: boolean;
   createdAt: unknown;
   geoCountry?: string;
   geoCity?: string;
@@ -49,6 +65,8 @@ type SessionDoc = {
   lastEventType: string;
   deviceCategory: DeviceCategory | "";
   deviceLabel: string;
+  uaSnippet: string;
+  isBot?: boolean;
   lastSeenAt: unknown;
   firstSeenAt?: unknown;
   geoCountry?: string;
@@ -90,6 +108,9 @@ type VisitorSummary = {
   trafficDetail: string;
   landingPath: string;
   isOnline: boolean;
+  isBot: boolean;
+  botLabel: string;
+  uaSnippet: string;
 };
 
 type DayGroup = {
@@ -97,6 +118,8 @@ type DayGroup = {
   label: string;
   pageViews: number;
   visitors: VisitorSummary[];
+  totalVisitors: number;
+  totalBots: number;
 };
 
 function normalizeDeviceCategory(raw: string): DeviceCategory | "" {
@@ -277,6 +300,14 @@ function buildVisitorSummary(
       trafficSource?.trafficDetail ?? sess?.trafficDetail ?? "",
     landingPath: sess?.landingPath ?? first?.path ?? "—",
     isOnline: onlineIdSet.has(sid),
+    isBot: resolveIsBot(
+      sess?.isBot ?? first?.isBot,
+      sess?.uaSnippet || first?.uaSnippet || ""
+    ),
+    botLabel: botLabelFromUserAgent(
+      sess?.uaSnippet || first?.uaSnippet || ""
+    ),
+    uaSnippet: sess?.uaSnippet || first?.uaSnippet || "",
   };
 }
 
@@ -293,6 +324,8 @@ export default function AdminAnalyticsPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [visitorFilter, setVisitorFilter] =
+    useState<VisitorKindFilter>("human");
 
   const todayIstYmd = useMemo(
     () =>
@@ -350,6 +383,9 @@ export default function AdminAnalyticsPage() {
               String(data.deviceCategory ?? "")
             ),
             deviceLabel: String(data.deviceLabel ?? ""),
+            uaSnippet: String(data.uaSnippet ?? ""),
+            isBot:
+              typeof data.isBot === "boolean" ? data.isBot : undefined,
             createdAt: data.createdAt,
             ...geo,
             ...traffic,
@@ -368,6 +404,9 @@ export default function AdminAnalyticsPage() {
               String(data.deviceCategory ?? "")
             ),
             deviceLabel: String(data.deviceLabel ?? ""),
+            uaSnippet: String(data.uaSnippet ?? ""),
+            isBot:
+              typeof data.isBot === "boolean" ? data.isBot : undefined,
             lastSeenAt: data.lastSeenAt,
             firstSeenAt: data.firstSeenAt,
             ...pickGeoFields(data),
@@ -397,11 +436,29 @@ export default function AdminAnalyticsPage() {
   const analytics = useMemo(() => {
     const sessionById = new Map(sessions.map((s) => [s.sessionId, s]));
     const now = Date.now();
+    const sessionIsBot = new Map<string, boolean>();
+    for (const s of sessions) {
+      sessionIsBot.set(
+        s.sessionId,
+        resolveIsBot(s.isBot, s.uaSnippet)
+      );
+    }
+    for (const r of rows) {
+      if (!r.sessionId || sessionIsBot.has(r.sessionId)) continue;
+      sessionIsBot.set(
+        r.sessionId,
+        resolveIsBot(r.isBot, r.uaSnippet)
+      );
+    }
+
     const onlineIdSet = new Set(
       sessions
         .filter((s) => {
           const ts = toTimestamp(s.lastSeenAt);
           if (!ts) return false;
+          if (!matchesVisitorFilter(sessionIsBot.get(s.sessionId) ?? false, visitorFilter)) {
+            return false;
+          }
           return (
             now - ts.toMillis() <= ONLINE_WINDOW_MS &&
             s.lastEventType !== "leave"
@@ -447,15 +504,35 @@ export default function AdminAnalyticsPage() {
     }
 
     const allDays = new Set([...dayPageViews.keys(), todayIstYmd]);
-    const dayGroups: DayGroup[] = [...allDays]
+    const dayGroupsRaw: DayGroup[] = [...allDays]
       .sort((a, b) => b.localeCompare(a))
       .slice(0, MAX_DAYS)
-      .map((date) => ({
-        date,
-        label: formatDayLabel(date, todayIstYmd),
-        pageViews: dayPageViews.get(date) ?? 0,
-        visitors: visitorsByDay.get(date) ?? [],
-      }));
+      .map((date) => {
+        const allVisitors = visitorsByDay.get(date) ?? [];
+        return {
+          date,
+          label: formatDayLabel(date, todayIstYmd),
+          pageViews: dayPageViews.get(date) ?? 0,
+          visitors: allVisitors,
+          totalVisitors: allVisitors.length,
+          totalBots: allVisitors.filter((v) => v.isBot).length,
+        };
+      });
+
+    const dayGroups: DayGroup[] = dayGroupsRaw.map((day) => {
+      const visible = day.visitors.filter((v) =>
+        matchesVisitorFilter(v.isBot, visitorFilter)
+      );
+      const visibleIds = new Set(visible.map((v) => v.sessionId));
+      let pageViews = 0;
+      for (const r of rows) {
+        const ts = toTimestamp(r.createdAt);
+        if (!ts || !r.sessionId || !visibleIds.has(r.sessionId)) continue;
+        if (istCalendarDate(ts) !== day.date) continue;
+        pageViews++;
+      }
+      return { ...day, visitors: visible, pageViews };
+    });
 
     const todayGroup = dayGroups.find((d) => d.date === todayIstYmd);
     const todayVisitors = todayGroup?.visitors.length ?? 0;
@@ -476,8 +553,12 @@ export default function AdminAnalyticsPage() {
       trafficBreakdown: [...trafficBreakdown.entries()].sort(
         (a, b) => b[1] - a[1]
       ),
+      todayBotsHidden:
+        visitorFilter === "human"
+          ? (dayGroupsRaw.find((d) => d.date === todayIstYmd)?.totalBots ?? 0)
+          : 0,
     };
-  }, [rows, sessions, todayIstYmd]);
+  }, [rows, sessions, todayIstYmd, visitorFilter]);
 
   const expandedGroup = analytics.dayGroups.find((d) => d.date === expandedDate);
   const expandedVisitors = expandedGroup?.visitors ?? [];
@@ -528,8 +609,8 @@ export default function AdminAnalyticsPage() {
       <p className="mt-2 text-sm text-ocean-700">
         See who visited, when they arrived and left, how long they stayed on each
         page, where they are from, and whether they came from Facebook,
-        Instagram, Google, or a direct link. All times are{" "}
-        <strong>IST (India)</strong>.
+        Instagram, Google, or a direct link. Bots and crawlers are hidden by
+        default. All times are <strong>IST (India)</strong>.
       </p>
 
       {loadError ? (
@@ -553,6 +634,9 @@ export default function AdminAnalyticsPage() {
               </p>
               <p className="mt-1 text-xs text-green-800">
                 Active in last 2 minutes
+                {visitorFilter !== "both"
+                  ? ` · ${visitorFilter === "human" ? "humans" : "bots"} only`
+                  : ""}
               </p>
             </div>
             <div className="rounded-2xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
@@ -562,6 +646,12 @@ export default function AdminAnalyticsPage() {
               <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
                 {analytics.todayVisitors}
               </p>
+              {analytics.todayBotsHidden > 0 ? (
+                <p className="mt-1 text-xs text-ocean-600">
+                  {analytics.todayBotsHidden} bot
+                  {analytics.todayBotsHidden === 1 ? "" : "s"} hidden
+                </p>
+              ) : null}
             </div>
             <div className="rounded-2xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
@@ -570,6 +660,41 @@ export default function AdminAnalyticsPage() {
               <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
                 {analytics.todayPageViews}
               </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-ocean-800">
+              Show in visitor list
+            </p>
+            <div
+              className="inline-flex rounded-xl border border-ocean-200 bg-white p-1 shadow-sm"
+              role="group"
+              aria-label="Visitor type filter"
+            >
+              {(
+                [
+                  ["human", "Humans"],
+                  ["bot", "Bots"],
+                  ["both", "Both"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setVisitorFilter(value);
+                    setSelectedSessionId("");
+                  }}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    visitorFilter === value
+                      ? "bg-ocean-800 text-white shadow-sm"
+                      : "text-ocean-700 hover:bg-ocean-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -653,6 +778,22 @@ export default function AdminAnalyticsPage() {
                           {day.pageViews} page view
                           {day.pageViews === 1 ? "" : "s"}
                         </p>
+                        {visitorFilter === "human" && day.totalBots > 0 ? (
+                          <p className="text-[10px] text-ocean-500">
+                            {day.totalBots} bot{day.totalBots === 1 ? "" : "s"}{" "}
+                            hidden
+                          </p>
+                        ) : null}
+                        {visitorFilter === "bot" &&
+                        day.totalVisitors > day.totalBots ? (
+                          <p className="text-[10px] text-ocean-500">
+                            {day.totalVisitors - day.totalBots} human
+                            {day.totalVisitors - day.totalBots === 1
+                              ? ""
+                              : "s"}{" "}
+                            hidden
+                          </p>
+                        ) : null}
                       </div>
                     </button>
 
@@ -660,7 +801,11 @@ export default function AdminAnalyticsPage() {
                       <div className="border-t border-ocean-100 px-4 pb-4 pt-2">
                         {day.visitors.length === 0 ? (
                           <p className="py-6 text-center text-sm text-ocean-600">
-                            No visitors recorded on this day.
+                            {visitorFilter === "bot"
+                              ? "No bots recorded on this day."
+                              : visitorFilter === "human"
+                                ? "No human visitors on this day."
+                                : "No visitors recorded on this day."}
                           </p>
                         ) : (
                           <div className="grid gap-4 lg:grid-cols-2">
@@ -683,6 +828,11 @@ export default function AdminAnalyticsPage() {
                                         {v.isOnline ? (
                                           <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-800">
                                             Online
+                                          </span>
+                                        ) : null}
+                                        {v.isBot ? (
+                                          <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800">
+                                            Bot · {v.botLabel}
                                           </span>
                                         ) : null}
                                         {v.trafficChannel ? (
@@ -795,6 +945,16 @@ export default function AdminAnalyticsPage() {
                                       </dt>
                                       <dd>
                                         {selectedVisitor.geoLine || "—"}
+                                      </dd>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <dt className="w-24 shrink-0 font-medium text-ocean-900">
+                                        Visitor type
+                                      </dt>
+                                      <dd>
+                                        {selectedVisitor.isBot
+                                          ? `Bot (${selectedVisitor.botLabel})`
+                                          : "Human"}
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">
@@ -918,3 +1078,4 @@ export default function AdminAnalyticsPage() {
     </div>
   );
 }
+

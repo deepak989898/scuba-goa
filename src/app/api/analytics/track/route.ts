@@ -134,7 +134,7 @@ export async function POST(req: Request) {
     durationMsRaw === null
       ? null
       : Math.max(0, Math.min(Math.round(durationMsRaw), 1000 * 60 * 60 * 6));
-  const { category, label, uaSnippet } = parseRequestDevice(req.headers);
+  const { category, label, uaSnippet, isBot } = parseRequestDevice(req.headers);
   const geo = geoFromRequestHeaders(req.headers);
 
   const screenWidth = clampDim(body.screenWidth);
@@ -164,6 +164,10 @@ export async function POST(req: Request) {
 
   const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
   const sessionSnap = await sessionRef.get();
+  const existing = sessionSnap.exists
+    ? (sessionSnap.data() as Record<string, unknown>)
+    : {};
+
   const sessionPayload: Record<string, unknown> = {
     sessionId: sessionId || "anon",
     lastPath: path,
@@ -184,11 +188,10 @@ export async function POST(req: Request) {
   if (timeZone) sessionPayload.timeZone = timeZone;
   if (!sessionSnap.exists) {
     sessionPayload.firstSeenAt = FieldValue.serverTimestamp();
+    sessionPayload.isBot = isBot;
+  } else if (typeof existing.isBot !== "boolean") {
+    sessionPayload.isBot = isBot;
   }
-
-  const existing = sessionSnap.exists
-    ? (sessionSnap.data() as Record<string, unknown>)
-    : {};
   const hasTraffic = Boolean(existing.trafficChannel);
   if (!hasTraffic && trafficChannel) {
     sessionPayload.trafficChannel = trafficChannel;
@@ -212,6 +215,7 @@ export async function POST(req: Request) {
     deviceCategory: category,
     deviceLabel: label,
     uaSnippet,
+    isBot,
     createdAt: FieldValue.serverTimestamp(),
     ...geo,
   };

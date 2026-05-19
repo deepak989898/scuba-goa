@@ -1,3 +1,5 @@
+import { isBotUserAgent } from "@/lib/analytics-bot";
+
 export type DeviceCategory = "mobile" | "tablet" | "desktop" | "unknown";
 
 const UA_MAX = 400;
@@ -74,6 +76,7 @@ export function parseRequestDevice(headers: Headers): {
   category: DeviceCategory;
   label: string;
   uaSnippet: string;
+  isBot: boolean;
 } {
   const ua = headers.get("user-agent") ?? "";
   const secMobile = headers.get("sec-ch-ua-mobile");
@@ -81,5 +84,6 @@ export function parseRequestDevice(headers: Headers): {
   category = refineCategoryWithClientHints(category, secMobile);
   const label = deviceLabelFromUserAgent(ua, category);
   const uaSnippet = ua.slice(0, 220);
-  return { category, label, uaSnippet };
+  const isBot = isBotUserAgent(ua);
+  return { category, label, uaSnippet, isBot };
 }
