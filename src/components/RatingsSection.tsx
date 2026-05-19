@@ -5,6 +5,12 @@ import {
   ReviewCarousel,
   type CarouselReview,
 } from "@/components/ReviewCarousel";
+import {
+  demoRatingForIndex,
+  ENGLISH_REVIEW_TEMPLATES,
+  HINGLISH_REVIEW_TEMPLATES,
+  isHinglishReviewIndex,
+} from "@/data/demo-reviews-content";
 
 const REVIEW_DATE_LABELS = [
   "2 days ago",
@@ -203,22 +209,7 @@ export function RatingsSection() {
       "sunrise activity",
       "nightlife add-on",
     ];
-    const templates = [
-      "The safety briefing was clear and the crew handled everything professionally. Our {service} slot felt smooth and fun.",
-      "Pickup was on time, and the whole experience was well-organized. Loved the {service}—great views and great energy.",
-      "Clean gear, friendly staff, and transparent pricing. {service} was worth every minute of our day.",
-      "We were a little nervous at first, but the guide explained everything step-by-step. Fantastic {service}!",
-      "Amazing experience with a calm, confident team. The {service} itinerary was perfect and well-paced.",
-      "Great communication on WhatsApp. The {service} team managed time perfectly and helped us enjoy without stress.",
-      "Super organized from start to finish. {service} delivered exactly what was promised—highly recommended.",
-      "The operator was professional and the crew made sure everyone felt comfortable. Best {service} we booked in Goa.",
-      "Everything felt premium—timing, guidance, and the overall {service} experience.",
-      "Smooth boat ride, helpful guide, and excellent atmosphere. We’d do the {service} again anytime.",
-      "The team was friendly and patient. Our {service} experience was memorable and totally stress-free.",
-      "Great photos, great vibe, and great service. Loved the {service} and the attention to detail.",
-    ];
-
-    // Generate a pool of exactly 100 demo reviews.
+    // Generate a pool of exactly 100 demo reviews (~80% Hinglish).
     const pool: Review[] = [];
     const usedNames = new Set<string>();
     let i = 0;
@@ -233,14 +224,18 @@ export function RatingsSection() {
       usedNames.add(fullName);
       const place = places[(i * 3) % places.length] ?? "India";
       const service = services[(i * 5) % services.length] ?? "experience";
-      const tpl = templates[i % templates.length] ?? templates[0]!;
-      const comment = tpl.replace("{service}", service);
+      const hinglish = isHinglishReviewIndex(pool.length);
+      const tplList = hinglish
+        ? HINGLISH_REVIEW_TEMPLATES
+        : ENGLISH_REVIEW_TEMPLATES;
+      const tpl = tplList[pool.length % tplList.length] ?? tplList[0]!;
+      const comment = tpl.replace(/\{service\}/g, service);
       pool.push({
         id: `demo-pool-${i}`,
         authorName: fullName.slice(0, 80),
         place,
         comment,
-        rating: 4,
+        rating: demoRatingForIndex(pool.length),
       });
       i++;
     }

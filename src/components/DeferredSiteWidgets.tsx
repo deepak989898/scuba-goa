@@ -4,10 +4,15 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAfterFirstInteraction } from "@/hooks/useAfterFirstInteraction";
+import {
+  hasVisitedNonHome,
+  isHomePath,
+  markVisitedNonHome,
+} from "@/lib/visit-session";
 
 const CART_STORAGE_KEY = "bookscubagoa-cart-v1";
-const RETURNED_HOME_KEY = "bsg_visited_non_home_v1";
-const RETURNING_POPUP_IMPORT_DELAY_MS = 10_000;
+/** After return-home, wait before loading popup code (keeps first homepage light). */
+const RETURNING_POPUP_IMPORT_DELAY_MS = 8_000;
 
 const LazyAiChatbot = dynamic(
   () => import("@/components/AiChatbot").then((m) => m.AiChatbot),
@@ -33,22 +38,6 @@ function cartHasSavedLines(): boolean {
   }
 }
 
-function hasVisitedNonHome(): boolean {
-  try {
-    return sessionStorage.getItem(RETURNED_HOME_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markVisitedNonHome() {
-  try {
-    sessionStorage.setItem(RETURNED_HOME_KEY, "1");
-  } catch {
-    /* ignore */
-  }
-}
-
 /**
  * Heavy optional widgets used to be dynamically imported but still mounted
  * immediately, which made their chunks eligible for Lighthouse's unused-JS
@@ -64,7 +53,7 @@ export function DeferredSiteWidgets() {
   const pathname = usePathname();
   const interacted = useAfterFirstInteraction();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
-  const isHome = pathname === "/" || pathname === "";
+  const isHome = isHomePath(pathname);
   const [hasSavedCart, setHasSavedCart] = useState(false);
   const [loadLeadPopup, setLoadLeadPopup] = useState(false);
 

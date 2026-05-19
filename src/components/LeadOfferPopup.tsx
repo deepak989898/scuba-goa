@@ -16,16 +16,14 @@ import {
 } from "@/lib/constants";
 import { BSG_OPEN_OFFER_EVENT } from "@/lib/lead-offer-events";
 import { trackMetaWhatsAppClick } from "@/lib/meta-pixel";
+import {
+  hasVisitedNonHome,
+  isHomePath,
+  markVisitedNonHome,
+} from "@/lib/visit-session";
 
 const STORAGE_KEY = "bsg_offer_popup_v1";
 const LEAD_SID_KEY = "bsg_marketing_sid";
-/**
- * Set to "1" the first time the user views any non-home URL in the session.
- * Used to gate the auto-popup so first-time visitors are never interrupted —
- * the offer only auto-opens for guests who have already engaged with the site
- * (browsed another page) and then come back to the homepage.
- */
-const RETURNED_HOME_KEY = "bsg_visited_non_home_v1";
 
 /**
  * Delay before the side teaser tab fades in on the homepage. Kept long enough
@@ -77,28 +75,11 @@ function writePopupState(v: "dismissed" | "submitted") {
   }
 }
 
-function hasReturnedToHome(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return sessionStorage.getItem(RETURNED_HOME_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markNonHomeVisited() {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem(RETURNED_HOME_KEY, "1");
-  } catch {
-    /* ignore */
-  }
-}
-
 export function LeadOfferPopup() {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
-  const isHome = pathname === "/" || pathname === "";
+  const isHome = isHomePath(pathname);
+  const returnedHome = hasVisitedNonHome();
 
   const [open, setOpen] = useState(false);
   const [showTeaser, setShowTeaser] = useState(false);
@@ -118,23 +99,28 @@ export function LeadOfferPopup() {
    * (i.e. they are *returning* to home), so brand-new visitors are never
    * interrupted by a payment-flavored prompt on first paint.
    */
-  const canInteract = !isAdmin && isHome && readPopupState() === "fresh";
+  /** No teaser or auto modal until the user has browsed away from home and come back. */
+  const canInteract =
+    !isAdmin &&
+    isHome &&
+    returnedHome &&
+    readPopupState() === "fresh";
 
   const tryOpen = useCallback(() => {
     if (isAdmin || openedRef.current) return;
-    if (!isHome) return;
+    if (!isHome || !returnedHome) return;
     if (readPopupState() !== "fresh") return;
     openedRef.current = true;
     setOpen(true);
     setShowTeaser(false);
-  }, [isAdmin, isHome]);
+  }, [isAdmin, isHome, returnedHome]);
 
   // Remember when the visitor leaves the homepage. The next time they come
   // back to `/`, they qualify for the auto-open behavior.
   useEffect(() => {
     if (isAdmin) return;
-    if (pathname && pathname !== "/" && pathname !== "") {
-      markNonHomeVisited();
+    if (pathname && !isHomePath(pathname)) {
+      markVisitedNonHome();
     }
   }, [pathname, isAdmin]);
 
@@ -152,7 +138,6 @@ export function LeadOfferPopup() {
   // a comfortable dwell. First-time landers and every other page get nothing.
   useEffect(() => {
     if (!canInteract) return;
-    if (!hasReturnedToHome()) return;
     const t = window.setTimeout(tryOpen, RETURNING_AUTO_OPEN_DELAY_MS);
     return () => clearTimeout(t);
   }, [canInteract, tryOpen]);
