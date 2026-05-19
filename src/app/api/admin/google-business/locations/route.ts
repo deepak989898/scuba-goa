@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
-import { getGoogleBusinessRuntimeConfig } from "@/lib/google-business/config";
+import {
+  describeGoogleBusinessOAuthGap,
+  getGoogleBusinessOAuthConfig,
+} from "@/lib/google-business/config";
 import {
   listGoogleBusinessAccounts,
   listGoogleBusinessLocations,
@@ -14,13 +17,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const config = await getGoogleBusinessRuntimeConfig();
+  const config = await getGoogleBusinessOAuthConfig();
   if (!config) {
     return NextResponse.json(
-      {
-        error:
-          "Connect Google Business first (OAuth) and ensure refresh token is saved.",
-      },
+      { error: describeGoogleBusinessOAuthGap() },
       { status: 400 },
     );
   }

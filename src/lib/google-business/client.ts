@@ -1,5 +1,8 @@
 import { getGoogleBusinessAccessToken } from "@/lib/google-business/auth";
-import type { GoogleBusinessRuntimeConfig } from "@/lib/google-business/config";
+import type {
+  GoogleBusinessOAuthConfig,
+  GoogleBusinessRuntimeConfig,
+} from "@/lib/google-business/config";
 
 export type GbpLocation = {
   accountId: string;
@@ -36,7 +39,7 @@ async function gbpFetch<T>(
 }
 
 export async function withGoogleBusinessAccess<T>(
-  config: GoogleBusinessRuntimeConfig,
+  config: GoogleBusinessOAuthConfig,
   fn: (accessToken: string) => Promise<T>,
 ): Promise<T> {
   const accessToken = await getGoogleBusinessAccessToken({
@@ -49,7 +52,7 @@ export async function withGoogleBusinessAccess<T>(
 
 /** List GBP accounts the signed-in user can manage. */
 export async function listGoogleBusinessAccounts(
-  config: GoogleBusinessRuntimeConfig,
+  config: GoogleBusinessOAuthConfig,
 ): Promise<{ accountId: string; accountName: string }[]> {
   return withGoogleBusinessAccess(config, async (token) => {
     const data = await gbpFetch<{
@@ -71,7 +74,7 @@ export async function listGoogleBusinessAccounts(
 
 /** List locations for an account. */
 export async function listGoogleBusinessLocations(
-  config: GoogleBusinessRuntimeConfig,
+  config: GoogleBusinessOAuthConfig,
   accountId: string,
 ): Promise<GbpLocation[]> {
   return withGoogleBusinessAccess(config, async (token) => {

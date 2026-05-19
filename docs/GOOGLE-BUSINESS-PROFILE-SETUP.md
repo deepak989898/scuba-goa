@@ -21,10 +21,11 @@ When blog automation publishes a new article, the site can also create an **Upda
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/).  
 2. Select your project (e.g. the same as Firebase `bookscubagoa`).  
-3. Go to **APIs & Services → Library** and enable:
-   - **Google My Business API** (for creating posts)  
-   - **My Business Account Management API** (list accounts)  
-   - **My Business Business Information API** (list locations)  
+3. Go to **APIs & Services → Library** and enable these **three** APIs (search each name exactly — Google does **not** list one called “Google Business API”):
+   - **Google My Business API** — creates Update posts  
+   - **My Business Account Management API** — lists accounts  
+   - **My Business Business Information API** — lists locations  
+   If search fails, try **“My Business”** or **“Business Profile”** and pick the names above.
 4. Go to **APIs & Services → OAuth consent screen**:
    - User type: **External** (or Internal if Workspace-only)  
    - App name: `Book Scuba Goa Blog`  

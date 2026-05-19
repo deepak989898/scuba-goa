@@ -59,11 +59,46 @@ export function GoogleBusinessSection({
     }
   }, []);
 
+  const loadAccounts = useCallback(async () => {
+    setBusy("accounts");
+    try {
+      const data = await adminFetch("/api/admin/google-business/locations");
+      setAccounts(data.accounts ?? []);
+      if ((data.accounts?.length ?? 0) === 0) {
+        onMessage({
+          err: "No Google Business accounts found for this login. Use the Gmail that manages your listing.",
+        });
+        return;
+      }
+      onMessage({ ok: `Found ${data.accounts.length} account(s). Pick one below.` });
+      if (data.accounts.length === 1) {
+        const id = data.accounts[0].accountId as string;
+        setSelectedAccount(id);
+        const locData = await adminFetch(
+          `/api/admin/google-business/locations?accountId=${encodeURIComponent(id)}`,
+        );
+        setLocations(locData.locations ?? []);
+      }
+    } catch (e) {
+      onMessage({ err: e instanceof Error ? e.message : "Could not list accounts" });
+    } finally {
+      setBusy(null);
+    }
+  }, [onMessage]);
+
   useEffect(() => {
     loadStatus().catch((e) =>
       onMessage({ err: e instanceof Error ? e.message : "Failed to load GBP settings" }),
     );
   }, [loadStatus, onMessage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gbp") !== "connected") return;
+    if (!settings?.hasRefreshToken) return;
+    void loadAccounts();
+  }, [settings?.hasRefreshToken, loadAccounts]);
 
   async function connectGoogle() {
     setBusy("connect");
@@ -93,19 +128,6 @@ export function GoogleBusinessSection({
       });
     } catch (e) {
       onMessage({ err: e instanceof Error ? e.message : "Save failed" });
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function loadAccounts() {
-    setBusy("accounts");
-    try {
-      const data = await adminFetch("/api/admin/google-business/locations");
-      setAccounts(data.accounts ?? []);
-      onMessage({ ok: `Found ${data.accounts?.length ?? 0} Google account(s).` });
-    } catch (e) {
-      onMessage({ err: e instanceof Error ? e.message : "Could not list accounts" });
     } finally {
       setBusy(null);
     }
@@ -174,6 +196,12 @@ export function GoogleBusinessSection({
         When a blog is auto-published, also create an <strong>Update</strong> post on your
         scuba diving Google Business Profile (title, excerpt, photo, link to the blog).
       </p>
+      <p className="mt-2 rounded-lg border border-ocean-100 bg-ocean-50 px-3 py-2 text-xs text-ocean-700">
+        <strong>Google Cloud APIs</strong> (search these exact names in API Library — there is
+        no single “Google Business API”):{" "}
+        <em>Google My Business API</em>, <em>My Business Account Management API</em>,{" "}
+        <em>My Business Business Information API</em>.
+      </p>
 
       {!clientConfigured ? (
         <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -193,6 +221,12 @@ export function GoogleBusinessSection({
           ) : (
             <span className="text-amber-700">Not connected</span>
           )}
+          {settings.hasRefreshToken && !settings.configured ? (
+            <span className="text-ocean-600">
+              {" "}
+              — click <strong>Load accounts</strong> and choose your location below
+            </span>
+          ) : null}
         </li>
         <li>
           Location:{" "}
@@ -201,7 +235,7 @@ export function GoogleBusinessSection({
               {settings.locationTitle || settings.locationId}
             </span>
           ) : (
-            <span className="text-ocean-500">Not selected</span>
+            <span className="text-ocean-500">Not selected yet</span>
           )}
         </li>
         {settings.lastPostAt ? (
