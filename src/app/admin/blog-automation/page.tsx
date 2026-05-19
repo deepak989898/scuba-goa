@@ -227,8 +227,12 @@ export default function AdminBlogAutomationPage() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Auto-generates SEO blogs (English, Hindi, Hinglish) with OpenAI, Pexels images
-            (logo + watermark, WebP in Firebase Storage), and scheduled Vercel cron. Set a
+            (logo + watermark, WebP in Firebase Storage), and scheduled publishing. Set a
             different IST time for each daily post. Queued admin titles publish first, in order.
+          </p>
+          <p className="mt-2 text-xs font-medium text-ocean-600">
+            Build: v2-multi-slot-watermark — if you do not see time pickers below, hard-refresh
+            (Ctrl+Shift+R) or redeploy the latest commit on Vercel.
           </p>
         </div>
         <Link
@@ -303,10 +307,31 @@ export default function AdminBlogAutomationPage() {
               </ul>
             </div>
             <p className="mt-3 text-xs text-ocean-500">
-              Cron checks every 30 minutes and publishes when an IST slot is due. Set{" "}
+              Set{" "}
               <code className="rounded bg-sand px-1">CRON_SECRET</code>,{" "}
               <code className="rounded bg-sand px-1">OPENAI_API_KEY</code>,{" "}
               <code className="rounded bg-sand px-1">PEXELS_API_KEY</code> on Vercel.
+            </p>
+            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <strong>Vercel Hobby plan:</strong> built-in cron runs only once per day, so multiple
+              IST times need an external scheduler (free{" "}
+              <a
+                href="https://cron-job.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                cron-job.org
+              </a>
+              ) calling{" "}
+              <code className="rounded bg-white px-1">
+                GET /api/cron/blog-publish
+              </code>{" "}
+              every 30 minutes with header{" "}
+              <code className="rounded bg-white px-1">
+                Authorization: Bearer YOUR_CRON_SECRET
+              </code>
+              . Pro plan supports every-30-min Vercel cron in vercel.json.
             </p>
             {settings.lastRunAt && (
               <p className="mt-2 text-xs text-ocean-600">
