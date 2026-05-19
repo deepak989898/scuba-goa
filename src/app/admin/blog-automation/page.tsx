@@ -1,22 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { getFirebaseAuth } from "@/lib/firebase";
-import type { BlogLanguage } from "@/lib/blog-firestore";
+import { collection, getDocs } from "firebase/firestore";
+import { getDb, getFirebaseAuth } from "@/lib/firebase";
+import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
+import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
 
-type FirestoreBlogRow = {
-  slug: string;
-  title: string;
-  date: string;
-  language: string;
-  published: boolean;
-  featuredImageUrl?: string;
-  source?: string;
-};
+type BlogTraffic = { views: number; visitors: number };
 
 async function adminToken(): Promise<string> {
   const auth = getFirebaseAuth();
@@ -43,9 +37,19 @@ async function adminFetch(path: string, init?: RequestInit) {
 }
 
 export default function AdminBlogAutomationPage() {
+  const db = getDb();
   const [settings, setSettings] = useState<BlogAutomationSettings | null>(null);
   const [queue, setQueue] = useState<BlogTopicQueueItem[]>([]);
-  const [posts, setPosts] = useState<FirestoreBlogRow[]>([]);
+  const [posts, setPosts] = useState<BlogPostFirestore[]>([]);
+  const [blogTrafficBySlug, setBlogTrafficBySlug] = useState<
+    Record<string, BlogTraffic>
+  >({});
+  const [blogIndexTraffic, setBlogIndexTraffic] = useState<BlogTraffic>({
+    views: 0,
+    visitors: 0,
+  });
+  const [trafficLoading, setTrafficLoading] = useState(true);
+  const [editing, setEditing] = useState<BlogPostFirestore | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -54,6 +58,42 @@ export default function AdminBlogAutomationPage() {
   const [titleInput, setTitleInput] = useState("");
   const [bulkTitles, setBulkTitles] = useState("");
   const [newLang, setNewLang] = useState<BlogLanguage>("hinglish");
+
+  const loadBlogTraffic = useCallback(async () => {
+    if (!db) {
+      setTrafficLoading(false);
+      return;
+    }
+    setTrafficLoading(true);
+    try {
+      const snap = await getDocs(collection(db, "analyticsBlogTraffic"));
+      const record: Record<string, BlogTraffic> = {};
+      let index: BlogTraffic = { views: 0, visitors: 0 };
+      for (const row of snap.docs) {
+        const data = row.data() as Record<string, unknown>;
+        const path = String(data.path ?? "").trim();
+        const slug = String(data.slug ?? "").trim();
+        const views = Number(data.views ?? 0);
+        const visitors = Number(data.visitors ?? 0);
+        const traffic = {
+          views: Number.isFinite(views) ? Math.max(0, Math.round(views)) : 0,
+          visitors: Number.isFinite(visitors) ? Math.max(0, Math.round(visitors)) : 0,
+        };
+        if (path === "/blog") {
+          index = traffic;
+          continue;
+        }
+        if (slug) record[slug] = traffic;
+      }
+      setBlogTrafficBySlug(record);
+      setBlogIndexTraffic(index);
+    } catch {
+      setBlogTrafficBySlug({});
+      setBlogIndexTraffic({ views: 0, visitors: 0 });
+    } finally {
+      setTrafficLoading(false);
+    }
+  }, [db]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -67,16 +107,26 @@ export default function AdminBlogAutomationPage() {
       setSettings(s.settings);
       setQueue(q.items ?? []);
       setPosts(p.posts ?? []);
+      await loadBlogTraffic();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadBlogTraffic]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const sortedPosts = useMemo(() => {
+    return [...posts].sort((a, b) => {
+      const ta = blogTrafficBySlug[a.slug]?.views ?? 0;
+      const tb = blogTrafficBySlug[b.slug]?.views ?? 0;
+      if (tb !== ta) return tb - ta;
+      return b.updatedAt.localeCompare(a.updatedAt);
+    });
+  }, [posts, blogTrafficBySlug]);
 
   async function saveSettings(patch: Partial<BlogAutomationSettings>) {
     setBusy("settings");
@@ -208,9 +258,62 @@ export default function AdminBlogAutomationPage() {
       await adminFetch(`/api/admin/blog-posts?slug=${encodeURIComponent(slug)}`, {
         method: "DELETE",
       });
+      setEditing((e) => (e?.slug === slug ? null : e));
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveEditedPost() {
+    if (!editing) return;
+    setBusy(`save-${editing.slug}`);
+    setErr(null);
+    try {
+      await adminFetch("/api/admin/blog-posts", {
+        method: "PATCH",
+        body: JSON.stringify(editing),
+      });
+      setOkMsg(`Saved /blog/${editing.slug}`);
+      setEditing(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function uploadBlogImage(file: File | null) {
+    if (!file || !editing) return;
+    setBusy(`img-${editing.slug}`);
+    setErr(null);
+    try {
+      const token = await adminToken();
+      const fd = new FormData();
+      fd.append("slug", editing.slug);
+      fd.append("file", file);
+      const res = await fetch("/api/admin/blog-image-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setEditing((e) =>
+        e
+          ? {
+              ...e,
+              featuredImageUrl: data.featuredImageUrl ?? e.featuredImageUrl,
+              ogImageUrl: data.ogImageUrl ?? data.featuredImageUrl ?? e.ogImageUrl,
+            }
+          : e,
+      );
+      setOkMsg("Image compressed (WebP) with logo and uploaded.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Image upload failed");
     } finally {
       setBusy(null);
     }
@@ -433,68 +536,22 @@ export default function AdminBlogAutomationPage() {
             </ul>
           </section>
 
-          <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-ocean-900">
-              Firestore blog posts ({posts.length})
-            </h2>
-            <ul className="mt-4 space-y-3">
-              {posts.length === 0 ? (
-                <li className="text-sm text-ocean-500">No auto blogs yet.</li>
-              ) : (
-                posts.map((p) => (
-                  <li
-                    key={p.slug}
-                    className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-ocean-100 p-4"
-                  >
-                    <div>
-                      <p className="font-semibold text-ocean-900">{p.title}</p>
-                      <p className="text-xs text-ocean-500">
-                        /blog/{p.slug} · {p.date} · {p.language} ·{" "}
-                        {p.published ? "published" : "draft"} · {p.source ?? "auto"}
-                      </p>
-                      {p.featuredImageUrl ? (
-                        <a
-                          href={p.featuredImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 inline-block text-xs text-ocean-600 underline"
-                        >
-                          View compressed image
-                        </a>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-sm">
-                      <Link
-                        href={`/blog/${p.slug}`}
-                        className="font-semibold text-ocean-700 hover:underline"
-                        target="_blank"
-                      >
-                        View
-                      </Link>
-                      {p.published && (
-                        <button
-                          type="button"
-                          className="text-amber-700 hover:underline"
-                          disabled={busy === `post-${p.slug}`}
-                          onClick={() => void unpublishPost(p.slug)}
-                        >
-                          Unpublish
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="text-red-600 hover:underline"
-                        disabled={busy === `del-${p.slug}`}
-                        onClick={() => void deletePost(p.slug)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          </section>
+          <BlogPostsTable
+            posts={posts}
+            sortedPosts={sortedPosts}
+            blogTrafficBySlug={blogTrafficBySlug}
+            blogIndexTraffic={blogIndexTraffic}
+            trafficLoading={trafficLoading}
+            editing={editing}
+            busy={busy}
+            onEdit={setEditing}
+            onCancelEdit={() => setEditing(null)}
+            onChangeEditing={setEditing}
+            onSave={() => void saveEditedPost()}
+            onUnpublish={(slug) => void unpublishPost(slug)}
+            onDelete={(slug) => void deletePost(slug)}
+            onUploadImage={(file) => void uploadBlogImage(file)}
+          />
         </>
       )}
     </div>

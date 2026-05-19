@@ -14,6 +14,7 @@ const DIM_MAX = 10000;
 const TRAFFIC_STR_MAX = 256;
 const TRAFFIC_CHANNEL_MAX = 32;
 const GUIDE_INDEX_KEY = "__guides_index__";
+const BLOG_INDEX_KEY = "__blog_index__";
 
 type TrackEventType = "view" | "leave" | "heartbeat" | "click";
 
@@ -42,6 +43,55 @@ function parseGuideTrafficKey(path: string): { key: string; slug: string; path: 
   if (!m) return null;
   const slug = m[1];
   return { key: slug, slug, path };
+}
+
+function parseBlogTrafficKey(path: string): { key: string; slug: string; path: string } | null {
+  if (path === "/blog") {
+    return { key: BLOG_INDEX_KEY, slug: "", path };
+  }
+  const m = /^\/blog\/([a-z0-9-]+)$/.exec(path);
+  if (!m) return null;
+  const slug = m[1];
+  return { key: slug, slug, path };
+}
+
+async function incrementContentTraffic(
+  db: NonNullable<ReturnType<typeof getAdminDb>>,
+  keyInfo: { key: string; slug: string; path: string },
+  collection: "analyticsGuideTraffic" | "analyticsBlogTraffic",
+  visitorsCollection: "analyticsGuideTrafficVisitors" | "analyticsBlogTrafficVisitors",
+  sessionId: string,
+): Promise<void> {
+  const trafficRef = db.collection(collection).doc(keyInfo.key);
+  const visitorRef = db
+    .collection(visitorsCollection)
+    .doc(`${keyInfo.key}__${sessionId || "anon"}`);
+
+  await db.runTransaction(async (tx) => {
+    tx.set(
+      trafficRef,
+      {
+        key: keyInfo.key,
+        slug: keyInfo.slug,
+        path: keyInfo.path,
+        updatedAt: FieldValue.serverTimestamp(),
+        views: FieldValue.increment(1),
+      },
+      { merge: true },
+    );
+
+    const visitorSnap = await tx.get(visitorRef);
+    if (!visitorSnap.exists) {
+      tx.set(visitorRef, {
+        key: keyInfo.key,
+        slug: keyInfo.slug,
+        path: keyInfo.path,
+        sessionId: sessionId || "anon",
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      tx.set(trafficRef, { visitors: FieldValue.increment(1) }, { merge: true });
+    }
+  });
 }
 
 /**
@@ -261,43 +311,27 @@ export async function POST(req: Request) {
    */
   const guideKey = parseGuideTrafficKey(path);
   if (eventType === "view" && guideKey) {
-    const trafficRef = db.collection("analyticsGuideTraffic").doc(guideKey.key);
-    const visitorRef = db
-      .collection("analyticsGuideTrafficVisitors")
-      .doc(`${guideKey.key}__${sessionId || "anon"}`);
-
-    db.runTransaction(async (tx) => {
-      tx.set(
-        trafficRef,
-        {
-          key: guideKey.key,
-          slug: guideKey.slug,
-          path: guideKey.path,
-          updatedAt: FieldValue.serverTimestamp(),
-          views: FieldValue.increment(1),
-        },
-        { merge: true },
-      );
-
-      const visitorSnap = await tx.get(visitorRef);
-      if (!visitorSnap.exists) {
-        tx.set(visitorRef, {
-          key: guideKey.key,
-          slug: guideKey.slug,
-          path: guideKey.path,
-          sessionId: sessionId || "anon",
-          createdAt: FieldValue.serverTimestamp(),
-        });
-        tx.set(
-          trafficRef,
-          {
-            visitors: FieldValue.increment(1),
-          },
-          { merge: true },
-        );
-      }
-    }).catch((e) => {
+    incrementContentTraffic(
+      db,
+      guideKey,
+      "analyticsGuideTraffic",
+      "analyticsGuideTrafficVisitors",
+      sessionId,
+    ).catch((e) => {
       console.error("analyticsGuideTraffic txn failed", e);
+    });
+  }
+
+  const blogKey = parseBlogTrafficKey(path);
+  if (eventType === "view" && blogKey) {
+    incrementContentTraffic(
+      db,
+      blogKey,
+      "analyticsBlogTraffic",
+      "analyticsBlogTrafficVisitors",
+      sessionId,
+    ).catch((e) => {
+      console.error("analyticsBlogTraffic txn failed", e);
     });
   }
 

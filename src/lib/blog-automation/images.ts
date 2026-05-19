@@ -15,6 +15,11 @@ const LOGO_FILES = [
   "book-scuba-goa-logo.png",
 ];
 
+/** ASCII-only host for SVG text (avoids empty boxes in sharp/librsvg). */
+function siteHostAscii(): string {
+  return SITE_URL.replace(/^https?:\/\//i, "").replace(/\/$/, "").toLowerCase();
+}
+
 function escapeXml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -53,36 +58,31 @@ async function loadBrandLogoBuffer(): Promise<Buffer> {
   throw new Error("Brand logo not found (tried site URL and public/)");
 }
 
-function buildWatermarkSvg(width: number, height: number, label: string): Buffer {
-  const host = SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const text = escapeXml(`${label} · ${host}`);
-  const fontSize = Math.max(16, Math.round(width * 0.032));
-  const tileW = Math.round(width * 0.5);
-  const tileH = Math.round(height * 0.2);
+function buildWatermarkSvg(width: number, height: number): Buffer {
+  const host = siteHostAscii();
+  const line1 = escapeXml(SITE_NAME);
+  const line2 = escapeXml(host);
+  const fontSize = Math.max(15, Math.round(width * 0.03));
+  const tileW = Math.round(width * 0.48);
+  const tileH = Math.round(height * 0.18);
   const rows = Math.ceil(height / tileH) + 1;
   const cols = Math.ceil(width / tileW) + 1;
   let tiles = "";
   for (let r = 0; r < rows; r += 1) {
     for (let c = 0; c < cols; c += 1) {
-      const x = c * tileW - tileW * 0.2;
-      const y = r * tileH + tileH * 0.55;
-      tiles += `<text x="${x}" y="${y}" transform="rotate(-22 ${x} ${y})" font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}" font-weight="700" fill="#ffffff" fill-opacity="0.22">${text}</text>`;
+      const x = c * tileW - tileW * 0.15;
+      const y = r * tileH + tileH * 0.45;
+      tiles += `<text x="${x}" y="${y}" transform="rotate(-22 ${x} ${y})" font-family="sans-serif" font-size="${fontSize}" font-weight="700" fill="#ffffff" fill-opacity="0.2">${line1}</text>`;
+      tiles += `<text x="${x}" y="${y + fontSize + 4}" transform="rotate(-22 ${x} ${y + fontSize + 4})" font-family="sans-serif" font-size="${Math.round(fontSize * 0.85)}" fill="#ffffff" fill-opacity="0.16">${line2}</text>`;
     }
   }
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${tiles}</svg>`;
   return Buffer.from(svg);
 }
 
-function buildBrandBarWithLogoSvg(
-  width: number,
-  barHeight: number,
-  label: string,
-  host: string,
-  logoWidth: number,
-): Buffer {
-  const safeLabel = escapeXml(label);
+function buildBrandBarSvg(width: number, barHeight: number, host: string): Buffer {
   const safeHost = escapeXml(host);
-  const textX = logoWidth > 0 ? logoWidth + 20 : 16;
+  const fontSize = Math.max(13, Math.round(barHeight * 0.34));
   const svg = `<svg width="${width}" height="${barHeight}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
@@ -91,13 +91,12 @@ function buildBrandBarWithLogoSvg(
     </linearGradient>
   </defs>
   <rect width="${width}" height="${barHeight}" fill="url(#g)" fill-opacity="0.94"/>
-  <text x="${textX}" y="${Math.round(barHeight * 0.64)}" font-family="Arial,Helvetica,sans-serif" font-size="${Math.max(14, Math.round(barHeight * 0.36))}" font-weight="700" fill="#ffffff">${safeLabel}</text>
-  <text x="${width - 14}" y="${Math.round(barHeight * 0.64)}" text-anchor="end" font-family="Arial,Helvetica,sans-serif" font-size="${Math.max(12, Math.round(barHeight * 0.3))}" fill="#e0f2fe">${safeHost}</text>
+  <text x="${width - 16}" y="${Math.round(barHeight * 0.68)}" text-anchor="end" font-family="sans-serif" font-size="${fontSize}" font-weight="600" fill="#ffffff">${safeHost}</text>
 </svg>`;
   return Buffer.from(svg);
 }
 
-async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
+export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const resizedBuf = await sharp(photoBuffer)
     .rotate()
     .resize({ width: MAX_WIDTH, withoutEnlargement: true })
@@ -106,49 +105,38 @@ async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const meta = await sharp(resizedBuf).metadata();
   const width = meta.width ?? MAX_WIDTH;
   const height = meta.height ?? Math.round(width * 0.56);
-  const host = SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const host = siteHostAscii();
 
-  const barHeight = Math.max(52, Math.round(height * 0.11));
+  const barHeight = Math.max(56, Math.round(height * 0.12));
   const composites: sharp.OverlayOptions[] = [
-    {
-      input: buildWatermarkSvg(width, height, SITE_NAME),
-      top: 0,
-      left: 0,
-    },
+    { input: buildWatermarkSvg(width, height), top: 0, left: 0 },
+    { input: buildBrandBarSvg(width, barHeight, host), top: height - barHeight, left: 0 },
   ];
 
   const logoRaw = await loadBrandLogoBuffer();
-  const logoMaxH = Math.round(barHeight * 0.78);
-  const logoMaxW = Math.round(width * 0.2);
+  const logoMaxH = Math.round(barHeight * 0.82);
+  const logoMaxW = Math.round(width * 0.22);
   const logoBuf = await sharp(logoRaw)
     .resize(logoMaxW, logoMaxH, { fit: "inside", withoutEnlargement: true })
     .png()
     .toBuffer();
   const logoMeta = await sharp(logoBuf).metadata();
-  const logoW = logoMeta.width ?? logoMaxW;
   const logoH = logoMeta.height ?? logoMaxH;
-  const logoSlotWidth = logoW + 16;
-
-  composites.push({
-    input: buildBrandBarWithLogoSvg(width, barHeight, SITE_NAME, host, logoSlotWidth),
-    top: height - barHeight,
-    left: 0,
-  });
-
   const logoTop = height - barHeight + Math.round((barHeight - logoH) / 2);
+
   composites.push({
     input: logoBuf,
     top: Math.max(0, logoTop),
-    left: 12,
+    left: 14,
   });
 
   return sharp(resizedBuf).composite(composites).webp({ quality: WEBP_QUALITY }).toBuffer();
 }
 
-export async function downloadCompressUploadBlogImage(input: {
-  imageUrl: string;
-  slug: string;
-}): Promise<{ featuredImageUrl: string; ogImageUrl: string }> {
+async function uploadWebpToStorage(
+  webpBuffer: Buffer,
+  slug: string,
+): Promise<{ featuredImageUrl: string; ogImageUrl: string }> {
   const app = getAdminApp();
   if (!app) throw new Error("Firebase Admin not configured");
 
@@ -157,18 +145,10 @@ export async function downloadCompressUploadBlogImage(input: {
     process.env.FIREBASE_STORAGE_BUCKET;
   if (!bucketName) throw new Error("Storage bucket not configured");
 
-  const res = await fetch(input.imageUrl, {
-    headers: { "User-Agent": "BlueSharkGoa-BlogBot/1.0" },
-  });
-  if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
-
-  const buffer = Buffer.from(await res.arrayBuffer());
-  const compressed = await applyBrandOverlay(buffer);
-
-  const storagePath = `blog/${input.slug}/featured.webp`;
+  const storagePath = `blog/${slug}/featured.webp`;
   const bucket = getStorage(app).bucket(bucketName);
   const file = bucket.file(storagePath);
-  await file.save(compressed, {
+  await file.save(webpBuffer, {
     metadata: {
       contentType: "image/webp",
       cacheControl: "public, max-age=31536000, immutable",
@@ -177,4 +157,24 @@ export async function downloadCompressUploadBlogImage(input: {
   await file.makePublic();
   const publicUrl = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
   return { featuredImageUrl: publicUrl, ogImageUrl: publicUrl };
+}
+
+export async function brandAndUploadBlogImageBuffer(
+  imageBuffer: Buffer,
+  slug: string,
+): Promise<{ featuredImageUrl: string; ogImageUrl: string }> {
+  const compressed = await applyBrandOverlay(imageBuffer);
+  return uploadWebpToStorage(compressed, slug);
+}
+
+export async function downloadCompressUploadBlogImage(input: {
+  imageUrl: string;
+  slug: string;
+}): Promise<{ featuredImageUrl: string; ogImageUrl: string }> {
+  const res = await fetch(input.imageUrl, {
+    headers: { "User-Agent": "BlueSharkGoa-BlogBot/1.0" },
+  });
+  if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  return brandAndUploadBlogImageBuffer(buffer, input.slug);
 }
