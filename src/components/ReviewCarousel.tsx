@@ -43,6 +43,12 @@ export function ReviewCarousel({ reviews }: Props) {
   const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
 
   useEffect(() => {
+    if (index >= count && count > 0) {
+      setIndex(0);
+    }
+  }, [count, index]);
+
+  useEffect(() => {
     if (count <= 1) return;
     const id = window.setInterval(goNext, AUTO_MS);
     return () => window.clearInterval(id);
@@ -50,7 +56,8 @@ export function ReviewCarousel({ reviews }: Props) {
 
   if (count === 0) return null;
 
-  const current = reviews[index]!;
+  const current = reviews[index];
+  if (!current?.authorName) return null;
 
   return (
     <div className="mx-auto max-w-xl">

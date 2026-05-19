@@ -264,17 +264,22 @@ export function RatingsSection() {
       const r = Math.floor(rng() * (j + 1));
       [idx[j], idx[r]] = [idx[r], idx[j]];
     }
-    const visibleReviews = idx
+    const visibleReviews: CarouselReview[] = idx
       .slice(0, 10)
       .map((k, i) => {
-        const r = pool[k]!;
+        const r = pool[k];
+        if (!r?.authorName || !r.comment) return null;
         return {
-          ...r,
+          id: r.id,
+          authorName: r.authorName,
+          place: r.place || "India",
+          comment: r.comment,
+          rating: r.rating,
           dateLabel:
             REVIEW_DATE_LABELS[i % REVIEW_DATE_LABELS.length] ?? "Recently",
         };
       })
-      .filter(Boolean);
+      .filter((r): r is CarouselReview => r != null);
 
     return {
       todayKey,
