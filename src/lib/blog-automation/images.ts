@@ -1,9 +1,121 @@
+import { readFile } from "fs/promises";
+import path from "path";
 import { getStorage } from "firebase-admin/storage";
 import sharp from "sharp";
 import { getAdminApp } from "@/lib/firebase-admin";
+import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 const MAX_WIDTH = 1200;
 const WEBP_QUALITY = 82;
+
+const LOGO_CANDIDATES = [
+  "book-scuba-goa-logo-transparent.png",
+  "book-scuba-goa-logo-transparent.webp",
+  "book-scuba-goa-logo.png",
+  "book-scuba-goa-logo.webp",
+];
+
+async function loadBrandLogoBuffer(): Promise<Buffer | null> {
+  const publicDir = path.join(process.cwd(), "public");
+  for (const name of LOGO_CANDIDATES) {
+    try {
+      return await readFile(path.join(publicDir, name));
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+function buildWatermarkSvg(width: number, height: number, label: string): Buffer {
+  const host = SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const text = `${label} · ${host}`;
+  const fontSize = Math.max(14, Math.round(width * 0.028));
+  const tileW = Math.round(width * 0.55);
+  const tileH = Math.round(height * 0.22);
+  const rows = Math.ceil(height / tileH) + 1;
+  const cols = Math.ceil(width / tileW) + 1;
+  let tiles = "";
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      const x = c * tileW - tileW * 0.25;
+      const y = r * tileH + tileH * 0.5;
+      tiles += `<text x="${x}" y="${y}" transform="rotate(-24 ${x} ${y})" font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}" font-weight="600" fill="#ffffff" fill-opacity="0.14">${text}</text>`;
+    }
+  }
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${tiles}</svg>`;
+  return Buffer.from(svg);
+}
+
+function buildBrandBarSvg(
+  width: number,
+  barHeight: number,
+  label: string,
+  host: string,
+): Buffer {
+  const svg = `<svg width="${width}" height="${barHeight}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0c4a6e"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="${width}" height="${barHeight}" fill="url(#g)" fill-opacity="0.92"/>
+  <text x="16" y="${Math.round(barHeight * 0.62)}" font-family="Arial,Helvetica,sans-serif" font-size="${Math.max(13, Math.round(barHeight * 0.38))}" font-weight="700" fill="#ffffff">${label}</text>
+  <text x="${width - 16}" y="${Math.round(barHeight * 0.62)}" text-anchor="end" font-family="Arial,Helvetica,sans-serif" font-size="${Math.max(11, Math.round(barHeight * 0.32))}" fill="#e0f2fe">${host}</text>
+</svg>`;
+  return Buffer.from(svg);
+}
+
+async function applyBrandOverlay(
+  photoBuffer: Buffer,
+): Promise<Buffer> {
+  const base = sharp(photoBuffer).rotate().resize({
+    width: MAX_WIDTH,
+    withoutEnlargement: true,
+  });
+  const meta = await base.metadata();
+  const width = meta.width ?? MAX_WIDTH;
+  const height = meta.height ?? Math.round(width * 0.56);
+  const host = SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+  const composites: sharp.OverlayOptions[] = [
+    {
+      input: buildWatermarkSvg(width, height, SITE_NAME),
+      top: 0,
+      left: 0,
+      blend: "over",
+    },
+  ];
+
+  const logoRaw = await loadBrandLogoBuffer();
+  if (logoRaw) {
+    const logoW = Math.round(width * 0.16);
+    const logoBuf = await sharp(logoRaw)
+      .resize(logoW, logoW, { fit: "inside", withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    const logoMeta = await sharp(logoBuf).metadata();
+    const logoH = logoMeta.height ?? logoW;
+    const pad = Math.round(width * 0.03);
+    composites.push({
+      input: logoBuf,
+      top: height - logoH - pad - Math.round(height * 0.08),
+      left: width - (logoMeta.width ?? logoW) - pad,
+      blend: "over",
+    });
+  }
+
+  const barHeight = Math.max(44, Math.round(height * 0.09));
+  composites.push({
+    input: buildBrandBarSvg(width, barHeight, SITE_NAME, host),
+    top: height - barHeight,
+    left: 0,
+    blend: "over",
+  });
+
+  return base.composite(composites).webp({ quality: WEBP_QUALITY }).toBuffer();
+}
 
 export async function downloadCompressUploadBlogImage(input: {
   imageUrl: string;
@@ -23,15 +135,11 @@ export async function downloadCompressUploadBlogImage(input: {
   if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
 
   const buffer = Buffer.from(await res.arrayBuffer());
-  const compressed = await sharp(buffer)
-    .rotate()
-    .resize({ width: MAX_WIDTH, withoutEnlargement: true })
-    .webp({ quality: WEBP_QUALITY })
-    .toBuffer();
+  const compressed = await applyBrandOverlay(buffer);
 
-  const path = `blog/${input.slug}/featured.webp`;
+  const storagePath = `blog/${input.slug}/featured.webp`;
   const bucket = getStorage(app).bucket(bucketName);
-  const file = bucket.file(path);
+  const file = bucket.file(storagePath);
   await file.save(compressed, {
     metadata: {
       contentType: "image/webp",
@@ -39,6 +147,6 @@ export async function downloadCompressUploadBlogImage(input: {
     },
   });
   await file.makePublic();
-  const publicUrl = `https://storage.googleapis.com/${bucketName}/${path}`;
+  const publicUrl = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
   return { featuredImageUrl: publicUrl, ogImageUrl: publicUrl };
 }

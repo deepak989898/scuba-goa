@@ -20,6 +20,11 @@ import {
   getBlogAutomationSettings,
   saveBlogAutomationSettings,
 } from "@/lib/blog-automation/settings";
+import {
+  getDueSlotNow,
+  getIstNow,
+  markSlotCompleted,
+} from "@/lib/blog-automation/schedule";
 import { getAdminDb } from "@/lib/firebase-admin";
 
 export type GenerateBlogResult =
@@ -163,17 +168,26 @@ export async function generateAndPublishOneBlog(options?: {
   return { ok: true, slug, title: draft.title };
 }
 
-export async function runBlogAutomationCron(): Promise<{
+export type RunBlogCronOptions = {
+  /** Admin “run daily job now” — publish all remaining quota, ignore schedule. */
+  forceAllRemaining?: boolean;
+};
+
+export async function runBlogAutomationCron(
+  options?: RunBlogCronOptions,
+): Promise<{
   published: string[];
   skipped: string[];
   errors: string[];
+  slot?: string;
 }> {
   const settings = await getBlogAutomationSettings();
   const published: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
+  const now = getIstNow();
 
-  if (!settings.enabled) {
+  if (!settings.enabled && !options?.forceAllRemaining) {
     skipped.push("automation disabled");
     return { published, skipped, errors };
   }
@@ -189,11 +203,28 @@ export async function runBlogAutomationCron(): Promise<{
     return { published, skipped, errors };
   }
 
-  for (let i = 0; i < remaining; i += 1) {
+  let dueSlot: string | null = null;
+  if (!options?.forceAllRemaining) {
+    dueSlot = await getDueSlotNow(settings.publishSlotsIst);
+    if (!dueSlot) {
+      skipped.push(
+        `no slot due now (IST ${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}; schedule: ${settings.publishSlotsIst.join(", ")})`,
+      );
+      return { published, skipped, errors };
+    }
+  }
+
+  const publishCount = options?.forceAllRemaining ? remaining : 1;
+
+  for (let i = 0; i < publishCount; i += 1) {
     try {
       const result = await generateAndPublishOneBlog();
-      if (result.ok) published.push(result.slug);
-      else {
+      if (result.ok) {
+        published.push(result.slug);
+        if (dueSlot) {
+          await markSlotCompleted(now.date, dueSlot);
+        }
+      } else {
         errors.push(result.error);
         if (result.skipped) skipped.push(result.error);
       }
@@ -208,5 +239,12 @@ export async function runBlogAutomationCron(): Promise<{
     }
   }
 
-  return { published, skipped, errors };
+  await saveBlogAutomationSettings({
+    lastRunAt: new Date().toISOString(),
+    lastRunStatus: published.length
+      ? `published:${published.join(",")}${dueSlot ? `@${dueSlot}` : ""}`
+      : "no-publish",
+  });
+
+  return { published, skipped, errors, slot: dueSlot ?? undefined };
 }

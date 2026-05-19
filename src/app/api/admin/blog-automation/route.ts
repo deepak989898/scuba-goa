@@ -32,8 +32,8 @@ export async function PATCH(req: Request) {
   const patch: Parameters<typeof saveBlogAutomationSettings>[0] = {};
   if (typeof body.enabled === "boolean") patch.enabled = body.enabled;
   if (body.postsPerDay != null) patch.postsPerDay = Number(body.postsPerDay);
-  if (body.publishHourIst != null) {
-    patch.publishHourIst = Number(body.publishHourIst);
+  if (Array.isArray(body.publishSlotsIst)) {
+    patch.publishSlotsIst = body.publishSlotsIst.map((x) => String(x).trim());
   }
   if (body.defaultLanguage != null) {
     const l = String(body.defaultLanguage);

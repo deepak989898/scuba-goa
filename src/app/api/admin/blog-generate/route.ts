@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
   try {
     if (body.runDaily) {
-      const result = await runBlogAutomationCron();
+      const result = await runBlogAutomationCron({ forceAllRemaining: true });
       return NextResponse.json({ ok: true, ...result });
     }
 

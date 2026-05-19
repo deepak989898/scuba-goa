@@ -1,13 +1,17 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import type { BlogLanguage } from "@/lib/blog-firestore";
+import {
+  defaultSlotsForCount,
+  normalizePublishSlotsIst,
+} from "@/lib/blog-automation/schedule-utils";
 
 const SETTINGS_DOC = "blogAutomation/settings";
 
 export type BlogAutomationSettings = {
   enabled: boolean;
   postsPerDay: number;
-  /** Hour 0–23 in Asia/Kolkata for preferred publish window (cron still daily) */
-  publishHourIst: number;
+  /** One IST time per daily post, e.g. ["09:00", "17:30"] */
+  publishSlotsIst: string[];
   defaultLanguage: BlogLanguage;
   languageRotation: BlogLanguage[];
   autoTopicIndex: number;
@@ -20,7 +24,7 @@ export type BlogAutomationSettings = {
 export const DEFAULT_BLOG_AUTOMATION_SETTINGS: BlogAutomationSettings = {
   enabled: false,
   postsPerDay: 1,
-  publishHourIst: 9,
+  publishSlotsIst: defaultSlotsForCount(1),
   defaultLanguage: "hinglish",
   languageRotation: ["hinglish", "en", "hi"],
   autoTopicIndex: 0,
@@ -52,16 +56,22 @@ export function parseBlogAutomationSettings(
     parseLanguage(data.defaultLanguage) ??
     DEFAULT_BLOG_AUTOMATION_SETTINGS.defaultLanguage;
 
+  const postsPerDay = Math.min(
+    5,
+    Math.max(1, Number(data.postsPerDay) || 1),
+  );
+  const legacyHour =
+    data.publishHourIst != null ? Number(data.publishHourIst) : undefined;
+  const publishSlotsIst = normalizePublishSlotsIst(
+    postsPerDay,
+    data.publishSlotsIst ?? data.publishScheduleIst,
+    legacyHour,
+  );
+
   return {
     enabled: data.enabled === true,
-    postsPerDay: Math.min(
-      5,
-      Math.max(1, Number(data.postsPerDay) || 1),
-    ),
-    publishHourIst: Math.min(
-      23,
-      Math.max(0, Number(data.publishHourIst) ?? 9),
-    ),
+    postsPerDay,
+    publishSlotsIst,
     defaultLanguage: defaultLang,
     languageRotation:
       rotation.length > 0
@@ -91,17 +101,19 @@ export async function saveBlogAutomationSettings(
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
   const current = await getBlogAutomationSettings();
+  const postsPerDay = Math.min(
+    5,
+    Math.max(1, patch.postsPerDay ?? current.postsPerDay),
+  );
+  const publishSlotsIst = normalizePublishSlotsIst(
+    postsPerDay,
+    patch.publishSlotsIst ?? current.publishSlotsIst,
+  );
   const next: BlogAutomationSettings = {
     ...current,
     ...patch,
-    postsPerDay: Math.min(
-      5,
-      Math.max(1, patch.postsPerDay ?? current.postsPerDay),
-    ),
-    publishHourIst: Math.min(
-      23,
-      Math.max(0, patch.publishHourIst ?? current.publishHourIst),
-    ),
+    postsPerDay,
+    publishSlotsIst,
     updatedAt: new Date().toISOString(),
   };
   await db.doc(SETTINGS_DOC).set(next, { merge: true });

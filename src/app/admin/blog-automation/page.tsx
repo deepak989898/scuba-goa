@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type { BlogLanguage } from "@/lib/blog-firestore";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
+import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 
 type FirestoreBlogRow = {
@@ -92,6 +93,25 @@ export default function AdminBlogAutomationPage() {
     } finally {
       setBusy(null);
     }
+  }
+
+  function changePostsPerDay(next: number) {
+    if (!settings) return;
+    const count = Math.min(5, Math.max(1, next));
+    let slots = [...settings.publishSlotsIst];
+    const defaults = defaultSlotsForCount(count);
+    while (slots.length < count) {
+      slots.push(defaults[slots.length] ?? "09:00");
+    }
+    slots = slots.slice(0, count);
+    void saveSettings({ postsPerDay: count, publishSlotsIst: slots });
+  }
+
+  function changeSlotTime(index: number, value: string) {
+    if (!settings || !value) return;
+    const slots = [...settings.publishSlotsIst];
+    slots[index] = value;
+    void saveSettings({ publishSlotsIst: slots });
   }
 
   async function addTitles() {
@@ -207,8 +227,8 @@ export default function AdminBlogAutomationPage() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Auto-generates SEO blogs (English, Hindi, Hinglish) with OpenAI, Pexels images
-            (compressed to WebP in Firebase Storage), and daily Vercel cron. Default: 1 post/day.
-            Queued admin titles publish first, in order.
+            (logo + watermark, WebP in Firebase Storage), and scheduled Vercel cron. Set a
+            different IST time for each daily post. Queued admin titles publish first, in order.
           </p>
         </div>
         <Link
@@ -256,29 +276,34 @@ export default function AdminBlogAutomationPage() {
                   max={5}
                   className="ml-2 w-16 rounded border border-ocean-200 px-2 py-1"
                   value={settings.postsPerDay}
-                  onChange={(e) =>
-                    void saveSettings({ postsPerDay: Number(e.target.value) })
-                  }
-                  disabled={busy === "settings"}
-                />
-              </label>
-              <label className="text-sm text-ocean-800">
-                Preferred hour (IST)
-                <input
-                  type="number"
-                  min={0}
-                  max={23}
-                  className="ml-2 w-16 rounded border border-ocean-200 px-2 py-1"
-                  value={settings.publishHourIst}
-                  onChange={(e) =>
-                    void saveSettings({ publishHourIst: Number(e.target.value) })
-                  }
+                  onChange={(e) => changePostsPerDay(Number(e.target.value))}
                   disabled={busy === "settings"}
                 />
               </label>
             </div>
+            <div className="mt-5">
+              <p className="text-sm font-medium text-ocean-800">
+                Publish times (IST) — one per post
+              </p>
+              <ul className="mt-3 flex flex-wrap gap-4">
+                {settings.publishSlotsIst.map((slot, i) => (
+                  <li key={`${i}-${settings.postsPerDay}`}>
+                    <label className="block text-xs text-ocean-600">
+                      Post {i + 1}
+                      <input
+                        type="time"
+                        className="mt-1 block rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                        value={slot}
+                        disabled={busy === "settings"}
+                        onChange={(e) => changeSlotTime(i, e.target.value)}
+                      />
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <p className="mt-3 text-xs text-ocean-500">
-              Cron runs daily ~9:00 IST (3:30 UTC). Set{" "}
+              Cron checks every 30 minutes and publishes when an IST slot is due. Set{" "}
               <code className="rounded bg-sand px-1">CRON_SECRET</code>,{" "}
               <code className="rounded bg-sand px-1">OPENAI_API_KEY</code>,{" "}
               <code className="rounded bg-sand px-1">PEXELS_API_KEY</code> on Vercel.
