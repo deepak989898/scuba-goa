@@ -1,6 +1,23 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  ReviewCarousel,
+  type CarouselReview,
+} from "@/components/ReviewCarousel";
+
+const REVIEW_DATE_LABELS = [
+  "2 days ago",
+  "4 days ago",
+  "1 week ago",
+  "10 days ago",
+  "2 weeks ago",
+  "3 weeks ago",
+  "1 month ago",
+  "5 weeks ago",
+  "6 weeks ago",
+  "2 months ago",
+];
 
 type Review = {
   id: string;
@@ -9,25 +26,6 @@ type Review = {
   rating: number;
   place: string;
 };
-
-function GuestReviewAvatar({ name }: { name: string }) {
-  return (
-    <div
-      className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-ocean-200/80 bg-gradient-to-br from-ocean-100 to-ocean-200"
-      role="img"
-      aria-label={`${name.trim() || "Guest"} profile`}
-    >
-      <svg
-        className="h-6 w-6 text-ocean-500"
-        fill="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden
-      >
-        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-      </svg>
-    </div>
-  );
-}
 
 export function RatingsSection() {
   const [authorName, setAuthorName] = useState("");
@@ -67,7 +65,7 @@ export function RatingsSection() {
     };
   }
 
-  function formatApprovedCount(n: number): string {
+  function formatReviewCount(n: number): string {
     if (n >= 1000) {
       return `${(n / 1000).toFixed(1)}k+`.replace(".0k+", "k+");
     }
@@ -247,7 +245,7 @@ export function RatingsSection() {
       i++;
     }
 
-    // Daily increasing "approved reviews" count with small jitter.
+    // Daily increasing review count with small jitter.
     const anchorKey = "2026-03-26";
     const baseCount = 4000; // starts around 4k+
     const dailyBase = 100;
@@ -257,7 +255,7 @@ export function RatingsSection() {
       Math.floor((ymdToUTCDate(todayKey).getTime() - ymdToUTCDate(anchorKey).getTime()) / 86400000)
     );
     const jitter = (seed % 41) - 20; // -20..+20
-    const approvedCount = baseCount + daysSinceAnchor * dailyBase + jitter;
+    const reviewCount = baseCount + daysSinceAnchor * dailyBase + jitter;
 
     const rng = mulberry32(seed);
     const idx = Array.from({ length: 100 }, (_, k) => k);
@@ -266,17 +264,28 @@ export function RatingsSection() {
       const r = Math.floor(rng() * (j + 1));
       [idx[j], idx[r]] = [idx[r], idx[j]];
     }
-    const visibleReviews = idx.slice(0, 5).map((k) => pool[k]!).filter(Boolean);
+    const visibleReviews = idx
+      .slice(0, 10)
+      .map((k, i) => {
+        const r = pool[k]!;
+        return {
+          ...r,
+          dateLabel:
+            REVIEW_DATE_LABELS[i % REVIEW_DATE_LABELS.length] ?? "Recently",
+        };
+      })
+      .filter(Boolean);
 
     return {
       todayKey,
-      approvedCount,
+      reviewCount,
       visibleReviews,
     };
   }, [todayKey]);
 
   const averageRatingFixed = 4.6;
-  const approvedReviewLabel = formatApprovedCount(demoModel.approvedCount);
+  const reviewCountLabel = formatReviewCount(demoModel.reviewCount);
+  const carouselReviews: CarouselReview[] = demoModel.visibleReviews;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -325,49 +334,23 @@ export function RatingsSection() {
           Guest reviews
         </h2>
 
-        {demoModel.visibleReviews.length > 0 ? (
-          <p className="mt-4 text-center text-sm font-medium text-ocean-800">
-            Average from {approvedReviewLabel} approved review
-            {approvedReviewLabel === "1+" ? "" : "s"}:{" "}
-            {/* amber-600 on white only hits 4.04:1; amber-700 → 5.31:1 (AA). */}
-            <span className="font-semibold text-amber-700">
-              ★ {averageRatingFixed.toFixed(1)} / 5
-            </span>
-          </p>
+        {carouselReviews.length > 0 ? (
+          <>
+            <p className="mt-4 text-center text-sm font-medium text-[#3C4043]">
+              Average from {reviewCountLabel} review
+              {reviewCountLabel === "1+" ? "" : "s"}:{" "}
+              <span className="inline-flex items-center gap-0.5 font-semibold text-[#202124]">
+                <span className="text-[#FABB05]" aria-hidden>
+                  ★
+                </span>
+                {averageRatingFixed.toFixed(1)} / 5
+              </span>
+            </p>
+            <div className="mt-6">
+              <ReviewCarousel reviews={carouselReviews} />
+            </div>
+          </>
         ) : null}
-
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-          {demoModel.visibleReviews.map((d) => (
-            <li
-              key={d.id}
-              className="rounded-2xl border border-ocean-100 bg-sand/50 p-5 shadow-sm"
-            >
-              <div className="flex items-start gap-3">
-                <GuestReviewAvatar name={d.authorName} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-ocean-900">
-                        {d.authorName}
-                      </p>
-                      <p className="text-xs font-medium text-ocean-700">
-                        Google review · {d.place}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-ocean-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ocean-800">
-                      Guest
-                    </span>
-                  </div>
-                  <p className="mt-1 text-amber-700" aria-hidden>
-                    {"★".repeat(Math.min(5, Math.max(0, d.rating)))}
-                    <span className="sr-only">{d.rating} out of 5</span>
-                  </p>
-                  <p className="mt-2 text-sm text-ocean-800">{d.comment}</p>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
 
         <div className="mx-auto mt-10 max-w-lg sm:mt-12">
           <h3 className="font-display text-center text-base font-semibold text-ocean-900 sm:text-lg">
