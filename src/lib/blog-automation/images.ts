@@ -3,7 +3,7 @@ import path from "path";
 import { getStorage } from "firebase-admin/storage";
 import sharp from "sharp";
 import { getAdminApp } from "@/lib/firebase-admin";
-import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import { SITE_URL } from "@/lib/constants";
 
 const MAX_WIDTH = 1200;
 const WEBP_QUALITY = 82;
@@ -15,74 +15,89 @@ const LOGO_FILES = [
   "book-scuba-goa-logo.png",
 ];
 
-/** ASCII-only host for SVG text (avoids empty boxes in sharp/librsvg). */
-function siteHostAscii(): string {
-  return SITE_URL.replace(/^https?:\/\//i, "").replace(/\/$/, "").toLowerCase();
-}
+const WATERMARK_TILE = "blog-watermark-tile.png";
+const BAR_HOST_PNG = "blog-bar-host.png";
 
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+async function readPublicAsset(name: string): Promise<Buffer | null> {
+  const siteBase = SITE_URL.replace(/\/$/, "");
+  try {
+    const res = await fetch(`${siteBase}/${name}`, {
+      headers: { "User-Agent": "BlueSharkGoa-BlogBot/1.0" },
+      cache: "force-cache",
+    });
+    if (res.ok) {
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length > 50) return buf;
+    }
+  } catch {
+    /* fallback local */
+  }
+  try {
+    return await readFile(path.join(process.cwd(), "public", name));
+  } catch {
+    return null;
+  }
 }
 
 async function loadBrandLogoBuffer(): Promise<Buffer> {
-  const siteBase = SITE_URL.replace(/\/$/, "");
-
   for (const name of LOGO_FILES) {
-    try {
-      const res = await fetch(`${siteBase}/${name}`, {
-        headers: { "User-Agent": "BlueSharkGoa-BlogBot/1.0" },
-        cache: "force-cache",
-      });
-      if (res.ok) {
-        const buf = Buffer.from(await res.arrayBuffer());
-        if (buf.length > 100) return buf;
-      }
-    } catch {
-      /* try next */
-    }
+    const buf = await readPublicAsset(name);
+    if (buf) return buf;
   }
-
-  const publicDir = path.join(process.cwd(), "public");
-  for (const name of LOGO_FILES) {
-    try {
-      return await readFile(path.join(publicDir, name));
-    } catch {
-      /* try next */
-    }
-  }
-
-  throw new Error("Brand logo not found (tried site URL and public/)");
+  throw new Error("Brand logo not found");
 }
 
-function buildWatermarkSvg(width: number, height: number): Buffer {
-  const host = siteHostAscii();
-  const line1 = escapeXml(SITE_NAME);
-  const line2 = escapeXml(host);
-  const fontSize = Math.max(15, Math.round(width * 0.03));
-  const tileW = Math.round(width * 0.48);
-  const tileH = Math.round(height * 0.18);
-  const rows = Math.ceil(height / tileH) + 1;
-  const cols = Math.ceil(width / tileW) + 1;
-  let tiles = "";
-  for (let r = 0; r < rows; r += 1) {
-    for (let c = 0; c < cols; c += 1) {
-      const x = c * tileW - tileW * 0.15;
-      const y = r * tileH + tileH * 0.45;
-      tiles += `<text x="${x}" y="${y}" transform="rotate(-22 ${x} ${y})" font-family="sans-serif" font-size="${fontSize}" font-weight="700" fill="#ffffff" fill-opacity="0.2">${line1}</text>`;
-      tiles += `<text x="${x}" y="${y + fontSize + 4}" transform="rotate(-22 ${x} ${y + fontSize + 4})" font-family="sans-serif" font-size="${Math.round(fontSize * 0.85)}" fill="#ffffff" fill-opacity="0.16">${line2}</text>`;
+/** Tiled PNG watermark — text baked at build time (no SVG fonts on server). */
+async function buildWatermarkLayer(width: number, height: number): Promise<Buffer> {
+  const tileBuf = await readPublicAsset(WATERMARK_TILE);
+  if (!tileBuf) {
+    return sharp({
+      create: {
+        width,
+        height,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .png()
+      .toBuffer();
+  }
+
+  const tileMeta = await sharp(tileBuf).metadata();
+  const tw = tileMeta.width ?? 420;
+  const th = tileMeta.height ?? 72;
+  const padX = Math.round(tw * 0.55);
+  const padY = Math.round(th * 1.35);
+  const layerW = width + tw * 2;
+  const layerH = height + th * 2;
+  const composites: sharp.OverlayOptions[] = [];
+
+  for (let y = 0; y < layerH; y += padY) {
+    for (let x = 0; x < layerW; x += padX) {
+      composites.push({ input: tileBuf, top: y, left: x });
     }
   }
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${tiles}</svg>`;
-  return Buffer.from(svg);
+
+  const tiled = await sharp({
+    create: {
+      width: layerW,
+      height: layerH,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer();
+
+  return sharp(tiled)
+    .rotate(-22, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .resize(width, height, { fit: "cover", position: "centre" })
+    .png()
+    .toBuffer();
 }
 
-function buildBrandBarSvg(width: number, barHeight: number, host: string): Buffer {
-  const safeHost = escapeXml(host);
-  const fontSize = Math.max(13, Math.round(barHeight * 0.34));
+function buildBrandBarBackground(width: number, barHeight: number): Buffer {
   const svg = `<svg width="${width}" height="${barHeight}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
@@ -91,7 +106,6 @@ function buildBrandBarSvg(width: number, barHeight: number, host: string): Buffe
     </linearGradient>
   </defs>
   <rect width="${width}" height="${barHeight}" fill="url(#g)" fill-opacity="0.94"/>
-  <text x="${width - 16}" y="${Math.round(barHeight * 0.68)}" text-anchor="end" font-family="sans-serif" font-size="${fontSize}" font-weight="600" fill="#ffffff">${safeHost}</text>
 </svg>`;
   return Buffer.from(svg);
 }
@@ -105,13 +119,30 @@ export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const meta = await sharp(resizedBuf).metadata();
   const width = meta.width ?? MAX_WIDTH;
   const height = meta.height ?? Math.round(width * 0.56);
-  const host = siteHostAscii();
-
   const barHeight = Math.max(56, Math.round(height * 0.12));
+
+  const watermarkLayer = await buildWatermarkLayer(width, height);
   const composites: sharp.OverlayOptions[] = [
-    { input: buildWatermarkSvg(width, height), top: 0, left: 0 },
-    { input: buildBrandBarSvg(width, barHeight, host), top: height - barHeight, left: 0 },
+    { input: watermarkLayer, top: 0, left: 0 },
+    { input: buildBrandBarBackground(width, barHeight), top: height - barHeight, left: 0 },
   ];
+
+  const hostPng = await readPublicAsset(BAR_HOST_PNG);
+  if (hostPng) {
+    const hostH = Math.round(barHeight * 0.55);
+    const hostBuf = await sharp(hostPng)
+      .resize(undefined, hostH, { fit: "inside", withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    const hostMeta = await sharp(hostBuf).metadata();
+    const hostW = hostMeta.width ?? 200;
+    const hostImgH = hostMeta.height ?? hostH;
+    composites.push({
+      input: hostBuf,
+      top: height - barHeight + Math.round((barHeight - hostImgH) / 2),
+      left: width - hostW - 16,
+    });
+  }
 
   const logoRaw = await loadBrandLogoBuffer();
   const logoMaxH = Math.round(barHeight * 0.82);
