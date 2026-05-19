@@ -1,8 +1,11 @@
-﻿"use client";
+"use client";
+
+import { formatGoogleProfileMeta } from "@/data/demo-reviews-content";
 
 type Props = {
   authorName: string;
-  place: string;
+  profileReviewCount: number;
+  profilePhotoCount: number;
   comment: string;
   rating: number;
   dateLabel?: string;
@@ -22,7 +25,12 @@ function StarRow({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-0.5" aria-hidden>
       {Array.from({ length: 5 }, (_, i) => (
-        <svg key={i} className="h-4 w-4" viewBox="0 0 24 24" fill={i < full ? STAR_FILL : STAR_EMPTY}>
+        <svg
+          key={i}
+          className="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill={i < full ? STAR_FILL : STAR_EMPTY}
+        >
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
         </svg>
       ))}
@@ -31,23 +39,39 @@ function StarRow({ rating }: { rating: number }) {
   );
 }
 
-export function GoogleStyleReviewCard({ authorName, place, comment, rating, dateLabel = "Recently" }: Props) {
+/** Google-inspired layout ? guest content on our site, not imported from Google. */
+export function GoogleStyleReviewCard({
+  authorName,
+  profileReviewCount,
+  profilePhotoCount,
+  comment,
+  rating,
+  dateLabel = "Recently",
+}: Props) {
   const safeName = String(authorName ?? "").trim() || "Guest";
-  const safePlace = String(place ?? "").trim() || "India";
   const safeComment = String(comment ?? "").trim() || "Great experience.";
-  const safeRating = typeof rating === "number" && Number.isFinite(rating) ? rating : 5;
+  const safeRating =
+    typeof rating === "number" && Number.isFinite(rating) ? rating : 5;
+  const reviews = Math.max(0, Math.min(99, Math.round(profileReviewCount) || 0));
+  const photos = Math.max(0, Math.min(99, Math.round(profilePhotoCount) || 0));
+  const profileMeta = formatGoogleProfileMeta(reviews, photos);
+
   const initial = (safeName[0] ?? "G").toUpperCase();
   const hue = avatarHue(safeName);
 
   return (
     <article className="rounded-xl border border-[#DADCE0] bg-white px-5 py-4 shadow-sm">
       <div className="flex gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium text-white" style={{ backgroundColor: `hsl(${hue} 45% 42%)` }} aria-hidden>
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium text-white"
+          style={{ backgroundColor: `hsl(${hue} 45% 42%)` }}
+          aria-hidden
+        >
           {initial}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-[#202124]">{safeName}</p>
-          <p className="text-xs text-[#5F6368]">Guest review · {safePlace}</p>
+          <p className="text-sm font-medium text-[#1a73e8]">{safeName}</p>
+          <p className="text-xs text-[#5F6368]">{profileMeta}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <StarRow rating={safeRating} />
             <span className="text-xs text-[#5F6368]">{dateLabel}</span>

@@ -6,6 +6,7 @@ import {
   type CarouselReview,
 } from "@/components/ReviewCarousel";
 import {
+  demoProfileStats,
   demoRatingForIndex,
   ENGLISH_REVIEW_TEMPLATES,
   HINGLISH_REVIEW_TEMPLATES,
@@ -264,10 +265,12 @@ export function RatingsSection() {
       .map((k, i) => {
         const r = pool[k];
         if (!r?.authorName || !r.comment) return null;
+        const profile = demoProfileStats(r.id || r.authorName);
         return {
           id: r.id,
           authorName: r.authorName,
-          place: r.place || "India",
+          profileReviewCount: profile.reviewCount,
+          profilePhotoCount: profile.photoCount,
           comment: r.comment,
           rating: r.rating,
           dateLabel:

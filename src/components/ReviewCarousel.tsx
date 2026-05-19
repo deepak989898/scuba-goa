@@ -6,7 +6,8 @@ import { GoogleStyleReviewCard } from "@/components/GoogleStyleReviewCard";
 export type CarouselReview = {
   id: string;
   authorName: string;
-  place: string;
+  profileReviewCount: number;
+  profilePhotoCount: number;
   comment: string;
   rating: number;
   dateLabel: string;
@@ -75,7 +76,8 @@ export function ReviewCarousel({ reviews }: Props) {
         >
           <GoogleStyleReviewCard
             authorName={current.authorName}
-            place={current.place}
+            profileReviewCount={current.profileReviewCount}
+            profilePhotoCount={current.profilePhotoCount}
             comment={current.comment}
             rating={current.rating}
             dateLabel={current.dateLabel}

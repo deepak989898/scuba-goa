@@ -66,3 +66,31 @@ export function demoRatingForIndex(i: number): number {
 export function isHinglishReviewIndex(i: number): boolean {
   return i % 10 !== 9 && i % 10 !== 4;
 }
+
+/** Stable Google-style profile stats per reviewer (e.g. "3 reviews · 8 photos"). */
+export function demoProfileStats(seed: string): {
+  reviewCount: number;
+  photoCount: number;
+} {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const bucket = h % 24;
+  if (bucket === 0) return { reviewCount: 0, photoCount: 0 };
+  if (bucket === 1) return { reviewCount: 1, photoCount: 0 };
+  if (bucket === 2) return { reviewCount: 1, photoCount: 1 };
+  const reviewCount = 1 + (h % 18);
+  const photoCount = (h >> 3) % 12;
+  return { reviewCount, photoCount };
+}
+
+export function formatGoogleProfileMeta(
+  reviewCount: number,
+  photoCount: number
+): string {
+  const reviews =
+    reviewCount === 1 ? "1 review" : `${reviewCount} reviews`;
+  const photos = photoCount === 1 ? "1 photo" : `${photoCount} photos`;
+  return `${reviews} · ${photos}`;
+}
