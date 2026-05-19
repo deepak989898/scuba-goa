@@ -9,6 +9,7 @@ import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
+import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 
 type BlogTraffic = { views: number; visitors: number };
 
@@ -58,6 +59,24 @@ export default function AdminBlogAutomationPage() {
   const [titleInput, setTitleInput] = useState("");
   const [bulkTitles, setBulkTitles] = useState("");
   const [newLang, setNewLang] = useState<BlogLanguage>("hinglish");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const gbp = params.get("gbp");
+    if (!gbp) return;
+    if (gbp === "connected") {
+      setOkMsg("Google Business account connected. Choose your location below.");
+    } else if (gbp === "error") {
+      const msg = params.get("msg") ?? "OAuth failed";
+      setErr(`Google Business connect failed: ${msg}`);
+    }
+    params.delete("gbp");
+    params.delete("msg");
+    const q = params.toString();
+    const next = `${window.location.pathname}${q ? `?${q}` : ""}`;
+    window.history.replaceState({}, "", next);
+  }, []);
 
   const loadBlogTraffic = useCallback(async () => {
     if (!db) {
@@ -461,6 +480,13 @@ export default function AdminBlogAutomationPage() {
               </button>
             </div>
           </section>
+
+          <GoogleBusinessSection
+            onMessage={(m) => {
+              if (m.ok) setOkMsg(m.ok);
+              if (m.err) setErr(m.err);
+            }}
+          />
 
           <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
             <h2 className="font-display text-lg font-bold text-ocean-900">

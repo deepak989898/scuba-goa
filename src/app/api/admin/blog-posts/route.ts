@@ -9,6 +9,7 @@ import {
   type BlogLanguage,
 } from "@/lib/blog-firestore";
 import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
+import { postBlogToGoogleBusinessProfile } from "@/lib/google-business/sync-blog-post";
 
 export const runtime = "nodejs";
 
@@ -156,6 +157,20 @@ export async function PATCH(req: Request) {
     });
   } catch (e) {
     console.error("[blog-posts] gallery sync failed:", e);
+  }
+
+  if (next.published === true) {
+    try {
+      await postBlogToGoogleBusinessProfile({
+        slug,
+        title: next.title as string,
+        excerpt: next.excerpt as string,
+        featuredImageUrl: String(next.featuredImageUrl ?? "").trim() || undefined,
+        language: next.language as "en" | "hi" | "hinglish",
+      });
+    } catch (e) {
+      console.error("[blog-posts] Google Business sync failed:", e);
+    }
   }
 
   return NextResponse.json({ ok: true, slug });

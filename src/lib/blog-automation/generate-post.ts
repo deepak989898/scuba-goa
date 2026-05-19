@@ -27,6 +27,7 @@ import {
 } from "@/lib/blog-automation/schedule";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
+import { postBlogToGoogleBusinessProfile } from "@/lib/google-business/sync-blog-post";
 
 export type GenerateBlogResult =
   | { ok: true; slug: string; title: string }
@@ -173,6 +174,23 @@ export async function generateAndPublishOneBlog(options?: {
     } catch (e) {
       console.error("[blog-automation] gallery sync failed:", e);
     }
+  }
+
+  try {
+    const gbp = await postBlogToGoogleBusinessProfile({
+      slug,
+      title: draft.title,
+      excerpt: draft.excerpt,
+      featuredImageUrl: featuredImageUrl || undefined,
+      language: lang,
+    });
+    if (!gbp.ok) {
+      console.error("[blog-automation] Google Business post failed:", gbp.error);
+    } else if (gbp.posted) {
+      console.info("[blog-automation] Google Business post created:", gbp.postName);
+    }
+  } catch (e) {
+    console.error("[blog-automation] Google Business sync error:", e);
   }
 
   if (queueId) await markTopicUsed(queueId);
