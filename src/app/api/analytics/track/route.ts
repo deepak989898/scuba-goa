@@ -11,6 +11,8 @@ const PAGE_LABEL_MAX = 256;
 const LANG_MAX = 48;
 const TZ_MAX = 80;
 const DIM_MAX = 10000;
+const TRAFFIC_STR_MAX = 256;
+const TRAFFIC_CHANNEL_MAX = 32;
 const GUIDE_INDEX_KEY = "__guides_index__";
 
 type TrackEventType = "view" | "leave" | "heartbeat" | "click";
@@ -79,6 +81,14 @@ export async function POST(req: Request) {
     viewportHeight?: number;
     language?: string;
     timeZone?: string;
+    trafficChannel?: string;
+    trafficLabel?: string;
+    trafficDetail?: string;
+    referrerHost?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+    landingPath?: string;
   };
   try {
     body = await req.json();
@@ -140,6 +150,18 @@ export async function POST(req: Request) {
       ? body.timeZone.trim().slice(0, TZ_MAX) || undefined
       : undefined;
 
+  const sliceStr = (raw: unknown, max: number) =>
+    typeof raw === "string" ? raw.trim().slice(0, max) || undefined : undefined;
+
+  const trafficChannel = sliceStr(body.trafficChannel, TRAFFIC_CHANNEL_MAX);
+  const trafficLabel = sliceStr(body.trafficLabel, TRAFFIC_STR_MAX);
+  const trafficDetail = sliceStr(body.trafficDetail, TRAFFIC_STR_MAX);
+  const referrerHost = sliceStr(body.referrerHost, TRAFFIC_STR_MAX);
+  const utmSource = sliceStr(body.utmSource, TRAFFIC_STR_MAX);
+  const utmMedium = sliceStr(body.utmMedium, TRAFFIC_STR_MAX);
+  const utmCampaign = sliceStr(body.utmCampaign, TRAFFIC_STR_MAX);
+  const landingPath = sliceStr(body.landingPath, PATH_MAX);
+
   const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
   const sessionSnap = await sessionRef.get();
   const sessionPayload: Record<string, unknown> = {
@@ -162,6 +184,21 @@ export async function POST(req: Request) {
   if (timeZone) sessionPayload.timeZone = timeZone;
   if (!sessionSnap.exists) {
     sessionPayload.firstSeenAt = FieldValue.serverTimestamp();
+  }
+
+  const existing = sessionSnap.exists
+    ? (sessionSnap.data() as Record<string, unknown>)
+    : {};
+  const hasTraffic = Boolean(existing.trafficChannel);
+  if (!hasTraffic && trafficChannel) {
+    sessionPayload.trafficChannel = trafficChannel;
+    if (trafficLabel) sessionPayload.trafficLabel = trafficLabel;
+    if (trafficDetail) sessionPayload.trafficDetail = trafficDetail;
+    if (referrerHost) sessionPayload.referrerHost = referrerHost;
+    if (utmSource) sessionPayload.utmSource = utmSource;
+    if (utmMedium) sessionPayload.utmMedium = utmMedium;
+    if (utmCampaign) sessionPayload.utmCampaign = utmCampaign;
+    if (landingPath) sessionPayload.landingPath = landingPath;
   }
 
   const pageViewPayload: Record<string, unknown> = {
@@ -187,6 +224,16 @@ export async function POST(req: Request) {
   if (clickLabel) pageViewPayload.clickLabel = clickLabel;
   if (clickTarget) pageViewPayload.clickTarget = clickTarget;
   if (clickHref) pageViewPayload.clickHref = clickHref;
+  if (eventType === "view" && trafficChannel && !hasTraffic) {
+    pageViewPayload.trafficChannel = trafficChannel;
+    if (trafficLabel) pageViewPayload.trafficLabel = trafficLabel;
+    if (trafficDetail) pageViewPayload.trafficDetail = trafficDetail;
+    if (referrerHost) pageViewPayload.referrerHost = referrerHost;
+    if (utmSource) pageViewPayload.utmSource = utmSource;
+    if (utmMedium) pageViewPayload.utmMedium = utmMedium;
+    if (utmCampaign) pageViewPayload.utmCampaign = utmCampaign;
+    if (landingPath) pageViewPayload.landingPath = landingPath;
+  }
 
   /**
    * Primary write (pageView + session). Wrap in try/catch and swallow — never

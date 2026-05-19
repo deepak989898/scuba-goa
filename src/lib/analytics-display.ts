@@ -18,6 +18,18 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export function formatDurationMs(ms: number | null): string {
+  if (!ms || ms <= 0) return "—";
+  const totalSec = Math.round(ms / 1000);
+  const sec = totalSec % 60;
+  const totalMin = Math.floor(totalSec / 60);
+  const min = totalMin % 60;
+  const hr = Math.floor(totalMin / 60);
+  if (hr > 0) return `${hr}h ${min}m ${sec}s`;
+  if (min > 0) return `${min}m ${sec}s`;
+  return `${sec}s`;
+}
+
 export function formatGeoLine(parts: {
   geoCity?: string;
   geoRegion?: string;

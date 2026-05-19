@@ -2,8 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { classifyTrafficSource } from "@/lib/analytics-traffic";
 
 const SESSION_KEY = "bsg_analytics_sid";
+const TRAFFIC_KEY = "bsg_analytics_traffic";
 /** Dedupe React Strict Mode double-invoke (same path within a few seconds). */
 const lastTrackAt = new Map<string, number>();
 /**
@@ -23,6 +25,67 @@ const CLICK_THROTTLE_MS = 1_500;
 type EventType = "view" | "leave" | "heartbeat" | "click";
 
 type VisitState = { path: string; enteredAtMs: number; pageLabel: string };
+
+type TrafficPayload = {
+  trafficChannel: string;
+  trafficLabel: string;
+  trafficDetail: string;
+  referrerHost: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  landingPath: string;
+};
+
+function getTrafficPayload(landingPath: string): TrafficPayload {
+  if (typeof window === "undefined") {
+    return {
+      trafficChannel: "",
+      trafficLabel: "",
+      trafficDetail: "",
+      referrerHost: "",
+      utmSource: "",
+      utmMedium: "",
+      utmCampaign: "",
+      landingPath,
+    };
+  }
+  try {
+    const cached = sessionStorage.getItem(TRAFFIC_KEY);
+    if (cached) return JSON.parse(cached) as TrafficPayload;
+  } catch {
+    /* ignore */
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const info = classifyTrafficSource({
+    referrer: typeof document !== "undefined" ? document.referrer : "",
+    utmSource: params.get("utm_source") ?? undefined,
+    utmMedium: params.get("utm_medium") ?? undefined,
+    utmCampaign: params.get("utm_campaign") ?? undefined,
+    gclid: params.get("gclid") ?? undefined,
+    fbclid: params.get("fbclid") ?? undefined,
+    landingPath,
+  });
+
+  const payload: TrafficPayload = {
+    trafficChannel: info.channel,
+    trafficLabel: info.label,
+    trafficDetail: info.detail,
+    referrerHost: info.referrerHost,
+    utmSource: info.utmSource,
+    utmMedium: info.utmMedium,
+    utmCampaign: info.utmCampaign,
+    landingPath: info.landingPath,
+  };
+
+  try {
+    sessionStorage.setItem(TRAFFIC_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+  return payload;
+}
 
 function clientContextPayload() {
   if (typeof window === "undefined") return {};
@@ -64,7 +127,8 @@ function track(
     enteredAtMs?: number;
     leftAtMs?: number;
     durationMs?: number;
-  } & ReturnType<typeof clientContextPayload>
+  } & ReturnType<typeof clientContextPayload> &
+    Partial<TrafficPayload>
 ) {
   if (!isAnalyticsEnabled()) return;
 
@@ -152,7 +216,8 @@ export function AnalyticsTracker() {
     }
 
     visitRef.current = { path: key, enteredAtMs: now, pageLabel };
-    track({ path: key, sessionId, eventType: "view", pageLabel });
+    const traffic = getTrafficPayload(key);
+    track({ path: key, sessionId, eventType: "view", pageLabel, ...traffic });
 
     /**
      * Heartbeat fires on a fixed interval but skips ticks while the tab is
