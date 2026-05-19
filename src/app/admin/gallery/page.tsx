@@ -10,6 +10,11 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import {
+  GALLERY_CATEGORIES,
+  normalizeGalleryCategory,
+  type GalleryCategoryId,
+} from "@/lib/gallery-categories";
 
 type Row = {
   id: string;
@@ -18,6 +23,8 @@ type Row = {
   posterUrl: string;
   alt: string;
   sortOrder: number;
+  category: GalleryCategoryId | "";
+  source: string;
 };
 
 export default function AdminGalleryPage() {
@@ -30,13 +37,17 @@ export default function AdminGalleryPage() {
     posterUrl: string;
     alt: string;
     sortOrder: number;
+    category: GalleryCategoryId | "";
   }>({
     type: "image",
     mediaUrl: "",
     posterUrl: "",
     alt: "",
     sortOrder: 0,
+    category: "underwater",
   });
+  const [syncingBlog, setSyncingBlog] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!db) return;
@@ -51,6 +62,8 @@ export default function AdminGalleryPage() {
         posterUrl: String(x.posterUrl ?? ""),
         alt: String(x.alt ?? ""),
         sortOrder: Number(x.sortOrder ?? 0),
+        category: normalizeGalleryCategory(x.category) ?? "",
+        source: String(x.source ?? ""),
       };
     });
     rows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
@@ -73,6 +86,8 @@ export default function AdminGalleryPage() {
       posterUrl: form.type === "video" ? form.posterUrl.trim() : "",
       alt: form.alt.trim() || "Gallery",
       sortOrder: Number(form.sortOrder),
+      category: form.category || "underwater",
+      source: "manual",
     });
     setForm({
       type: "image",
@@ -80,6 +95,7 @@ export default function AdminGalleryPage() {
       posterUrl: "",
       alt: "",
       sortOrder: list.length,
+      category: "underwater",
     });
     await refresh();
   }
@@ -94,6 +110,29 @@ export default function AdminGalleryPage() {
     if (!db) return;
     await updateDoc(doc(db, "homeGallery", id), patch);
     await refresh();
+  }
+
+  async function syncBlogPhotos() {
+    setSyncingBlog(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/admin/gallery-sync-blog", { method: "POST" });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        synced?: number;
+        skipped?: number;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Sync failed");
+      setSyncMsg(
+        `Added/updated ${data.synced ?? 0} blog photos in gallery (${data.skipped ?? 0} skipped — no image).`,
+      );
+      await refresh();
+    } catch (e) {
+      setSyncMsg(e instanceof Error ? e.message : "Sync failed");
+    } finally {
+      setSyncingBlog(false);
+    }
   }
 
   async function move(id: string, dir: -1 | 1) {
@@ -129,9 +168,22 @@ export default function AdminGalleryPage() {
           /gallery
         </a>{" "}
         page. Use direct URLs (Firebase Storage, Cloudinary, etc.). For videos, add a{" "}
-        <strong>poster</strong> image URL for thumbnails. Lower sort order appears
-        first. Use Move up / down to reorder quickly.
+        <strong>poster</strong> image URL for thumbnails. Pick a <strong>category</strong> for
+        filters on the public gallery. Lower sort order appears first. Auto blog posts sync here
+        when published.
       </p>
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={syncingBlog}
+          onClick={syncBlogPhotos}
+          className="rounded-full border border-ocean-300 bg-white px-4 py-2 text-sm font-semibold text-ocean-900 hover:bg-ocean-50 disabled:opacity-50"
+        >
+          {syncingBlog ? "Syncing…" : "Sync all blog photos to gallery"}
+        </button>
+        {syncMsg ? <p className="text-sm text-ocean-700">{syncMsg}</p> : null}
+      </div>
 
       <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Add item</h2>
@@ -141,12 +193,18 @@ export default function AdminGalleryPage() {
             <select
               className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
               value={form.type}
-              onChange={(e) =>
+              onChange={(e) => {
+                const isVideo = e.target.value === "video";
                 setForm((f) => ({
                   ...f,
-                  type: e.target.value === "video" ? "video" : "image",
-                }))
-              }
+                  type: isVideo ? "video" : "image",
+                  category: isVideo
+                    ? f.category === "underwater" || f.category === "blog"
+                      ? "reels"
+                      : f.category
+                    : f.category,
+                }));
+              }}
             >
               <option value="image">Image</option>
               <option value="video">Video reel</option>
@@ -187,6 +245,26 @@ export default function AdminGalleryPage() {
               />
             </label>
           ) : null}
+          <label className="text-sm">
+            Category
+            <select
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
+              value={form.category}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  category: (normalizeGalleryCategory(e.target.value) ??
+                    "underwater") as GalleryCategoryId,
+                }))
+              }
+            >
+              {GALLERY_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="text-sm sm:col-span-2">
             Alt text
             <input
@@ -218,6 +296,7 @@ export default function AdminGalleryPage() {
               <tr>
                 <th className="p-3">Order</th>
                 <th className="p-3">Type</th>
+                <th className="p-3">Category</th>
                 <th className="p-3">Preview</th>
                 <th className="p-3">Details</th>
                 <th className="p-3">Actions</th>
@@ -258,6 +337,26 @@ export default function AdminGalleryPage() {
                   </td>
                   <td className="p-3 align-top capitalize text-ocean-800">
                     {r.type}
+                  </td>
+                  <td className="p-3 align-top">
+                    <select
+                      className="max-w-[10rem] rounded border border-ocean-200 px-1 py-1 text-xs"
+                      value={r.category || "underwater"}
+                      disabled={r.source === "blog"}
+                      onChange={(e) => {
+                        const cat = normalizeGalleryCategory(e.target.value);
+                        if (cat) patch(r.id, { category: cat });
+                      }}
+                    >
+                      {GALLERY_CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    {r.source === "blog" ? (
+                      <p className="mt-1 text-[10px] text-ocean-500">From blog</p>
+                    ) : null}
                   </td>
                   <td className="p-3 align-top">
                     {r.type === "video" ? (

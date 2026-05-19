@@ -1,10 +1,18 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { videoSrcForThumbnailFrame } from "@/components/HomeGalleryMedia";
 import { useHomeGallery } from "@/hooks/useHomeGallery";
+import {
+  GALLERY_CATEGORIES,
+  galleryCategoryLabel,
+  type GalleryCategoryId,
+} from "@/lib/gallery-categories";
 import type { HomeGalleryItem } from "@/lib/home-gallery-default";
 import Link from "next/link";
+
+type MediaFilter = "all" | "image" | "video";
 
 function GalleryGridCard({ item, index }: { item: HomeGalleryItem; index: number }) {
   const isVideo = item.type === "video";
@@ -55,6 +63,11 @@ function GalleryGridCard({ item, index }: { item: HomeGalleryItem; index: number
             Reel
           </span>
         ) : null}
+        {item.category ? (
+          <span className="pointer-events-none absolute left-2 top-2 max-w-[85%] truncate rounded bg-ocean-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
+            {galleryCategoryLabel(item.category)}
+          </span>
+        ) : null}
       </div>
       <p className="line-clamp-2 px-3 py-2.5 text-xs font-medium text-ocean-800 sm:text-sm">
         {item.alt}
@@ -63,8 +76,58 @@ function GalleryGridCard({ item, index }: { item: HomeGalleryItem; index: number
   );
 }
 
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition sm:text-sm ${
+        active
+          ? "bg-ocean-800 text-white shadow-sm"
+          : "border border-ocean-200 bg-white text-ocean-800 hover:border-ocean-400 hover:bg-ocean-50"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function GalleryPageContent() {
   const { items, loading } = useHomeGallery();
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<GalleryCategoryId | "all">(
+    "all",
+  );
+
+  const filtered = useMemo(() => {
+    return items.filter((item) => {
+      if (mediaFilter !== "all" && item.type !== mediaFilter) return false;
+      if (categoryFilter !== "all") {
+        if (!item.category || item.category !== categoryFilter) return false;
+      }
+      return true;
+    });
+  }, [items, mediaFilter, categoryFilter]);
+
+  const counts = useMemo(() => {
+    const byCategory: Partial<Record<GalleryCategoryId, number>> = {};
+    const images = items.filter((i) => i.type === "image").length;
+    const videos = items.filter((i) => i.type === "video").length;
+    for (const item of items) {
+      if (item.category) {
+        byCategory[item.category] = (byCategory[item.category] ?? 0) + 1;
+      }
+    }
+    return { images, videos, byCategory, total: items.length };
+  }, [items]);
 
   return (
     <div className="bg-gradient-to-b from-ocean-50 via-white to-sand/30">
@@ -77,18 +140,79 @@ export function GalleryPageContent() {
             Photos & reels from the water
           </h1>
           <p className="mt-3 text-base leading-relaxed text-ocean-800 sm:text-lg">
-            Every frame here is curated in the admin panel—underwater highlights, boats,
-            and short reels from real trips.
+            Underwater highlights, customer videos, package photos, pricing shots,
+            and blog images from real trips—filter by type or category below.
           </p>
         </header>
 
+        {!loading && items.length > 0 ? (
+          <div className="mt-8 space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ocean-600">
+                Media type
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <FilterChip
+                  active={mediaFilter === "all"}
+                  onClick={() => setMediaFilter("all")}
+                >
+                  All ({counts.total})
+                </FilterChip>
+                <FilterChip
+                  active={mediaFilter === "image"}
+                  onClick={() => setMediaFilter("image")}
+                >
+                  Photos ({counts.images})
+                </FilterChip>
+                <FilterChip
+                  active={mediaFilter === "video"}
+                  onClick={() => setMediaFilter("video")}
+                >
+                  Videos & reels ({counts.videos})
+                </FilterChip>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ocean-600">
+                Category
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <FilterChip
+                  active={categoryFilter === "all"}
+                  onClick={() => setCategoryFilter("all")}
+                >
+                  All categories
+                </FilterChip>
+                {GALLERY_CATEGORIES.map((cat) => {
+                  const n = counts.byCategory[cat.id] ?? 0;
+                  if (n === 0 && categoryFilter !== cat.id) return null;
+                  return (
+                    <FilterChip
+                      key={cat.id}
+                      active={categoryFilter === cat.id}
+                      onClick={() => setCategoryFilter(cat.id)}
+                    >
+                      {cat.label}
+                      {n > 0 ? ` (${n})` : ""}
+                    </FilterChip>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {loading ? (
           <p className="mt-12 text-sm font-medium text-ocean-700">Loading gallery…</p>
-        ) : items.length === 0 ? (
-          <p className="mt-12 text-sm font-medium text-ocean-700">No gallery items yet.</p>
+        ) : filtered.length === 0 ? (
+          <p className="mt-12 text-sm font-medium text-ocean-700">
+            {items.length === 0
+              ? "No gallery items yet."
+              : "No items match these filters. Try another category or media type."}
+          </p>
         ) : (
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {items.map((item, i) => (
+            {filtered.map((item, i) => (
               <GalleryGridCard key={`${item.mediaUrl}-${i}`} item={item} index={i} />
             ))}
           </div>

@@ -8,6 +8,7 @@ import {
   parseBlogPostFromFirestore,
   type BlogLanguage,
 } from "@/lib/blog-firestore";
+import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 
 export const runtime = "nodejs";
 
@@ -144,6 +145,19 @@ export async function PATCH(req: Request) {
   });
 
   await ref.set(next, { merge: true });
+
+  try {
+    await syncBlogImageToHomeGallery({
+      blogSlug: slug,
+      title: next.title as string,
+      featuredImageUrl: next.featuredImageUrl as string,
+      serviceSlug: next.serviceSlug as string,
+      published: next.published === true,
+    });
+  } catch (e) {
+    console.error("[blog-posts] gallery sync failed:", e);
+  }
+
   return NextResponse.json({ ok: true, slug });
 }
 

@@ -26,6 +26,7 @@ import {
   markSlotCompleted,
 } from "@/lib/blog-automation/schedule";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 
 export type GenerateBlogResult =
   | { ok: true; slug: string; title: string }
@@ -159,6 +160,20 @@ export async function generateAndPublishOneBlog(options?: {
   });
 
   await db.collection("blogPosts").doc(slug).set(payload, { merge: false });
+
+  if (featuredImageUrl) {
+    try {
+      await syncBlogImageToHomeGallery({
+        blogSlug: slug,
+        title: draft.title,
+        featuredImageUrl,
+        serviceSlug,
+        published: true,
+      });
+    } catch (e) {
+      console.error("[blog-automation] gallery sync failed:", e);
+    }
+  }
 
   if (queueId) await markTopicUsed(queueId);
 

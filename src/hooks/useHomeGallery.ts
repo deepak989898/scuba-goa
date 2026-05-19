@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { normalizeGalleryCategory } from "@/lib/gallery-categories";
 import {
   DEFAULT_HOME_GALLERY,
   type HomeGalleryItem,
@@ -10,7 +11,7 @@ import {
 
 function normalizeRow(
   id: string,
-  x: Record<string, unknown>
+  x: Record<string, unknown>,
 ): (HomeGalleryItem & { sortOrder: number; id: string }) | null {
   const typeRaw = String(x.type ?? "image").toLowerCase();
   const type: "image" | "video" = typeRaw === "video" ? "video" : "image";
@@ -19,7 +20,20 @@ function normalizeRow(
   const posterUrl = String(x.posterUrl ?? "").trim() || undefined;
   const alt = String(x.alt ?? "Gallery").trim() || "Gallery";
   const sortOrder = Number(x.sortOrder ?? 0);
-  return { id, type, mediaUrl, posterUrl, alt, sortOrder };
+  const category = normalizeGalleryCategory(x.category);
+  const source = String(x.source ?? "").trim() || undefined;
+  const sourceSlug = String(x.sourceSlug ?? "").trim() || undefined;
+  return {
+    id,
+    type,
+    mediaUrl,
+    posterUrl,
+    alt,
+    sortOrder,
+    category,
+    source,
+    sourceSlug,
+  };
 }
 
 export function useHomeGallery() {
@@ -43,19 +57,22 @@ export function useHomeGallery() {
         } else {
           const rows = snap.docs
             .map((docSnap) =>
-              normalizeRow(docSnap.id, docSnap.data() as Record<string, unknown>)
+              normalizeRow(docSnap.id, docSnap.data() as Record<string, unknown>),
             )
             .filter((r): r is NonNullable<typeof r> => r != null);
           rows.sort(
-            (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)
+            (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
           );
           const list: HomeGalleryItem[] = rows.map(
-            ({ type, mediaUrl, posterUrl, alt }) => ({
+            ({ type, mediaUrl, posterUrl, alt, category, source, sourceSlug }) => ({
               type,
               mediaUrl,
               posterUrl,
               alt,
-            })
+              category,
+              source,
+              sourceSlug,
+            }),
           );
           setItems(list.length ? list : DEFAULT_HOME_GALLERY);
         }
