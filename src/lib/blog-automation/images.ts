@@ -15,7 +15,6 @@ const LOGO_FILES = [
   "book-scuba-goa-logo.png",
 ];
 
-const WATERMARK_TILE = "blog-watermark-tile.png";
 const BAR_HOST_PNG = "blog-bar-host.png";
 
 async function readPublicAsset(name: string): Promise<Buffer | null> {
@@ -47,56 +46,6 @@ async function loadBrandLogoBuffer(): Promise<Buffer> {
   throw new Error("Brand logo not found");
 }
 
-/** Tiled PNG watermark — text baked at build time (no SVG fonts on server). */
-async function buildWatermarkLayer(width: number, height: number): Promise<Buffer> {
-  const tileBuf = await readPublicAsset(WATERMARK_TILE);
-  if (!tileBuf) {
-    return sharp({
-      create: {
-        width,
-        height,
-        channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      },
-    })
-      .png()
-      .toBuffer();
-  }
-
-  const tileMeta = await sharp(tileBuf).metadata();
-  const tw = tileMeta.width ?? 420;
-  const th = tileMeta.height ?? 72;
-  const padX = Math.round(tw * 0.55);
-  const padY = Math.round(th * 1.35);
-  const layerW = width + tw * 2;
-  const layerH = height + th * 2;
-  const composites: sharp.OverlayOptions[] = [];
-
-  for (let y = 0; y < layerH; y += padY) {
-    for (let x = 0; x < layerW; x += padX) {
-      composites.push({ input: tileBuf, top: y, left: x });
-    }
-  }
-
-  const tiled = await sharp({
-    create: {
-      width: layerW,
-      height: layerH,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    },
-  })
-    .composite(composites)
-    .png()
-    .toBuffer();
-
-  return sharp(tiled)
-    .rotate(-22, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .resize(width, height, { fit: "cover", position: "centre" })
-    .png()
-    .toBuffer();
-}
-
 function buildBrandBarBackground(width: number, barHeight: number): Buffer {
   const svg = `<svg width="${width}" height="${barHeight}" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -110,6 +59,7 @@ function buildBrandBarBackground(width: number, barHeight: number): Buffer {
   return Buffer.from(svg);
 }
 
+/** Resize to WebP + bottom brand bar (logo left, site URL right). No text watermark. */
 export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const resizedBuf = await sharp(photoBuffer)
     .rotate()
@@ -121,10 +71,12 @@ export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const height = meta.height ?? Math.round(width * 0.56);
   const barHeight = Math.max(56, Math.round(height * 0.12));
 
-  const watermarkLayer = await buildWatermarkLayer(width, height);
   const composites: sharp.OverlayOptions[] = [
-    { input: watermarkLayer, top: 0, left: 0 },
-    { input: buildBrandBarBackground(width, barHeight), top: height - barHeight, left: 0 },
+    {
+      input: buildBrandBarBackground(width, barHeight),
+      top: height - barHeight,
+      left: 0,
+    },
   ];
 
   const hostPng = await readPublicAsset(BAR_HOST_PNG);

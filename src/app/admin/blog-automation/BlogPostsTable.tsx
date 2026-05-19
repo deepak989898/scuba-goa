@@ -230,7 +230,7 @@ export function BlogPostsTable({
                           </label>
                           <div className="lg:col-span-2">
                             <p className="text-sm font-medium text-ocean-800">
-                              Featured image (WebP + logo on left, bookscubagoa.com on right)
+                                    Featured image (WebP, logo bar — topic-matched from Pexels)
                             </p>
                             {editing.featuredImageUrl ? (
                               <a

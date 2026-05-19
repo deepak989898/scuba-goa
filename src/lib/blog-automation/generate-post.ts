@@ -8,7 +8,7 @@ import { blogSlugExists } from "@/lib/blog-posts-server";
 import { getPostBySlug } from "@/data/blog-posts";
 import { getAllServicesServer, getServiceBySlugServer } from "@/lib/get-services-server";
 import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
-import { buildPexelsQuery, searchPexelsPhoto } from "@/lib/blog-automation/pexels";
+import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
 import { downloadCompressUploadBlogImage } from "@/lib/blog-automation/images";
 import {
   buildAutoTopic,
@@ -111,8 +111,11 @@ export async function generateAndPublishOneBlog(options?: {
 
   let featuredImageUrl = "";
   let ogImageUrl = "";
-  const pexelsQuery = buildPexelsQuery(serviceName, draft.title);
-  const photo = await searchPexelsPhoto(pexelsQuery);
+  const photo = await searchPexelsPhotoForPost({
+    title: draft.title,
+    serviceSlug,
+    serviceName,
+  });
   if (photo?.url) {
     try {
       const uploaded = await downloadCompressUploadBlogImage({
@@ -122,11 +125,9 @@ export async function generateAndPublishOneBlog(options?: {
       featuredImageUrl = uploaded.featuredImageUrl;
       ogImageUrl = uploaded.ogImageUrl;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Image branding failed";
-      console.error("[blog-automation] branded image failed:", msg);
-      throw new Error(
-        `Could not save branded blog image (logo/watermark). ${msg}`,
-      );
+      const msg = e instanceof Error ? e.message : "Image upload failed";
+      console.error("[blog-automation] blog image failed:", msg);
+      throw new Error(`Could not save blog image (logo bar). ${msg}`);
     }
   }
 

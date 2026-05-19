@@ -330,7 +330,7 @@ export default function AdminBlogAutomationPage() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Auto-generates SEO blogs (English, Hindi, Hinglish) with OpenAI, Pexels images
-            (logo + watermark, WebP in Firebase Storage), and scheduled publishing. Set a
+            (WebP in Firebase Storage, logo bar only), and scheduled publishing. Set a
             different IST time for each daily post. Queued admin titles publish first, in order.
           </p>
           <p className="mt-2 text-xs font-medium text-ocean-600">
