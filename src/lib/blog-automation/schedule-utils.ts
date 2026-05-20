@@ -104,10 +104,14 @@ export function normalizePublishSlotsIst(
   });
 }
 
+/**
+ * Strict window (legacy): slot due only within N minutes after scheduled time.
+ * Used when cron runs every ~30 minutes.
+ */
 export function isSlotDueInWindow(
   slot: string,
   now: IstTimeParts,
-  windowMinutes = 30,
+  windowMinutes = 45,
 ): boolean {
   const slotMins = parseSlotToMinutes(slot);
   if (slotMins == null) return false;
@@ -115,4 +119,58 @@ export function isSlotDueInWindow(
     now.totalMinutes >= slotMins &&
     now.totalMinutes < slotMins + windowMinutes
   );
+}
+
+/** Earliest IST slot today that has passed but is not in `completed`. */
+export function getEarliestOverdueSlot(
+  slots: string[],
+  now: IstTimeParts,
+  completed: string[],
+): string | null {
+  let best: string | null = null;
+  let bestMins = Infinity;
+  for (const slot of slots) {
+    if (completed.includes(slot)) continue;
+    const m = parseSlotToMinutes(slot);
+    if (m == null || now.totalMinutes < m) continue;
+    if (m < bestMins) {
+      bestMins = m;
+      best = slot;
+    }
+  }
+  return best;
+}
+
+/**
+ * Next slot to publish: earliest scheduled time today that has passed (IST)
+ * and is not yet marked completed. One post per cron run — never all at once.
+ */
+export function getNextDueSlot(
+  slots: string[],
+  now: IstTimeParts,
+  completedSlots: string[],
+): string | null {
+  for (const slot of slots) {
+    if (completedSlots.includes(slot)) continue;
+    const slotMins = parseSlotToMinutes(slot);
+    if (slotMins == null) continue;
+    if (now.totalMinutes >= slotMins) return slot;
+  }
+  return null;
+}
+
+/** Next slot that will become due later today (for admin status). */
+export function getNextUpcomingSlot(
+  slots: string[],
+  now: IstTimeParts,
+  completedSlots: string[],
+): string | null {
+  let best: { slot: string; mins: number } | null = null;
+  for (const slot of slots) {
+    if (completedSlots.includes(slot)) continue;
+    const slotMins = parseSlotToMinutes(slot);
+    if (slotMins == null || now.totalMinutes >= slotMins) continue;
+    if (!best || slotMins < best.mins) best = { slot, mins: slotMins };
+  }
+  return best?.slot ?? null;
 }

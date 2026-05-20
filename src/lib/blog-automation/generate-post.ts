@@ -21,6 +21,7 @@ import {
   saveBlogAutomationSettings,
 } from "@/lib/blog-automation/settings";
 import {
+  getCompletedSlotsForDate,
   getDueSlotNow,
   getIstNow,
   markSlotCompleted,
@@ -206,7 +207,7 @@ export async function generateAndPublishOneBlog(options?: {
 }
 
 export type RunBlogCronOptions = {
-  /** Admin “run daily job now” — publish all remaining quota, ignore schedule. */
+  /** Admin only: publish all remaining posts today at once (ignores IST schedule). */
   forceAllRemaining?: boolean;
 };
 
@@ -240,30 +241,41 @@ export async function runBlogAutomationCron(
     return { published, skipped, errors };
   }
 
-  let dueSlot: string | null = null;
-  if (!options?.forceAllRemaining) {
-    dueSlot = await getDueSlotNow(settings.publishSlotsIst);
-    if (!dueSlot) {
-      skipped.push(
-        `no slot due now (IST ${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}; schedule: ${settings.publishSlotsIst.join(", ")})`,
-      );
-      return { published, skipped, errors };
-    }
-  }
-
   const publishCount = options?.forceAllRemaining ? remaining : 1;
+  let lastSlot: string | null = null;
 
   for (let i = 0; i < publishCount; i += 1) {
+    let dueSlot: string | null = null;
+    if (options?.forceAllRemaining) {
+      const done = await getCompletedSlotsForDate(now.date);
+      dueSlot =
+        settings.publishSlotsIst.find((s) => !done.includes(s)) ??
+        settings.publishSlotsIst[i] ??
+        null;
+    } else {
+      dueSlot = await getDueSlotNow(settings.publishSlotsIst);
+      if (!dueSlot) {
+        if (i === 0) {
+          skipped.push(
+            `no slot due now (IST ${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}; schedule: ${settings.publishSlotsIst.join(", ")})`,
+          );
+        }
+        break;
+      }
+    }
+
     try {
       const result = await generateAndPublishOneBlog();
       if (result.ok) {
         published.push(result.slug);
         if (dueSlot) {
           await markSlotCompleted(now.date, dueSlot);
+          lastSlot = dueSlot;
         }
       } else {
         errors.push(result.error);
         if (result.skipped) skipped.push(result.error);
+        if (!options?.forceAllRemaining) break;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
@@ -273,15 +285,18 @@ export async function runBlogAutomationCron(
         lastRunStatus: "error",
         lastRunError: msg,
       });
+      break;
     }
   }
 
   await saveBlogAutomationSettings({
     lastRunAt: new Date().toISOString(),
     lastRunStatus: published.length
-      ? `published:${published.join(",")}${dueSlot ? `@${dueSlot}` : ""}`
-      : "no-publish",
+      ? `published:${published.join(",")}${lastSlot ? `@${lastSlot}` : ""}`
+      : options?.forceAllRemaining
+        ? "no-publish"
+        : "skipped:no-slot",
   });
 
-  return { published, skipped, errors, slot: dueSlot ?? undefined };
+  return { published, skipped, errors, slot: lastSlot ?? undefined };
 }

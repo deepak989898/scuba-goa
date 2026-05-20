@@ -74,10 +74,9 @@ export function GoogleBusinessSection({
       if (data.accounts.length === 1) {
         const id = data.accounts[0].accountId as string;
         setSelectedAccount(id);
-        const locData = await adminFetch(
-          `/api/admin/google-business/locations?accountId=${encodeURIComponent(id)}`,
-        );
-        setLocations(locData.locations ?? []);
+        onMessage({
+          ok: "Account loaded. Wait a few seconds, then select the account again to load locations (avoids Google rate limit).",
+        });
       }
     } catch (e) {
       onMessage({ err: e instanceof Error ? e.message : "Could not list accounts" });
@@ -91,14 +90,6 @@ export function GoogleBusinessSection({
       onMessage({ err: e instanceof Error ? e.message : "Failed to load GBP settings" }),
     );
   }, [loadStatus, onMessage]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("gbp") !== "connected") return;
-    if (!settings?.hasRefreshToken) return;
-    void loadAccounts();
-  }, [settings?.hasRefreshToken, loadAccounts]);
 
   async function connectGoogle() {
     setBusy("connect");
@@ -271,8 +262,11 @@ export function GoogleBusinessSection({
           onClick={() => void loadAccounts()}
           className="rounded-full border border-ocean-300 px-4 py-2 text-sm font-semibold text-ocean-900 disabled:opacity-50"
         >
-          Load accounts
+          {busy === "accounts" ? "Loading…" : "Load accounts"}
         </button>
+        <p className="w-full text-xs text-ocean-600">
+          If you see &quot;Quota exceeded&quot;, wait 1–2 minutes and click once only.
+        </p>
         <button
           type="button"
           disabled={!settings.configured || busy != null}
@@ -301,8 +295,9 @@ export function GoogleBusinessSection({
               className="mt-1 block w-full max-w-md rounded-lg border border-ocean-200 px-2 py-2"
               value={selectedAccount}
               onChange={(e) => {
-                setSelectedAccount(e.target.value);
-                void loadLocations(e.target.value);
+                const id = e.target.value;
+                setSelectedAccount(id);
+                if (id) void loadLocations(id);
               }}
             >
               <option value="">Select account…</option>

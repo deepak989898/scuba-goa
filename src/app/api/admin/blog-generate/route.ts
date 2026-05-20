@@ -20,6 +20,8 @@ export async function POST(req: Request) {
     serviceSlug?: string;
     language?: BlogLanguage;
     runDaily?: boolean;
+    /** Run cron logic: publish one post for the next due IST slot only. */
+    runNextSlot?: boolean;
   } = {};
   try {
     body = await req.json();
@@ -28,6 +30,11 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (body.runNextSlot) {
+      const result = await runBlogAutomationCron();
+      return NextResponse.json({ ok: true, ...result });
+    }
+
     if (body.runDaily) {
       const result = await runBlogAutomationCron({ forceAllRemaining: true });
       return NextResponse.json({ ok: true, ...result });

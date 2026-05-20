@@ -33,6 +33,11 @@ async function gbpFetch<T>(
   if (!res.ok) {
     const msg =
       data?.error?.message ?? text.slice(0, 300) ?? `Google API ${res.status}`;
+    if (res.status === 429 || /quota exceeded/i.test(msg)) {
+      throw new Error(
+        "Google API rate limit — wait 1–2 minutes, then click Load accounts once. Avoid clicking repeatedly.",
+      );
+    }
     throw new Error(msg);
   }
   return data;

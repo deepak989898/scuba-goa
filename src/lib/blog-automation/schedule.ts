@@ -1,7 +1,8 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
   getIstNow,
-  isSlotDueInWindow,
+  getNextDueSlot,
+  getNextUpcomingSlot,
   type IstTimeParts,
 } from "@/lib/blog-automation/schedule-utils";
 
@@ -9,6 +10,8 @@ export {
   defaultSlotsForCount,
   formatSlotFromMinutes,
   getIstNow,
+  getNextDueSlot,
+  getNextUpcomingSlot,
   normalizePublishSlotsIst,
   parseSlotToMinutes,
   type IstTimeParts,
@@ -47,14 +50,25 @@ export async function markSlotCompleted(
   );
 }
 
-export async function getDueSlotNow(
-  slots: string[],
-): Promise<string | null> {
+/** One slot per call — earliest IST time today that has passed and is not done yet. */
+export async function getDueSlotNow(slots: string[]): Promise<string | null> {
   const now = getIstNow();
   const done = await getCompletedSlotsForDate(now.date);
-  for (const slot of slots) {
-    if (done.includes(slot)) continue;
-    if (isSlotDueInWindow(slot, now)) return slot;
-  }
-  return null;
+  return getNextDueSlot(slots, now, done);
+}
+
+export async function getScheduleStatus(slots: string[]): Promise<{
+  now: IstTimeParts;
+  completedSlots: string[];
+  dueNow: string | null;
+  upcoming: string | null;
+}> {
+  const now = getIstNow();
+  const completedSlots = await getCompletedSlotsForDate(now.date);
+  return {
+    now,
+    completedSlots,
+    dueNow: getNextDueSlot(slots, now, completedSlots),
+    upcoming: getNextUpcomingSlot(slots, now, completedSlots),
+  };
 }
