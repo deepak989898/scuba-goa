@@ -9,6 +9,7 @@ import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
+import { BlogDailySchedulePanel } from "@/app/admin/blog-automation/BlogDailySchedulePanel";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 
@@ -147,6 +148,32 @@ export default function AdminBlogAutomationPage() {
       return b.updatedAt.localeCompare(a.updatedAt);
     });
   }, [posts, blogTrafficBySlug]);
+
+  /** Slot dropdown options when editing posts (includes calendar-friendly times). */
+  const publishSlotOptions = useMemo(() => {
+    if (!settings) return [];
+    const s = new Set<string>([
+      "06:00",
+      "07:00",
+      "08:00",
+      "09:00",
+      "10:00",
+      "11:00",
+      "12:00",
+      "13:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00",
+      "18:00",
+      "19:00",
+      "20:00",
+      "21:00",
+      "22:00",
+    ]);
+    for (const t of settings.publishSlotsIst) s.add(t);
+    return [...s].sort((a, b) => a.localeCompare(b));
+  }, [settings]);
 
   async function saveSettings(patch: Partial<BlogAutomationSettings>) {
     setBusy("settings");
@@ -563,6 +590,16 @@ export default function AdminBlogAutomationPage() {
             </div>
           </section>
 
+          <BlogDailySchedulePanel
+            adminFetch={adminFetch}
+            settings={settings}
+            onMessage={(m) => {
+              if (m.ok) setOkMsg(m.ok);
+              if (m.err) setErr(m.err);
+            }}
+            onSaved={() => void refresh()}
+          />
+
           <GoogleBusinessSection
             onMessage={(m) => {
               if (m.ok) setOkMsg(m.ok);
@@ -647,7 +684,7 @@ export default function AdminBlogAutomationPage() {
           <BlogPostsTable
             posts={posts}
             sortedPosts={sortedPosts}
-            publishSlots={settings.publishSlotsIst}
+            publishSlots={publishSlotOptions}
             blogTrafficBySlug={blogTrafficBySlug}
             blogIndexTraffic={blogIndexTraffic}
             trafficLoading={trafficLoading}

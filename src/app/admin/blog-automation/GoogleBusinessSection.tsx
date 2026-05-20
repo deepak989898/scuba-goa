@@ -48,6 +48,9 @@ export function GoogleBusinessSection({
   const [locations, setLocations] = useState<GbpLocation[]>([]);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [manualAccountId, setManualAccountId] = useState("");
+  const [manualLocationId, setManualLocationId] = useState("");
+  const [manualLocationTitle, setManualLocationTitle] = useState("");
 
   const loadStatus = useCallback(async () => {
     const data = await adminFetch("/api/admin/google-business/status");
@@ -63,27 +66,45 @@ export function GoogleBusinessSection({
     setBusy("accounts");
     try {
       const data = await adminFetch("/api/admin/google-business/locations");
-      setAccounts(data.accounts ?? []);
-      if ((data.accounts?.length ?? 0) === 0) {
+      const accs = (data.accounts ?? []) as GbpAccount[];
+      setAccounts(accs);
+      const parts: string[] = [];
+      if (typeof data.warning === "string" && data.warning.trim()) {
+        parts.push(data.warning.trim());
+      }
+      if (data.cached === true) {
+        parts.push("Using cached account list from a previous successful load.");
+      }
+      if (accs.length === 0) {
         onMessage({
-          err: "No Google Business accounts found for this login. Use the Gmail that manages your listing.",
+          err:
+            parts.join(" ") ||
+            "No Google Business accounts returned. Use manual IDs in the section below, or connect the Google account that manages your listing.",
         });
         return;
       }
-      onMessage({ ok: `Found ${data.accounts.length} account(s). Pick one below.` });
-      if (data.accounts.length === 1) {
-        const id = data.accounts[0].accountId as string;
+      parts.push(`Found ${accs.length} account(s). Pick one in the dropdown.`);
+      if (accs.length === 1) {
+        const id = accs[0].accountId;
         setSelectedAccount(id);
-        onMessage({
-          ok: "Account loaded. Wait a few seconds, then select the account again to load locations (avoids Google rate limit).",
-        });
+        parts.push(
+          "Only one account: choose it in the dropdown, wait a few seconds, then choose it again to load locations (reduces Google rate limits).",
+        );
       }
+      onMessage({ ok: parts.join(" ") });
     } catch (e) {
       onMessage({ err: e instanceof Error ? e.message : "Could not list accounts" });
     } finally {
       setBusy(null);
     }
   }, [onMessage]);
+
+  useEffect(() => {
+    if (!settings) return;
+    setManualAccountId(settings.accountId);
+    setManualLocationId(settings.locationId);
+    setManualLocationTitle(settings.locationTitle);
+  }, [settings?.accountId, settings?.locationId, settings?.locationTitle]);
 
   useEffect(() => {
     loadStatus().catch((e) =>
@@ -132,6 +153,9 @@ export function GoogleBusinessSection({
         `/api/admin/google-business/locations?accountId=${encodeURIComponent(accountId)}`,
       );
       setLocations(data.locations ?? []);
+      if (typeof data.warning === "string" && data.warning.trim()) {
+        onMessage({ ok: data.warning.trim() });
+      }
     } catch (e) {
       onMessage({ err: e instanceof Error ? e.message : "Could not list locations" });
     } finally {
@@ -154,6 +178,31 @@ export function GoogleBusinessSection({
       onMessage({ ok: `Location set: ${loc.title}` });
     } catch (e) {
       onMessage({ err: e instanceof Error ? e.message : "Save location failed" });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveManualIds() {
+    setBusy("manual-ids");
+    try {
+      const data = await adminFetch("/api/admin/google-business/settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          accountId: manualAccountId.trim(),
+          locationId: manualLocationId.trim(),
+          locationTitle: manualLocationTitle.trim(),
+        }),
+      });
+      setSettings(data.settings);
+      if (data.settings?.accountId) {
+        setSelectedAccount(data.settings.accountId);
+      }
+      onMessage({
+        ok: "Saved Account / Location IDs. You can send a test post if OAuth is connected; listing APIs are not required.",
+      });
+    } catch (e) {
+      onMessage({ err: e instanceof Error ? e.message : "Save manual IDs failed" });
     } finally {
       setBusy(null);
     }
@@ -215,7 +264,7 @@ export function GoogleBusinessSection({
           {settings.hasRefreshToken && !settings.configured ? (
             <span className="text-ocean-600">
               {" "}
-              — click <strong>Load accounts</strong> and choose your location below
+              — use <strong>Load accounts</strong> or enter <strong>manual IDs</strong> below
             </span>
           ) : null}
         </li>
@@ -264,8 +313,13 @@ export function GoogleBusinessSection({
         >
           {busy === "accounts" ? "Loading…" : "Load accounts"}
         </button>
-        <p className="w-full text-xs text-ocean-600">
-          If you see &quot;Quota exceeded&quot;, wait 1–2 minutes and click once only.
+        <p className="w-full text-xs text-ocean-700">
+          Google&apos;s <strong>list accounts / list locations</strong> APIs have a{" "}
+          <strong>small per-day quota</strong> on each Cloud project. Waiting 20–30 minutes
+          often does not fix it once the daily cap is hit. Use{" "}
+          <strong>manual IDs</strong> below (recommended when this keeps failing), try again
+          tomorrow, or use a dedicated Google Cloud project with the three Business APIs
+          enabled.
         </p>
         <button
           type="button"
@@ -274,6 +328,61 @@ export function GoogleBusinessSection({
           className="rounded-full border border-ocean-300 px-4 py-2 text-sm font-semibold text-ocean-900 disabled:opacity-50"
         >
           Send test post
+        </button>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-sky-200 bg-sky-50/90 p-4">
+        <h3 className="text-sm font-bold text-ocean-900">Manual account and location IDs</h3>
+        <p className="mt-2 text-xs text-ocean-700">
+          If <strong>Load accounts</strong> never works, paste your numeric{" "}
+          <strong>Account ID</strong> and <strong>Location ID</strong> here. Posting to your
+          profile uses OAuth and the post API only — listing APIs are optional. You can paste
+          a full resource name such as{" "}
+          <code className="rounded bg-white px-1 text-[11px]">
+            accounts/123/locations/456
+          </code>{" "}
+          into either ID field; we normalize it on save. See{" "}
+          <code className="text-[11px]">docs/GOOGLE-BUSINESS-PROFILE-SETUP.md</code> for where
+          to find IDs.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-xs font-medium text-ocean-800">
+            Account ID
+            <input
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2 font-mono text-xs"
+              value={manualAccountId}
+              onChange={(e) => setManualAccountId(e.target.value)}
+              placeholder="e.g. 12345678901234567890"
+              autoComplete="off"
+            />
+          </label>
+          <label className="block text-xs font-medium text-ocean-800">
+            Location ID
+            <input
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2 font-mono text-xs"
+              value={manualLocationId}
+              onChange={(e) => setManualLocationId(e.target.value)}
+              placeholder="e.g. 98765432109876543210"
+              autoComplete="off"
+            />
+          </label>
+          <label className="block text-xs font-medium text-ocean-800 sm:col-span-2">
+            Location title (label in admin)
+            <input
+              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2 text-sm"
+              value={manualLocationTitle}
+              onChange={(e) => setManualLocationTitle(e.target.value)}
+              placeholder="Your business name as shown on Google Maps"
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          disabled={busy != null || !manualAccountId.trim() || !manualLocationId.trim()}
+          onClick={() => void saveManualIds()}
+          className="mt-4 rounded-full bg-ocean-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {busy === "manual-ids" ? "Saving…" : "Save manual IDs"}
         </button>
       </div>
 

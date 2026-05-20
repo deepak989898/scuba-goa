@@ -20,9 +20,11 @@ export async function POST(req: Request) {
     serviceSlug?: string;
     language?: BlogLanguage;
     runDaily?: boolean;
-    /** Run cron logic: publish one post for the next due IST slot only. */
     runNextSlot?: boolean;
     prepareToday?: boolean;
+    prepareBulk?: boolean;
+    prepareBulkDays?: number;
+    prepareBulkStart?: number;
   } = {};
   try {
     body = await req.json();
@@ -31,12 +33,29 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (body.prepareBulk) {
+      const { getBlogAutomationSettings } = await import(
+        "@/lib/blog-automation/settings",
+      );
+      const { prepareScheduledPostsBulk } = await import(
+        "@/lib/blog-automation/scheduled-posts",
+      );
+      const settings = await getBlogAutomationSettings();
+      const numDays = Math.min(30, Math.max(1, Number(body.prepareBulkDays) || 7));
+      const startOffset = Math.max(0, Math.min(29, Number(body.prepareBulkStart) || 0));
+      const result = await prepareScheduledPostsBulk(settings, {
+        numDays,
+        startOffsetDays: startOffset,
+      });
+      return NextResponse.json({ ok: true, ...result });
+    }
+
     if (body.prepareToday) {
       const { getBlogAutomationSettings } = await import(
-        "@/lib/blog-automation/settings"
+        "@/lib/blog-automation/settings",
       );
       const { prepareTodaysScheduledPosts } = await import(
-        "@/lib/blog-automation/scheduled-posts"
+        "@/lib/blog-automation/scheduled-posts",
       );
       const settings = await getBlogAutomationSettings();
       const result = await prepareTodaysScheduledPosts(settings);

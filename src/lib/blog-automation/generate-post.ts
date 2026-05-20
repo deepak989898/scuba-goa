@@ -9,10 +9,12 @@ import { getDueSlotNow, getIstNow } from "@/lib/blog-automation/schedule";
 import { generateBlogDraftOnly } from "@/lib/blog-automation/generate-blog-draft";
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
+  prepareScheduledPostsBulk,
   prepareTodaysScheduledPosts,
   publishBlogPostNow,
   publishDueScheduledPosts,
 } from "@/lib/blog-automation/scheduled-posts";
+import { getEffectiveDayPlanForDate } from "@/lib/blog-automation/daily-schedule";
 
 export type GenerateBlogResult =
   | { ok: true; slug: string; title: string }
@@ -99,7 +101,10 @@ export async function runBlogAutomationCron(
   }
 
   if (options?.forceAllRemaining) {
-    const prep = await prepareTodaysScheduledPosts(settings);
+    const prep = await prepareScheduledPostsBulk(settings, {
+      numDays: 30,
+      startOffsetDays: 0,
+    });
     prepared.push(...prep.prepared);
     skipped.push(...prep.skipped);
     errors.push(...prep.errors);
@@ -122,10 +127,11 @@ export async function runBlogAutomationCron(
   skipped.push(...prep.skipped);
   errors.push(...prep.errors);
 
-  const dueSlot = await getDueSlotNow(settings.publishSlotsIst);
+  const todayPlan = await getEffectiveDayPlanForDate(now.date, settings);
+  const dueSlot = await getDueSlotNow(todayPlan.publishSlotsIst);
   if (!dueSlot && !published.length && !prepared.length) {
     skipped.push(
-      `waiting (IST ${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}; slots: ${settings.publishSlotsIst.join(", ")})`,
+      `waiting (IST ${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}; slots: ${todayPlan.publishSlotsIst.join(", ")})`,
     );
   }
 

@@ -8,6 +8,10 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 import { postBlogToGoogleBusinessProfile } from "@/lib/google-business/sync-blog-post";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
+import {
+  getEffectiveDayPlanForDate,
+  listIstDatesFromToday,
+} from "@/lib/blog-automation/daily-schedule";
 import { getIstNow } from "@/lib/blog-automation/schedule-utils";
 import { istSlotToUtcIso } from "@/lib/blog-automation/schedule-ist";
 import { markSlotCompleted } from "@/lib/blog-automation/schedule";
@@ -234,24 +238,25 @@ export async function generateScheduledBlogForSlot(input: {
   };
 }
 
-/** Create scheduled posts for every slot today that does not have one yet. */
-export async function prepareTodaysScheduledPosts(
+/** Create scheduled posts for every slot on a date that does not have one yet. */
+export async function prepareScheduledPostsForDate(
+  scheduleDateIst: string,
   settings: BlogAutomationSettings,
 ): Promise<{ prepared: string[]; skipped: string[]; errors: string[] }> {
-  const now = getIstNow();
+  const plan = await getEffectiveDayPlanForDate(scheduleDateIst, settings);
   const prepared: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
 
-  let count = await countPostsForScheduleDateIst(now.date);
+  let count = await countPostsForScheduleDateIst(scheduleDateIst);
 
-  for (const slot of settings.publishSlotsIst) {
-    if (count >= settings.postsPerDay) {
-      skipped.push(`daily limit (${settings.postsPerDay})`);
+  for (const slot of plan.publishSlotsIst) {
+    if (count >= plan.postsPerDay) {
+      skipped.push(`daily limit (${plan.postsPerDay})`);
       break;
     }
 
-    const existing = await getPostForScheduleSlot(now.date, slot);
+    const existing = await getPostForScheduleSlot(scheduleDateIst, slot);
     if (existing) {
       skipped.push(`${slot}: already exists (${existing.slug})`);
       continue;
@@ -260,7 +265,7 @@ export async function prepareTodaysScheduledPosts(
     try {
       const result = await generateScheduledBlogForSlot({
         publishSlotIst: slot,
-        scheduleDateIst: now.date,
+        scheduleDateIst,
       });
       if (result.ok) {
         prepared.push(`${result.slug}@${slot}`);
@@ -274,4 +279,52 @@ export async function prepareTodaysScheduledPosts(
   }
 
   return { prepared, skipped, errors };
+}
+
+export async function prepareTodaysScheduledPosts(
+  settings: BlogAutomationSettings,
+): Promise<{ prepared: string[]; skipped: string[]; errors: string[] }> {
+  const now = getIstNow();
+  return prepareScheduledPostsForDate(now.date, settings);
+}
+
+const MAX_PREPARE_PER_REQUEST = 25;
+
+/** Prepare missing scheduled drafts across consecutive IST days (stops after max posts). */
+export async function prepareScheduledPostsBulk(
+  settings: BlogAutomationSettings,
+  options: { startOffsetDays?: number; numDays?: number } = {},
+): Promise<{
+  prepared: string[];
+  skipped: string[];
+  errors: string[];
+  daysTouched: string[];
+}> {
+  const start = Math.max(0, options.startOffsetDays ?? 0);
+  const numDays = Math.min(30, Math.max(1, options.numDays ?? 7));
+  const allPrepared: string[] = [];
+  const allSkipped: string[] = [];
+  const allErrors: string[] = [];
+  const daysTouched: string[] = [];
+  let budget = MAX_PREPARE_PER_REQUEST;
+
+  const dateList = listIstDatesFromToday(start + numDays).slice(start, start + numDays);
+
+  for (const dateIst of dateList) {
+    if (budget <= 0) break;
+    daysTouched.push(dateIst);
+    const r = await prepareScheduledPostsForDate(dateIst, settings);
+    allPrepared.push(...r.prepared);
+    allSkipped.push(...r.skipped.map((s) => `${dateIst}: ${s}`));
+    allErrors.push(...r.errors.map((e) => `${dateIst}: ${e}`));
+    budget -= r.prepared.length;
+    if (r.prepared.length === 0 && r.errors.length > 0) break;
+  }
+
+  return {
+    prepared: allPrepared,
+    skipped: allSkipped,
+    errors: allErrors,
+    daysTouched,
+  };
 }

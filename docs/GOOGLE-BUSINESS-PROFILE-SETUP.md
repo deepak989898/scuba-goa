@@ -63,6 +63,17 @@ Redeploy after saving env vars.
 
 ---
 
+## Manual account and location IDs (when Load accounts fails)
+
+Google’s **list accounts** and **list locations** APIs use a **small daily quota** per Cloud project. If **Load accounts** always fails with quota or rate limit (even after waiting 20–30 minutes), use one of these:
+
+1. **Admin form** — On **`/admin/blog-automation`**, in **Google Business Profile**, use **Manual account and location IDs**: enter the numeric **Account ID** and **Location ID**, an optional **Location title**, then **Save manual IDs**. You still need **Connect Google account** so the server has a refresh token; **creating posts** does not require the listing APIs.
+2. **Environment variables** — Set `GOOGLE_BUSINESS_ACCOUNT_ID` and `GOOGLE_BUSINESS_LOCATION_ID` in Vercel (optional table in Step 2).
+
+**Finding IDs:** APIs use names like `accounts/{accountId}/locations/{locationId}`. You only need the two numeric segments. You can paste the full `accounts/…/locations/…` string into the Admin manual ID fields; the server normalizes it on save. If unsure, search your Cloud project’s **APIs & Services → Credentials** logs or use Google’s documentation for Business Profile resource names.
+
+---
+
 ## Step 3 — Connect in Admin (recommended)
 
 1. Deploy the latest site code.  
@@ -101,7 +112,7 @@ Redeploy after saving env vars.
 | “Client ID not configured” | Add env vars in Vercel and redeploy |
 | “Access blocked” / consent screen | Add your Gmail as **Test user** on OAuth consent screen |
 | “invalid_state” on redirect | Connect again from Admin (state expires in 15 min) |
-| “Quota” or “Permission denied” | Ensure APIs are enabled; account must be **owner/manager** of the listing |
+| “Quota” / rate limit / “Permission denied” | If it is **Load accounts** only, use **Manual IDs** or env vars (listing quota). Otherwise ensure the three Business APIs are enabled and the signed-in user is **owner/manager** of the listing |
 | Post not showing | Google can take a few minutes; check **Updates** on mobile Maps app too |
 | Image missing | Image URL must be **public HTTPS** (Firebase Storage URLs work) |
 

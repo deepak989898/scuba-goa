@@ -1,7 +1,8 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 
 const CACHE_DOC = "blogAutomation/googleBusinessApiCache";
-const TTL_MS = 10 * 60 * 1000;
+/** Google list APIs are strict — cache 24h; use manual IDs if still rate-limited. */
+const TTL_MS = 24 * 60 * 60 * 1000;
 
 type CacheDoc = {
   accounts?: { accountId: string; accountName: string }[];
@@ -35,6 +36,15 @@ export async function getCachedGoogleBusinessAccounts(): Promise<
   return c.accounts;
 }
 
+/** Last good accounts list even if TTL expired (for rate-limit fallback). */
+export async function getStaleCachedGoogleBusinessAccounts(): Promise<
+  { accountId: string; accountName: string }[] | null
+> {
+  const c = await readCache();
+  if (!c.accounts?.length) return null;
+  return c.accounts;
+}
+
 export async function setCachedGoogleBusinessAccounts(
   accounts: { accountId: string; accountName: string }[],
 ): Promise<void> {
@@ -48,6 +58,15 @@ export async function getCachedGoogleBusinessLocations(
   const row = c.locationsByAccount?.[accountId];
   if (!row?.locations?.length || !row.fetchedAt) return null;
   if (Date.now() - row.fetchedAt > TTL_MS) return null;
+  return row.locations;
+}
+
+export async function getStaleCachedGoogleBusinessLocations(
+  accountId: string,
+): Promise<{ accountId: string; locationId: string; title: string }[] | null> {
+  const c = await readCache();
+  const row = c.locationsByAccount?.[accountId];
+  if (!row?.locations?.length) return null;
   return row.locations;
 }
 

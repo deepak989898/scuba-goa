@@ -3,6 +3,8 @@ import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
   getCachedGoogleBusinessAccounts,
   getCachedGoogleBusinessLocations,
+  getStaleCachedGoogleBusinessAccounts,
+  getStaleCachedGoogleBusinessLocations,
   setCachedGoogleBusinessAccounts,
   setCachedGoogleBusinessLocations,
 } from "@/lib/google-business/api-cache";
@@ -55,6 +57,40 @@ export async function GET(req: Request) {
     return NextResponse.json({ accounts, cached: false });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to list locations";
+    const rateLimited =
+      /rate limit|quota exceeded|429/i.test(message) || message.includes("429");
+    if (accountId) {
+      const stale = await getStaleCachedGoogleBusinessLocations(accountId);
+      if (stale?.length) {
+        return NextResponse.json({
+          locations: stale,
+          cached: true,
+          stale: true,
+          warning:
+            "Google rate limit — showing last saved list. Or set Account / Location IDs manually below.",
+        });
+      }
+    } else {
+      const stale = await getStaleCachedGoogleBusinessAccounts();
+      if (stale?.length) {
+        return NextResponse.json({
+          accounts: stale,
+          cached: true,
+          stale: true,
+          warning:
+            "Google rate limit — showing last saved list. Use manual IDs (recommended) or try again tomorrow.",
+        });
+      }
+    }
+    if (rateLimited) {
+      return NextResponse.json(
+        {
+          error:
+            "Google Business list API quota exceeded for this Cloud project. Use **Manual location IDs** in Admin (no API list needed), or create a dedicated Google Cloud project with Business APIs enabled and wait 24h for quota reset.",
+        },
+        { status: 429 },
+      );
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
