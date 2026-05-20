@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     runDaily?: boolean;
     /** Run cron logic: publish one post for the next due IST slot only. */
     runNextSlot?: boolean;
+    prepareToday?: boolean;
   } = {};
   try {
     body = await req.json();
@@ -30,6 +31,18 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (body.prepareToday) {
+      const { getBlogAutomationSettings } = await import(
+        "@/lib/blog-automation/settings"
+      );
+      const { prepareTodaysScheduledPosts } = await import(
+        "@/lib/blog-automation/scheduled-posts"
+      );
+      const settings = await getBlogAutomationSettings();
+      const result = await prepareTodaysScheduledPosts(settings);
+      return NextResponse.json({ ok: true, ...result });
+    }
+
     if (body.runNextSlot) {
       const result = await runBlogAutomationCron();
       return NextResponse.json({ ok: true, ...result });

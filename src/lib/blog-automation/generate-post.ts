@@ -1,64 +1,24 @@
+import { blogPostToFirestorePayload } from "@/lib/blog-firestore";
+import type { BlogLanguage } from "@/lib/blog-firestore";
+import { markTopicUsed } from "@/lib/blog-automation/topics";
 import {
-  blogPostToFirestorePayload,
-  isValidBlogSlug,
-  normalizeBlogSlugInput,
-  type BlogLanguage,
-} from "@/lib/blog-firestore";
-import { blogSlugExists } from "@/lib/blog-posts-server";
-import { getPostBySlug } from "@/data/blog-posts";
-import { getAllServicesServer, getServiceBySlugServer } from "@/lib/get-services-server";
-import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
-import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
-import { downloadCompressUploadBlogImage } from "@/lib/blog-automation/images";
-import {
-  buildAutoTopic,
-  getNextPendingTopic,
-  markTopicUsed,
-} from "@/lib/blog-automation/topics";
-import {
-  countBlogPostsPublishedTodayIst,
   getBlogAutomationSettings,
   saveBlogAutomationSettings,
 } from "@/lib/blog-automation/settings";
-import {
-  getCompletedSlotsForDate,
-  getDueSlotNow,
-  getIstNow,
-  markSlotCompleted,
-} from "@/lib/blog-automation/schedule";
+import { getDueSlotNow, getIstNow } from "@/lib/blog-automation/schedule";
+import { generateBlogDraftOnly } from "@/lib/blog-automation/generate-blog-draft";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
-import { postBlogToGoogleBusinessProfile } from "@/lib/google-business/sync-blog-post";
+import {
+  prepareTodaysScheduledPosts,
+  publishBlogPostNow,
+  publishDueScheduledPosts,
+} from "@/lib/blog-automation/scheduled-posts";
 
 export type GenerateBlogResult =
   | { ok: true; slug: string; title: string }
   | { ok: false; error: string; skipped?: boolean };
 
-async function ensureUniqueSlug(base: string): Promise<string> {
-  let slug = normalizeBlogSlugInput(base);
-  if (!isValidBlogSlug(slug)) slug = `goa-blog-${Date.now()}`;
-  let attempt = slug;
-  let n = 0;
-  while (
-    getPostBySlug(attempt) ||
-    (await blogSlugExists(attempt))
-  ) {
-    n += 1;
-    attempt = `${slug}-${n}`;
-  }
-  return attempt;
-}
-
-function pickLanguage(
-  settings: Awaited<ReturnType<typeof getBlogAutomationSettings>>,
-  override?: BlogLanguage,
-): BlogLanguage {
-  if (override) return override;
-  const rot = settings.languageRotation;
-  if (rot.length === 0) return settings.defaultLanguage;
-  const idx = settings.autoTopicIndex % rot.length;
-  return rot[idx] ?? settings.defaultLanguage;
-}
+export { generateBlogDraftOnly } from "@/lib/blog-automation/generate-blog-draft";
 
 export async function generateAndPublishOneBlog(options?: {
   language?: BlogLanguage;
@@ -70,144 +30,46 @@ export async function generateAndPublishOneBlog(options?: {
   if (!db) return { ok: false, error: "Firebase Admin not configured" };
 
   const settings = await getBlogAutomationSettings();
-  let lang = pickLanguage(settings, options?.language);
-
-  let title = options?.forceTitle?.trim() ?? "";
-  let serviceSlug = options?.forceServiceSlug?.trim() ?? "";
-  let preferredSlug = "";
-  let queueId = options?.queueItemId;
-
-  if (!title) {
-    const queued = await getNextPendingTopic();
-    if (queued) {
-      title = queued.title;
-      serviceSlug = queued.serviceSlug || serviceSlug;
-      preferredSlug = queued.slug;
-      queueId = queued.id;
-      if (!options?.language) lang = queued.language;
-    }
-  }
-
-  if (!title) {
-    const auto = await buildAutoTopic(settings.autoTopicIndex, lang);
-    title = auto.title;
-    serviceSlug = auto.serviceSlug;
-  }
-
-  const service =
-    (serviceSlug ? await getServiceBySlugServer(serviceSlug) : null) ??
-    (await getAllServicesServer())[0];
-  const serviceName = service?.title ?? "Scuba diving";
-  serviceSlug = service?.slug ?? serviceSlug ?? "scuba-diving";
-
-  const draft = await generateBlogWithOpenAI({
-    title,
-    serviceName,
-    serviceSlug,
-    language: lang,
-    preferredSlug: preferredSlug || undefined,
-  });
-
-  const slug = await ensureUniqueSlug(
-    preferredSlug || draft.slug || draft.title,
-  );
-
-  let featuredImageUrl = "";
-  let ogImageUrl = "";
-  const photo = await searchPexelsPhotoForPost({
-    title: draft.title,
-    serviceSlug,
-    serviceName,
-  });
-  if (photo?.url) {
-    try {
-      const uploaded = await downloadCompressUploadBlogImage({
-        imageUrl: photo.url,
-        slug,
-      });
-      featuredImageUrl = uploaded.featuredImageUrl;
-      ogImageUrl = uploaded.ogImageUrl;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Image upload failed";
-      console.error("[blog-automation] blog image failed:", msg);
-      throw new Error(`Could not save blog image (logo bar). ${msg}`);
-    }
-  }
-
-  const istDate = new Date().toLocaleDateString("en-CA", {
-    timeZone: "Asia/Kolkata",
-  });
-  const now = new Date().toISOString();
-
-  const payload = blogPostToFirestorePayload({
-    slug,
-    title: draft.title,
-    excerpt: draft.excerpt,
-    metaTitle: draft.metaTitle,
-    metaDescription: draft.metaDescription,
-    keywords: draft.keywords,
-    content: draft.content,
-    faqs: draft.faqs,
-    date: istDate,
-    readTime: draft.readTime,
-    featuredImageUrl,
-    ogImageUrl,
-    language: lang,
-    published: true,
-    source: "auto",
-    serviceSlug,
-    pillar: false,
-    createdAt: now,
-    publishedAt: now,
-  });
-
-  await db.collection("blogPosts").doc(slug).set(payload, { merge: false });
-
-  if (featuredImageUrl) {
-    try {
-      await syncBlogImageToHomeGallery({
-        blogSlug: slug,
-        title: draft.title,
-        featuredImageUrl,
-        serviceSlug,
-        published: true,
-      });
-    } catch (e) {
-      console.error("[blog-automation] gallery sync failed:", e);
-    }
-  }
 
   try {
-    const gbp = await postBlogToGoogleBusinessProfile({
-      slug,
-      title: draft.title,
-      excerpt: draft.excerpt,
-      featuredImageUrl: featuredImageUrl || undefined,
-      language: lang,
+    const draft = await generateBlogDraftOnly(options);
+    if (!draft.ok) return { ok: false, error: draft.error };
+
+    const now = new Date().toISOString();
+    const istDate = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata",
     });
-    if (!gbp.ok) {
-      console.error("[blog-automation] Google Business post failed:", gbp.error);
-    } else if (gbp.posted) {
-      console.info("[blog-automation] Google Business post created:", gbp.postName);
-    }
+
+    await db.collection("blogPosts").doc(draft.post.slug).set(
+      blogPostToFirestorePayload({
+        ...draft.post,
+        published: false,
+        date: istDate,
+        updatedAt: now,
+      }),
+      { merge: false },
+    );
+
+    const pub = await publishBlogPostNow(draft.post.slug);
+    if (!pub.ok) return { ok: false, error: pub.error };
+
+    if (draft.queueId) await markTopicUsed(draft.queueId);
+
+    await saveBlogAutomationSettings({
+      autoTopicIndex: settings.autoTopicIndex + 1,
+      lastRunAt: now,
+      lastRunStatus: `published:${draft.post.slug}`,
+      lastRunError: null,
+    });
+
+    return { ok: true, slug: draft.post.slug, title: draft.post.title };
   } catch (e) {
-    console.error("[blog-automation] Google Business sync error:", e);
+    const msg = e instanceof Error ? e.message : "Generation failed";
+    return { ok: false, error: msg };
   }
-
-  if (queueId) await markTopicUsed(queueId);
-
-  await saveBlogAutomationSettings({
-    autoTopicIndex: settings.autoTopicIndex + 1,
-    lastRunAt: now,
-    lastRunStatus: `published:${slug}`,
-    lastRunError: null,
-  });
-
-  return { ok: true, slug, title: draft.title };
 }
 
 export type RunBlogCronOptions = {
-  /** Admin only: publish all remaining posts today at once (ignores IST schedule). */
   forceAllRemaining?: boolean;
 };
 
@@ -215,88 +77,67 @@ export async function runBlogAutomationCron(
   options?: RunBlogCronOptions,
 ): Promise<{
   published: string[];
+  prepared: string[];
   skipped: string[];
   errors: string[];
   slot?: string;
 }> {
   const settings = await getBlogAutomationSettings();
   const published: string[] = [];
+  const prepared: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
   const now = getIstNow();
 
+  const due = await publishDueScheduledPosts(5);
+  published.push(...due.published);
+  errors.push(...due.errors);
+
   if (!settings.enabled && !options?.forceAllRemaining) {
-    skipped.push("automation disabled");
-    return { published, skipped, errors };
+    if (!published.length) skipped.push("automation disabled");
+    return { published, prepared, skipped, errors };
   }
 
-  const todayCount = await countBlogPostsPublishedTodayIst();
-  const remaining = Math.max(0, settings.postsPerDay - todayCount);
-  if (remaining === 0) {
-    skipped.push("daily quota reached");
+  if (options?.forceAllRemaining) {
+    const prep = await prepareTodaysScheduledPosts(settings);
+    prepared.push(...prep.prepared);
+    skipped.push(...prep.skipped);
+    errors.push(...prep.errors);
+
+    const dueAgain = await publishDueScheduledPosts(10);
+    published.push(...dueAgain.published);
+    errors.push(...dueAgain.errors);
+
     await saveBlogAutomationSettings({
       lastRunAt: new Date().toISOString(),
-      lastRunStatus: "skipped:quota",
+      lastRunStatus: published.length
+        ? `published:${published.join(",")}`
+        : "force-run-done",
     });
-    return { published, skipped, errors };
+    return { published, prepared, skipped, errors };
   }
 
-  const publishCount = options?.forceAllRemaining ? remaining : 1;
-  let lastSlot: string | null = null;
+  const prep = await prepareTodaysScheduledPosts(settings);
+  prepared.push(...prep.prepared);
+  skipped.push(...prep.skipped);
+  errors.push(...prep.errors);
 
-  for (let i = 0; i < publishCount; i += 1) {
-    let dueSlot: string | null = null;
-    if (options?.forceAllRemaining) {
-      const done = await getCompletedSlotsForDate(now.date);
-      dueSlot =
-        settings.publishSlotsIst.find((s) => !done.includes(s)) ??
-        settings.publishSlotsIst[i] ??
-        null;
-    } else {
-      dueSlot = await getDueSlotNow(settings.publishSlotsIst);
-      if (!dueSlot) {
-        if (i === 0) {
-          skipped.push(
-            `no slot due now (IST ${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}; schedule: ${settings.publishSlotsIst.join(", ")})`,
-          );
-        }
-        break;
-      }
-    }
-
-    try {
-      const result = await generateAndPublishOneBlog();
-      if (result.ok) {
-        published.push(result.slug);
-        if (dueSlot) {
-          await markSlotCompleted(now.date, dueSlot);
-          lastSlot = dueSlot;
-        }
-      } else {
-        errors.push(result.error);
-        if (result.skipped) skipped.push(result.error);
-        if (!options?.forceAllRemaining) break;
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      errors.push(msg);
-      await saveBlogAutomationSettings({
-        lastRunAt: new Date().toISOString(),
-        lastRunStatus: "error",
-        lastRunError: msg,
-      });
-      break;
-    }
+  const dueSlot = await getDueSlotNow(settings.publishSlotsIst);
+  if (!dueSlot && !published.length && !prepared.length) {
+    skipped.push(
+      `waiting (IST ${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}; slots: ${settings.publishSlotsIst.join(", ")})`,
+    );
   }
 
   await saveBlogAutomationSettings({
     lastRunAt: new Date().toISOString(),
     lastRunStatus: published.length
-      ? `published:${published.join(",")}${lastSlot ? `@${lastSlot}` : ""}`
-      : options?.forceAllRemaining
-        ? "no-publish"
-        : "skipped:no-slot",
+      ? `published:${published.join(",")}`
+      : prepared.length
+        ? `prepared:${prepared.join(",")}`
+        : "cron-ok",
+    lastRunError: errors.length ? errors.slice(0, 2).join("; ") : null,
   });
 
-  return { published, skipped, errors, slot: lastSlot ?? undefined };
+  return { published, prepared, skipped, errors, slot: dueSlot ?? undefined };
 }

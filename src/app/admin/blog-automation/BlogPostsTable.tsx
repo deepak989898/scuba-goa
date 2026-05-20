@@ -3,12 +3,18 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
+import { isBlogScheduled } from "@/lib/blog-firestore";
+import {
+  formatUtcInIst,
+  utcIsoToIstDatetimeLocalValue,
+} from "@/lib/blog-automation/schedule-ist";
 
 type BlogTraffic = { views: number; visitors: number };
 
 type Props = {
   posts: BlogPostFirestore[];
   sortedPosts: BlogPostFirestore[];
+  publishSlots: string[];
   blogTrafficBySlug: Record<string, BlogTraffic>;
   blogIndexTraffic: BlogTraffic;
   trafficLoading: boolean;
@@ -17,15 +23,39 @@ type Props = {
   onEdit: (post: BlogPostFirestore) => void;
   onCancelEdit: () => void;
   onChangeEditing: (post: BlogPostFirestore) => void;
-  onSave: () => void;
+  onSave: (opts?: { publishNow?: boolean }) => void;
+  onPublishNow: (slug: string) => void;
   onUnpublish: (slug: string) => void;
   onDelete: (slug: string) => void;
   onUploadImage: (file: File | null) => void;
 };
 
+function statusBadge(p: BlogPostFirestore) {
+  if (p.published) {
+    return (
+      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+        Live
+      </span>
+    );
+  }
+  if (isBlogScheduled(p)) {
+    return (
+      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900">
+        Scheduled
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">
+      Draft
+    </span>
+  );
+}
+
 export function BlogPostsTable({
   posts,
   sortedPosts,
+  publishSlots,
   blogTrafficBySlug,
   blogIndexTraffic,
   trafficLoading,
@@ -35,18 +65,23 @@ export function BlogPostsTable({
   onCancelEdit,
   onChangeEditing,
   onSave,
+  onPublishNow,
   onUnpublish,
   onDelete,
   onUploadImage,
 }: Props) {
+  const scheduledCount = posts.filter((p) => isBlogScheduled(p)).length;
+  const liveCount = posts.filter((p) => p.published).length;
+
   return (
     <section className="mt-8 overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm">
       <div className="border-b border-ocean-100 px-6 py-4">
         <h2 className="font-display text-lg font-bold text-ocean-900">
-          Published blogs ({posts.length})
+          All blogs ({posts.length})
         </h2>
         <p className="mt-1 text-sm text-ocean-600">
-          Blog index:{" "}
+          {liveCount} live · {scheduledCount} scheduled · review and edit before
+          auto-publish. Blog index:{" "}
           {trafficLoading
             ? "…"
             : `${blogIndexTraffic.views.toLocaleString("en-IN")} views · ${blogIndexTraffic.visitors.toLocaleString("en-IN")} visitors`}
@@ -61,9 +96,10 @@ export function BlogPostsTable({
               <tr>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Title</th>
-                <th className="p-3 text-right">Views</th>
-                <th className="p-3 text-right">Visitors</th>
                 <th className="p-3">Status</th>
+                <th className="p-3">Scheduled (IST)</th>
+                <th className="p-3">Published (IST)</th>
+                <th className="p-3 text-right">Views</th>
                 <th className="p-3">Actions</th>
               </tr>
             </thead>
@@ -72,27 +108,39 @@ export function BlogPostsTable({
                 <Fragment key={p.slug}>
                   <tr className="border-b border-ocean-100">
                     <td className="p-3 align-top font-mono text-xs">{p.slug}</td>
-                    <td className="p-3 align-top text-ocean-900">{p.title}</td>
-                    <td className="p-3 align-top text-right tabular-nums">
-                      {trafficLoading
-                        ? "—"
-                        : (blogTrafficBySlug[p.slug]?.views ?? 0).toLocaleString("en-IN")}
+                    <td className="max-w-[14rem] p-3 align-top text-ocean-900">
+                      {p.title}
                     </td>
-                    <td className="p-3 align-top text-right tabular-nums">
-                      {trafficLoading
-                        ? "—"
-                        : (blogTrafficBySlug[p.slug]?.visitors ?? 0).toLocaleString("en-IN")}
-                    </td>
-                    <td className="p-3 align-top">
-                      {p.published ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                          Live
-                        </span>
+                    <td className="p-3 align-top">{statusBadge(p)}</td>
+                    <td className="p-3 align-top text-xs text-ocean-700">
+                      {isBlogScheduled(p) ? (
+                        <>
+                          <span className="font-medium">
+                            {formatUtcInIst(p.scheduledPublishAt)}
+                          </span>
+                          {p.publishSlotIst ? (
+                            <span className="mt-0.5 block text-ocean-500">
+                              Slot {p.publishSlotIst} IST
+                            </span>
+                          ) : null}
+                        </>
                       ) : (
-                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                          Draft
-                        </span>
+                        "—"
                       )}
+                    </td>
+                    <td className="p-3 align-top text-xs text-ocean-700">
+                      {p.publishedAt
+                        ? formatUtcInIst(p.publishedAt, "long")
+                        : "—"}
+                    </td>
+                    <td className="p-3 align-top text-right tabular-nums">
+                      {p.published
+                        ? trafficLoading
+                          ? "—"
+                          : (blogTrafficBySlug[p.slug]?.views ?? 0).toLocaleString(
+                              "en-IN",
+                            )
+                        : "—"}
                     </td>
                     <td className="p-3 align-top">
                       <div className="flex flex-wrap gap-2">
@@ -121,6 +169,15 @@ export function BlogPostsTable({
                           >
                             Unpublish
                           </button>
+                        ) : isBlogScheduled(p) ? (
+                          <button
+                            type="button"
+                            className="font-semibold text-emerald-800 hover:underline"
+                            disabled={busy === `save-${p.slug}`}
+                            onClick={() => onPublishNow(p.slug)}
+                          >
+                            Publish now
+                          </button>
                         ) : null}
                         <button
                           type="button"
@@ -135,7 +192,7 @@ export function BlogPostsTable({
                   </tr>
                   {editing?.slug === p.slug ? (
                     <tr className="bg-ocean-50/50">
-                      <td colSpan={6} className="p-4">
+                      <td colSpan={7} className="p-4">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ocean-700">
                           Edit blog post
                         </p>
@@ -166,6 +223,60 @@ export function BlogPostsTable({
                               <option value="en">English</option>
                               <option value="hi">Hindi</option>
                             </select>
+                          </label>
+                          <label className="block text-sm text-ocean-800">
+                            IST slot
+                            <select
+                              className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2"
+                              value={editing.publishSlotIst ?? ""}
+                              onChange={(e) =>
+                                onChangeEditing({
+                                  ...editing,
+                                  publishSlotIst: e.target.value,
+                                })
+                              }
+                            >
+                              <option value="">—</option>
+                              {publishSlots.map((slot) => (
+                                <option key={slot} value={slot}>
+                                  {slot} IST
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block text-sm text-ocean-800">
+                            Schedule date (IST)
+                            <input
+                              type="date"
+                              className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2"
+                              value={editing.scheduleDateIst ?? editing.date}
+                              onChange={(e) =>
+                                onChangeEditing({
+                                  ...editing,
+                                  scheduleDateIst: e.target.value,
+                                  date: e.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block text-sm text-ocean-800 lg:col-span-2">
+                            Auto-publish at (IST)
+                            <input
+                              type="datetime-local"
+                              className="mt-1 w-full max-w-md rounded-lg border border-ocean-200 px-3 py-2"
+                              value={utcIsoToIstDatetimeLocalValue(
+                                editing.scheduledPublishAt,
+                              )}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                onChangeEditing({
+                                  ...editing,
+                                  scheduledPublishAt: v
+                                    ? new Date(`${v}:00+05:30`).toISOString()
+                                    : undefined,
+                                });
+                              }}
+                            />
                           </label>
                           <label className="block text-sm text-ocean-800 lg:col-span-2">
                             Meta title
@@ -230,7 +341,7 @@ export function BlogPostsTable({
                           </label>
                           <div className="lg:col-span-2">
                             <p className="text-sm font-medium text-ocean-800">
-                                    Featured image (WebP, logo bar — topic-matched from Pexels)
+                              Featured image (WebP + logo bar)
                             </p>
                             {editing.featuredImageUrl ? (
                               <a
@@ -250,26 +361,32 @@ export function BlogPostsTable({
                               onChange={(e) => onUploadImage(e.target.files?.[0] ?? null)}
                             />
                           </div>
-                          <label className="flex items-center gap-2 text-sm text-ocean-800">
-                            <input
-                              type="checkbox"
-                              checked={editing.published}
-                              onChange={(e) =>
-                                onChangeEditing({ ...editing, published: e.target.checked })
-                              }
-                            />
-                            Published (live on site)
-                          </label>
+                          {editing.publishedAt ? (
+                            <p className="text-sm text-ocean-600 lg:col-span-2">
+                              Published at (IST):{" "}
+                              <strong>{formatUtcInIst(editing.publishedAt, "long")}</strong>
+                            </p>
+                          ) : null}
                         </div>
                         <div className="mt-4 flex flex-wrap gap-3">
                           <button
                             type="button"
                             disabled={busy === `save-${editing.slug}`}
-                            onClick={onSave}
+                            onClick={() => onSave()}
                             className="rounded-full bg-ocean-gradient px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                           >
                             {busy === `save-${editing.slug}` ? "Saving…" : "Save changes"}
                           </button>
+                          {!editing.published ? (
+                            <button
+                              type="button"
+                              disabled={busy === `save-${editing.slug}`}
+                              onClick={() => onSave({ publishNow: true })}
+                              className="rounded-full border border-emerald-600 bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-900 disabled:opacity-50"
+                            >
+                              Save & publish now
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             className="rounded-full border border-ocean-300 px-5 py-2 text-sm font-semibold text-ocean-800"

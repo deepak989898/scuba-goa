@@ -28,9 +28,18 @@ export type BlogPostFirestore = {
   pillar: boolean;
   createdAt: string;
   publishedAt?: string;
-  /** Future: hreflang cluster id */
+  /** IST calendar day for this slot (YYYY-MM-DD). */
+  scheduleDateIst?: string;
+  /** IST time slot label e.g. 06:00 */
+  publishSlotIst?: string;
+  /** UTC ISO — auto-publish when cron time >= this */
+  scheduledPublishAt?: string;
   localeGroupId?: string;
 };
+
+export function isBlogScheduled(post: BlogPostFirestore): boolean {
+  return !post.published && Boolean(post.scheduledPublishAt?.trim());
+}
 
 export function normalizeBlogSlugInput(raw: string): string {
   return raw
@@ -117,8 +126,16 @@ export function parseBlogPostFromFirestore(
     pillar: data.pillar === true,
     createdAt: String(data.createdAt ?? new Date().toISOString()).trim(),
     publishedAt:
-      data.publishedAt != null
-        ? String(data.publishedAt).trim()
+      data.publishedAt != null ? String(data.publishedAt).trim() : undefined,
+    scheduleDateIst:
+      data.scheduleDateIst != null
+        ? String(data.scheduleDateIst).trim()
+        : undefined,
+    publishSlotIst:
+      data.publishSlotIst != null ? String(data.publishSlotIst).trim() : undefined,
+    scheduledPublishAt:
+      data.scheduledPublishAt != null
+        ? String(data.scheduledPublishAt).trim()
         : undefined,
     localeGroupId:
       data.localeGroupId != null
@@ -152,6 +169,11 @@ export function blogPostToFirestorePayload(
     updatedAt,
     ...(post.createdAt ? { createdAt: post.createdAt } : {}),
     ...(post.publishedAt ? { publishedAt: post.publishedAt } : {}),
+    ...(post.scheduleDateIst ? { scheduleDateIst: post.scheduleDateIst } : {}),
+    ...(post.publishSlotIst ? { publishSlotIst: post.publishSlotIst } : {}),
+    ...(post.scheduledPublishAt
+      ? { scheduledPublishAt: post.scheduledPublishAt }
+      : {}),
     ...(post.localeGroupId ? { localeGroupId: post.localeGroupId } : {}),
   };
 }

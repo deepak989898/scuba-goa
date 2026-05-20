@@ -1,10 +1,14 @@
 # Blog automation — 3 posts at 3 IST times
 
-## How scheduling works
+## How scheduling works (v2 — review before publish)
 
-- Each **cron run** publishes **at most 1** blog post.
-- Posts map to your IST slots (e.g. `06:00`, `18:00`, `21:00`) in order.
-- After a slot is used, it is marked done for that day in Firestore `blogDailyRuns`.
+1. **Prepare** — content is generated and saved as **Scheduled** (not live yet).
+2. **Admin reviews** — edit title, content, image, or change **Auto-publish at (IST)** in Admin → Blog auto.
+3. **Auto-publish** — cron publishes when IST time is reached (one post per due slot).
+
+- Each **cron run** publishes **at most 1** due scheduled post.
+- **Prepare today's scheduled posts** creates one draft per slot (06:00, 18:00, 21:00).
+- Published posts store **publishedAt** (shown in admin as IST).
 
 ## Vercel Hobby (once per day)
 

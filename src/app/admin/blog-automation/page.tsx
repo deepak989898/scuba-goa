@@ -9,6 +9,7 @@ import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
+import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 
 type BlogTraffic = { views: number; visitors: number };
@@ -291,20 +292,70 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
-  async function saveEditedPost() {
+  async function saveEditedPost(opts?: { publishNow?: boolean }) {
     if (!editing) return;
     setBusy(`save-${editing.slug}`);
     setErr(null);
     try {
       await adminFetch("/api/admin/blog-posts", {
         method: "PATCH",
-        body: JSON.stringify(editing),
+        body: JSON.stringify({
+          ...editing,
+          scheduledPublishAtIst: utcIsoToIstDatetimeLocalValue(
+            editing.scheduledPublishAt,
+          ),
+          publishNow: opts?.publishNow === true,
+        }),
       });
-      setOkMsg(`Saved /blog/${editing.slug}`);
+      setOkMsg(
+        opts?.publishNow
+          ? `Published /blog/${editing.slug}`
+          : `Saved /blog/${editing.slug}`,
+      );
       setEditing(null);
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function publishPostNow(slug: string) {
+    setBusy(`save-${slug}`);
+    setErr(null);
+    try {
+      await adminFetch("/api/admin/blog-posts", {
+        method: "PATCH",
+        body: JSON.stringify({ slug, publishNow: true }),
+      });
+      setOkMsg(`Published /blog/${slug}`);
+      setEditing((e) => (e?.slug === slug ? null : e));
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function prepareScheduledToday() {
+    setBusy("prepare");
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-generate", {
+        method: "POST",
+        body: JSON.stringify({ prepareToday: true }),
+      });
+      const n = data.prepared?.length ?? 0;
+      setOkMsg(
+        n > 0
+          ? `Prepared ${n} scheduled post(s). Review below before auto-publish.`
+          : "No new posts prepared (slots may already exist for today).",
+      );
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Prepare failed");
     } finally {
       setBusy(null);
     }
@@ -353,9 +404,9 @@ export default function AdminBlogAutomationPage() {
             Blog automation (SEO)
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
-            Auto-generates SEO blogs (English, Hindi, Hinglish) with OpenAI, Pexels images
-            (WebP in Firebase Storage, logo bar only), and scheduled publishing. Set a
-            different IST time for each daily post. Queued admin titles publish first, in order.
+            Generates SEO blogs ahead of time as <strong>Scheduled</strong> (review & edit
+            below), then auto-publishes at each IST slot. Published posts show exact publish
+            time (IST).
           </p>
           <p className="mt-2 text-xs font-medium text-ocean-600">
             Build: v2-multi-slot-watermark (May 2026) — you should see time pickers below, not
@@ -476,11 +527,21 @@ export default function AdminBlogAutomationPage() {
               </button>
               <button
                 type="button"
+                disabled={busy === "prepare"}
+                onClick={() => void prepareScheduledToday()}
+                className="rounded-full border border-sky-300 bg-sky-50 px-5 py-2 text-sm font-semibold text-sky-900 disabled:opacity-50"
+              >
+                {busy === "prepare"
+                  ? "Preparing…"
+                  : "Prepare today's scheduled posts"}
+              </button>
+              <button
+                type="button"
                 disabled={busy === "generate"}
                 onClick={() => void generateNow({ runNextSlot: true })}
                 className="rounded-full border border-ocean-300 px-5 py-2 text-sm font-semibold text-ocean-800 disabled:opacity-50"
               >
-                Run next scheduled slot
+                Run cron now (publish due)
               </button>
               <button
                 type="button"
@@ -586,6 +647,7 @@ export default function AdminBlogAutomationPage() {
           <BlogPostsTable
             posts={posts}
             sortedPosts={sortedPosts}
+            publishSlots={settings.publishSlotsIst}
             blogTrafficBySlug={blogTrafficBySlug}
             blogIndexTraffic={blogIndexTraffic}
             trafficLoading={trafficLoading}
@@ -594,7 +656,8 @@ export default function AdminBlogAutomationPage() {
             onEdit={setEditing}
             onCancelEdit={() => setEditing(null)}
             onChangeEditing={setEditing}
-            onSave={() => void saveEditedPost()}
+            onSave={(opts) => void saveEditedPost(opts)}
+            onPublishNow={(slug) => void publishPostNow(slug)}
             onUnpublish={(slug) => void unpublishPost(slug)}
             onDelete={(slug) => void deletePost(slug)}
             onUploadImage={(file) => void uploadBlogImage(file)}

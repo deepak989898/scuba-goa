@@ -8,8 +8,12 @@ import {
   parseBlogPostFromFirestore,
   type BlogLanguage,
 } from "@/lib/blog-firestore";
-import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
-import { postBlogToGoogleBusinessProfile } from "@/lib/google-business/sync-blog-post";
+import {
+  istDatetimeLocalValueToUtcIso,
+  istSlotToUtcIso,
+} from "@/lib/blog-automation/schedule-ist";
+import { parseSlotToMinutes } from "@/lib/blog-automation/schedule-utils";
+import { publishBlogPostNow } from "@/lib/blog-automation/scheduled-posts";
 
 export const runtime = "nodejs";
 
@@ -30,9 +34,11 @@ export async function GET(req: Request) {
       }),
     )
     .filter(Boolean)
-    .sort((a, b) =>
-      (b?.updatedAt ?? "").localeCompare(a?.updatedAt ?? ""),
-    );
+    .sort((a, b) => {
+      const sa = a?.scheduledPublishAt ?? a?.publishedAt ?? a?.updatedAt ?? "";
+      const sb = b?.scheduledPublishAt ?? b?.publishedAt ?? b?.updatedAt ?? "";
+      return sb.localeCompare(sa);
+    });
   return NextResponse.json({ posts });
 }
 
@@ -99,9 +105,46 @@ export async function PATCH(req: Request) {
           .filter(Boolean)
       : current.faqs;
 
-  const published =
+  let published =
     typeof body.published === "boolean" ? body.published : current.published;
+
+  let scheduleDateIst =
+    body.scheduleDateIst != null
+      ? String(body.scheduleDateIst).trim()
+      : current.scheduleDateIst;
+  let publishSlotIst =
+    body.publishSlotIst != null
+      ? String(body.publishSlotIst).trim()
+      : current.publishSlotIst;
+  let scheduledPublishAt =
+    body.scheduledPublishAt != null
+      ? String(body.scheduledPublishAt).trim()
+      : current.scheduledPublishAt;
+
+  if (body.scheduledPublishAtIst != null) {
+    const converted = istDatetimeLocalValueToUtcIso(
+      String(body.scheduledPublishAtIst),
+    );
+    if (converted) scheduledPublishAt = converted;
+  }
+
+  if (
+    publishSlotIst &&
+    scheduleDateIst &&
+    parseSlotToMinutes(publishSlotIst) != null
+  ) {
+    try {
+      scheduledPublishAt = istSlotToUtcIso(scheduleDateIst, publishSlotIst);
+    } catch {
+      /* keep manual datetime */
+    }
+  }
+
+  const publishNow = body.publishNow === true;
+  if (publishNow) published = true;
+
   const now = new Date().toISOString();
+  const wasPublished = current.published;
 
   const next = blogPostToFirestorePayload({
     slug,
@@ -130,7 +173,7 @@ export async function PATCH(req: Request) {
           ? String(body.featuredImageUrl).trim()
           : current.ogImageUrl,
     language,
-    published,
+    published: publishNow ? false : published,
     source: current.source,
     serviceSlug:
       body.serviceSlug != null
@@ -138,39 +181,22 @@ export async function PATCH(req: Request) {
         : current.serviceSlug,
     pillar: body.pillar === true,
     createdAt: current.createdAt,
-    publishedAt:
-      published && !current.publishedAt
-        ? now
-        : current.publishedAt,
+    publishedAt: current.publishedAt,
+    scheduleDateIst: scheduleDateIst || undefined,
+    publishSlotIst: publishSlotIst || undefined,
+    scheduledPublishAt: scheduledPublishAt || undefined,
     updatedAt: now,
   });
 
   await ref.set(next, { merge: true });
 
-  try {
-    await syncBlogImageToHomeGallery({
-      blogSlug: slug,
-      title: next.title as string,
-      featuredImageUrl: next.featuredImageUrl as string,
-      serviceSlug: next.serviceSlug as string,
-      published: next.published === true,
-    });
-  } catch (e) {
-    console.error("[blog-posts] gallery sync failed:", e);
-  }
-
-  if (next.published === true) {
-    try {
-      await postBlogToGoogleBusinessProfile({
-        slug,
-        title: next.title as string,
-        excerpt: next.excerpt as string,
-        featuredImageUrl: String(next.featuredImageUrl ?? "").trim() || undefined,
-        language: next.language as "en" | "hi" | "hinglish",
-      });
-    } catch (e) {
-      console.error("[blog-posts] Google Business sync failed:", e);
+  if (publishNow || (published && !wasPublished)) {
+    const pub = await publishBlogPostNow(slug);
+    if (!pub.ok) {
+      return NextResponse.json({ error: pub.error }, { status: 500 });
     }
+  } else if (!published && wasPublished) {
+    await ref.set({ published: false, publishedAt: null }, { merge: true });
   }
 
   return NextResponse.json({ ok: true, slug });

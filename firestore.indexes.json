@@ -7,6 +7,14 @@
         { "fieldPath": "approved", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "blogPosts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scheduleDateIst", "order": "ASCENDING" },
+        { "fieldPath": "publishSlotIst", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
