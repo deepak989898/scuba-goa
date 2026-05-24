@@ -50,6 +50,7 @@ export default function AdminBlogAutomationPage() {
     visitors: 0,
   });
   const [trafficLoading, setTrafficLoading] = useState(true);
+  const [trafficRefreshing, setTrafficRefreshing] = useState(false);
   const [editing, setEditing] = useState<BlogPostFirestore | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -78,8 +79,8 @@ export default function AdminBlogAutomationPage() {
     window.history.replaceState({}, "", next);
   }, []);
 
-  const loadBlogTraffic = useCallback(async () => {
-    setTrafficLoading(true);
+  const loadBlogTraffic = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setTrafficLoading(true);
     try {
       const data = await adminFetch("/api/admin/blog-traffic");
       const bySlug = (data.bySlug ?? {}) as Record<string, BlogTraffic>;
@@ -93,9 +94,21 @@ export default function AdminBlogAutomationPage() {
       setBlogTrafficBySlug({});
       setBlogIndexTraffic({ views: 0, visitors: 0 });
     } finally {
-      setTrafficLoading(false);
+      if (!opts?.silent) setTrafficLoading(false);
     }
   }, []);
+
+  async function refreshTrafficOnly() {
+    setTrafficRefreshing(true);
+    try {
+      await loadBlogTraffic({ silent: true });
+      setOkMsg("View counts updated.");
+    } catch {
+      setErr("Could not refresh view counts.");
+    } finally {
+      setTrafficRefreshing(false);
+    }
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -679,6 +692,8 @@ export default function AdminBlogAutomationPage() {
             onUnpublish={(slug) => void unpublishPost(slug)}
             onDelete={(slug) => void deletePost(slug)}
             onUploadImage={(file) => void uploadBlogImage(file)}
+            onRefreshTraffic={() => void refreshTrafficOnly()}
+            trafficRefreshing={trafficRefreshing}
           />
         </>
       )}

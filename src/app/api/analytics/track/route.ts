@@ -45,6 +45,12 @@ function parseGuideTrafficKey(path: string): { key: string; slug: string; path: 
   return { key: slug, slug, path };
 }
 
+function normalizeTrackPath(pathRaw: string): string {
+  let p = pathRaw.split("?")[0]?.split("#")[0] ?? pathRaw;
+  if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
+  return p;
+}
+
 function parseBlogTrafficKey(path: string): { key: string; slug: string; path: string } | null {
   if (path === "/blog") {
     return { key: BLOG_INDEX_KEY, slug: "", path };
@@ -67,7 +73,10 @@ async function incrementContentTraffic(
     .collection(visitorsCollection)
     .doc(`${keyInfo.key}__${sessionId || "anon"}`);
 
+  // Firestore requires all reads before any writes in a transaction.
   await db.runTransaction(async (tx) => {
+    const visitorSnap = await tx.get(visitorRef);
+
     tx.set(
       trafficRef,
       {
@@ -80,7 +89,6 @@ async function incrementContentTraffic(
       { merge: true },
     );
 
-    const visitorSnap = await tx.get(visitorRef);
     if (!visitorSnap.exists) {
       tx.set(visitorRef, {
         key: keyInfo.key,
@@ -158,7 +166,7 @@ export async function POST(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
-  const path = pathRaw.slice(0, PATH_MAX);
+  const path = normalizeTrackPath(pathRaw.slice(0, PATH_MAX));
   const sessionId = sessionRaw.slice(0, SESSION_MAX);
   const eventTypeRaw =
     typeof body.eventType === "string" ? body.eventType : "view";
@@ -309,30 +317,36 @@ export async function POST(req: Request) {
    * cold start) would surface as a 500 in the browser. Fire-and-forget keeps
    * the response snappy and the console clean.
    */
-  const guideKey = parseGuideTrafficKey(path);
-  if (eventType === "view" && guideKey) {
-    incrementContentTraffic(
-      db,
-      guideKey,
-      "analyticsGuideTraffic",
-      "analyticsGuideTrafficVisitors",
-      sessionId,
-    ).catch((e) => {
-      console.error("analyticsGuideTraffic txn failed", e);
-    });
-  }
+  if (eventType === "view") {
+    const guideKey = parseGuideTrafficKey(path);
+    if (guideKey) {
+      try {
+        await incrementContentTraffic(
+          db,
+          guideKey,
+          "analyticsGuideTraffic",
+          "analyticsGuideTrafficVisitors",
+          sessionId,
+        );
+      } catch (e) {
+        console.error("analyticsGuideTraffic txn failed", e);
+      }
+    }
 
-  const blogKey = parseBlogTrafficKey(path);
-  if (eventType === "view" && blogKey) {
-    incrementContentTraffic(
-      db,
-      blogKey,
-      "analyticsBlogTraffic",
-      "analyticsBlogTrafficVisitors",
-      sessionId,
-    ).catch((e) => {
-      console.error("analyticsBlogTraffic txn failed", e);
-    });
+    const blogKey = parseBlogTrafficKey(path);
+    if (blogKey) {
+      try {
+        await incrementContentTraffic(
+          db,
+          blogKey,
+          "analyticsBlogTraffic",
+          "analyticsBlogTrafficVisitors",
+          sessionId,
+        );
+      } catch (e) {
+        console.error("analyticsBlogTraffic txn failed", e);
+      }
+    }
   }
 
   return new NextResponse(null, { status: 204 });

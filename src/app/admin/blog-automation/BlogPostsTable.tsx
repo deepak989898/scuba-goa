@@ -28,6 +28,8 @@ type Props = {
   onUnpublish: (slug: string) => void;
   onDelete: (slug: string) => void;
   onUploadImage: (file: File | null) => void;
+  onRefreshTraffic?: () => void;
+  trafficRefreshing?: boolean;
 };
 
 function statusBadge(p: BlogPostFirestore) {
@@ -69,6 +71,8 @@ export function BlogPostsTable({
   onUnpublish,
   onDelete,
   onUploadImage,
+  onRefreshTraffic,
+  trafficRefreshing,
 }: Props) {
   const scheduledCount = posts.filter((p) => isBlogScheduled(p)).length;
   const liveCount = posts.filter((p) => p.published).length;
@@ -86,6 +90,16 @@ export function BlogPostsTable({
             ? "…"
             : `${blogIndexTraffic.views.toLocaleString("en-IN")} views · ${blogIndexTraffic.visitors.toLocaleString("en-IN")} visitors`}
         </p>
+        {onRefreshTraffic ? (
+          <button
+            type="button"
+            disabled={trafficLoading || trafficRefreshing}
+            onClick={onRefreshTraffic}
+            className="mt-2 rounded-full border border-ocean-300 px-3 py-1 text-xs font-semibold text-ocean-800 disabled:opacity-50"
+          >
+            {trafficLoading || trafficRefreshing ? "Refreshing…" : "Refresh view counts"}
+          </button>
+        ) : null}
       </div>
       {posts.length === 0 ? (
         <p className="p-6 text-sm text-ocean-500">No Firestore blogs yet.</p>
