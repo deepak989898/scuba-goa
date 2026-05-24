@@ -10,11 +10,7 @@ import {
   getDocs,
   setDoc,
 } from "firebase/firestore";
-import {
-  getDb,
-  getFirebaseAuth,
-  getFirebaseStorageClient,
-} from "@/lib/firebase";
+import { getDb, getFirebaseAuth, getFirebaseStorageClient } from "@/lib/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { ServiceItem } from "@/data/services";
 import {
@@ -40,6 +36,30 @@ import {
 type BookingSelectOption = { value: string; label: string; group: string };
 
 type GuideTraffic = { views: number; visitors: number };
+
+async function adminToken(): Promise<string> {
+  const auth = getFirebaseAuth();
+  if (!auth?.currentUser) throw new Error("Sign in at /admin/login first.");
+  await auth.currentUser.getIdToken(true);
+  return auth.currentUser.getIdToken();
+}
+
+async function adminFetch(path: string, init?: RequestInit) {
+  const token = await adminToken();
+  const res = await fetch(path, {
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      Authorization: `Bearer ${token}`,
+      ...(init?.body && !(init.body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+  return data;
+}
 
 export default function AdminSeoPagesPage() {
   const db = getDb();
@@ -90,46 +110,26 @@ export default function AdminSeoPagesPage() {
   }, [db]);
 
   const loadGuideTraffic = useCallback(async () => {
-    if (!db) {
-      setTrafficLoading(false);
-      return;
-    }
     setTrafficError(null);
     setTrafficLoading(true);
     try {
-      const snap = await getDocs(collection(db, "analyticsGuideTraffic"));
-      const record: Record<string, GuideTraffic> = {};
-      let index: GuideTraffic = { views: 0, visitors: 0 };
-      for (const row of snap.docs) {
-        const data = row.data() as Record<string, unknown>;
-        const path = String(data.path ?? "").trim();
-        const slug = String(data.slug ?? "").trim();
-        const views = Number(data.views ?? 0);
-        const visitors = Number(data.visitors ?? 0);
-        const traffic = {
-          views: Number.isFinite(views) ? Math.max(0, Math.round(views)) : 0,
-          visitors: Number.isFinite(visitors) ? Math.max(0, Math.round(visitors)) : 0,
-        };
-        if (path === "/guides") {
-          index = traffic;
-          continue;
-        }
-        if (slug) record[slug] = traffic;
-      }
-      setGuideTrafficBySlug(record);
-      setGuidesIndexTraffic(index);
+      const data = await adminFetch("/api/admin/guide-traffic");
+      const bySlug = (data.bySlug ?? {}) as Record<string, GuideTraffic>;
+      const index = (data.index ?? { views: 0, visitors: 0 }) as GuideTraffic;
+      setGuideTrafficBySlug(bySlug);
+      setGuidesIndexTraffic({
+        views: Math.max(0, Math.round(Number(index.views) || 0)),
+        visitors: Math.max(0, Math.round(Number(index.visitors) || 0)),
+      });
     } catch (e: unknown) {
-      const msg =
-        e && typeof e === "object" && "code" in e
-          ? `${String((e as { code?: string }).code)}: ${String((e as { message?: string }).message ?? e)}`
-          : String(e);
+      const msg = e instanceof Error ? e.message : String(e);
       setTrafficError(msg);
       setGuideTrafficBySlug({});
       setGuidesIndexTraffic({ views: 0, visitors: 0 });
     } finally {
       setTrafficLoading(false);
     }
-  }, [db]);
+  }, []);
 
   const loadBookingCatalog = useCallback(async () => {
     if (!db) {
@@ -614,7 +614,7 @@ export default function AdminSeoPagesPage() {
           <h2 className="font-semibold text-ocean-900">Existing pages</h2>
           <button
             type="button"
-            disabled={trafficLoading || !db}
+            disabled={trafficLoading}
             onClick={() => void loadGuideTraffic()}
             className="self-start rounded-full border border-ocean-300 bg-white px-3 py-1 text-xs font-semibold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
           >

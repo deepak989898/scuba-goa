@@ -5,7 +5,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
-const BLOG_INDEX_KEY = "__blog_index__";
+const GUIDE_INDEX_KEY = "__guides_index__";
 
 export async function GET(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -27,12 +27,12 @@ export async function GET(req: Request) {
     const { bySlug, index, aggregatedDocs } = await loadContentTrafficWithBackfill(
       db,
       {
-        collection: "analyticsBlogTraffic",
-        indexDocId: BLOG_INDEX_KEY,
+        collection: "analyticsGuideTraffic",
+        indexDocId: GUIDE_INDEX_KEY,
         backfill: {
-          pathPrefix: "/blog",
-          indexPath: "/blog",
-          slugPattern: /^\/blog\/([a-z0-9-]+)$/,
+          pathPrefix: "/guides",
+          indexPath: "/guides",
+          slugPattern: /^\/guides\/([a-z0-9-]+)$/,
         },
       },
     );
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       bySlug,
       index,
-      source: "analyticsBlogTraffic+pageViews",
+      source: "analyticsGuideTraffic+pageViews",
       trackingConfigured: true,
       aggregatedDocs,
     });
