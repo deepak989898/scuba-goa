@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs } from "firebase/firestore";
-import { getDb, getFirebaseAuth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
@@ -40,7 +39,6 @@ async function adminFetch(path: string, init?: RequestInit) {
 }
 
 export default function AdminBlogAutomationPage() {
-  const db = getDb();
   const [settings, setSettings] = useState<BlogAutomationSettings | null>(null);
   const [queue, setQueue] = useState<BlogTopicQueueItem[]>([]);
   const [posts, setPosts] = useState<BlogPostFirestore[]>([]);
@@ -81,40 +79,23 @@ export default function AdminBlogAutomationPage() {
   }, []);
 
   const loadBlogTraffic = useCallback(async () => {
-    if (!db) {
-      setTrafficLoading(false);
-      return;
-    }
     setTrafficLoading(true);
     try {
-      const snap = await getDocs(collection(db, "analyticsBlogTraffic"));
-      const record: Record<string, BlogTraffic> = {};
-      let index: BlogTraffic = { views: 0, visitors: 0 };
-      for (const row of snap.docs) {
-        const data = row.data() as Record<string, unknown>;
-        const path = String(data.path ?? "").trim();
-        const slug = String(data.slug ?? "").trim();
-        const views = Number(data.views ?? 0);
-        const visitors = Number(data.visitors ?? 0);
-        const traffic = {
-          views: Number.isFinite(views) ? Math.max(0, Math.round(views)) : 0,
-          visitors: Number.isFinite(visitors) ? Math.max(0, Math.round(visitors)) : 0,
-        };
-        if (path === "/blog") {
-          index = traffic;
-          continue;
-        }
-        if (slug) record[slug] = traffic;
-      }
-      setBlogTrafficBySlug(record);
-      setBlogIndexTraffic(index);
+      const data = await adminFetch("/api/admin/blog-traffic");
+      const bySlug = (data.bySlug ?? {}) as Record<string, BlogTraffic>;
+      const index = (data.index ?? { views: 0, visitors: 0 }) as BlogTraffic;
+      setBlogTrafficBySlug(bySlug);
+      setBlogIndexTraffic({
+        views: Math.max(0, Math.round(Number(index.views) || 0)),
+        visitors: Math.max(0, Math.round(Number(index.visitors) || 0)),
+      });
     } catch {
       setBlogTrafficBySlug({});
       setBlogIndexTraffic({ views: 0, visitors: 0 });
     } finally {
       setTrafficLoading(false);
     }
-  }, [db]);
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);

@@ -33,17 +33,24 @@ export async function generateBlogWithOpenAI(input: {
   serviceSlug: string;
   language: BlogLanguage;
   preferredSlug?: string;
+  /** Live services/packages catalog — required for accurate pricing in posts. */
+  catalogContext?: string;
 }): Promise<GeneratedBlogDraft> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("OPENAI_API_KEY not configured");
 
   const year = new Date().getFullYear();
-  const system = `You are an expert SEO content writer for Blue Shark Goa (scuba diving, water sports, tours in Goa, India).
+  const catalog = input.catalogContext?.trim() ?? "";
+  const system = `You are an expert SEO content writer for Book Scuba Goa (scuba diving, water sports, tours in Goa, India).
 ${LANG_INSTRUCTION[input.language]}
 Write factual, helpful content. Mention Goa locations (Baga, Calangute, Grande Island) naturally.
 Include internal linking hints as plain text paths like /booking, /services/${input.serviceSlug}, /contact — do NOT use full URLs.
 Content format: markdown with ## and ### headings, bullet lists, short paragraphs.
+Start the article with a 2–3 sentence direct answer to the search intent (helps Google AI Overviews).
+When the topic involves cost, packages, or booking, include a "## Prices & packages (Book Scuba Goa)" section with exact ₹ prices from the catalog below.
+Use ONLY prices from the OFFICIAL CATALOG — never invent or round to vague ranges like "around ₹3000".
 Target long-tail SEO for Goa adventure tourism. Year reference: ${year}.
+${catalog ? `\n${catalog}\n` : ""}
 Return ONLY valid JSON (no markdown fence) matching this schema:
 {
   "title": string,

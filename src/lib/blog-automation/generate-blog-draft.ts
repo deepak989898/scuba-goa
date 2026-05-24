@@ -7,6 +7,10 @@ import {
 import { blogSlugExists } from "@/lib/blog-posts-server";
 import { getPostBySlug } from "@/data/blog-posts";
 import { getAllServicesServer, getServiceBySlugServer } from "@/lib/get-services-server";
+import {
+  buildBlogCatalogContext,
+  buildOfficialPricingMarkdown,
+} from "@/lib/blog-automation/catalog-context";
 import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
 import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
 import { downloadCompressUploadBlogImage } from "@/lib/blog-automation/images";
@@ -102,13 +106,21 @@ export async function generateBlogDraftOnly(options?: {
   const serviceName = service?.title ?? "Scuba diving";
   serviceSlug = service?.slug ?? serviceSlug ?? "scuba-diving";
 
+  const catalog = await buildBlogCatalogContext();
+
   const draft = await generateBlogWithOpenAI({
     title,
     serviceName,
     serviceSlug,
     language: lang,
     preferredSlug: preferredSlug || undefined,
+    catalogContext: catalog.textBlock,
   });
+
+  let content = draft.content;
+  if (!/##\s*prices/i.test(content)) {
+    content += buildOfficialPricingMarkdown(catalog, serviceSlug);
+  }
 
   const slug = await ensureUniqueSlug(
     preferredSlug || draft.slug || draft.title,
@@ -144,7 +156,7 @@ export async function generateBlogDraftOnly(options?: {
       metaTitle: draft.metaTitle,
       metaDescription: draft.metaDescription,
       keywords: draft.keywords,
-      content: draft.content,
+      content,
       faqs: draft.faqs,
       date: istDate,
       readTime: draft.readTime,

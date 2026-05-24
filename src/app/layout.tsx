@@ -5,6 +5,7 @@ import { DeferredMarketingScripts } from "@/components/DeferredMarketingScripts"
 import { MetaPixelRoot } from "@/components/MetaPixelRoot";
 import { Providers } from "@/components/Providers";
 import { SiteChrome } from "@/components/SiteChrome";
+import { SiteJsonLd } from "@/components/SiteJsonLd";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
@@ -84,6 +85,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
       </head>
       <body className="site-3d min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
+        <SiteJsonLd />
         <Providers>
           <SiteChrome>{children}</SiteChrome>
         </Providers>

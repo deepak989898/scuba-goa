@@ -4,7 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { blogPosts } from "@/data/blog-posts";
 import { BlogContent } from "@/components/BlogContent";
+import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
+import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import {
   getBlogPostBySlugMerged,
@@ -81,27 +83,73 @@ function faqJsonLd(
   };
 }
 
-function articleJsonLd(p: {
+const SITE_LOGO = `${SITE_URL.replace(/\/$/, "")}/book-scuba-goa-logo.png`;
+
+function blogPostingJsonLd(p: {
   title: string;
   excerpt: string;
   date: string;
+  dateModified: string;
   slug: string;
   keywords?: string[];
   imageUrl?: string;
+  language?: string;
 }) {
   const url = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
+  const lang =
+    p.language === "hi" ? "hi" : p.language === "hinglish" ? "en-IN" : "en";
   return {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "BlogPosting",
+    "@id": url,
+    url,
     headline: p.title,
     description: p.excerpt,
     datePublished: p.date,
-    dateModified: p.date,
+    dateModified: p.dateModified,
+    inLanguage: lang,
     keywords: p.keywords?.length ? p.keywords.join(", ") : undefined,
     ...(p.imageUrl ? { image: [p.imageUrl] } : {}),
-    author: { "@type": "Organization", name: SITE_NAME },
-    publisher: { "@type": "Organization", name: SITE_NAME },
+    author: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: SITE_URL.replace(/\/$/, ""),
+    },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      logo: { "@type": "ImageObject", url: SITE_LOGO },
+    },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
+  };
+}
+
+function offerCatalogJsonLd(
+  packages: { name: string; price: number; duration: string }[],
+  pageUrl: string,
+) {
+  if (packages.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Book Scuba Goa packages",
+    url: pageUrl,
+    itemListElement: packages.slice(0, 10).map((pkg, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Product",
+        name: pkg.name,
+        description: pkg.duration,
+        offers: {
+          "@type": "Offer",
+          price: pkg.price,
+          priceCurrency: "INR",
+          availability: "https://schema.org/InStock",
+          url: `${SITE_URL.replace(/\/$/, "")}/booking`,
+        },
+      },
+    })),
   };
 }
 
@@ -143,6 +191,10 @@ export default async function BlogPostPage({ params }: Props) {
   const faqs = p.faqs ?? [];
   const related = await getRelatedBlogPostsMerged(p.slug, 3);
   const featuredImage = fs?.featuredImageUrl?.trim();
+  const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.date;
+  const catalog = await buildBlogCatalogContext();
+  const offerList = offerCatalogJsonLd(catalog.packages, pageUrl);
+  const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
 
   return (
     <article className="bg-white py-16 sm:py-20">
@@ -150,13 +202,25 @@ export default async function BlogPostPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(
-            articleJsonLd({
-              ...p,
+            blogPostingJsonLd({
+              title: p.title,
+              excerpt: p.excerpt,
+              date: p.date,
+              dateModified,
+              slug: p.slug,
+              keywords: p.keywords,
               imageUrl: featuredImage || fs?.ogImageUrl,
+              language: fs?.language,
             }),
           ),
         }}
       />
+      {offerList ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(offerList) }}
+        />
+      ) : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -213,6 +277,8 @@ export default async function BlogPostPage({ params }: Props) {
         <div className="prose prose-ocean mt-10 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
           <BlogContent content={p.content} />
         </div>
+
+        <BlogLivePricing focusServiceSlug={focusServiceSlug} />
 
         <BlogWhyChooseSection />
 
