@@ -257,6 +257,52 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    /** Multi-agent AI command center (server / cron only). */
+    match /commandCenterRuns/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenterTasks/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenterMemory/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenterInsights/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenterDecisions/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenterAlerts/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenterReports/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenterAgentLogs/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /commandCenter/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
     /** Checkout funnel events (server + client track). */
     match /paymentEvents/{id} {
       allow read: if request.auth != null
