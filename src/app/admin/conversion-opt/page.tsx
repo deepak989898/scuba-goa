@@ -144,12 +144,12 @@ export default function AdminConversionOptPage() {
 
       {loading ? (
         <p className="mt-8 text-ocean-600">Loading…</p>
-      ) : !snapshot ? (
+      ) : !snapshot && !err ? (
         <p className="mt-8 text-ocean-600">
           No conversion reports yet. Browse the site (scroll, click Book/WhatsApp), then click{" "}
           <strong>Generate suggestions now</strong>.
         </p>
-      ) : (
+      ) : snapshot ? (
         <>
           <label className="mt-6 block text-sm text-ocean-800">
             Day (IST)
@@ -297,7 +297,7 @@ export default function AdminConversionOptPage() {
             )}
           </section>
         </>
-      )}
+      ) : null}
 
       <p className="mt-10 text-xs text-ocean-500">
         Setup: <code>docs/AI-CONVERSION-OPT.md</code>

@@ -1,5 +1,6 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { istYesterdayString } from "@/lib/ai-analytics/ist";
+import { stripUndefinedDeep } from "@/lib/firestore-json";
 import { aggregateConversionFunnel } from "@/lib/conversion-opt/aggregate-funnel";
 import { detectConversionIssues } from "@/lib/conversion-opt/detect-issues";
 import { generateConversionSuggestions } from "@/lib/conversion-opt/openai-suggestions";
@@ -13,17 +14,28 @@ export async function runConversionOptPipeline(opts?: {
   }
 
   const dateIst = opts?.dateIst ?? istYesterdayString();
-  const daily = await aggregateConversionFunnel(dateIst);
-  daily.issues = detectConversionIssues(daily);
 
-  await db.collection("conversionOptDaily").doc(dateIst).set(daily, { merge: true });
+  try {
+    const daily = await aggregateConversionFunnel(dateIst);
+    daily.issues = detectConversionIssues(daily);
 
-  const report = await generateConversionSuggestions(daily);
-  if (report) {
-    await db.collection("conversionOptReports").doc(dateIst).set(report, {
-      merge: true,
-    });
+    await db
+      .collection("conversionOptDaily")
+      .doc(dateIst)
+      .set(stripUndefinedDeep(daily), { merge: true });
+
+    const report = await generateConversionSuggestions(daily);
+    if (report) {
+      await db
+        .collection("conversionOptReports")
+        .doc(dateIst)
+        .set(stripUndefinedDeep(report), { merge: true });
+    }
+
+    return { ok: true, dateIst };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[conversion-opt pipeline]", msg);
+    return { ok: false, dateIst, error: msg };
   }
-
-  return { ok: true, dateIst };
 }

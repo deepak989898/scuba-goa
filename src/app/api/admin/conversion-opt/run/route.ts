@@ -25,15 +25,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid dateIst" }, { status: 400 });
   }
 
-  const result = await runConversionOptPipeline({ dateIst });
+  try {
+    const result = await runConversionOptPipeline({ dateIst });
 
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error ?? "Pipeline failed" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      dateIst: result.dateIst,
+      todayIst: istDateString(),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[conversion-opt run]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-
-  return NextResponse.json({
-    ok: true,
-    dateIst: result.dateIst,
-    todayIst: istDateString(),
-  });
 }

@@ -342,10 +342,13 @@ function buildFunnelSteps(counts: {
     const prev = i > 0 ? steps[i - 1].count : step.count;
     const drop = Math.max(0, prev - step.count);
     const dropPct = prev > 0 ? Math.round((drop / prev) * 100) : 0;
+    if (i === 0) {
+      return { ...step };
+    }
     return {
       ...step,
-      dropOffFromPrev: i > 0 ? drop : undefined,
-      dropOffPct: i > 0 ? dropPct : undefined,
+      dropOffFromPrev: drop,
+      dropOffPct: dropPct,
     };
   });
 }
