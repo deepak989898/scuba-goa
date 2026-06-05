@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/recovery-hourly",
-      "schedule": "15 * * * *"
+      "schedule": "45 4 * * *"
     },
     {
       "path": "/api/cron/marketing-daily",

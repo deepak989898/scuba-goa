@@ -17,7 +17,7 @@ Site chatbot (AiChatbot)
     → POST /api/chat (sessionId + language)
     → recoveryConversations + recoveryAiResponses
 
-Vercel Cron (hourly :15 UTC)
+Vercel Cron (daily 04:45 UTC — Hobby plan; use Pro for hourly)
     → GET /api/cron/recovery-hourly
         → runRecoveryAgentPipeline()
         → score leads, generate OpenAI recovery copy, send Meta WhatsApp API
