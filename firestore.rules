@@ -134,6 +134,27 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    /** AI autonomous business ops agent (read-only for admins). */
+    match /businessAgentRuns/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /businessAgentActions/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /businessAgentReports/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /businessAgentRollbackHistory/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
     /** Checkout funnel events (server + client track). */
     match /paymentEvents/{id} {
       allow read: if request.auth != null
