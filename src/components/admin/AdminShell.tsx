@@ -120,6 +120,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               AI agent
             </Link>
             <Link
+              href="/admin/conversion-opt"
+              className="text-ocean-700 hover:text-ocean-500"
+            >
+              Conversion AI
+            </Link>
+            <Link
               href="/admin/marketing"
               className="text-ocean-700 hover:text-ocean-500"
             >

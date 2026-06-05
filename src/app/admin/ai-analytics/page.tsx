@@ -95,9 +95,14 @@ export default function AdminAiAnalyticsPage() {
             <code className="rounded bg-sand px-1 text-xs">04:00 UTC</code> (yesterday IST).
           </p>
         </div>
-        <Link href="/admin/analytics" className="text-sm font-semibold text-ocean-700 underline">
-          Live visitors →
-        </Link>
+        <div className="flex flex-wrap gap-4 text-sm font-semibold text-ocean-700">
+          <Link href="/admin/conversion-opt" className="underline">
+            Conversion AI →
+          </Link>
+          <Link href="/admin/analytics" className="underline">
+            Live visitors →
+          </Link>
+        </div>
       </div>
 
       {err ? (

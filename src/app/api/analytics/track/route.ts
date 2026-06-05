@@ -16,10 +16,16 @@ const TRAFFIC_CHANNEL_MAX = 32;
 const GUIDE_INDEX_KEY = "__guides_index__";
 const BLOG_INDEX_KEY = "__blog_index__";
 
-type TrackEventType = "view" | "leave" | "heartbeat" | "click";
+type TrackEventType = "view" | "leave" | "heartbeat" | "click" | "scroll";
 
 function isTrackEventType(v: string): v is TrackEventType {
-  return v === "view" || v === "leave" || v === "heartbeat" || v === "click";
+  return (
+    v === "view" ||
+    v === "leave" ||
+    v === "heartbeat" ||
+    v === "click" ||
+    v === "scroll"
+  );
 }
 
 function toFiniteNumber(raw: unknown): number | null {
@@ -133,6 +139,9 @@ export async function POST(req: Request) {
     clickLabel?: string;
     clickTarget?: string;
     clickHref?: string;
+    clickCategory?: string;
+    scrollDepthPct?: number;
+    maxScrollDepthPct?: number;
     screenWidth?: number;
     screenHeight?: number;
     viewportWidth?: number;
@@ -185,6 +194,8 @@ export async function POST(req: Request) {
     typeof body.clickTarget === "string" ? body.clickTarget.slice(0, 32) : "";
   const clickHref =
     typeof body.clickHref === "string" ? body.clickHref.slice(0, 500) : "";
+  const scrollDepthPct = toFiniteNumber(body.scrollDepthPct);
+  const maxScrollDepthPct = toFiniteNumber(body.maxScrollDepthPct);
   const enteredAtMs = toFiniteNumber(body.enteredAtMs);
   const leftAtMs = toFiniteNumber(body.leftAtMs);
   const durationMsRaw = toFiniteNumber(body.durationMs);
@@ -211,6 +222,7 @@ export async function POST(req: Request) {
   const sliceStr = (raw: unknown, max: number) =>
     typeof raw === "string" ? raw.trim().slice(0, max) || undefined : undefined;
 
+  const clickCategory = sliceStr(body.clickCategory, 24);
   const trafficChannel = sliceStr(body.trafficChannel, TRAFFIC_CHANNEL_MAX);
   const trafficLabel = sliceStr(body.trafficLabel, TRAFFIC_STR_MAX);
   const trafficDetail = sliceStr(body.trafficDetail, TRAFFIC_STR_MAX);
@@ -286,6 +298,16 @@ export async function POST(req: Request) {
   if (clickLabel) pageViewPayload.clickLabel = clickLabel;
   if (clickTarget) pageViewPayload.clickTarget = clickTarget;
   if (clickHref) pageViewPayload.clickHref = clickHref;
+  if (clickCategory) pageViewPayload.clickCategory = clickCategory;
+  if (scrollDepthPct != null) {
+    pageViewPayload.scrollDepthPct = Math.min(100, Math.max(0, Math.round(scrollDepthPct)));
+  }
+  if (maxScrollDepthPct != null) {
+    pageViewPayload.maxScrollDepthPct = Math.min(
+      100,
+      Math.max(0, Math.round(maxScrollDepthPct)),
+    );
+  }
   if (eventType === "view" && trafficChannel && !hasTraffic) {
     pageViewPayload.trafficChannel = trafficChannel;
     if (trafficLabel) pageViewPayload.trafficLabel = trafficLabel;

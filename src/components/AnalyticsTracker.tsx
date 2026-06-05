@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { classifyTrafficSource } from "@/lib/analytics-traffic";
+import { classifyClick } from "@/lib/conversion-opt/click-category";
 
 const SESSION_KEY = "bsg_analytics_sid";
 const TRAFFIC_KEY = "bsg_analytics_traffic";
@@ -22,7 +23,7 @@ const TRACK_TIMEOUT_MS = 5_000;
 /** Per-element click dedupe window — collapses bursts of taps. */
 const CLICK_THROTTLE_MS = 1_500;
 
-type EventType = "view" | "leave" | "heartbeat" | "click";
+type EventType = "view" | "leave" | "heartbeat" | "click" | "scroll";
 
 type VisitState = { path: string; enteredAtMs: number; pageLabel: string };
 
@@ -124,6 +125,9 @@ function track(
     clickLabel?: string;
     clickTarget?: string;
     clickHref?: string;
+    clickCategory?: string;
+    scrollDepthPct?: number;
+    maxScrollDepthPct?: number;
     enteredAtMs?: number;
     leftAtMs?: number;
     durationMs?: number;
@@ -187,6 +191,7 @@ function getSessionId(): string {
 export function AnalyticsTracker() {
   const pathname = usePathname() ?? "/";
   const visitRef = useRef<VisitState | null>(null);
+  const maxScrollRef = useRef(0);
 
   useEffect(() => {
     if (!pathname.startsWith("/") || pathname.startsWith("/admin")) return;
@@ -201,6 +206,8 @@ export function AnalyticsTracker() {
     const pageLabel =
       typeof document !== "undefined" ? document.title.trim() : "";
 
+    maxScrollRef.current = 0;
+
     const prevVisit = visitRef.current;
     if (prevVisit && prevVisit.path !== key) {
       const durationMs = Math.max(0, now - prevVisit.enteredAtMs);
@@ -212,6 +219,7 @@ export function AnalyticsTracker() {
         enteredAtMs: prevVisit.enteredAtMs,
         leftAtMs: now,
         durationMs,
+        maxScrollDepthPct: maxScrollRef.current,
       });
     }
 
@@ -251,10 +259,39 @@ export function AnalyticsTracker() {
         enteredAtMs: current.enteredAtMs,
         leftAtMs: leftNow,
         durationMs: Math.max(0, leftNow - current.enteredAtMs),
+        maxScrollDepthPct: maxScrollRef.current,
       });
     };
 
     document.addEventListener("visibilitychange", onHidden);
+
+    const scrollMilestones = new Set<number>();
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (scrollTimer) return;
+      scrollTimer = setTimeout(() => {
+        scrollTimer = null;
+        const doc = document.documentElement;
+        const scrollTop = window.scrollY || doc.scrollTop;
+        const height = Math.max(doc.scrollHeight - window.innerHeight, 1);
+        const pct = Math.min(100, Math.round((scrollTop / height) * 100));
+        if (pct > maxScrollRef.current) maxScrollRef.current = pct;
+        for (const m of [25, 50, 75, 100] as const) {
+          if (pct >= m && !scrollMilestones.has(m)) {
+            scrollMilestones.add(m);
+            const v = visitRef.current;
+            track({
+              path: v?.path || key,
+              sessionId,
+              eventType: "scroll",
+              pageLabel: v?.pageLabel || pageLabel,
+              scrollDepthPct: m,
+            });
+          }
+        }
+      }, 400);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     /**
      * Per-element throttle. Without this, rapid taps (mobile double-tap, slow
@@ -294,6 +331,7 @@ export function AnalyticsTracker() {
         clickLabel,
         clickTarget,
         clickHref,
+        clickCategory: classifyClick(clickHref, clickLabel, clickable),
       });
     };
 
@@ -301,6 +339,8 @@ export function AnalyticsTracker() {
 
     return () => {
       window.clearInterval(hb);
+      if (scrollTimer) clearTimeout(scrollTimer);
+      window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onHidden);
       document.removeEventListener("click", onDocumentClick);
     };
@@ -320,6 +360,7 @@ export function AnalyticsTracker() {
         enteredAtMs: current.enteredAtMs,
         leftAtMs: now,
         durationMs: Math.max(0, now - current.enteredAtMs),
+        maxScrollDepthPct: maxScrollRef.current,
       });
     };
   }, []);
