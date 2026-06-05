@@ -384,6 +384,13 @@ export function BookingForm() {
           : {}),
       };
 
+      const { logPaymentEvent } = await import("@/lib/analytics-payment-event");
+      logPaymentEvent({
+        eventType: "checkout_started",
+        amountPaise: cartChargePaise,
+        razorpayOrderId: orderData.id,
+      });
+
       const options: Record<string, unknown> = {
         key,
         amount: orderData.amount,
@@ -393,7 +400,14 @@ export function BookingForm() {
         description: summary.slice(0, 80) || "Goa experiences",
         prefill: { name, email, contact: phone },
         modal: {
-          ondismiss: () => setBusy(false),
+          ondismiss: () => {
+            logPaymentEvent({
+              eventType: "checkout_dismissed",
+              amountPaise: cartChargePaise,
+              razorpayOrderId: orderData.id,
+            });
+            setBusy(false);
+          },
         },
         handler: async (response: {
           razorpay_payment_id: string;
@@ -413,6 +427,12 @@ export function BookingForm() {
             });
             const out = await v.json();
             if (!v.ok) {
+              logPaymentEvent({
+                eventType: "verify_failed",
+                amountPaise: cartChargePaise,
+                razorpayOrderId: response.razorpay_order_id,
+                error: out.error ?? "Verification failed",
+              });
               setMsg(out.error ?? "Verification failed");
               return;
             }
@@ -441,6 +461,12 @@ export function BookingForm() {
 
       const rzp = new Razorpay(options);
       attachRazorpayPaymentFailed(rzp, (m) => {
+        logPaymentEvent({
+          eventType: "payment_failed",
+          amountPaise: cartChargePaise,
+          razorpayOrderId: orderData.id,
+          error: m,
+        });
         setMsg(m);
         setBusy(false);
       });

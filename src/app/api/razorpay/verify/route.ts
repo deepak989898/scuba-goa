@@ -241,6 +241,13 @@ export async function POST(req: Request) {
           { merge: true }
         );
     }
+    await db.collection("paymentEvents").add({
+      eventType: "payment_success",
+      amountPaise: paidPaise,
+      razorpayOrderId: razorpay_order_id,
+      path: "/booking",
+      createdAt: FieldValue.serverTimestamp(),
+    });
   } catch (e) {
     console.error("bookings write failed", e);
     return NextResponse.json(

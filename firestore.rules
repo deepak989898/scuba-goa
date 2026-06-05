@@ -101,6 +101,23 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    /** Daily AI analytics snapshots + reports (cron / admin APIs only). */
+    match /aiAnalyticsDaily/{date} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /aiAnalyticsReports/{date} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    /** Checkout funnel events (server + client track). */
+    match /paymentEvents/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
     match /ratings/{id} {
       allow read: if resource.data.approved == true
         || (request.auth != null
