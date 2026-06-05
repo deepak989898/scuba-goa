@@ -150,6 +150,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               Marketing
             </Link>
             <Link
+              href="/admin/marketing-engine"
+              className="text-ocean-700 hover:text-ocean-500"
+            >
+              Marketing AI
+            </Link>
+            <Link
               href="/admin/ratings"
               className="text-ocean-700 hover:text-ocean-500"
             >
