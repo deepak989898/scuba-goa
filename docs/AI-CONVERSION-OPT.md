@@ -77,6 +77,7 @@ Uses `OPENAI_API_KEY` and optional `AI_ANALYTICS_OPENAI_MODEL` (default `gpt-4o-
 1. Deploy site (tracker changes go live on next visit).
 2. Ensure `OPENAI_API_KEY` and `FIREBASE_SERVICE_ACCOUNT_KEY` on Vercel.
 3. Deploy `firestore.rules` (`conversionOptDaily`, `conversionOptReports` read for admins).
+4. No Firestore composite index is required for the admin dashboard (reports are sorted in memory).
 4. Browse site: scroll, click Book/WhatsApp, try booking flow.
 5. Admin → **Conversion AI** → **Generate suggestions now**.
 
