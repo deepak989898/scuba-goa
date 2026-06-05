@@ -70,9 +70,10 @@ export async function runAiAnalyticsDailyPipeline(opts?: {
 
     if (!opts?.skipNotifications) {
       notifications = await sendDailyReportNotifications({
-        dateIst,
+        snapshot,
+        headline: ai.headline,
+        actions: ai.actions,
         summaryPlain: ai.summaryPlain,
-        summaryMarkdown: ai.summaryMarkdown,
       });
       report.notifications = notifications;
     }

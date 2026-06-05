@@ -94,8 +94,14 @@ Runs for **yesterday (IST)** so the day is complete.
 Clarity does not expose a public REST API for daily bounce/users. The agent:
 
 - Tracks that Clarity is configured on the site
-- Links to the Clarity project dashboard for session replay
+- Links to **https://clarity.microsoft.com/** (main dashboard — sign in, then select your project)
+- Shows project ID `w9s4q313bh` in admin for reference
+- **Do not** use `/projects/view/{id}` deep links — Microsoft shows "Confirmation Type not supported"
 - Uses internal Firestore + GA4 for numeric daily metrics
+
+## Email reports
+
+Daily emails use a **structured HTML table** (visitors, bookings, revenue, payments, top pages, actions) — not raw markdown. Plain-text fallback included for older clients.
 
 ## Payment funnel
 

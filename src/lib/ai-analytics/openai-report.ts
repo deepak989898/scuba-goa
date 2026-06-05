@@ -1,26 +1,45 @@
 import type { AiAnalyticsDailyDoc } from "@/lib/ai-analytics/types";
 
+export type AiReportResult = {
+  summaryMarkdown: string;
+  summaryPlain: string;
+  headline: string;
+  actions: string[];
+  model: string;
+};
+
 export async function generateAiDailyReport(
   snapshot: AiAnalyticsDailyDoc,
-): Promise<{ summaryMarkdown: string; summaryPlain: string; model: string } | null> {
+): Promise<AiReportResult | null> {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) return null;
 
   const model = process.env.AI_ANALYTICS_OPENAI_MODEL?.trim() || "gpt-4o-mini";
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.com";
+  const m = snapshot.internal;
 
-  const system = `You are the AI analytics agent for Book Scuba Goa (${site}), a Goa scuba diving and tours booking website.
-Write a concise daily business report for the owner in plain English (India timezone).
-Use bullet points. Include: traffic, bookings, revenue, WhatsApp interest, payment issues, SEO highlights, and 3 actionable fixes for tomorrow.
-Be specific with numbers from the JSON. Do not invent data.`;
+  const system = `You write daily business reports for the owner of Book Scuba Goa (${site}), a scuba diving & Goa tours website.
 
-  const user = `Daily analytics snapshot (IST date ${snapshot.dateIst}):
-${JSON.stringify(snapshot, null, 2)}
+Rules:
+- Use SIMPLE English (easy for Indian business owner). Short sentences. No JSON, no technical jargon.
+- Use real numbers only from the data provided.
+- Be direct: good news first, then problems, then clear actions.`;
+
+  const user = `Date (IST): ${snapshot.dateIst}
+
+Key metrics:
+- Visitors: ${m.visitors}, Page views: ${m.pageViews}, Bounce: ${m.bounceRatePct}%
+- Bookings paid: ${m.bookingsPaid}, Revenue ₹${m.bookingRevenueInr}, Conversion: ${m.bookingConversionRatePct}%
+- WhatsApp clicks: ${m.whatsappClicks}, Phone clicks: ${m.phoneClicks}
+- Payments: success ${m.paymentSuccess}, failed ${m.paymentFailed}, dismissed ${m.paymentDismissed}
+- Top pages: ${m.topPages.slice(0, 5).map((p) => `${p.path}(${p.views})`).join(", ") || "none"}
 
 Return JSON only:
 {
-  "summaryMarkdown": "markdown report for admin dashboard",
-  "summaryPlain": "short plain text for Telegram/WhatsApp (max 1200 chars)"
+  "headline": "One sentence summary for email header (max 120 chars)",
+  "summaryMarkdown": "Full report with ## headings: Summary, Traffic, Bookings, Problems, Tomorrow's 3 actions. Use bullet lists.",
+  "summaryPlain": "Short version for Telegram (max 900 chars, line breaks, emoji ok)",
+  "actions": ["action 1", "action 2", "action 3"]
 }`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -35,8 +54,8 @@ Return JSON only:
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      temperature: 0.4,
-      max_tokens: 2000,
+      temperature: 0.35,
+      max_tokens: 1800,
       response_format: { type: "json_object" },
     }),
   });
@@ -49,12 +68,19 @@ Return JSON only:
 
   try {
     const parsed = JSON.parse(raw) as {
+      headline?: string;
       summaryMarkdown?: string;
       summaryPlain?: string;
+      actions?: string[];
     };
+    const actions = Array.isArray(parsed.actions)
+      ? parsed.actions.map((a) => String(a).trim()).filter(Boolean).slice(0, 5)
+      : [];
     return {
+      headline: String(parsed.headline ?? "").trim().slice(0, 160),
       summaryMarkdown: String(parsed.summaryMarkdown ?? "").trim(),
-      summaryPlain: String(parsed.summaryPlain ?? "").trim().slice(0, 1200),
+      summaryPlain: String(parsed.summaryPlain ?? "").trim().slice(0, 900),
+      actions,
       model,
     };
   } catch {

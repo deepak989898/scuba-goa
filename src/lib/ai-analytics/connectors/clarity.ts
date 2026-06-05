@@ -1,8 +1,9 @@
 import type { ClarityDailySnapshot } from "@/lib/ai-analytics/types";
 
 /**
- * Microsoft Clarity has no public REST API for daily metrics export.
- * We record project config and link admins to the dashboard for session replay.
+ * Microsoft Clarity has no public REST API for daily metrics.
+ * Deep links like /projects/view/{id} break with "Confirmation Type not supported"
+ * — use the main dashboard URL and show project ID for manual selection.
  */
 export function buildClaritySnapshot(): ClarityDailySnapshot {
   const projectId = (process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || "").trim();
@@ -13,11 +14,10 @@ export function buildClaritySnapshot(): ClarityDailySnapshot {
   return {
     configured: Boolean(projectId),
     projectId,
-    dashboardUrl: projectId
-      ? `https://clarity.microsoft.com/projects/view/${projectId}`
-      : "https://clarity.microsoft.com",
+    /** Always use main Clarity home — admin picks project after sign-in. */
+    dashboardUrl: "https://clarity.microsoft.com/",
     note: projectId
-      ? `Clarity project ${projectId} is active on ${site}. Use the dashboard for heatmaps and session recordings; daily metrics come from internal Firestore + GA4.`
+      ? `Clarity is active on ${site} (project ID: ${projectId}). Sign in at clarity.microsoft.com, then open your "${site}" project from the list. Do not use /projects/view/ links — they error in Microsoft UI.`
       : "Set NEXT_PUBLIC_CLARITY_PROJECT_ID to enable Clarity on the site.",
   };
 }

@@ -194,19 +194,35 @@ export default function AdminAiAnalyticsPage() {
               <li>
                 Clarity:{" "}
                 {snapshot.clarity?.configured ? (
-                  <a
-                    href={snapshot.clarity.dashboardUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-ocean-700 underline"
-                  >
-                    Open dashboard
-                  </a>
+                  <>
+                    <a
+                      href="https://clarity.microsoft.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-ocean-700 underline"
+                    >
+                      Open Clarity
+                    </a>
+                    <span className="text-ocean-600">
+                      {" "}
+                      — sign in, then select project{" "}
+                      <code className="rounded bg-sand px-1 text-xs">
+                        {snapshot.clarity.projectId}
+                      </code>
+                    </span>
+                  </>
                 ) : (
                   <span className="text-amber-700">Not configured</span>
                 )}
               </li>
             </ul>
+            {snapshot.clarity?.configured ? (
+              <p className="mt-3 rounded-lg border border-ocean-100 bg-ocean-50 px-3 py-2 text-xs text-ocean-700">
+                <strong>Tip:</strong> Use the main Clarity website (link above). Direct project
+                URLs often show &quot;Confirmation Type not supported&quot; — pick your site from
+                the project list after login.
+              </p>
+            ) : null}
           </section>
 
           {report?.summaryMarkdown ? (

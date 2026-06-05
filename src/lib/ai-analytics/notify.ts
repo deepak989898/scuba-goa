@@ -1,3 +1,9 @@
+import {
+  buildAdminEmailHtml,
+  buildAdminEmailPlain,
+} from "@/lib/ai-analytics/email-report";
+import type { AiAnalyticsDailyDoc } from "@/lib/ai-analytics/types";
+
 const RESEND_API = "https://api.resend.com/emails";
 
 async function sendTelegram(text: string): Promise<boolean> {
@@ -17,7 +23,11 @@ async function sendTelegram(text: string): Promise<boolean> {
   return res.ok;
 }
 
-async function sendEmailReport(subject: string, body: string): Promise<boolean> {
+async function sendEmailReport(opts: {
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM_EMAIL?.trim();
   const to =
@@ -35,14 +45,14 @@ async function sendEmailReport(subject: string, body: string): Promise<boolean> 
     body: JSON.stringify({
       from,
       to: [to],
-      subject,
-      text: body,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
     }),
   });
   return res.ok;
 }
 
-/** Meta WhatsApp Cloud API — optional automated daily digest. */
 async function sendWhatsAppCloud(text: string): Promise<boolean> {
   const token = process.env.META_WHATSAPP_TOKEN?.trim();
   const phoneId = process.env.META_WHATSAPP_PHONE_NUMBER_ID?.trim();
@@ -69,20 +79,31 @@ async function sendWhatsAppCloud(text: string): Promise<boolean> {
 }
 
 export async function sendDailyReportNotifications(opts: {
-  dateIst: string;
-  summaryPlain: string;
-  summaryMarkdown: string;
+  snapshot: AiAnalyticsDailyDoc;
+  headline?: string;
+  actions?: string[];
+  summaryPlain?: string;
 }): Promise<{ telegram: boolean; email: boolean; whatsapp: boolean }> {
-  const header = `📊 Book Scuba Goa — ${opts.dateIst}\n\n`;
-  const plain = header + opts.summaryPlain;
+  const plain = buildAdminEmailPlain(opts.snapshot, opts.headline);
+  const telegramText = opts.summaryPlain?.trim()
+    ? `📊 Book Scuba Goa — ${opts.snapshot.dateIst}\n\n${opts.summaryPlain}`
+    : plain;
+
+  const html = buildAdminEmailHtml(
+    opts.snapshot,
+    opts.headline,
+    opts.actions,
+  );
+  const emailText = plain;
 
   const [telegram, email, whatsapp] = await Promise.all([
-    sendTelegram(plain),
-    sendEmailReport(
-      `Daily analytics — Book Scuba Goa (${opts.dateIst})`,
-      opts.summaryMarkdown || opts.summaryPlain,
-    ),
-    sendWhatsAppCloud(plain),
+    sendTelegram(telegramText),
+    sendEmailReport({
+      subject: `📊 Daily report ${opts.snapshot.dateIst} — ${opts.headline?.slice(0, 60) || "Book Scuba Goa"}`,
+      html,
+      text: emailText,
+    }),
+    sendWhatsAppCloud(telegramText),
   ]);
 
   return { telegram, email, whatsapp };
