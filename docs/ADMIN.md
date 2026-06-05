@@ -8,6 +8,9 @@
 | **Services** (home cards + `/services` list + detail pages) | `services` | `/admin/services` |
 | **Bookings** (paid orders) | `bookings` | `/admin/bookings` |
 | **Analytics** (page views / sessions sample) | `pageViews` | `/admin/analytics` |
+| **AI analytics agent** (daily report) | `aiAnalyticsDaily`, `aiAnalyticsReports` | `/admin/ai-analytics` |
+| **Conversion AI** (daily funnel + suggestions) | `conversionOptDaily`, `conversionOptReports` | `/admin/conversion-opt` |
+| **SEO AI** (weekly SEO agent) | `seoWeekly`, `seoWeeklyReports` | `/admin/seo-agent` |
 | **Reviews** (moderated ratings) | `ratings` | `/admin/ratings` |
 
 ---

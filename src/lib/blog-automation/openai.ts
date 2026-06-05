@@ -44,7 +44,7 @@ export async function generateBlogWithOpenAI(input: {
   const system = `You are an expert SEO content writer for Book Scuba Goa (scuba diving, water sports, tours in Goa, India).
 ${LANG_INSTRUCTION[input.language]}
 Write factual, helpful content. Mention Goa locations (Baga, Calangute, Grande Island) naturally.
-Include internal linking hints as plain text paths like /booking, /services/${input.serviceSlug}, /contact — do NOT use full URLs.
+Include 5–8 internal links using markdown format like [Book now](/booking) and [Scuba diving packages](/services/${input.serviceSlug}). Use ONLY internal paths (no full URLs). Always include /booking and /services/${input.serviceSlug} at least once.
 Content format: markdown with ## and ### headings, bullet lists, short paragraphs.
 Start the article with a 2–3 sentence direct answer to the search intent (helps Google AI Overviews).
 When the topic involves cost, packages, or booking, include a "## Prices & packages (Book Scuba Goa)" section with exact ₹ prices from the catalog below.
