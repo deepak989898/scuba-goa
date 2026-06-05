@@ -389,6 +389,9 @@ export function BookingForm() {
         eventType: "checkout_started",
         amountPaise: cartChargePaise,
         razorpayOrderId: orderData.id,
+        phone,
+        name,
+        email,
       });
 
       const options: Record<string, unknown> = {
@@ -405,6 +408,9 @@ export function BookingForm() {
               eventType: "checkout_dismissed",
               amountPaise: cartChargePaise,
               razorpayOrderId: orderData.id,
+              phone,
+              name,
+              email,
             });
             setBusy(false);
           },
@@ -432,6 +438,9 @@ export function BookingForm() {
                 amountPaise: cartChargePaise,
                 razorpayOrderId: response.razorpay_order_id,
                 error: out.error ?? "Verification failed",
+                phone,
+                name,
+                email,
               });
               setMsg(out.error ?? "Verification failed");
               return;
@@ -466,6 +475,9 @@ export function BookingForm() {
           amountPaise: cartChargePaise,
           razorpayOrderId: orderData.id,
           error: m,
+          phone,
+          name,
+          email,
         });
         setMsg(m);
         setBusy(false);

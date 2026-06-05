@@ -114,10 +114,16 @@ export function AiChatbot() {
     setMessages((m) => [...m, { role: "user", text: t }]);
     setLoading(true);
     try {
+      let sessionId = "";
+      try {
+        sessionId = sessionStorage.getItem("bsg_analytics_sid") ?? "";
+      } catch {
+        /* ignore */
+      }
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: t, language: lang }),
+        body: JSON.stringify({ message: t, language: lang, sessionId }),
       });
       const data = await res.json();
       const reply =

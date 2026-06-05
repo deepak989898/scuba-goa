@@ -132,6 +132,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               Business ops agent
             </Link>
             <Link
+              href="/admin/recovery-agent"
+              className="text-ocean-700 hover:text-ocean-500"
+            >
+              Recovery AI
+            </Link>
+            <Link
               href="/admin/conversion-opt"
               className="text-ocean-700 hover:text-ocean-500"
             >

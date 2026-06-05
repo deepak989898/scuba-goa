@@ -155,6 +155,42 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    /** WhatsApp + booking recovery AI agent (server / cron only). */
+    match /recoveryLeads/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /recoveryAbandonedBookings/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /recoveryConversations/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /recoveryCampaigns/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /recoveryWhatsappEvents/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /recoveryAiResponses/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
+    match /recoveryAgent/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
     /** Checkout funnel events (server + client track). */
     match /paymentEvents/{id} {
       allow read: if request.auth != null

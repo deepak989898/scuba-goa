@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { fallbackPackages } from "@/data/fallback-packages";
 import { fallbackServices } from "@/data/services";
+import {
+  appendConversationMessage,
+  loadConversation,
+} from "@/lib/recovery-agent/conversations";
+import { generateRecoveryChatReply } from "@/lib/recovery-agent/openai-recovery";
+import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 
 const SYSTEM = `You are Book Scuba Goa AI Sales Closer.
 
@@ -70,7 +76,7 @@ function topPackageLines() {
 }
 
 export async function POST(req: Request) {
-  let body: { message?: string; language?: string };
+  let body: { message?: string; language?: string; sessionId?: string };
   try {
     body = await req.json();
   } catch {
@@ -79,6 +85,11 @@ export async function POST(req: Request) {
   const message = body.message?.trim();
   if (!message) {
     return NextResponse.json({ error: "Empty message" }, { status: 400 });
+  }
+
+  const sessionId = body.sessionId?.trim().slice(0, 128) || "";
+  if (sessionId) {
+    void upsertRecoveryLead({ sessionId, event: "session_visit" }).catch(() => {});
   }
 
   const rawLang = body.language?.trim() || "English";
@@ -105,32 +116,65 @@ Priority conversion flow:
     });
   }
 
+  const prev = sessionId ? await loadConversation(sessionId) : null;
+  const history =
+    prev?.messages.map((m) => ({ role: m.role, text: m.text })) ?? [];
+
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: `${SYSTEM}\n\n${langBlock}\n\n${catalogBlock}` },
-          { role: "user", content: message },
-        ],
-        max_tokens: 280,
-        temperature: 0.5,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      const err = data?.error?.message ?? "OpenAI error";
-      return NextResponse.json({ reply: err }, { status: 200 });
+    let text: string | null = null;
+
+    if (sessionId) {
+      text = await generateRecoveryChatReply({
+        message,
+        language: replyLanguage,
+        history,
+      });
     }
-    const text = data?.choices?.[0]?.message?.content?.trim();
-    return NextResponse.json({
-      reply: text || "Try rephrasing your question.",
-    });
+
+    if (!text) {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: `${SYSTEM}\n\n${langBlock}\n\n${catalogBlock}` },
+            ...history.map((m) => ({ role: m.role, content: m.text })),
+            { role: "user", content: message },
+          ],
+          max_tokens: 280,
+          temperature: 0.5,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const err = data?.error?.message ?? "OpenAI error";
+        return NextResponse.json({ reply: err }, { status: 200 });
+      }
+      text = data?.choices?.[0]?.message?.content?.trim() ?? null;
+    }
+
+    const reply = text || "Try rephrasing your question.";
+
+    if (sessionId) {
+      await appendConversationMessage({
+        sessionId,
+        language: replyLanguage,
+        role: "user",
+        text: message,
+      });
+      await appendConversationMessage({
+        sessionId,
+        language: replyLanguage,
+        role: "assistant",
+        text: reply,
+      });
+    }
+
+    return NextResponse.json({ reply });
   } catch (e) {
     return NextResponse.json({
       reply: e instanceof Error ? e.message : "Chat unavailable",

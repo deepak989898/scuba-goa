@@ -7,6 +7,9 @@ export function logPaymentEvent(payload: {
   razorpayOrderId?: string;
   error?: string;
   path?: string;
+  phone?: string;
+  name?: string;
+  email?: string;
 }): void {
   if (typeof window === "undefined") return;
   let sessionId = "";

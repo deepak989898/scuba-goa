@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { linkSessionLeadToPhone, upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 
 const NAME_MAX = 80;
 const PHONE_MAX = 20;
@@ -70,6 +71,15 @@ export async function POST(req: Request) {
       },
       { merge: true }
     );
+    if (sessionId) {
+      await linkSessionLeadToPhone(sessionId, phone);
+    }
+    await upsertRecoveryLead({
+      sessionId,
+      phone,
+      name,
+      event: "whatsapp_click",
+    });
   } catch (e) {
     console.error("marketing lead write failed", e);
     return NextResponse.json({ error: "Lead save failed" }, { status: 500 });

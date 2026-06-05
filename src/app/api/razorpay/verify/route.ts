@@ -9,6 +9,7 @@ import {
   sendBookingConfirmationEmail,
 } from "@/lib/email";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 import type { CartItemForPromo } from "@/lib/promo-pricing";
 import { isValidPayAmountPaise } from "@/lib/payment";
 import { validatePromoForOrder } from "@/lib/validate-promo-for-order";
@@ -248,6 +249,18 @@ export async function POST(req: Request) {
       path: "/booking",
       createdAt: FieldValue.serverTimestamp(),
     });
+    try {
+      await upsertRecoveryLead({
+        phone: leadPhone,
+        name: String(booking.customerName),
+        email: String(booking.email).trim(),
+        path: "/booking",
+        event: "payment_success",
+        amountPaise: paidPaise,
+      });
+    } catch {
+      /* non-blocking */
+    }
   } catch (e) {
     console.error("bookings write failed", e);
     return NextResponse.json(

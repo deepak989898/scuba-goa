@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { parseRequestDevice } from "@/lib/clientDevice";
 import { geoFromRequestHeaders } from "@/lib/analytics-geo";
+import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 
 const PATH_MAX = 512;
 const SESSION_MAX = 128;
@@ -369,7 +370,77 @@ export async function POST(req: Request) {
         console.error("analyticsBlogTraffic txn failed", e);
       }
     }
+
+    void trackRecoveryFromPageView({
+      path,
+      sessionId,
+      landingPath,
+      clickCategory,
+      eventType,
+      durationMs: durationMs ?? undefined,
+    }).catch((e) => console.error("[recovery-agent] track view failed", e));
+  }
+
+  if (eventType === "click" && clickCategory === "whatsapp") {
+    void upsertRecoveryLead({
+      sessionId,
+      path,
+      landingPath,
+      event: "whatsapp_click",
+    }).catch(() => {});
+  }
+
+  if (
+    eventType === "leave" &&
+    (path === "/booking" || path.startsWith("/booking")) &&
+    durationMs != null &&
+    durationMs >= 5000
+  ) {
+    void upsertRecoveryLead({
+      sessionId,
+      path,
+      landingPath,
+      event: "booking_page_view",
+      dwellSec: Math.round(durationMs / 1000),
+    }).catch(() => {});
   }
 
   return new NextResponse(null, { status: 204 });
+}
+
+async function trackRecoveryFromPageView(opts: {
+  path: string;
+  sessionId: string;
+  landingPath?: string;
+  clickCategory?: string;
+  eventType: string;
+  durationMs?: number;
+}) {
+  if (opts.eventType !== "view" && opts.eventType !== "leave") return;
+
+  let event: Parameters<typeof upsertRecoveryLead>[0]["event"] | null = null;
+  if (opts.path === "/booking" || opts.path.startsWith("/booking")) {
+    event = "booking_page_view";
+  } else if (
+    opts.path.startsWith("/services/") ||
+    opts.path === "/services" ||
+    opts.path.includes("price")
+  ) {
+    event = "pricing_page_view";
+  } else if (opts.eventType === "view") {
+    event = "session_visit";
+  }
+
+  if (!event) return;
+
+  await upsertRecoveryLead({
+    sessionId: opts.sessionId,
+    path: opts.path,
+    landingPath: opts.landingPath,
+    event,
+    dwellSec:
+      opts.eventType === "leave" && opts.durationMs
+        ? Math.round(opts.durationMs / 1000)
+        : undefined,
+  });
 }
