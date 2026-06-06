@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
 import { ServicesGrid } from "@/components/ServicesGrid";
+import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "All Services",
+  title: "Scuba Diving & Tours in Goa — All Services",
   description:
-    "Scuba diving Goa, North & South tours, Dudhsagar, water sports, dolphin trips, casinos, clubs, pubs, disco, flyboarding, bungee.",
+    "Book scuba diving Goa, Grand Island trips, North & South Goa tours, Dudhsagar, water sports, dolphin trips, and adventure activities with live prices.",
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/services`,
+  },
+  openGraph: {
+    title: `All Services | ${SITE_NAME}`,
+    description: "Scuba diving, tours, water sports, and Goa experiences — book online.",
+    url: `${SITE_URL.replace(/\/$/, "")}/services`,
+  },
 };
 
 export default function ServicesPage() {

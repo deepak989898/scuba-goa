@@ -9,12 +9,20 @@ import {
   OFFICE_ADDRESS_LINES,
   OFFICE_ADDRESS_SINGLELINE,
   SITE_NAME,
+  SITE_URL,
   whatsappLink,
 } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Contact",
+  title: "Contact Book Scuba Goa — Baga Office",
   description: `Visit us in Baga, Calangute — call, email, or WhatsApp ${SITE_NAME} for scuba diving and tour package bookings.`,
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/contact`,
+  },
+  openGraph: {
+    title: `Contact | ${SITE_NAME}`,
+    url: `${SITE_URL.replace(/\/$/, "")}/contact`,
+  },
 };
 
 export default function ContactPage() {

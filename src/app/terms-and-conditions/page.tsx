@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { SITE_NAME } from "@/lib/constants";
+import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions",
   description: `Terms and conditions for ${SITE_NAME}.`,
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/terms-and-conditions`,
+  },
 };
 
 export default function TermsAndConditionsPage() {

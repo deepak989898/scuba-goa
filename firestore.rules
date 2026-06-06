@@ -303,6 +303,11 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
       allow write: if false;
     }
+    match /seoHealthReports/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if false;
+    }
     /** Checkout funnel events (server + client track). */
     match /paymentEvents/{id} {
       allow read: if request.auth != null

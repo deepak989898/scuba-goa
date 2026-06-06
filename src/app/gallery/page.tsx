@@ -5,6 +5,9 @@ import { SITE_NAME, SITE_URL } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "Gallery",
   description: `${SITE_NAME} — photos and reels from scuba trips in Goa.`,
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/gallery`,
+  },
   openGraph: {
     title: `Gallery | ${SITE_NAME}`,
     description:

@@ -8,6 +8,7 @@ export const PRIMARY_SEO_KEYWORDS = [
   "scuba diving price Goa",
   "best scuba in Goa",
   "scuba diving Goa booking",
+  "book scuba goa",
   "Grande Island scuba",
 ] as const;
 export const CONTACT_EMAIL =

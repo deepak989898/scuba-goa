@@ -7,6 +7,7 @@ import { HomeBookingCTASection } from "@/components/HomeBookingCTASection";
 import { BlogPreview } from "@/components/BlogPreview";
 import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
 import { TrustSection } from "@/components/TrustSection";
+import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -39,17 +40,23 @@ export default function HomePage() {
     "@type": "TravelAgency",
     name: SITE_NAME,
     description:
-      "Scuba diving in Goa with online booking: scuba diving price Goa, best scuba in Goa try-dives and tours. Razorpay payments and WhatsApp support.",
-    knowsAbout: [...PRIMARY_SEO_KEYWORDS],
+      "Book scuba diving in Goa online with live prices, Grand Island trips, Razorpay checkout, and WhatsApp support from Baga.",
+    knowsAbout: [...PRIMARY_SEO_KEYWORDS, "book scuba goa", "Grand Island scuba diving"],
     areaServed: { "@type": "Place", name: "Goa, India" },
     url: site,
+    sameAs: [site],
   };
+  const faqLd = faqPageJsonLd(BOOK_SCUBA_FAQ);
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
       <Suspense fallback={null}>
         <PaymentSuccessBannerSlot />

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { SITE_NAME } from "@/lib/constants";
+import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Refund & Cancellation Policy",
   description: `Refund and cancellation policy for ${SITE_NAME}.`,
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/refund-cancellation`,
+  },
 };
 
 export default function RefundCancellationPage() {

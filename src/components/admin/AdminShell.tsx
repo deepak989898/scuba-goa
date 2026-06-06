@@ -132,6 +132,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               SEO AI
             </Link>
             <Link
+              href="/admin/seo-health"
+              className="text-ocean-700 hover:text-ocean-500"
+            >
+              SEO health
+            </Link>
+            <Link
               href="/admin/business-agent"
               className="text-ocean-700 hover:text-ocean-500"
             >

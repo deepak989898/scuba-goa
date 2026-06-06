@@ -17,19 +17,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/guides",
     "/offers",
     "/gallery",
-    "/admin/login",
+    "/privacy-policy",
+    "/terms-and-conditions",
+    "/refund-cancellation",
   ];
   const staticLastMod: Record<string, string> = {
-    "": "2026-04-09",
+    "": "2026-06-06",
     "/about": "2026-03-26",
     "/contact": "2026-03-26",
-    "/booking": "2026-04-09",
+    "/booking": "2026-06-06",
     "/services": "2026-04-03",
     "/blog": "2026-04-09",
     "/guides": "2026-04-11",
     "/offers": "2026-04-11",
     "/gallery": "2026-05-13",
-    "/admin/login": "2026-03-26",
+    "/privacy-policy": "2026-04-11",
+    "/terms-and-conditions": "2026-04-11",
+    "/refund-cancellation": "2026-04-11",
   };
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: `${base}${path || "/"}`,

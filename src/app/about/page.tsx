@@ -19,6 +19,9 @@ const waMessage =
 export const metadata: Metadata = {
   title: "About Us",
   description: `${SITE_NAME} — certified scuba partners in North Goa, clear pricing, Razorpay checkout, and WhatsApp support from a real Baga office.`,
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/about`,
+  },
   openGraph: {
     title: `About ${SITE_NAME} | Scuba in Goa you can verify`,
     description:

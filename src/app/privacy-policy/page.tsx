@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { SITE_NAME } from "@/lib/constants";
+import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: `Privacy policy for ${SITE_NAME}.`,
+  alternates: {
+    canonical: `${SITE_URL.replace(/\/$/, "")}/privacy-policy`,
+  },
 };
 
 export default function PrivacyPolicyPage() {

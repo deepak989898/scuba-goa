@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 /**
  * Long-form SEO copy block. Reads in full on tablet & desktop, but collapses
@@ -116,6 +117,21 @@ export function HomeScubaInfoSection() {
             {expanded ? "▲" : "▼"}
           </span>
         </button>
+
+        <p className="mt-8 text-sm text-ocean-700">
+          Ready to book?{" "}
+          <Link href="/booking" className="font-semibold text-ocean-800 underline">
+            Book scuba diving in Goa online
+          </Link>
+          {" · "}
+          <Link href="/guides" className="font-semibold text-ocean-800 underline">
+            Read our guides
+          </Link>
+          {" · "}
+          <Link href="/blog/scuba-diving-price-guide-2026" className="font-semibold text-ocean-800 underline">
+            2026 price guide
+          </Link>
+        </p>
       </div>
     </section>
   );

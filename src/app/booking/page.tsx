@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { BookingForm } from "@/components/BookingForm";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
+import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 
 export const metadata: Metadata = {
   title: `Book Scuba Diving in Goa — Pay Online | ${SITE_NAME}`,
@@ -22,7 +23,13 @@ export const metadata: Metadata = {
 };
 
 export default function BookingPage() {
+  const faqLd = faqPageJsonLd(BOOK_SCUBA_FAQ.slice(0, 4));
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+      />
     <div className="bg-gradient-to-b from-ocean-50 to-white py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h1 className="text-center font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
@@ -48,5 +55,6 @@ export default function BookingPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
