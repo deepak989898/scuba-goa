@@ -10,7 +10,8 @@ import {
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "@/lib/firebase";
-import Link from "next/link";
+import { AdminNavDrawer } from "@/components/admin/AdminNavDrawer";
+import { adminNavCurrentLabel } from "@/components/admin/admin-nav";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -21,8 +22,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
 function AdminGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [allowed, setAllowed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
@@ -47,146 +50,81 @@ function AdminGate({ children }: { children: React.ReactNode }) {
     });
   }, [router]);
 
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setDrawerOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
   if (user === undefined) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-ocean-700">
+      <div className="flex min-h-screen items-center justify-center bg-sand text-ocean-700">
         Checking access…
       </div>
     );
   }
   if (!user || !allowed) return null;
 
+  const pageLabel = adminNavCurrentLabel(pathname);
+
   return (
-    <div className="min-h-screen bg-sand">
-      <div className="border-b border-ocean-100 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <p className="font-display font-semibold text-ocean-900">Admin</p>
-          <nav className="flex flex-wrap gap-3 text-sm">
-            <Link href="/admin" className="text-ocean-700 hover:text-ocean-500">
-              Dashboard
-            </Link>
-            <Link
-              href="/admin/packages"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Packages
-            </Link>
-            <Link
-              href="/admin/offers"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Offers
-            </Link>
-            <Link
-              href="/admin/services"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Services
-            </Link>
-            <Link href="/admin/hero" className="text-ocean-700 hover:text-ocean-500">
-              Hero
-            </Link>
-            <Link href="/admin/seo-pages" className="text-ocean-700 hover:text-ocean-500">
-              SEO guides
-            </Link>
-            <Link
-              href="/admin/blog-automation"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Blog auto
-            </Link>
-            <Link
-              href="/admin/gallery"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Gallery
-            </Link>
-            <Link
-              href="/admin/bookings"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Bookings
-            </Link>
-            <Link
-              href="/admin/analytics"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Analytics
-            </Link>
-            <Link
-              href="/admin/command-center"
-              className="font-semibold text-ocean-900 hover:text-ocean-600"
-            >
-              Command Center
-            </Link>
-            <Link
-              href="/admin/ai-analytics"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              AI agent
-            </Link>
-            <Link
-              href="/admin/seo-agent"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              SEO AI
-            </Link>
-            <Link
-              href="/admin/seo-health"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              SEO health
-            </Link>
-            <Link
-              href="/admin/business-agent"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Business ops agent
-            </Link>
-            <Link
-              href="/admin/recovery-agent"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Recovery AI
-            </Link>
-            <Link
-              href="/admin/conversion-opt"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Conversion AI
-            </Link>
-            <Link
-              href="/admin/marketing"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Marketing
-            </Link>
-            <Link
-              href="/admin/marketing-engine"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Marketing AI
-            </Link>
-            <Link
-              href="/admin/ratings"
-              className="text-ocean-700 hover:text-ocean-500"
-            >
-              Reviews
-            </Link>
-            <Link href="/" className="text-ocean-700 hover:text-ocean-500">
-              Site
-            </Link>
-            <button
-              type="button"
-              className="font-semibold text-red-600"
-              onClick={() => getFirebaseAuth()?.signOut()}
-            >
-              Sign out
-            </button>
-          </nav>
-        </div>
+    <div className="min-h-screen bg-sand lg:pl-72">
+      <AdminNavDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSignOut={() => getFirebaseAuth()?.signOut()}
+      />
+
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-30 border-b border-ocean-100 bg-white/95 backdrop-blur-md">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ocean-200 bg-white text-ocean-800 shadow-sm transition hover:bg-ocean-50 lg:hidden"
+                aria-label="Open admin menu"
+                aria-expanded={drawerOpen}
+                onClick={() => setDrawerOpen(true)}
+              >
+                <span className="text-lg leading-none" aria-hidden>
+                  ☰
+                </span>
+              </button>
+              <div className="min-w-0">
+                <p className="truncate font-display text-lg font-bold text-ocean-900 sm:text-xl">
+                  {pageLabel}
+                </p>
+                <p className="hidden truncate text-xs text-ocean-600 sm:block">
+                  Book Scuba Goa admin
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="hidden max-w-[12rem] truncate text-xs text-ocean-600 md:inline">
+                {user.email}
+              </span>
+              <button
+                type="button"
+                className="rounded-full bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                onClick={() => getFirebaseAuth()?.signOut()}
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl">{children}</div>
+        </main>
       </div>
-      <div className="mx-auto max-w-6xl px-4 py-8">{children}</div>
     </div>
   );
 }
