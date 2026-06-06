@@ -84,9 +84,9 @@ export function Header() {
           </a>
           <Link
             href="/booking"
-            className="inline-flex min-h-11 min-w-[5.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
+            className="inline-flex min-h-12 min-w-[8.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
           >
-            Book now
+            Reserve Your Dive
           </Link>
           <button
             type="button"
@@ -113,7 +113,7 @@ export function Header() {
               className="rounded-xl bg-ocean-gradient px-3 py-3 text-center text-sm font-bold text-white shadow-md"
               onClick={() => setOpen(false)}
             >
-              Book now — secure checkout
+              Book today — secure checkout
             </Link>
             {nav.map((item) => (
               <Link

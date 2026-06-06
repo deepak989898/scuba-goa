@@ -87,7 +87,7 @@ export function TrustTopStrip({ isHome }: Props) {
           href="/booking"
           className="inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-3 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-cyan-400 active:opacity-90"
         >
-          Book now
+          Reserve Your Dive
         </Link>
       </div>
     </div>

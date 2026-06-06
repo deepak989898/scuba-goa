@@ -54,7 +54,7 @@ function HeroConversionCard({
       : null;
 
   const bookPrimaryClass =
-    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:text-sm";
+    "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:text-base";
 
   const detailsSecondaryClass =
     "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-white/10 px-4 py-2.5 text-xs font-extrabold text-white shadow-md backdrop-blur-sm ring-1 ring-white/30 transition hover:bg-white/20 active:bg-white/15 sm:text-sm max-sm:border-ocean-300 max-sm:bg-white max-sm:text-ocean-800 max-sm:ring-ocean-200 max-sm:hover:bg-ocean-50";
@@ -86,7 +86,7 @@ function HeroConversionCard({
             <span className="block sm:inline">{headlineTitle}</span>
             <span className="block text-cyan-700 max-sm:inline sm:text-cyan-200">
               {" "}
-              @ {priceLine}
+              · Starting at {priceLine}
             </span>
             <span className="mt-1 block text-[10px] font-semibold normal-case tracking-normal text-ocean-700 max-sm:text-ocean-700 sm:text-xs sm:text-cyan-50/95">
               Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now · rest on the day at the
@@ -258,9 +258,9 @@ export function HeroSection() {
 
       {/* Mobile: keep hero image clean — no text on photo (CTAs: sticky bar + form + trust strip) */}
       <h1 className="sr-only">
-        Scuba diving in Goa with Book Scuba Goa — beginner-friendly dives in North Goa.
+        Dive into Adventure — Book Your Scuba Experience in Goa with Book Scuba Goa.
         {headlinePriceInr != null
-          ? ` Try-dive from ₹${headlinePriceInr.toLocaleString("en-IN")}.`
+          ? ` Try-dive starting at ₹${headlinePriceInr.toLocaleString("en-IN")}.`
           : ""}{" "}
         Pay ₹{ADVANCE_BOOKING_INR} advance online with Razorpay; WhatsApp booking supported.
       </h1>

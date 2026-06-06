@@ -31,18 +31,19 @@ export function HomeBookingCTASection() {
           id="home-book-cta-heading"
           className="mt-2 font-display text-2xl font-bold text-white sm:text-4xl"
         >
-          Book now — pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} to lock your dive
+          Dive into Adventure — Reserve Your Scuba Experience in Goa
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-white/85 sm:mt-4 sm:text-base">
-          One page: pick your dive, pay the small advance on Razorpay (UPI / card), get
-          instant confirmation. Balance on the day.
+          Choose your package, select your date, and dive in. Pay just ₹
+          {ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance on Razorpay (UPI / card) — balance
+          on the day.
         </p>
         <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center">
           <Link
             href="/booking"
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-cyan-500 px-8 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-400 active:bg-cyan-300"
+            className="inline-flex min-h-14 items-center justify-center rounded-full bg-cyan-500 px-10 py-4 text-base font-bold text-slate-950 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-400 active:bg-cyan-300"
           >
-            Book now
+            Reserve Your Dive Today
           </Link>
           <a
             href={wa}

@@ -33,15 +33,14 @@ export default function BookingPage() {
     <div className="bg-gradient-to-b from-ocean-50 to-white py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h1 className="text-center font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
-          Book now — clear price, small advance
+          Reserve Your Dive — Clear Price, Small Advance
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-center text-ocean-700">
-          Pick your dive below. You&apos;ll enter contact details only when you&apos;re ready to
-          pay.
+          Choose your package · Select your date · Dive in. Contact details only when you pay.
         </p>
         <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-ocean-200 bg-ocean-50 px-4 py-4 text-center">
           <p className="text-base font-bold text-ocean-900">
-            Full dive price is shown in your cart.
+            Live prices in your cart — starting packages shown below.
           </p>
           <p className="mt-1 text-sm font-semibold text-ocean-800">
             Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} per person now (advance) · pay the

@@ -78,7 +78,7 @@ export function ServicesGrid() {
               <ServiceMetaBlock s={s} variant="cardGrid" />
               <div className="mt-3 rounded-xl border-2 border-ocean-600 bg-gradient-to-br from-amber-50 via-white to-cyan-50 px-3 py-2.5 shadow-md ring-1 ring-ocean-200/80">
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-ocean-800">
-                  From
+                  Starting at
                 </p>
                 <p className="font-display text-xl font-extrabold tabular-nums text-ocean-950">
                   ₹{s.priceFrom.toLocaleString("en-IN")}

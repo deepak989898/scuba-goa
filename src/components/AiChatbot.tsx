@@ -295,7 +295,7 @@ export function AiChatbot() {
                     href="/booking"
                     className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full bg-ocean-700 px-4 py-3 text-sm font-bold text-white"
                   >
-                    Book now
+                    Reserve Your Dive Today
                   </Link>
                   <a
                     href={whatsappLink(

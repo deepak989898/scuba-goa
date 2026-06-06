@@ -72,7 +72,7 @@ export function StickyBookBar() {
             <span aria-hidden className="text-lg leading-none">
               📅
             </span>
-            <span className="text-[13px] font-extrabold leading-tight">Book Today</span>
+            <span className="text-[13px] font-extrabold leading-tight">Reserve Dive</span>
           </Link>
         </div>
         <p className="mt-1.5 text-center text-[10px] font-medium leading-snug text-slate-100">

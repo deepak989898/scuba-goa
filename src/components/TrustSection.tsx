@@ -1,8 +1,8 @@
 export function TrustSection() {
   const pillars = [
     {
-      title: "Certified operators",
-      body: "Trained crew, safety-first briefings — so your first breath underwater feels calm, not chaotic.",
+      title: "Certified PADI instructors",
+      body: "Trained crew and safety-first briefings — credentials you can ask for before you pay.",
     },
     {
       title: "Secure checkout",
@@ -21,7 +21,7 @@ export function TrustSection() {
     // there is enough vertical space for the three pillars to feel useful.
     <section
       id="trust"
-      className="hidden bg-white sm:block sm:pt-10 sm:pb-20"
+      className="bg-white py-10 sm:py-20"
       aria-labelledby="trust-heading"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

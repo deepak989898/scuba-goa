@@ -76,7 +76,7 @@ export default function AboutPage() {
                   href="/booking"
                   className="inline-flex min-h-12 items-center justify-center rounded-full bg-ocean-gradient px-8 py-3 text-sm font-bold text-white shadow-lg shadow-ocean-900/20 transition hover:brightness-110"
                 >
-                  Book now
+                  Reserve Your Dive Today
                 </Link>
                 <a
                   href={whatsappLink(waMessage)}

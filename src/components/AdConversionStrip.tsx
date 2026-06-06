@@ -46,11 +46,11 @@ export function AdConversionStrip() {
   }, [packages, services]);
 
   const urgentLine = top
-    ? `Limited slots: about ${top.slotsLeft ?? 3} left on ${top.name}. Book now so your date doesn’t slip.`
+    ? `Limited slots: about ${top.slotsLeft ?? 3} left on ${top.name}. Reserve your dive today so your date doesn’t slip.`
     : "Weekends fill first — lock your slot today before plans change.";
 
   const priceLine = top
-    ? `${top.name} — from ₹${top.price.toLocaleString("en-IN")} (pay ₹${ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance online to lock at checkout)`
+    ? `${top.name} — starting at ₹${top.price.toLocaleString("en-IN")} (pay ₹${ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance online to lock at checkout)`
     : `See exact dive price on the next screen — pay ₹${ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance to lock`;
 
   const urgencyMeta = top
@@ -80,7 +80,7 @@ export function AdConversionStrip() {
                 href="/booking"
                 className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full bg-ocean-gradient px-4 py-3 text-sm font-bold text-white shadow-sm"
               >
-                Book now
+                Reserve Your Dive Today
               </Link>
               <a
                 href={whatsappLink(
