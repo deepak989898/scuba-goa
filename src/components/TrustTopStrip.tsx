@@ -40,7 +40,7 @@ function IconChat({ className }: { className?: string }) {
 
 const items = [
   { Icon: IconLock, label: "Pay safely — Razorpay", short: "Razorpay" },
-  { Icon: IconBolt, label: "Book now — instant confirmation", short: "Instant" },
+  { Icon: IconBolt, label: "Reserve online — instant confirmation", short: "Instant" },
   { Icon: IconStar, label: "10,000+ real dives & smiles", short: "10k+ guests" },
   { Icon: IconChat, label: "Live slots & pickup on WhatsApp", short: "WhatsApp" },
 ] as const;
@@ -50,6 +50,7 @@ type Props = { isHome: boolean };
 export function TrustTopStrip({ isHome }: Props) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
+  const isBooking = pathname === "/booking";
   if (isAdmin) return null;
 
   const bar =
@@ -83,12 +84,14 @@ export function TrustTopStrip({ isHome }: Props) {
             </li>
           ))}
         </ul>
-        <Link
-          href="/booking"
-          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-3 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-cyan-400 active:opacity-90"
-        >
-          Reserve Your Dive
-        </Link>
+        {!isBooking ? (
+          <Link
+            href="/booking"
+            className="inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-3 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-cyan-400 active:opacity-90"
+          >
+            Reserve Your Dive
+          </Link>
+        ) : null}
       </div>
     </div>
   );

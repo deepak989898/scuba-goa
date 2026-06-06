@@ -546,14 +546,13 @@ export function BookingForm() {
               />
             </label>
             <p className="text-xs text-ocean-700">
-              Each choice adds one unit to your cart. Use +/− below for more people
-              or repeat bookings of the same item.
+              Pick an item above — it&apos;s added once. Use +/− for extra people or
+              the same activity again.
             </p>
 
             <div className="rounded-xl border border-ocean-200 bg-ocean-50/40 p-3">
-              <p className="text-sm font-semibold text-ocean-900">
-                Your cart (this page &amp; site-wide)
-              </p>
+              <p className="text-sm font-semibold text-ocean-900">Your cart</p>
+              <p className="text-[11px] text-ocean-600">Saved on this page and across the site.</p>
               {!cartReady ? (
                 <p className="mt-2 text-xs text-ocean-700">Loading cart…</p>
               ) : lines.length === 0 ? (
@@ -571,7 +570,7 @@ export function BookingForm() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-ocean-900">{line.name}</p>
                         <p className="text-xs text-ocean-700">
-                          ₹{line.unitPrice.toLocaleString("en-IN")} each · line{" "}
+                          ₹{line.unitPrice.toLocaleString("en-IN")} each · subtotal{" "}
                           ₹{(line.unitPrice * line.quantity).toLocaleString("en-IN")}
                         </p>
                       </div>

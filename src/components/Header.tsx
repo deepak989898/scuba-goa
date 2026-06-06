@@ -22,6 +22,7 @@ const nav = [
 export function Header() {
   const pathname = usePathname();
   const isHome = pathname === "/";
+  const isBooking = pathname === "/booking";
   const [open, setOpen] = useState(false);
 
   return (
@@ -84,7 +85,11 @@ export function Header() {
           </a>
           <Link
             href="/booking"
-            className="inline-flex min-h-12 min-w-[8.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
+            className={
+              isBooking
+                ? "hidden"
+                : "inline-flex min-h-12 min-w-[8.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
+            }
           >
             Reserve Your Dive
           </Link>
@@ -113,7 +118,7 @@ export function Header() {
               className="rounded-xl bg-ocean-gradient px-3 py-3 text-center text-sm font-bold text-white shadow-md"
               onClick={() => setOpen(false)}
             >
-              Book today — secure checkout
+              Reserve Your Dive Today
             </Link>
             {nav.map((item) => (
               <Link
