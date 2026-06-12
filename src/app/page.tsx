@@ -43,12 +43,16 @@ export async function generateMetadata(): Promise<Metadata> {
       url: canonical,
       imageUrl: heroImage,
       imageAlt: featured?.title ?? "Scuba diving in Goa",
+      priceInr: featured?.priceFrom,
+      priceMode: "from",
     }),
     twitter: buildShareTwitter({
       title: `${SITE_NAME} | Scuba Diving in Goa`,
       description:
         "Scuba diving price Goa, best scuba in Goa packages, secure booking & WhatsApp support.",
       imageUrl: heroImage,
+      priceInr: featured?.priceFrom,
+      priceMode: "from",
     }),
   };
 }

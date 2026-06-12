@@ -7,7 +7,7 @@ import { fallbackPackages } from "@/data/fallback-packages";
 import {
   getPackageByIdServer,
 } from "@/lib/get-packages-server";
-import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import { SITE_URL } from "@/lib/constants";
 import {
   buildShareOpenGraph,
   buildShareTwitter,
@@ -30,11 +30,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const baseUrl = SITE_URL.replace(/\/$/, "");
   const canonical = `${baseUrl}/packages/${id}`;
-  const title = `${pkg.name} — ₹${pkg.price.toLocaleString("en-IN")} | ${SITE_NAME}`;
-  const description = `${pkg.name} in Goa · ${pkg.duration} · from ₹${pkg.price.toLocaleString("en-IN")}. Book online with ₹${ADVANCE_BOOKING_INR} advance on Razorpay.`;
+  const description = `${pkg.name} in Goa · ${pkg.duration}. Book online with ₹${ADVANCE_BOOKING_INR.toLocaleString("en-IN")} advance on Razorpay.`;
 
   return {
-    title: pkg.name,
+    title: `${pkg.name} — ₹${pkg.price.toLocaleString("en-IN")}`,
     description,
     alternates: { canonical },
     openGraph: buildShareOpenGraph({
@@ -43,11 +42,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: canonical,
       imageUrl: pkg.imageUrl,
       imageAlt: pkg.name,
+      priceInr: pkg.price,
+      priceMode: "exact",
     }),
     twitter: buildShareTwitter({
       title: pkg.name,
       description,
       imageUrl: pkg.imageUrl,
+      priceInr: pkg.price,
+      priceMode: "exact",
     }),
   };
 }
@@ -110,7 +113,12 @@ export default async function PackageSharePage({ params }: Props) {
             Share this package
           </p>
           <div className="mt-2">
-            <SocialShareButtons title={pkg.name} path={`/packages/${pkg.id}`} />
+            <SocialShareButtons
+              title={pkg.name}
+              path={`/packages/${pkg.id}`}
+              priceInr={pkg.price}
+              priceMode="exact"
+            />
           </div>
         </div>
       </div>

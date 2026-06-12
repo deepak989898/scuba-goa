@@ -34,11 +34,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     (fromDetail && fromDetail.length > 0 ? fromDetail : s.short) +
     ` — book ${s.title.toLowerCase()} in Goa with WhatsApp or Razorpay.`;
   const shareImage = serviceDetailImages(s).find(Boolean) ?? s.image;
+  const priceInr = s.priceFrom;
   const ogBase = {
     description: desc.slice(0, 200),
     url: canonical,
     imageUrl: shareImage,
     imageAlt: s.title,
+    priceInr,
+    priceMode: "from" as const,
   };
 
   if (slug === "scuba-diving") {
@@ -50,14 +53,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       keywords: [...PRIMARY_SEO_KEYWORDS, s.title, "try dive Goa", "Grande Island"],
       alternates: { canonical },
       openGraph: buildShareOpenGraph({
-        title: `Scuba diving in Goa | ${SITE_NAME}`,
+        title: `Scuba diving in Goa`,
         ...ogBase,
         description: scubaDesc.slice(0, 200),
       }),
       twitter: buildShareTwitter({
-        title: `Scuba diving in Goa | ${SITE_NAME}`,
+        title: `Scuba diving in Goa`,
         description: scubaDesc.slice(0, 200),
         imageUrl: shareImage,
+        priceInr,
+        priceMode: "from",
       }),
     };
   }
@@ -68,13 +73,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     keywords: [s.title, "Goa", "booking"],
     alternates: { canonical },
     openGraph: buildShareOpenGraph({
-      title: `${s.title} | ${SITE_NAME}`,
+      title: s.title,
       ...ogBase,
     }),
     twitter: buildShareTwitter({
-      title: `${s.title} | ${SITE_NAME}`,
+      title: s.title,
       description: desc.slice(0, 200),
       imageUrl: shareImage,
+      priceInr,
+      priceMode: "from",
     }),
   };
 }
@@ -102,7 +109,12 @@ export default async function ServiceDetailPage({ params }: Props) {
             Share this service
           </p>
           <div className="mt-2">
-            <SocialShareButtons title={s.title} path={`/services/${s.slug}`} />
+            <SocialShareButtons
+              title={s.title}
+              path={`/services/${s.slug}`}
+              priceInr={s.priceFrom}
+              priceMode="from"
+            />
           </div>
         </div>
         <div className="mt-10">

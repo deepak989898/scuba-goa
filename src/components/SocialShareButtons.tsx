@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import { buildShareCaption } from "@/lib/og-metadata";
 
 type Props = {
   title: string;
   path: string;
+  /** Price in INR shown in WhatsApp / Instagram copy and share caption. */
+  priceInr?: number;
+  /** `from` = “Starting at ₹…” (services). `exact` = “₹…” (packages). */
+  priceMode?: "from" | "exact";
   className?: string;
   compact?: boolean;
 };
@@ -13,6 +18,8 @@ type Props = {
 export function SocialShareButtons({
   title,
   path,
+  priceInr,
+  priceMode = "from",
   className,
   compact = false,
 }: Props) {
@@ -23,20 +30,26 @@ export function SocialShareButtons({
     typeof window !== "undefined"
       ? `${window.location.origin}${p}`
       : `${SITE_URL.replace(/\/$/, "")}${p}`;
-  const text = `${title} | ${SITE_NAME}`;
+  const text = buildShareCaption({
+    title,
+    priceInr,
+    mode: priceMode,
+    siteName: SITE_NAME,
+  });
   const wa = `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
-  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`;
 
   async function shareToInstagram() {
+    const clip = `${text}\n${url}`;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(clip);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
     } catch {
       setCopied(false);
     }
     setIgHint(true);
-    window.setTimeout(() => setIgHint(false), 3000);
+    window.setTimeout(() => setIgHint(false), 4000);
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
     const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
     if (isMobile) {
@@ -54,14 +67,18 @@ export function SocialShareButtons({
   const size = "h-11 w-11 text-sm";
 
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${className ?? ""}`} role="group" aria-label={`Share ${title}`}>
+    <div
+      className={`flex flex-wrap items-center gap-1.5 ${className ?? ""}`}
+      role="group"
+      aria-label={`Share ${title}`}
+    >
       <a
         href={wa}
         target="_blank"
         rel="noopener noreferrer"
         className={`${base} ${size} bg-[#25D366] hover:brightness-95`}
         aria-label={`Share ${title} on WhatsApp`}
-        title="Share on WhatsApp"
+        title="Share on WhatsApp (includes price)"
       >
         <WhatsAppIcon />
       </a>
@@ -71,7 +88,7 @@ export function SocialShareButtons({
         rel="noopener noreferrer"
         className={`${base} ${size} bg-[#1877F2] hover:brightness-95`}
         aria-label={`Share ${title} on Facebook`}
-        title="Share on Facebook"
+        title="Share on Facebook (price in link preview)"
       >
         <FacebookIcon />
       </a>
@@ -79,14 +96,16 @@ export function SocialShareButtons({
         type="button"
         onClick={shareToInstagram}
         className={`${base} ${size} bg-gradient-to-r from-[#F58529] via-[#DD2A7B] to-[#8134AF] hover:brightness-95`}
-        aria-label={`Copy ${title} link and open Instagram`}
-        title="Copies link and opens Instagram."
+        aria-label={`Copy ${title} link with price and open Instagram`}
+        title="Copies price + link, then opens Instagram."
       >
         <InstagramIcon />
       </button>
       {igHint ? (
         <span className="text-[10px] text-ocean-700">
-          Link copied. Paste it in your Instagram story/bio/DM.
+          {copied
+            ? "Price + link copied. Paste in your Instagram story, bio, or DM."
+            : "Paste the copied price + link in Instagram."}
         </span>
       ) : null}
     </div>
@@ -116,4 +135,3 @@ function InstagramIcon() {
     </svg>
   );
 }
-

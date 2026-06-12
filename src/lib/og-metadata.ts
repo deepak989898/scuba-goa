@@ -20,6 +20,48 @@ export function pickShareImageUrl(
   return toAbsoluteMediaUrl(primary) || fallback;
 }
 
+export function formatSharePriceInr(
+  price: number,
+  mode: "from" | "exact" = "exact",
+): string {
+  const formatted = Math.round(price).toLocaleString("en-IN");
+  return mode === "from" ? `Starting at ₹${formatted}` : `₹${formatted}`;
+}
+
+/** WhatsApp / Instagram clipboard caption (includes price when provided). */
+export function buildShareCaption(opts: {
+  title: string;
+  priceInr?: number;
+  mode?: "from" | "exact";
+  siteName?: string;
+}): string {
+  const site = opts.siteName ?? "Book Scuba Goa";
+  const pricePart =
+    opts.priceInr != null && Number.isFinite(opts.priceInr) && opts.priceInr > 0
+      ? ` · ${formatSharePriceInr(opts.priceInr, opts.mode ?? "exact")}`
+      : "";
+  return `${opts.title}${pricePart} | ${site}`;
+}
+
+export function buildShareTitleWithPrice(
+  title: string,
+  priceInr?: number,
+  mode: "from" | "exact" = "from",
+): string {
+  if (priceInr == null || !Number.isFinite(priceInr) || priceInr <= 0) return title;
+  return `${title} — ${formatSharePriceInr(priceInr, mode)}`;
+}
+
+export function buildShareDescriptionWithPrice(
+  description: string,
+  priceInr?: number,
+  mode: "from" | "exact" = "from",
+): string {
+  if (description.includes("₹")) return description;
+  if (priceInr == null || !Number.isFinite(priceInr) || priceInr <= 0) return description;
+  return `${description} · ${formatSharePriceInr(priceInr, mode)}`;
+}
+
 export function buildShareOpenGraph(opts: {
   title: string;
   description: string;
@@ -27,11 +69,20 @@ export function buildShareOpenGraph(opts: {
   imageUrl?: string | null;
   imageAlt?: string;
   type?: "website" | "article";
+  priceInr?: number;
+  priceMode?: "from" | "exact";
 }): NonNullable<Metadata["openGraph"]> {
   const image = pickShareImageUrl(opts.imageUrl);
+  const mode = opts.priceMode ?? "from";
+  const title = buildShareTitleWithPrice(opts.title, opts.priceInr, mode);
+  const description = buildShareDescriptionWithPrice(
+    opts.description,
+    opts.priceInr,
+    mode,
+  );
   return {
-    title: opts.title,
-    description: opts.description,
+    title,
+    description,
     url: opts.url,
     siteName: "Book Scuba Goa",
     locale: "en_IN",
@@ -51,12 +102,19 @@ export function buildShareTwitter(opts: {
   title: string;
   description: string;
   imageUrl?: string | null;
+  priceInr?: number;
+  priceMode?: "from" | "exact";
 }): NonNullable<Metadata["twitter"]> {
   const image = pickShareImageUrl(opts.imageUrl);
+  const mode = opts.priceMode ?? "from";
   return {
     card: "summary_large_image",
-    title: opts.title,
-    description: opts.description,
+    title: buildShareTitleWithPrice(opts.title, opts.priceInr, mode),
+    description: buildShareDescriptionWithPrice(
+      opts.description,
+      opts.priceInr,
+      mode,
+    ),
     images: [image],
   };
 }

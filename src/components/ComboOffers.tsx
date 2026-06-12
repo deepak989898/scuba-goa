@@ -72,6 +72,8 @@ export function ComboOffers() {
                 <SocialShareButtons
                   title={c.name}
                   path={`/packages/${c.id}`}
+                  priceInr={c.price}
+                  priceMode="exact"
                   compact
                   className="[&_a]:ring-1 [&_a]:ring-white/30"
                 />
