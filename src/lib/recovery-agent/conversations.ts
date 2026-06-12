@@ -1,4 +1,5 @@
 import { getAdminDb } from "@/lib/firebase-admin";
+import { stripUndefinedDeep } from "@/lib/firestore-json";
 import type { RecoveryConversationDoc } from "@/lib/recovery-agent/types";
 
 export async function loadConversation(
@@ -33,7 +34,7 @@ export async function appendConversationMessage(opts: {
   );
 
   await ref.set(
-    {
+    stripUndefinedDeep({
       conversationId: id,
       sessionId: opts.sessionId,
       leadId: opts.leadId ?? prev?.leadId,
@@ -41,7 +42,7 @@ export async function appendConversationMessage(opts: {
       messages,
       createdAt: prev?.createdAt ?? now,
       updatedAt: now,
-    },
+    }),
     { merge: true },
   );
 
