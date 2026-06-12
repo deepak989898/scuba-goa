@@ -39,14 +39,6 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     locale: "en_IN",
     type: "website",
-    images: [
-      {
-        url: "/book-scuba-goa-logo.png",
-        width: 1024,
-        height: 683,
-        alt: "Book Scuba Goa",
-      },
-    ],
   },
   icons: {
     icon: [

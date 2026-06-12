@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePackages } from "@/hooks/usePackages";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { SocialShareButtons } from "@/components/SocialShareButtons";
 
 export function ComboOffers() {
   const { packages } = usePackages();
@@ -45,7 +46,7 @@ export function ComboOffers() {
                   ? `Only ${c.slotsLeft} slots left — fills fast on weekends`
                   : "Only 5 slots left this week for combo timings"}
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 <AddToCartButton
                   variant="package"
                   id={c.id}
@@ -57,11 +58,23 @@ export function ComboOffers() {
                   className="!border-white/80 !bg-white/10 !text-white hover:!bg-white/20"
                 />
                 <Link
-                  href={`/booking?package=${encodeURIComponent(c.id)}`}
+                  href={`/packages/${encodeURIComponent(c.id)}`}
                   className="inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-ocean-900"
                 >
-                  Grab combo
+                  View package
                 </Link>
+                <Link
+                  href={`/booking?package=${encodeURIComponent(c.id)}`}
+                  className="inline-flex rounded-full border border-white/70 px-5 py-2.5 text-sm font-semibold text-white"
+                >
+                  Book now
+                </Link>
+                <SocialShareButtons
+                  title={c.name}
+                  path={`/packages/${c.id}`}
+                  compact
+                  className="[&_a]:ring-1 [&_a]:ring-white/30"
+                />
               </div>
             </div>
           ))}

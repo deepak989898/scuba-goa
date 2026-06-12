@@ -10,6 +10,10 @@ import { serviceDetailImages } from "@/lib/service-images";
 import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
+import {
+  buildShareOpenGraph,
+  buildShareTwitter,
+} from "@/lib/og-metadata";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -29,6 +33,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const desc =
     (fromDetail && fromDetail.length > 0 ? fromDetail : s.short) +
     ` — book ${s.title.toLowerCase()} in Goa with WhatsApp or Razorpay.`;
+  const shareImage = serviceDetailImages(s).find(Boolean) ?? s.image;
+  const ogBase = {
+    description: desc.slice(0, 200),
+    url: canonical,
+    imageUrl: shareImage,
+    imageAlt: s.title,
+  };
 
   if (slug === "scuba-diving") {
     const scubaDesc =
@@ -38,12 +49,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: scubaDesc.slice(0, 320),
       keywords: [...PRIMARY_SEO_KEYWORDS, s.title, "try dive Goa", "Grande Island"],
       alternates: { canonical },
-      openGraph: {
+      openGraph: buildShareOpenGraph({
+        title: `Scuba diving in Goa | ${SITE_NAME}`,
+        ...ogBase,
+        description: scubaDesc.slice(0, 200),
+      }),
+      twitter: buildShareTwitter({
         title: `Scuba diving in Goa | ${SITE_NAME}`,
         description: scubaDesc.slice(0, 200),
-        url: canonical,
-        type: "website",
-      },
+        imageUrl: shareImage,
+      }),
     };
   }
 
@@ -52,6 +67,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: desc.slice(0, 320),
     keywords: [s.title, "Goa", "booking"],
     alternates: { canonical },
+    openGraph: buildShareOpenGraph({
+      title: `${s.title} | ${SITE_NAME}`,
+      ...ogBase,
+    }),
+    twitter: buildShareTwitter({
+      title: `${s.title} | ${SITE_NAME}`,
+      description: desc.slice(0, 200),
+      imageUrl: shareImage,
+    }),
   };
 }
 

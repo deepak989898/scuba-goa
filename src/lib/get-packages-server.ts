@@ -47,3 +47,8 @@ export async function getAllPackagesServer(): Promise<PackageDoc[]> {
     return fallbackPackages;
   }
 }
+
+export async function getPackageByIdServer(id: string): Promise<PackageDoc | null> {
+  const all = await getAllPackagesServer();
+  return all.find((p) => p.id === id) ?? null;
+}

@@ -9,29 +9,49 @@ import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
 import { TrustSection } from "@/components/TrustSection";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
+import { getAllServicesServer } from "@/lib/get-services-server";
+import { serviceDetailImages } from "@/lib/service-images";
+import {
+  buildShareOpenGraph,
+  buildShareTwitter,
+  DEFAULT_OG_SHARE_IMAGE,
+} from "@/lib/og-metadata";
 
-export const metadata: Metadata = {
-  title: `${SITE_NAME} | Scuba Diving in Goa — Price, Packages & Booking`,
-  description:
-    "Scuba diving in Goa: live scuba diving price Goa, guides to pick the best scuba in Goa, plus Dudhsagar, tours & water sports. Book online with Razorpay; WhatsApp slot confirmation.",
-  keywords: [...PRIMARY_SEO_KEYWORDS],
-  alternates: {
-    canonical: SITE_URL.replace(/\/$/, "") + "/",
-  },
-  openGraph: {
-    title: `${SITE_NAME} | Scuba Diving in Goa`,
-    description:
-      "Book scuba diving in Goa with transparent pricing. Compare packages, read 2026 price & safety guides, checkout securely.",
-    url: SITE_URL.replace(/\/$/, "") + "/",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${SITE_NAME} | Scuba Diving in Goa`,
-    description:
-      "Scuba diving price Goa, best scuba in Goa packages, secure booking & WhatsApp support.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const services = await getAllServicesServer();
+  const featured =
+    services.find((s) => s.slug === "scuba-diving") ??
+    services.find((s) => s.mostBooked) ??
+    services[0];
+  const heroImage = featured
+    ? serviceDetailImages(featured).find(Boolean) ?? featured.image
+    : DEFAULT_OG_SHARE_IMAGE;
+  const canonical = `${SITE_URL.replace(/\/$/, "")}/`;
+  const title = `${SITE_NAME} | Scuba Diving in Goa — Price, Packages & Booking`;
+  const description =
+    "Scuba diving in Goa: live scuba diving price Goa, guides to pick the best scuba in Goa, plus Dudhsagar, tours & water sports. Book online with Razorpay; WhatsApp slot confirmation.";
+
+  return {
+    title,
+    description,
+    keywords: [...PRIMARY_SEO_KEYWORDS],
+    alternates: { canonical },
+    openGraph: buildShareOpenGraph({
+      title: `${SITE_NAME} | Scuba Diving in Goa`,
+      description:
+        "Book scuba diving in Goa with transparent pricing. Compare packages, read 2026 price & safety guides, checkout securely.",
+      url: canonical,
+      imageUrl: heroImage,
+      imageAlt: featured?.title ?? "Scuba diving in Goa",
+    }),
+    twitter: buildShareTwitter({
+      title: `${SITE_NAME} | Scuba Diving in Goa`,
+      description:
+        "Scuba diving price Goa, best scuba in Goa packages, secure booking & WhatsApp support.",
+      imageUrl: heroImage,
+    }),
+  };
+}
 
 export default function HomePage() {
   const site = SITE_URL.replace(/\/$/, "");

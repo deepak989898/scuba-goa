@@ -4,6 +4,7 @@ import { fallbackServices } from "@/data/services";
 import { SITE_URL } from "@/lib/constants";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
+import { getAllPackagesServer } from "@/lib/get-packages-server";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
@@ -48,6 +49,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date("2026-04-03"),
       changeFrequency: "weekly",
       priority: 0.85,
+    });
+  }
+  const packages = await getAllPackagesServer();
+  for (const p of packages) {
+    entries.push({
+      url: `${base}/packages/${p.id}`,
+      lastModified: new Date("2026-06-12"),
+      changeFrequency: "weekly",
+      priority: 0.84,
     });
   }
   const staticBlogSlugs = new Set(blogPosts.map((p) => p.slug));
