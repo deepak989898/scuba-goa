@@ -362,17 +362,25 @@ export default function AdminMarketingEnginePage() {
           <Section title="SEO content clusters" data={seoClusters.slice(0, 3)} />
           <Section title="Image prompts" data={imagePrompts.slice(0, 5)} />
           <Section title="Reels & Shorts ideas" data={reelsIdeas.slice(0, 5)} />
-          <Section title="Competitor reports" data={competitorReports.slice(0, 2)} />
+          <Section id="competitor-reports" title="Competitor reports" data={competitorReports.slice(0, 2)} />
         </>
       )}
     </div>
   );
 }
 
-function Section({ title, data }: { title: string; data: unknown[] }) {
+function Section({
+  title,
+  data,
+  id,
+}: {
+  title: string;
+  data: unknown[];
+  id?: string;
+}) {
   if (!data.length) return null;
   return (
-    <section className="mt-10">
+    <section id={id} className="mt-10 scroll-mt-24">
       <h2 className="font-display text-lg font-bold text-ocean-900">{title}</h2>
       <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
         {JSON.stringify(data, null, 2)}

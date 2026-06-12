@@ -48,7 +48,7 @@ export const AGENT_REGISTRY: CommandCenterAgentMeta[] = [
     id: "competitor",
     name: "Competitor Agent",
     description: "Competitor SEO, pricing patterns, marketing trends",
-    adminPath: "/admin/marketing-engine",
+    adminPath: "/admin/marketing-engine#competitor-reports",
     pipelineFn: "runCompetitorAgent",
   },
   {

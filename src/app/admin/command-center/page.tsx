@@ -222,8 +222,13 @@ export default function AdminCommandCenterPage() {
                       href={a.adminPath}
                       className="mt-3 inline-block text-sm font-semibold text-ocean-700 underline"
                     >
-                      Open agent →
+                      {a.id === "competitor" ? "Open competitor reports →" : "Open agent →"}
                     </Link>
+                    {a.id === "competitor" ? (
+                      <p className="mt-1 text-[11px] text-ocean-500">
+                        Same page as Marketing AI — scrolls to competitor section
+                      </p>
+                    ) : null}
                   </div>
                 );
               })}
