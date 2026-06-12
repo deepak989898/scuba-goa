@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { whatsappLink } from "@/lib/constants";
+import { ChatMessageBody } from "@/components/ChatMessageBody";
 
 const STORAGE_KEY = "bookscuba_ai_lang";
 
@@ -236,16 +237,20 @@ export function AiChatbot() {
               <>
                 <div className="max-h-72 space-y-2 overflow-y-auto p-4 text-sm">
                   {messages.map((m, i) => (
-                    <p
+                    <div
                       key={i}
                       className={
                         m.role === "user"
-                          ? "ml-4 rounded-lg bg-ocean-700 px-3 py-2 text-white"
-                          : "mr-4 rounded-lg bg-ocean-50 px-3 py-2 text-ocean-900"
+                          ? "ml-4 rounded-lg bg-ocean-700 px-3 py-2 text-sm text-white"
+                          : "mr-4 rounded-lg bg-ocean-50 px-3 py-2 text-sm text-ocean-900"
                       }
                     >
-                      {m.text}
-                    </p>
+                      {m.role === "assistant" ? (
+                        <ChatMessageBody text={m.text} />
+                      ) : (
+                        m.text
+                      )}
+                    </div>
                   ))}
                   {loading ? (
                     <p className="text-xs text-ocean-500">Thinking…</p>

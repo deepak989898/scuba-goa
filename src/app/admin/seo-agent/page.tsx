@@ -278,10 +278,53 @@ export default function AdminSeoAgentPage() {
         </>
       ) : null}
 
-      <p className="mt-10 text-xs text-ocean-500">
-        Setup: <code>GOOGLE_SEARCH_CONSOLE_SITE_URL</code> + OpenAI. Optional competitor scan:{" "}
-        <code>SERPER_API_KEY</code>.
-      </p>
+      <section className="mt-10 rounded-xl border border-ocean-100 bg-white p-5 shadow-sm">
+        <h2 className="font-display text-sm font-bold text-ocean-900">Integration status</h2>
+        <ul className="mt-3 space-y-2 text-sm text-ocean-800">
+          <li>
+            <strong>Google Search Console:</strong>{" "}
+            {snapshot?.topPages?.length ? (
+              <span className="text-green-800">
+                Connected — {snapshot.topPages.length} pages in last weekly run
+              </span>
+            ) : (
+              <span className="text-amber-800">
+                No GSC data in latest run. Set{" "}
+                <code className="text-xs">GOOGLE_SEARCH_CONSOLE_SITE_URL</code> to exactly{" "}
+                <code className="text-xs">https://bookscubagoa.com/</code> (with trailing slash),
+                add Firebase service account as Owner in Search Console, then click Run weekly SEO
+                report.
+              </span>
+            )}
+          </li>
+          <li>
+            <strong>OpenAI:</strong>{" "}
+            {report?.summaryMarkdown ? (
+              <span className="text-green-800">Connected — AI report generated</span>
+            ) : (
+              <span className="text-amber-800">
+                Set <code className="text-xs">OPENAI_API_KEY</code> on Vercel and redeploy, then
+                run again.
+              </span>
+            )}
+          </li>
+          <li>
+            <strong>Competitor scan (optional):</strong>{" "}
+            {snapshot?.competitorGaps?.configured ? (
+              <span className="text-green-800">Serper API active</span>
+            ) : (
+              <span className="text-ocean-600">
+                Add <code className="text-xs">SERPER_API_KEY</code> for competitor keyword gaps
+                (optional).
+              </span>
+            )}
+          </li>
+        </ul>
+        <p className="mt-3 text-xs text-ocean-500">
+          The old “Setup: GOOGLE_SEARCH_CONSOLE_SITE_URL…” line was static help text — not an error.
+          Status above reflects your latest weekly SEO run.
+        </p>
+      </section>
     </div>
   );
 }
