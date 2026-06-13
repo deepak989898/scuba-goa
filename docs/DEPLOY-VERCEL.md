@@ -82,16 +82,32 @@ Set **exactly** this:
 
 **Test mode:** turn on **Test mode** in Razorpay, then use **test** Key ID + **test** secret together. Pay with [Razorpay test cards](https://razorpay.com/docs/payments/payments/test-card-details/), not real cards.
 
-### Email confirmations (Resend — optional but recommended)
+### Email confirmations (GoDaddy Titan SMTP or Resend)
 
 After a successful Razorpay verify, the server sends a confirmation email if configured.
 
+**Recommended — GoDaddy Titan SMTP** (uses your `support@bookscubagoa.com` mailbox):
+
 | Name | Purpose |
 |------|---------|
-| `RESEND_API_KEY` | API key from [Resend](https://resend.com/api-keys). Without this, payment still works but no email is sent (`emailSent: false` in API response). |
-| `RESEND_FROM_EMAIL` | Optional. Default is Resend’s test sender. For production, verify your domain in Resend and set a matching “From” address. |
-| `BOOKING_ADMIN_NOTIFY_EMAIL` | Optional. **To** address for a separate “new paid booking” email to staff (defaults to `NEXT_PUBLIC_CONTACT_EMAIL` / `support@bookscubagoa.com`). Needed because BCC to the same address as `RESEND_FROM_EMAIL` is often not delivered. |
-| `ADMIN_NOTIFY_EMAIL` | Optional. Extra BCC on the **customer** confirmation only (in addition to the fixed business BCC in code). |
+| `MAIL_SMTP_HOST` | `smtp.secureserver.net` |
+| `MAIL_SMTP_PORT` | `465` (SSL) |
+| `MAIL_SMTP_USER` | Full mailbox address, e.g. `support@bookscubagoa.com` |
+| `MAIL_SMTP_PASS` | **Titan webmail login password** (same as secureserver.titan.email — not an app password) |
+| `MAIL_FROM` | From address, e.g. `support@bookscubagoa.com` |
+| `BOOKING_ADMIN_NOTIFY_EMAIL` | **To** address for staff “new booking” emails (defaults to contact email) |
+| `ADMIN_NOTIFY_EMAIL` | Optional extra BCC on customer confirmations |
+
+**GoDaddy DNS** (fixes Titan “set SPF records” warning): Email & Office → Set Mail Destination → TXT `@` = `v=spf1 include:secureserver.net -all`, plus MX records per GoDaddy help.
+
+**Alternative — Resend API** (only if `MAIL_SMTP_HOST` is not set):
+
+| Name | Purpose |
+|------|---------|
+| `RESEND_API_KEY` | API key from [Resend](https://resend.com/api-keys) |
+| `RESEND_FROM_EMAIL` | Verified sender, e.g. `support@bookscubagoa.com` |
+
+**Firebase:** No SMTP env vars. Firebase Auth is admin login only; outbound mail is sent from Vercel via Titan or Resend.
 
 ### OpenAI (AI Help button — optional)
 
@@ -135,7 +151,7 @@ Then set `NEXT_PUBLIC_SITE_URL` to your canonical domain (for example `https://b
 
 - [ ] All `NEXT_PUBLIC_FIREBASE_*` set  
 - [ ] `FIREBASE_SERVICE_ACCOUNT_KEY` set (bookings + analytics page views in Firestore)  
-- [ ] `RESEND_API_KEY` set (optional — booking confirmation emails)  
+- [ ] `MAIL_SMTP_*` set on Vercel (Titan SMTP) **or** `RESEND_API_KEY` (Resend)  
 - [ ] `NEXT_PUBLIC_RAZORPAY_KEY_ID` = Key ID  
 - [ ] `RAZORPAY_KEY_ID` = **same** Key ID as above  
 - [ ] `RAZORPAY_KEY_SECRET` = Key Secret  

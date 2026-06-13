@@ -1,4 +1,5 @@
 import type { BusinessAgentReportDoc } from "@/lib/business-agent/types";
+import { isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
 
 async function sendTelegram(text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -42,29 +43,19 @@ async function sendEmailReport(opts: {
   text: string;
   html?: string;
 }): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.RESEND_FROM_EMAIL?.trim();
   const to =
     process.env.AI_ANALYTICS_REPORT_EMAIL?.trim() ||
     process.env.BOOKING_ADMIN_NOTIFY_EMAIL?.trim() ||
     process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
-  if (!apiKey || !from || !to) return false;
+  if (!isMailConfigured() || !to) return false;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: opts.subject,
-      html: opts.html ?? `<pre>${opts.text}</pre>`,
-      text: opts.text,
-    }),
+  return sendMail({
+    from: resolveMailFromAddress(),
+    to,
+    subject: opts.subject,
+    html: opts.html ?? `<pre>${opts.text}</pre>`,
+    text: opts.text,
   });
-  return res.ok;
 }
 
 export async function sendBusinessAgentNotifications(report: BusinessAgentReportDoc) {

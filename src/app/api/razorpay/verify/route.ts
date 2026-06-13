@@ -348,11 +348,11 @@ export async function POST(req: Request) {
 
   const emailWarning = emailSent
     ? undefined
-    : "Payment is successful, but confirmation email was not sent. Check RESEND_API_KEY and RESEND_FROM_EMAIL (use a verified sender like support@bookscubagoa.com).";
+    : "Payment is successful, but confirmation email was not sent. Check GoDaddy Titan SMTP (MAIL_SMTP_*) or Resend (RESEND_API_KEY) on Vercel.";
 
   const adminEmailWarning =
-    process.env.RESEND_API_KEY && !adminEmailSent
-      ? "Business inbox notification failed (check BOOKING_ADMIN_NOTIFY_EMAIL, Resend, and that support@bookscubagoa.com can receive mail)."
+    !adminEmailSent && emailSent
+      ? "Business inbox notification failed (check BOOKING_ADMIN_NOTIFY_EMAIL and that support@bookscubagoa.com can receive mail)."
       : undefined;
 
   return NextResponse.json({

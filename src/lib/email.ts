@@ -1,13 +1,12 @@
 import { CONTACT_EMAIL, SITE_NAME, SITE_URL } from "@/lib/constants";
-
-const RESEND_API = "https://api.resend.com/emails";
+import { isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
 
 /** Always BCC this address on booking confirmations (per business request). */
 const DEFAULT_BOOKING_BCC = "vedrajsingh94@gmail.com";
 
 /**
  * Inbox that receives a dedicated “new booking” email (not only BCC).
- * Resend often does not deliver BCC when it matches RESEND_FROM_EMAIL, so this is sent as a separate To.
+ * BCC to the same address as the From sender is often not delivered.
  */
 function resolveAdminNotifyTo(): string | null {
   const raw =
@@ -35,11 +34,13 @@ export async function sendBookingConfirmationEmail(opts: {
   /** PDF bytes attached as bill/receipt */
   pdfBytes?: Uint8Array;
 }): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
+  if (!isMailConfigured()) return false;
 
-  const from = formatFromAddress(
-    process.env.RESEND_FROM_EMAIL ?? CONTACT_EMAIL
+  const from = resolveMailFromAddress(
+    process.env.MAIL_FROM ??
+      process.env.MAIL_SMTP_USER ??
+      process.env.RESEND_FROM_EMAIL ??
+      CONTACT_EMAIL
   );
 
   const partialNote =
@@ -60,44 +61,24 @@ export async function sendBookingConfirmationEmail(opts: {
     <p style="margin-top:2rem;font-size:12px;color:#666;">${escapeHtml(SITE_URL)}</p>
   `;
 
-  const body: Record<string, unknown> = {
+  const attachments =
+    opts.pdfBytes && opts.pdfBytes.length > 0
+      ? [
+          {
+            filename: `bill-${escapeFilename(opts.paymentId)}.pdf`,
+            content: opts.pdfBytes,
+          },
+        ]
+      : undefined;
+
+  return sendMail({
     from,
-    to: [opts.to],
+    to: opts.to,
     bcc: buildBccList(),
     subject: `Booking confirmed — ${SITE_NAME}`,
     html,
-  };
-
-  if (opts.pdfBytes && opts.pdfBytes.length > 0) {
-    const b64 = Buffer.from(opts.pdfBytes).toString("base64");
-    body.attachments = [
-      {
-        filename: `bill-${escapeFilename(opts.paymentId)}.pdf`,
-        content: b64,
-      },
-    ];
-  }
-
-  const res = await fetch(RESEND_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    attachments,
   });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    console.error("Resend send failed", {
-      status: res.status,
-      from,
-      to: opts.to,
-      body: errText.slice(0, 800),
-    });
-  }
-
-  return res.ok;
 }
 
 /** Separate email to the business inbox so admins see each paid booking (Titan / support@, etc.). */
@@ -118,12 +99,14 @@ export async function sendBookingAdminNotificationEmail(opts: {
   cartItems?: unknown;
   pdfBytes?: Uint8Array;
 }): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY;
   const to = resolveAdminNotifyTo();
-  if (!key || !to) return false;
+  if (!isMailConfigured() || !to) return false;
 
-  const from = formatFromAddress(
-    process.env.RESEND_FROM_EMAIL ?? CONTACT_EMAIL
+  const from = resolveMailFromAddress(
+    process.env.MAIL_FROM ??
+      process.env.MAIL_SMTP_USER ??
+      process.env.RESEND_FROM_EMAIL ??
+      CONTACT_EMAIL
   );
 
   const partialNote =
@@ -163,43 +146,23 @@ export async function sendBookingAdminNotificationEmail(opts: {
     <p style="font-size:12px;color:#666;">Manage in admin → Bookings. ${escapeHtml(SITE_URL)}</p>
   `;
 
-  const body: Record<string, unknown> = {
+  const attachments =
+    opts.pdfBytes && opts.pdfBytes.length > 0
+      ? [
+          {
+            filename: `bill-${escapeFilename(opts.paymentId)}.pdf`,
+            content: opts.pdfBytes,
+          },
+        ]
+      : undefined;
+
+  return sendMail({
     from,
-    to: [to],
+    to,
     subject: `New booking — ${opts.customerName} — ₹${opts.amountInr.toLocaleString("en-IN")} paid`,
     html,
-  };
-
-  if (opts.pdfBytes && opts.pdfBytes.length > 0) {
-    const b64 = Buffer.from(opts.pdfBytes).toString("base64");
-    body.attachments = [
-      {
-        filename: `bill-${escapeFilename(opts.paymentId)}.pdf`,
-        content: b64,
-      },
-    ];
-  }
-
-  const res = await fetch(RESEND_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    attachments,
   });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    console.error("Resend admin booking notify failed", {
-      status: res.status,
-      from,
-      to,
-      body: errText.slice(0, 800),
-    });
-  }
-
-  return res.ok;
 }
 
 function formatCartItemsHtml(cart: unknown): string {
@@ -223,14 +186,6 @@ function formatCartItemsHtml(cart: unknown): string {
   }
   if (!rows.length) return "";
   return `<p><strong>Cart lines</strong></p><ul>${rows.join("")}</ul>`;
-}
-
-function formatFromAddress(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return `${SITE_NAME} <onboarding@resend.dev>`;
-  if (trimmed.includes("<") && trimmed.includes(">")) return trimmed;
-  if (trimmed.includes("@")) return `${SITE_NAME} <${trimmed}>`;
-  return `${SITE_NAME} <onboarding@resend.dev>`;
 }
 
 function escapeFilename(s: string): string {

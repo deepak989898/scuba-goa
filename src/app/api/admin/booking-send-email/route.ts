@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Email could not be sent. Check RESEND_API_KEY and RESEND_FROM_EMAIL on the server.",
+          "Email could not be sent. Check MAIL_SMTP_* (GoDaddy Titan) or RESEND_API_KEY on the server.",
       },
       { status: 502 }
     );
