@@ -28,6 +28,13 @@ export function isMailConfigured(): boolean {
   return Boolean(getSmtpConfig() || trimEnv("RESEND_API_KEY"));
 }
 
+/** Human-readable reason when outbound mail is not configured (for cron logs). */
+export function describeMailConfig(): string {
+  if (getSmtpConfig()) return "smtp";
+  if (trimEnv("RESEND_API_KEY")) return "resend";
+  return "missing MAIL_SMTP_HOST/USER/PASS or RESEND_API_KEY on Vercel";
+}
+
 function getSmtpConfig():
   | { host: string; port: number; user: string; pass: string }
   | null {

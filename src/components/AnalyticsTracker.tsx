@@ -10,10 +10,10 @@ const TRAFFIC_KEY = "bsg_analytics_traffic";
 /** Dedupe React Strict Mode double-invoke (same path within a few seconds). */
 const lastTrackAt = new Map<string, number>();
 /**
- * Lower-frequency heartbeat. We pause heartbeats while the tab is hidden, so
- * 60s strikes a good balance between session liveliness and Firestore writes.
+ * Session liveness ping. 3 minutes keeps admin “active now” useful while cutting
+ * Vercel function invocations vs the previous 60s interval (~3× fewer heartbeats).
  */
-const HEARTBEAT_MS = 60_000;
+const HEARTBEAT_MS = 180_000;
 /**
  * Hard cap on each `/api/analytics/track` request. Without this an unhealthy
  * serverless cold start could leave the browser stuck on the request and
@@ -265,31 +265,12 @@ export function AnalyticsTracker() {
 
     document.addEventListener("visibilitychange", onHidden);
 
-    const scrollMilestones = new Set<number>();
-    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
     const onScroll = () => {
-      if (scrollTimer) return;
-      scrollTimer = setTimeout(() => {
-        scrollTimer = null;
-        const doc = document.documentElement;
-        const scrollTop = window.scrollY || doc.scrollTop;
-        const height = Math.max(doc.scrollHeight - window.innerHeight, 1);
-        const pct = Math.min(100, Math.round((scrollTop / height) * 100));
-        if (pct > maxScrollRef.current) maxScrollRef.current = pct;
-        for (const m of [25, 50, 75, 100] as const) {
-          if (pct >= m && !scrollMilestones.has(m)) {
-            scrollMilestones.add(m);
-            const v = visitRef.current;
-            track({
-              path: v?.path || key,
-              sessionId,
-              eventType: "scroll",
-              pageLabel: v?.pageLabel || pageLabel,
-              scrollDepthPct: m,
-            });
-          }
-        }
-      }, 400);
+      const doc = document.documentElement;
+      const scrollTop = window.scrollY || doc.scrollTop;
+      const height = Math.max(doc.scrollHeight - window.innerHeight, 1);
+      const pct = Math.min(100, Math.round((scrollTop / height) * 100));
+      if (pct > maxScrollRef.current) maxScrollRef.current = pct;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
 
@@ -339,7 +320,6 @@ export function AnalyticsTracker() {
 
     return () => {
       window.clearInterval(hb);
-      if (scrollTimer) clearTimeout(scrollTimer);
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onHidden);
       document.removeEventListener("click", onDocumentClick);

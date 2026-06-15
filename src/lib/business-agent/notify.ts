@@ -1,5 +1,5 @@
 import type { BusinessAgentReportDoc } from "@/lib/business-agent/types";
-import { isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
+import { describeMailConfig, isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
 
 async function sendTelegram(text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -47,15 +47,26 @@ async function sendEmailReport(opts: {
     process.env.AI_ANALYTICS_REPORT_EMAIL?.trim() ||
     process.env.BOOKING_ADMIN_NOTIFY_EMAIL?.trim() ||
     process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
-  if (!isMailConfigured() || !to) return false;
+  if (!to) {
+    console.error("[business-agent] email skipped: no report recipient env");
+    return false;
+  }
+  if (!isMailConfigured()) {
+    console.error("[business-agent] email skipped:", describeMailConfig());
+    return false;
+  }
 
-  return sendMail({
+  const ok = await sendMail({
     from: resolveMailFromAddress(),
     to,
     subject: opts.subject,
     html: opts.html ?? `<pre>${opts.text}</pre>`,
     text: opts.text,
   });
+  if (!ok) {
+    console.error("[business-agent] email send failed", { to, transport: describeMailConfig() });
+  }
+  return ok;
 }
 
 export async function sendBusinessAgentNotifications(report: BusinessAgentReportDoc) {
@@ -67,6 +78,10 @@ export async function sendBusinessAgentNotifications(report: BusinessAgentReport
     sendWhatsAppCloud(plain),
     sendEmailReport({ subject, text: plain }),
   ]);
+
+  if (telegram && !email) {
+    console.warn("[business-agent] Telegram sent but email did not — check MAIL_SMTP_* on Vercel");
+  }
 
   return { telegram, whatsapp, email };
 }

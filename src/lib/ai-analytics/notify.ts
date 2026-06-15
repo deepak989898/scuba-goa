@@ -4,7 +4,7 @@ import {
 } from "@/lib/ai-analytics/email-report";
 import type { AiAnalyticsDailyDoc } from "@/lib/ai-analytics/types";
 
-import { isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
+import { describeMailConfig, isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
 
 async function sendTelegram(text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -32,15 +32,26 @@ async function sendEmailReport(opts: {
     process.env.AI_ANALYTICS_REPORT_EMAIL?.trim() ||
     process.env.BOOKING_ADMIN_NOTIFY_EMAIL?.trim() ||
     process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
-  if (!isMailConfigured() || !to) return false;
+  if (!to) {
+    console.error("[daily-report] email skipped: no AI_ANALYTICS_REPORT_EMAIL / BOOKING_ADMIN_NOTIFY_EMAIL");
+    return false;
+  }
+  if (!isMailConfigured()) {
+    console.error("[daily-report] email skipped:", describeMailConfig());
+    return false;
+  }
 
-  return sendMail({
+  const ok = await sendMail({
     from: resolveMailFromAddress(),
     to,
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
   });
+  if (!ok) {
+    console.error("[daily-report] email send failed", { to, transport: describeMailConfig() });
+  }
+  return ok;
 }
 
 async function sendWhatsAppCloud(text: string): Promise<boolean> {
@@ -95,6 +106,10 @@ export async function sendDailyReportNotifications(opts: {
     }),
     sendWhatsAppCloud(telegramText),
   ]);
+
+  if (telegram && !email) {
+    console.warn("[daily-report] Telegram sent but email did not — check MAIL_SMTP_* on Vercel");
+  }
 
   return { telegram, email, whatsapp };
 }

@@ -185,6 +185,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid eventType" }, { status: 400 });
   }
 
+  const { category, label, uaSnippet, isBot } = parseRequestDevice(req.headers);
+
+  /** Crawlers should not consume Firestore writes or serverless invocations. */
+  if (isBot) {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
+
+  /**
+   * Heartbeat only refreshes session liveness for admin “active now”. Skip
+   * pageViews writes and side effects — this event type was the largest share
+   * of /api/analytics/track invocations on Hobby plans.
+   */
+  if (eventType === "heartbeat") {
+    try {
+      await sessionRef.set(
+        {
+          sessionId: sessionId || "anon",
+          lastPath: path,
+          isActive: true,
+          lastEventType: "heartbeat",
+          lastSeenAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    } catch (e) {
+      console.error("heartbeat session update failed", e);
+    }
+    return new NextResponse(null, { status: 204 });
+  }
+
   const pageLabel =
     typeof body.pageLabel === "string"
       ? body.pageLabel.slice(0, PAGE_LABEL_MAX)
@@ -204,7 +236,6 @@ export async function POST(req: Request) {
     durationMsRaw === null
       ? null
       : Math.max(0, Math.min(Math.round(durationMsRaw), 1000 * 60 * 60 * 6));
-  const { category, label, uaSnippet, isBot } = parseRequestDevice(req.headers);
   const geo = geoFromRequestHeaders(req.headers);
 
   const screenWidth = clampDim(body.screenWidth);
@@ -233,7 +264,6 @@ export async function POST(req: Request) {
   const utmCampaign = sliceStr(body.utmCampaign, TRAFFIC_STR_MAX);
   const landingPath = sliceStr(body.landingPath, PATH_MAX);
 
-  const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
   const sessionSnap = await sessionRef.get();
   const existing = sessionSnap.exists
     ? (sessionSnap.data() as Record<string, unknown>)

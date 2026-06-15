@@ -19,6 +19,7 @@ export async function runAiAnalyticsDailyPipeline(opts?: {
   ok: boolean;
   dateIst: string;
   error?: string;
+  notifications?: { telegram: boolean; email: boolean; whatsapp: boolean };
 }> {
   const db = getAdminDb();
   if (!db) {
@@ -81,5 +82,5 @@ export async function runAiAnalyticsDailyPipeline(opts?: {
     await db.collection("aiAnalyticsReports").doc(dateIst).set(report, { merge: true });
   }
 
-  return { ok: true, dateIst };
+  return { ok: true, dateIst, notifications };
 }

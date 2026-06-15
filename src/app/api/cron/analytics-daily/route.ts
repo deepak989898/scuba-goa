@@ -23,6 +23,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     dateIst: analyticsResult.dateIst,
+    notifications: analyticsResult.notifications,
     conversionOk: conversionResult.ok,
     conversionError: conversionResult.error,
     message: `Daily AI analytics + conversion opt saved for ${analyticsResult.dateIst}`,
