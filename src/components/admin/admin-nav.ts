@@ -11,38 +11,25 @@ export type AdminNavSection = {
   items: AdminNavItem[];
 };
 
+/**
+ * Slim sidebar — detailed links live on the Dashboard and Command Center.
+ * Keeps daily tools visible without duplicating every content page.
+ */
 export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
-    id: "overview",
-    label: "Overview",
+    id: "main",
+    label: "Admin menu",
     items: [
       {
         href: "/admin",
         label: "Dashboard",
-        description: "Quick links and status",
+        description: "Packages, services, bookings, AI agents",
       },
       {
         href: "/admin/command-center",
         label: "Command Center",
-        description: "Daily AI brief & tasks",
+        description: "Daily AI brief & agent hub",
         highlight: true,
-      },
-    ],
-  },
-  {
-    id: "catalog",
-    label: "Website content",
-    items: [
-      { href: "/admin/packages", label: "Packages", description: "Scuba & tour SKUs" },
-      { href: "/admin/services", label: "Services", description: "Service cards & pricing" },
-      { href: "/admin/offers", label: "Offers", description: "Promo codes" },
-      { href: "/admin/hero", label: "Hero slides", description: "Homepage carousel" },
-      { href: "/admin/gallery", label: "Gallery", description: "Photos & reels" },
-      { href: "/admin/seo-pages", label: "SEO guides", description: "Guide pages" },
-      {
-        href: "/admin/blog-automation",
-        label: "Blog automation",
-        description: "Daily posts & GBP",
       },
       {
         href: "/admin/seo-blog-center",
@@ -50,54 +37,10 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         description: "GSC keywords, city research, auto publish",
         highlight: true,
       },
-    ],
-  },
-  {
-    id: "operations",
-    label: "Bookings & reviews",
-    items: [
-      { href: "/admin/bookings", label: "Bookings", description: "Paid orders & bills" },
-      { href: "/admin/ratings", label: "Reviews", description: "Customer ratings" },
-      { href: "/admin/marketing", label: "Marketing leads", description: "Lead capture" },
-    ],
-  },
-  {
-    id: "analytics",
-    label: "Analytics",
-    items: [
-      { href: "/admin/analytics", label: "Site analytics", description: "Visitors & pages" },
       {
-        href: "/admin/ai-analytics",
-        label: "AI analytics agent",
-        description: "Daily GA4 + GSC report",
-      },
-    ],
-  },
-  {
-    id: "ai-agents",
-    label: "AI agents",
-    items: [
-      {
-        href: "/admin/conversion-opt",
-        label: "Conversion AI",
-        description: "Funnel & CTA suggestions",
-      },
-      { href: "/admin/seo-agent", label: "SEO AI", description: "Meta & ranking fixes" },
-      { href: "/admin/seo-health", label: "SEO health", description: "Technical audit" },
-      {
-        href: "/admin/business-agent",
-        label: "Business ops agent",
-        description: "Auto site updates",
-      },
-      {
-        href: "/admin/recovery-agent",
-        label: "Recovery AI",
-        description: "WhatsApp booking recovery",
-      },
-      {
-        href: "/admin/marketing-engine",
-        label: "Marketing AI",
-        description: "Social & campaigns",
+        href: "/admin/blog-automation",
+        label: "Blog automation",
+        description: "Scheduled posts & Google Business",
       },
     ],
   },
