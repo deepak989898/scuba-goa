@@ -93,7 +93,15 @@ export async function runKeywordGeneration(actorId = "system"): Promise<{
 
   if (settings.autoApproveKeywords) {
     for (const kw of fresh.slice(0, Math.min(5, settings.blogsPerDay * 2))) {
-      await approveKeyword(kw.id, actorId, true);
+      try {
+        await approveKeyword(kw.id, actorId, true);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await addSeoBlogLog({
+          type: "error",
+          message: `Auto-approve failed for "${kw.keyword}": ${msg}`,
+        });
+      }
     }
   }
 
@@ -183,7 +191,15 @@ export async function approveKeyword(
 
   const settings = await getSeoBlogSettings();
   if (settings.autoGenerateBlogs && !skipBlog) {
-    await generateBlogFromKeyword(updated.id, approvedBy);
+    try {
+      await generateBlogFromKeyword(updated.id, approvedBy);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await addSeoBlogLog({
+        type: "error",
+        message: `Blog generation skipped for "${updated.keyword}": ${msg}`,
+      });
+    }
   }
 
   return { keyword: updated, seoMeta };

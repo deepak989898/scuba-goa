@@ -70,15 +70,30 @@ export default function SeoBlogCenterPage() {
       const dash = await adminFetch("/api/admin/seo-blog-center/dashboard");
       setData(dash);
       setSettings(dash.settings);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Dashboard failed to load");
+    }
+
+    try {
       const kw = await adminFetch("/api/admin/seo-blog-center/keywords");
       setKeywords(kw.keywords ?? []);
+    } catch (e) {
+      setErr((prev) =>
+        prev ??
+        (e instanceof Error ? e.message : "Keywords failed to load"),
+      );
+    }
+
+    try {
       const bl = await adminFetch("/api/admin/seo-blog-center/blogs");
       setDrafts(bl.drafts ?? []);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load");
-    } finally {
-      setLoading(false);
+      setErr((prev) =>
+        prev ?? (e instanceof Error ? e.message : "Drafts failed to load"),
+      );
     }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => {

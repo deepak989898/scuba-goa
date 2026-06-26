@@ -59,14 +59,24 @@ export async function listKeywords(
 ): Promise<SeoBlogKeyword[]> {
   const db = getAdminDb();
   if (!db) return [];
-  const snap = await db
-    .collection(COL.keywords)
-    .orderBy("createdAt", "desc")
-    .limit(Math.min(500, limit * 3))
-    .get();
-  const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoBlogKeyword);
-  const filtered = status ? all.filter((k) => k.status === status) : all;
-  return filtered.slice(0, limit);
+  try {
+    const snap = await db
+      .collection(COL.keywords)
+      .orderBy("createdAt", "desc")
+      .limit(Math.min(500, limit * 3))
+      .get();
+    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoBlogKeyword);
+    const filtered = status ? all.filter((k) => k.status === status) : all;
+    return filtered.slice(0, limit);
+  } catch (e) {
+    console.error("[seo-blog-center] listKeywords failed", e);
+    const snap = await db.collection(COL.keywords).limit(Math.min(500, limit * 3)).get();
+    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoBlogKeyword);
+    const filtered = status ? all.filter((k) => k.status === status) : all;
+    return filtered
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+      .slice(0, limit);
+  }
 }
 
 export async function listDrafts(
@@ -75,24 +85,42 @@ export async function listDrafts(
 ): Promise<SeoBlogDraft[]> {
   const db = getAdminDb();
   if (!db) return [];
-  const snap = await db
-    .collection(COL.drafts)
-    .orderBy("createdAt", "desc")
-    .limit(limit)
-    .get();
-  const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoBlogDraft);
-  return status ? all.filter((d) => d.status === status) : all;
+  try {
+    const snap = await db
+      .collection(COL.drafts)
+      .orderBy("createdAt", "desc")
+      .limit(limit)
+      .get();
+    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoBlogDraft);
+    return status ? all.filter((d) => d.status === status) : all;
+  } catch (e) {
+    console.error("[seo-blog-center] listDrafts failed", e);
+    const snap = await db.collection(COL.drafts).limit(limit).get();
+    const all = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as SeoBlogDraft)
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+    return status ? all.filter((d) => d.status === status) : all;
+  }
 }
 
 export async function listLogs(limit = 50): Promise<SeoBlogCenterLog[]> {
   const db = getAdminDb();
   if (!db) return [];
-  const snap = await db
-    .collection(COL.logs)
-    .orderBy("createdAt", "desc")
-    .limit(limit)
-    .get();
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoBlogCenterLog);
+  try {
+    const snap = await db
+      .collection(COL.logs)
+      .orderBy("createdAt", "desc")
+      .limit(limit)
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoBlogCenterLog);
+  } catch (e) {
+    console.error("[seo-blog-center] listLogs failed", e);
+    const snap = await db.collection(COL.logs).limit(limit).get();
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as SeoBlogCenterLog)
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+      .slice(0, limit);
+  }
 }
 
 export async function saveKeyword(kw: SeoBlogKeyword): Promise<void> {

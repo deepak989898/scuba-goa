@@ -142,8 +142,8 @@ export const DEFAULT_SEO_BLOG_SETTINGS: SeoBlogCenterSettings = {
   includeGoogleSuggest: true,
   includeTemplates: true,
   autoApproveKeywords: true,
-  autoGenerateBlogs: true,
+  autoGenerateBlogs: false,
   autoApproveBlogs: true,
-  autoPublish: true,
+  autoPublish: false,
   approvalRequired: false,
 };

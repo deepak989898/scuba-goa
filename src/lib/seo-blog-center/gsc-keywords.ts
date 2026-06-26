@@ -14,6 +14,12 @@ function daysAgo(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function safeKeywordDocId(keyword: string, prefix: string): string {
+  const slug = slugify(keyword).slice(0, 60) || "keyword";
+  const seed = hashKeyword(keyword).toString(36).slice(0, 8);
+  return `${prefix}${slug}_${seed}`.slice(0, 120);
+}
+
 function buildGscKeywordRecord(
   query: string,
   metrics: { clicks: number; impressions: number; ctr: number; position: number },
@@ -26,7 +32,7 @@ function buildGscKeywordRecord(
   const now = new Date().toISOString();
 
   return {
-    id: `kw_gsc_${slugify(query)}_${seed.toString(36).slice(0, 5)}`,
+    id: safeKeywordDocId(query, "kw_gsc_"),
     keyword: query.trim(),
     searchVolume,
     competition,
