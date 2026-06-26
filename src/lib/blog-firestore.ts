@@ -20,7 +20,11 @@ export type BlogPostFirestore = {
   updatedAt: string;
   readTime: string;
   featuredImageUrl: string;
+  /** Descriptive ALT for featured image (SEO + accessibility). */
+  featuredImageAlt?: string;
   ogImageUrl: string;
+  /** Optional stored JSON-LD Article/BlogPosting schema. */
+  schemaMarkup?: Record<string, unknown>;
   language: BlogLanguage;
   published: boolean;
   source: "auto" | "manual";
@@ -118,7 +122,15 @@ export function parseBlogPostFromFirestore(
     updatedAt: String(data.updatedAt ?? new Date().toISOString()).trim(),
     readTime: String(data.readTime ?? "6 min read").trim(),
     featuredImageUrl: String(data.featuredImageUrl ?? "").trim(),
+    featuredImageAlt:
+      data.featuredImageAlt != null
+        ? String(data.featuredImageAlt).trim()
+        : undefined,
     ogImageUrl: String(data.ogImageUrl ?? data.featuredImageUrl ?? "").trim(),
+    schemaMarkup:
+      data.schemaMarkup && typeof data.schemaMarkup === "object"
+        ? (data.schemaMarkup as Record<string, unknown>)
+        : undefined,
     language,
     published: data.published === true,
     source: data.source === "manual" ? "manual" : "auto",
@@ -160,7 +172,9 @@ export function blogPostToFirestorePayload(
     date: post.date,
     readTime: post.readTime,
     featuredImageUrl: post.featuredImageUrl,
+    ...(post.featuredImageAlt ? { featuredImageAlt: post.featuredImageAlt } : {}),
     ogImageUrl: post.ogImageUrl,
+    ...(post.schemaMarkup ? { schemaMarkup: post.schemaMarkup } : {}),
     language: post.language,
     published: post.published,
     source: post.source,

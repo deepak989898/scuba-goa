@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: SITE_NAME,
       publishedTime: p.date,
       modifiedTime: fs?.updatedAt ?? p.date,
-      ...(ogImage ? { images: [{ url: ogImage, alt: p.title }] } : {}),
+      ...(ogImage ? { images: [{ url: ogImage, alt: fs?.featuredImageAlt?.trim() || p.title }] } : {}),
     },
     twitter: {
       card: ogImage ? "summary_large_image" : "summary",
@@ -264,7 +264,7 @@ export default async function BlogPostPage({ params }: Props) {
           <div className="relative mt-8 w-full overflow-hidden rounded-2xl border border-ocean-100 bg-ocean-900">
             <Image
               src={featuredImage}
-              alt={p.title}
+              alt={fs?.featuredImageAlt?.trim() || p.title}
               width={1200}
               height={675}
               className="h-auto w-full"

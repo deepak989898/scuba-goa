@@ -44,6 +44,12 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         label: "Blog automation",
         description: "Daily posts & GBP",
       },
+      {
+        href: "/admin/seo-blog-center",
+        label: "SEO Blog Center",
+        description: "GSC keywords, city research, auto publish",
+        highlight: true,
+      },
     ],
   },
   {

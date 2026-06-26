@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/command-center-daily",
       "schedule": "15 6 * * *"
+    },
+    {
+      "path": "/api/cron/seo-blog-center-daily",
+      "schedule": "45 6 * * *"
     }
   ]
 }
