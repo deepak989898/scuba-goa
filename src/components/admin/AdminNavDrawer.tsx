@@ -6,12 +6,18 @@ import {
   ADMIN_NAV_SECTIONS,
   adminNavIsActive,
   type AdminNavItem,
+  type AdminNavSection,
 } from "@/components/admin/admin-nav";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onSignOut: () => void;
+};
+
+const BADGE_LABEL: Record<NonNullable<AdminNavItem["badge"]>, string> = {
+  daily: "Daily",
+  action: "Action",
 };
 
 function NavLink({
@@ -31,19 +37,36 @@ function NavLink({
         active
           ? "bg-cyan-500/15 text-white ring-1 ring-cyan-400/40"
           : item.highlight
-            ? "text-cyan-100 hover:bg-white/10 hover:text-white"
+            ? "bg-white/[0.03] text-cyan-50 hover:bg-white/10 hover:text-white"
             : "text-slate-300 hover:bg-white/10 hover:text-white"
       }`}
     >
       <span
-        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-          active ? "bg-cyan-400" : item.highlight ? "bg-cyan-500/70" : "bg-slate-600"
+        className={`mt-2 h-2 w-2 shrink-0 rounded-full ${
+          active
+            ? "bg-cyan-400"
+            : item.highlight
+              ? "bg-amber-400/90"
+              : "bg-slate-600"
         }`}
         aria-hidden
       />
-      <span className="min-w-0">
-        <span className={`block font-semibold leading-tight ${active ? "text-white" : ""}`}>
-          {item.label}
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className={`font-semibold leading-tight ${active ? "text-white" : ""}`}>
+            {item.label}
+          </span>
+          {item.badge ? (
+            <span
+              className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                item.badge === "daily"
+                  ? "bg-amber-500/20 text-amber-200"
+                  : "bg-cyan-500/20 text-cyan-200"
+              }`}
+            >
+              {BADGE_LABEL[item.badge]}
+            </span>
+          ) : null}
         </span>
         {item.description ? (
           <span className="mt-0.5 block text-[11px] leading-snug text-slate-400 group-hover:text-slate-300">
@@ -55,6 +78,56 @@ function NavLink({
   );
 }
 
+function NavSection({
+  section,
+  pathname,
+  onNavigate,
+}: {
+  section: AdminNavSection;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <div
+      className={`mb-5 last:mb-0 ${
+        section.priority
+          ? "rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-2 pb-3"
+          : ""
+      }`}
+    >
+      <div className="mb-2 px-2">
+        <p
+          className={`text-[10px] font-bold uppercase tracking-widest ${
+            section.priority ? "text-amber-200/90" : "text-slate-500"
+          }`}
+        >
+          {section.label}
+        </p>
+        {section.hint ? (
+          <p
+            className={`mt-0.5 text-[10px] leading-snug ${
+              section.priority ? "text-amber-100/60" : "text-slate-600"
+            }`}
+          >
+            {section.hint}
+          </p>
+        ) : null}
+      </div>
+      <ul className="space-y-0.5">
+        {section.items.map((item) => (
+          <li key={item.href}>
+            <NavLink
+              item={item}
+              active={adminNavIsActive(pathname, item.href)}
+              onNavigate={onNavigate}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
   const pathname = usePathname();
 
@@ -63,7 +136,7 @@ export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
         <div>
           <p className="font-display text-base font-bold text-white">Book Scuba Goa</p>
-          <p className="text-xs text-slate-400">Admin control panel</p>
+          <p className="text-xs text-slate-400">Admin — check “1 · Check first” daily</p>
         </div>
         <button
           type="button"
@@ -75,24 +148,14 @@ export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
+      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Admin navigation">
         {ADMIN_NAV_SECTIONS.map((section) => (
-          <div key={section.id} className="mb-6 last:mb-0">
-            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              {section.label}
-            </p>
-            <ul className="space-y-1">
-              {section.items.map((item) => (
-                <li key={item.href}>
-                  <NavLink
-                    item={item}
-                    active={adminNavIsActive(pathname, item.href)}
-                    onNavigate={onClose}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
+          <NavSection
+            key={section.id}
+            section={section}
+            pathname={pathname}
+            onNavigate={onClose}
+          />
         ))}
       </nav>
 
@@ -122,12 +185,10 @@ export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="hidden w-72 shrink-0 border-r border-slate-800 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:flex-col">
         {drawer}
       </aside>
 
-      {/* Mobile drawer + backdrop */}
       {open ? (
         <button
           type="button"
@@ -137,7 +198,7 @@ export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
         />
       ) : null}
       <aside
-        className={`fixed inset-y-0 left-0 z-[60] w-[min(100vw-3rem,18rem)] shadow-2xl transition-transform duration-200 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-[60] w-[min(100vw-3rem,19rem)] shadow-2xl transition-transform duration-200 lg:hidden ${
           open ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
         aria-hidden={!open}
