@@ -296,7 +296,7 @@ export default async function BlogPostPage({ params }: Props) {
         <p className="mt-6 text-sm text-ocean-500">
           {p.date} · {p.readTime}
         </p>
-        <h1 className="mt-2 bg-gradient-to-r from-ocean-950 via-cyan-800 to-amber-700 bg-clip-text font-display text-3xl font-extrabold leading-tight text-transparent sm:text-4xl">
+        <h1 className="mt-2 font-display text-3xl font-extrabold leading-tight text-ocean-900 sm:text-4xl">
           {p.title}
         </h1>
         <p className="mt-5 border-l-4 border-amber-400 bg-amber-50/60 py-3 pl-4 text-lg leading-relaxed text-ocean-800">
