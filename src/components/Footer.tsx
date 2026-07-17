@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { OfficeMapEmbed } from "@/components/OfficeMapEmbed";
 import {
   CONTACT_EMAIL,
@@ -35,28 +36,47 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           <div>
-            <p className="font-display text-xl font-semibold text-slate-100">
+            <Link
+              href="/"
+              aria-label={`${SITE_NAME} home`}
+              className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            >
+              <Image
+                src="/book-scuba-goa-logo-transparent.png"
+                alt={SITE_NAME}
+                width={240}
+                height={88}
+                sizes="180px"
+                className="h-auto w-[180px]"
+                loading="lazy"
+              />
+            </Link>
+            <p className="mt-4 bg-gradient-to-r from-cyan-300 via-sky-200 to-amber-300 bg-clip-text font-display text-xl font-bold text-transparent">
               {SITE_NAME}
             </p>
-            <p className="mt-3 max-w-xs text-sm text-slate-200">
-              Premium scuba diving, Goa tour packages, water sports, nightlife &
-              adventure—book fast with WhatsApp or secure online pay.
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-slate-200">
+              Premium <span className="font-semibold text-cyan-300">scuba diving</span>,{" "}
+              <span className="font-semibold text-amber-300">Goa tour packages</span>,{" "}
+              <span className="font-semibold text-emerald-300">water sports</span>,{" "}
+              <span className="font-semibold text-fuchsia-300">
+                nightlife &amp; adventure
+              </span>
+              —book fast with WhatsApp or secure online pay.
             </p>
           </div>
-          {/*
-            Quick links + Legal share a single bordered card on every
-            breakpoint — Quick links on the left, Legal on the right. The
-            two-column inner grid keeps both stacks readable from 320 px
-            phones up to wide desktops.
-          */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
+          <div>
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <p className="text-sm font-semibold text-slate-100">Quick links</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-cyan-300">
+                  Quick links
+                </p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-200">
                   {quick.map((q) => (
                     <li key={q.href}>
-                      <Link href={q.href} className="hover:text-cyan-300">
+                      <Link
+                        href={q.href}
+                        className="transition hover:text-cyan-300"
+                      >
                         {q.label}
                       </Link>
                     </li>
@@ -64,11 +84,16 @@ export function Footer() {
                 </ul>
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-100">Legal</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-amber-300">
+                  Legal
+                </p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-200">
                   {legal.map((q) => (
                     <li key={q.href}>
-                      <Link href={q.href} className="hover:text-cyan-300">
+                      <Link
+                        href={q.href}
+                        className="transition hover:text-amber-300"
+                      >
                         {q.label}
                       </Link>
                     </li>
@@ -78,7 +103,9 @@ export function Footer() {
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-100">Contact</p>
+            <p className="text-sm font-bold uppercase tracking-wider text-emerald-300">
+              Contact
+            </p>
             <ul className="mt-3 space-y-2 text-sm text-slate-200">
               <li className="text-slate-200">
                 {OFFICE_ADDRESS_LINES.map((line) => (
@@ -132,7 +159,9 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-100">Location</p>
+            <p className="text-sm font-bold uppercase tracking-wider text-fuchsia-300">
+              Location
+            </p>
             <address className="mt-2 not-italic text-xs leading-relaxed text-slate-200">
               {OFFICE_ADDRESS_LINES.map((line) => (
                 <span key={line} className="block">

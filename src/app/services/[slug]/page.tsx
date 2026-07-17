@@ -14,6 +14,7 @@ import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
+import { ServiceFaqs } from "@/components/ServiceFaqs";
 import {
   buildShareOpenGraph,
   buildShareTwitter,
@@ -133,6 +134,7 @@ export default async function ServiceDetailPage({ params }: Props) {
               <ServiceDetailActions service={s} />
             </div>
             <ServiceMediaTabs service={s} />
+            <ServiceFaqs service={s} />
           </div>
         </div>
 
