@@ -15,6 +15,8 @@ export function blogFirestoreToBlogPost(p: BlogPostFirestore): BlogPost {
     date: p.date,
     updatedAt: p.updatedAt.slice(0, 10),
     readTime: p.readTime,
+    imageUrl: p.featuredImageUrl || p.ogImageUrl || undefined,
+    imageAlt: p.featuredImageAlt || p.title,
     keywords: p.keywords,
     content: p.content,
     metaTitle: p.metaTitle,

@@ -1,17 +1,74 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "@/lib/firebase";
 import { customerWhatsappLink, SITE_NAME } from "@/lib/constants";
 
 type Row = Record<string, unknown> & { id: string };
 
+function dateFromUnknown(raw: unknown): Date | null {
+  if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : raw;
+  if (raw && typeof raw === "object") {
+    const timestamp = raw as {
+      toDate?: () => Date;
+      seconds?: number;
+      _seconds?: number;
+    };
+    if (typeof timestamp.toDate === "function") {
+      const date = timestamp.toDate();
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const seconds = timestamp.seconds ?? timestamp._seconds;
+    if (typeof seconds === "number") {
+      const date = new Date(seconds * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+  }
+  if (raw == null || raw === "") return null;
+  const date = new Date(String(raw));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function istDayKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function formatBookingDay(date: Date): string {
+  const key = istDayKey(date);
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86_400_000);
+  const prefix =
+    key === istDayKey(today)
+      ? "Today"
+      : key === istDayKey(yesterday)
+        ? "Yesterday"
+        : date.toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            weekday: "long",
+          });
+  const dateLabel = date.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return `${prefix} · ${dateLabel}`;
+}
+
 function formatDateTimeAmPm(iso: unknown): string {
-  if (iso == null || iso === "") return "—";
-  const d = new Date(String(iso));
-  if (Number.isNaN(d.getTime())) return String(iso);
+  const d = dateFromUnknown(iso);
+  if (!d) return iso == null || iso === "" ? "—" : String(iso);
   return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -323,12 +380,35 @@ export default function AdminBookingsPage() {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Row));
       list.sort(
         (a, b) =>
-          String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))
+          (dateFromUnknown(b.createdAt)?.getTime() ?? 0) -
+          (dateFromUnknown(a.createdAt)?.getTime() ?? 0)
       );
       setRows(list);
       setLoading(false);
     })();
   }, [db]);
+
+  const groupedRows = useMemo(() => {
+    const groups = new Map<
+      string,
+      { key: string; label: string; rows: Row[] }
+    >();
+    for (const row of rows) {
+      const created = dateFromUnknown(row.createdAt);
+      const key = created ? istDayKey(created) : "unknown";
+      const existing = groups.get(key);
+      if (existing) {
+        existing.rows.push(row);
+      } else {
+        groups.set(key, {
+          key,
+          label: created ? formatBookingDay(created) : "Date unavailable",
+          rows: [row],
+        });
+      }
+    }
+    return Array.from(groups.values());
+  }, [rows]);
 
   if (!db) {
     return (
@@ -357,36 +437,69 @@ export default function AdminBookingsPage() {
       ) : rows.length === 0 ? (
         <p className="mt-8 text-ocean-700">No bookings yet.</p>
       ) : (
-        <ul className="mt-8 space-y-6">
-          {rows.map((r) => {
-            const people = Number(r.people ?? r.payUnits ?? 0);
-            const fullPaise = Number(r.fullAmountPaise ?? r.amountPaise ?? 0);
-            const paidPaise = Number(r.amountPaise ?? 0);
-            const cartItems = Array.isArray(r.cartItems)
-              ? (r.cartItems as Record<string, unknown>[])
-              : [];
+        <div className="mt-8 space-y-9">
+          {groupedRows.map((group) => (
+            <section key={group.key} aria-labelledby={`booking-day-${group.key}`}>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b-2 border-ocean-100 pb-2">
+                <h2
+                  id={`booking-day-${group.key}`}
+                  className="font-display text-lg font-bold text-ocean-900 sm:text-xl"
+                >
+                  {group.label}
+                </h2>
+                <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800">
+                  {group.rows.length} {group.rows.length === 1 ? "booking" : "bookings"}
+                </span>
+              </div>
 
-            return (
-              <li
-                key={r.id}
-                className="rounded-2xl border border-ocean-100 bg-white p-5 text-sm shadow-sm"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2 border-b border-ocean-100 pb-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Trip / package
-                    </p>
-                    <p className="mt-0.5 font-display text-lg font-semibold text-ocean-900">
-                      {String(r.packageName ?? "—")}
-                    </p>
-                  </div>
-                  <div className="text-right text-xs text-ocean-700">
-                    <p className="font-medium text-ocean-800">Booking recorded</p>
-                    <p>{formatDateTimeAmPm(r.createdAt)}</p>
-                  </div>
-                </div>
+              <ul className="space-y-3">
+                {group.rows.map((r) => {
+                  const people = Number(r.people ?? r.payUnits ?? 0);
+                  const fullPaise = Number(r.fullAmountPaise ?? r.amountPaise ?? 0);
+                  const paidPaise = Number(r.amountPaise ?? 0);
+                  const cartItems = Array.isArray(r.cartItems)
+                    ? (r.cartItems as Record<string, unknown>[])
+                    : [];
 
-                <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                  return (
+                    <li key={r.id}>
+                      <details className="group overflow-hidden rounded-2xl border border-ocean-100 bg-white text-sm shadow-sm open:border-cyan-300 open:shadow-md">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 marker:hidden transition hover:bg-ocean-50/70 sm:p-5">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                              <p className="truncate font-display text-base font-bold text-ocean-900 sm:text-lg">
+                                {String(r.packageName ?? "—")}
+                              </p>
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                                Paid {rupeesFromPaise(r.amountPaise)}
+                              </span>
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ocean-700 sm:text-sm">
+                              <span className="font-medium text-ocean-900">
+                                {String(r.customerName ?? "Guest")}
+                              </span>
+                              <span>Trip: {formatTripDate(r.date)}</span>
+                              <span>Recorded: {formatDateTimeAmPm(r.createdAt)}</span>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="hidden text-xs font-semibold text-cyan-800 sm:inline group-open:hidden">
+                              View details
+                            </span>
+                            <span className="hidden text-xs font-semibold text-cyan-800 group-open:sm:inline">
+                              Hide details
+                            </span>
+                            <span
+                              aria-hidden
+                              className="flex h-9 w-9 items-center justify-center rounded-full bg-ocean-50 text-xl font-bold text-ocean-800 transition group-open:rotate-180 group-open:bg-cyan-100"
+                            >
+                              ⌄
+                            </span>
+                          </div>
+                        </summary>
+
+                        <div className="border-t border-ocean-100 px-4 pb-5 sm:px-5">
+                          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
                       Guest name
@@ -518,10 +631,15 @@ export default function AdminBookingsPage() {
                       : "WhatsApp guest + bill link"}
                   </button>
                 </div>
-              </li>
-            );
-          })}
-        </ul>
+                        </div>
+                      </details>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
 
       {billPreviewUrl ? (

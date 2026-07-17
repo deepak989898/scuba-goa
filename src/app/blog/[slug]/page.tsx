@@ -13,6 +13,9 @@ import {
   getRelatedBlogPostsMerged,
 } from "@/lib/blog-posts-unified";
 import { getPublishedBlogPostBySlug, listPublishedBlogSlugsServer } from "@/lib/blog-posts-server";
+import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import type { ServiceItem } from "@/data/services";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -181,20 +184,56 @@ function breadcrumbJsonLd(p: { title: string; slug: string }) {
   };
 }
 
+function relatedServicesForPost(
+  services: ServiceItem[],
+  post: { title: string; keywords: string[] },
+  focusSlug?: string,
+): ServiceItem[] {
+  const tokens = new Set(
+    `${post.title} ${post.keywords.join(" ")}`
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((token) => token.length >= 3),
+  );
+  return [...services]
+    .map((service) => {
+      const text = `${service.slug} ${service.title} ${service.short}`.toLowerCase();
+      let score = service.slug === focusSlug ? 100 : 0;
+      for (const token of tokens) {
+        if (text.includes(token)) score += 1;
+      }
+      return { service, score };
+    })
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (a.service.sortOrder ?? 999) - (b.service.sortOrder ?? 999),
+    )
+    .slice(0, 4)
+    .map(({ service }) => service);
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const p = await getBlogPostBySlugMerged(slug);
   if (!p) notFound();
-  const fs = await getPublishedBlogPostBySlug(slug);
+  const [fs, related, catalog] = await Promise.all([
+    getPublishedBlogPostBySlug(slug),
+    getRelatedBlogPostsMerged(slug, 4),
+    buildBlogCatalogContext(),
+  ]);
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const faqs = p.faqs ?? [];
-  const related = await getRelatedBlogPostsMerged(p.slug, 3);
   const featuredImage = fs?.featuredImageUrl?.trim();
   const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.date;
-  const catalog = await buildBlogCatalogContext();
   const offerList = offerCatalogJsonLd(catalog.packages, pageUrl);
   const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
+  const relatedServices = relatedServicesForPost(
+    catalog.services,
+    p,
+    focusServiceSlug,
+  );
 
   return (
     <article className="bg-white py-16 sm:py-20">
@@ -235,7 +274,8 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       )}
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8 lg:px-8">
+        <div className="min-w-0">
         <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
           <Link href="/" className="hover:text-ocean-800">
             Home
@@ -256,10 +296,12 @@ export default async function BlogPostPage({ params }: Props) {
         <p className="mt-6 text-sm text-ocean-500">
           {p.date} · {p.readTime}
         </p>
-        <h1 className="mt-2 font-display text-3xl font-bold leading-tight text-ocean-900 sm:text-4xl">
+        <h1 className="mt-2 bg-gradient-to-r from-ocean-950 via-cyan-800 to-amber-700 bg-clip-text font-display text-3xl font-extrabold leading-tight text-transparent sm:text-4xl">
           {p.title}
         </h1>
-        <p className="mt-4 text-lg text-ocean-700">{p.excerpt}</p>
+        <p className="mt-5 border-l-4 border-amber-400 bg-amber-50/60 py-3 pl-4 text-lg leading-relaxed text-ocean-800">
+          {p.excerpt}
+        </p>
         {featuredImage ? (
           <div className="relative mt-8 w-full overflow-hidden rounded-2xl border border-ocean-100 bg-ocean-900">
             <Image
@@ -287,52 +329,103 @@ export default async function BlogPostPage({ params }: Props) {
             className="mt-14 border-t border-ocean-100 pt-12"
             aria-labelledby="faq-heading"
           >
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+              Helpful answers
+            </p>
             <h2
               id="faq-heading"
-              className="font-display text-2xl font-bold text-ocean-900"
+              className="mt-1 font-display text-2xl font-bold text-ocean-900 sm:text-3xl"
             >
-              Frequently asked questions
+              Frequently asked questions about this guide
             </h2>
-            <dl className="mt-6 space-y-6">
-              {faqs.map((f) => (
-                <div
+            <p className="mt-2 text-sm leading-relaxed text-ocean-700 sm:text-base">
+              Open any question for a quick answer before planning or booking.
+            </p>
+            <div className="mt-6 space-y-3">
+              {faqs.map((f, index) => (
+                <details
                   key={f.question}
-                  className="rounded-xl border border-ocean-100 bg-sand/40 p-4 sm:p-5"
+                  className="group rounded-2xl border border-ocean-100 bg-sand px-4 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-5"
+                  open={index === 0}
                 >
-                  <dt className="font-semibold text-ocean-900">{f.question}</dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-ocean-700 sm:text-base">
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 font-semibold text-ocean-900 marker:hidden">
+                    <span>{f.question}</span>
+                    <span
+                      aria-hidden
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-lg text-ocean-700 shadow-sm transition group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="border-t border-ocean-100 pb-5 pt-4 text-sm leading-7 text-ocean-800 sm:text-base">
                     {f.answer}
-                  </dd>
-                </div>
+                  </p>
+                </details>
               ))}
-            </dl>
+            </div>
           </section>
         )}
 
         {related.length > 0 && (
-          <section className="mt-14 border-t border-ocean-100 pt-12" aria-labelledby="related-articles-heading">
-            <h2 id="related-articles-heading" className="font-display text-2xl font-bold text-ocean-900">
+          <section
+            className="mt-14 border-t border-ocean-100 pt-12"
+            aria-labelledby="related-articles-heading"
+          >
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-amber-700">
+              Continue exploring
+            </p>
+            <h2
+              id="related-articles-heading"
+              className="mt-1 font-display text-2xl font-bold text-ocean-900 sm:text-3xl"
+            >
               Related articles
             </h2>
             <p className="mt-2 text-sm text-ocean-700 sm:text-base">
               Keep reading this topic cluster before booking.
             </p>
-            <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((r) => (
-                <li key={r.slug}>
+            <ul className="mt-6 grid gap-5 sm:grid-cols-2">
+              {related.map((r, index) => {
+                const fallbackImage =
+                  relatedServices[index % relatedServices.length]?.image ||
+                  catalog.services[index % catalog.services.length]?.image ||
+                  "";
+                const cardImage = r.imageUrl || fallbackImage;
+                return (
+                <li key={r.slug} className="h-full">
                   <Link
                     href={`/blog/${r.slug}`}
-                    className="block rounded-xl border border-ocean-100 bg-sand/40 p-4 transition hover:border-ocean-300"
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-sand shadow-sm transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                   >
-                    <p className="text-[11px] text-ocean-500">
-                      {r.date} · {r.readTime}
-                    </p>
-                    <p className="mt-1.5 font-semibold leading-snug text-ocean-900">
-                      {r.title}
-                    </p>
+                    {cardImage ? (
+                      <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
+                        <CmsRemoteImage
+                          src={cardImage}
+                          alt={r.imageAlt || r.title}
+                          fill
+                          className="object-cover transition duration-500 group-hover:scale-105"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+                    <div className="flex flex-1 flex-col p-4">
+                      <p className="text-[11px] font-medium text-cyan-700">
+                        {r.date} · {r.readTime}
+                      </p>
+                      <h3 className="mt-1.5 font-display text-lg font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-700">
+                        {r.title}
+                      </h3>
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ocean-700">
+                        {r.excerpt}
+                      </p>
+                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-amber-700">
+                        Read article <span aria-hidden>→</span>
+                      </span>
+                    </div>
                   </Link>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         )}
@@ -410,6 +503,9 @@ export default async function BlogPostPage({ params }: Props) {
             </li>
           </ul>
         </section>
+        </div>
+
+        <RelatedServicesSidebar services={relatedServices} />
       </div>
     </article>
   );

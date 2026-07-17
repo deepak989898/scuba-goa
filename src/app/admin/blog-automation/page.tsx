@@ -512,9 +512,9 @@ export default function AdminBlogAutomationPage() {
               <code className="rounded bg-sand px-1">PEXELS_API_KEY</code> on Vercel.
             </p>
             <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              <strong>3 posts at 3 different times:</strong> Vercel Hobby cron runs only{" "}
-              <strong>once per day</strong> (~9:00 IST) — that publishes{" "}
-              <strong>one</strong> post only. For 06:00, 18:00, and 21:00 you must use free{" "}
+              <strong>External scheduler required:</strong> the single Vercel Hobby daily
+              cron is reserved for the analytics fallback. To publish at every configured
+              IST slot, use free{" "}
               <a
                 href="https://cron-job.org"
                 target="_blank"
@@ -529,7 +529,10 @@ export default function AdminBlogAutomationPage() {
               <code className="rounded bg-white px-1">
                 Authorization: Bearer YOUR_CRON_SECRET
               </code>
-              . Each run publishes <strong>at most 1</strong> post for the next due slot.
+              . A correct test returns <strong>HTTP 202</strong>. HTTP 401 means the header
+              is missing or does not exactly match Vercel&apos;s{" "}
+              <code className="rounded bg-white px-1">CRON_SECRET</code>. Each run publishes{" "}
+              <strong>at most 1</strong> post for the next due slot.
             </p>
             {settings.lastRunAt && (
               <p className="mt-2 text-xs text-ocean-600">

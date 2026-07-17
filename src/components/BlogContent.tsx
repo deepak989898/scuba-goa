@@ -96,7 +96,7 @@ export function BlogContent({ content }: { content: string }) {
       out.push(
         <h2
           key={i}
-          className="mt-10 scroll-mt-24 text-2xl font-bold text-ocean-900 first:mt-0"
+          className="mt-10 scroll-mt-24 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-1 pl-4 text-2xl font-bold text-ocean-900 first:mt-0"
         >
           {raw.replace(/^##\s+/, "")}
         </h2>
@@ -106,7 +106,7 @@ export function BlogContent({ content }: { content: string }) {
     }
     if (raw.startsWith("### ")) {
       out.push(
-        <h3 key={i} className="mt-8 text-xl font-semibold text-ocean-900">
+        <h3 key={i} className="mt-8 text-xl font-bold text-cyan-800">
           {raw.replace(/^###\s+/, "")}
         </h3>
       );

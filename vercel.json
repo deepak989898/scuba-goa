@@ -1,36 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/blog-publish",
-      "schedule": "30 3 * * *"
-    },
-    {
       "path": "/api/cron/analytics-daily",
       "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/seo-weekly",
-      "schedule": "0 5 * * 1"
-    },
-    {
-      "path": "/api/cron/business-agent-daily",
-      "schedule": "30 5 * * *"
-    },
-    {
-      "path": "/api/cron/recovery-hourly",
-      "schedule": "45 4 * * *"
-    },
-    {
-      "path": "/api/cron/marketing-daily",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/command-center-daily",
-      "schedule": "15 6 * * *"
-    },
-    {
-      "path": "/api/cron/seo-blog-center-daily",
-      "schedule": "45 6 * * *"
     }
   ]
 }

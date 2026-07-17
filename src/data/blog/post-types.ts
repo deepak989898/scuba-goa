@@ -11,6 +11,9 @@ export type BlogPost = {
   /** Optional explicit content refresh date (YYYY-MM-DD) for sitemap lastmod. */
   updatedAt?: string;
   readTime: string;
+  /** Card/hero image when the post comes from Firestore automation. */
+  imageUrl?: string;
+  imageAlt?: string;
   keywords: string[];
   /** Main article body: ## h2, ### h3, paragraphs, - lists, **bold**, [label](/path) links */
   content: string;
