@@ -8,7 +8,9 @@ import { SiteChrome } from "@/components/SiteChrome";
 import { SiteJsonLd } from "@/components/SiteJsonLd";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 
-const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+const googleSiteVerification =
+  process.env.GOOGLE_SITE_VERIFICATION?.trim() ||
+  "mEiHRQqqXTK9y5FqG_0BGPkQVO7FwIeuzDSNWEqopzA";
 
 const dm = DM_Sans({
   subsets: ["latin"],
