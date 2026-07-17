@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
 import { isBlogScheduled } from "@/lib/blog-firestore";
 import {
@@ -76,6 +77,19 @@ export function BlogPostsTable({
 }: Props) {
   const scheduledCount = posts.filter((p) => isBlogScheduled(p)).length;
   const liveCount = posts.filter((p) => p.published).length;
+  const [zoomedImage, setZoomedImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setZoomedImage(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [zoomedImage]);
 
   return (
     <section className="mt-8 overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm">
@@ -108,6 +122,7 @@ export function BlogPostsTable({
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 text-ocean-800">
               <tr>
+                <th className="p-3">Image</th>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Title</th>
                 <th className="p-3">Status</th>
@@ -121,6 +136,41 @@ export function BlogPostsTable({
               {sortedPosts.map((p) => (
                 <Fragment key={p.slug}>
                   <tr className="border-b border-ocean-100">
+                    <td className="p-3 align-top">
+                      {p.featuredImageUrl || p.ogImageUrl ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setZoomedImage({
+                              src: p.featuredImageUrl || p.ogImageUrl,
+                              alt: p.featuredImageAlt || p.title,
+                            })
+                          }
+                          className="group relative block h-14 w-20 overflow-hidden rounded-lg border border-ocean-200 bg-ocean-50 shadow-sm transition hover:scale-105 hover:border-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                          aria-label={`Zoom image for ${p.title}`}
+                          title="Click to zoom"
+                        >
+                          <CmsRemoteImage
+                            src={p.featuredImageUrl || p.ogImageUrl}
+                            alt={p.featuredImageAlt || p.title}
+                            fill
+                            className="object-cover transition group-hover:brightness-90"
+                            sizes="80px"
+                            loading="lazy"
+                          />
+                          <span
+                            aria-hidden
+                            className="absolute bottom-1 right-1 rounded bg-slate-950/75 px-1 text-[10px] text-white"
+                          >
+                            ⤢
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="flex h-14 w-20 items-center justify-center rounded-lg border border-dashed border-ocean-200 bg-ocean-50 text-[10px] text-ocean-500">
+                          No image
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3 align-top font-mono text-xs">{p.slug}</td>
                     <td className="max-w-[14rem] p-3 align-top text-ocean-900">
                       {p.title}
@@ -206,7 +256,7 @@ export function BlogPostsTable({
                   </tr>
                   {editing?.slug === p.slug ? (
                     <tr className="bg-ocean-50/50">
-                      <td colSpan={7} className="p-4">
+                      <td colSpan={8} className="p-4">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ocean-700">
                           Edit blog post
                         </p>
@@ -418,6 +468,43 @@ export function BlogPostsTable({
           </table>
         </div>
       )}
+
+      {zoomedImage ? (
+        <div
+          className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Image preview: ${zoomedImage.alt}`}
+          onClick={() => setZoomedImage(null)}
+        >
+          <div
+            className="relative h-[min(82vh,850px)] w-full max-w-6xl overflow-hidden rounded-2xl bg-black shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <CmsRemoteImage
+              src={zoomedImage.src}
+              alt={zoomedImage.alt}
+              fill
+              className="object-contain"
+              sizes="95vw"
+              priority
+            />
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 bg-gradient-to-b from-black/80 to-transparent p-4 text-white">
+              <p className="max-w-3xl text-sm font-semibold sm:text-base">
+                {zoomedImage.alt}
+              </p>
+              <button
+                type="button"
+                onClick={() => setZoomedImage(null)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/95 text-xl font-bold text-slate-950 shadow-lg transition hover:bg-cyan-200"
+                aria-label="Close image preview"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

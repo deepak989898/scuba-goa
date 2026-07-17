@@ -208,7 +208,7 @@ export function Footer() {
             </ul>
           </div>
 
-          <div className="md:col-span-2 lg:col-span-4">
+          <div className="md:col-span-2 lg:col-span-12">
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-fuchsia-300">
               Location
             </p>
@@ -220,7 +220,7 @@ export function Footer() {
                 </span>
               ))}
             </address>
-            <OfficeMapEmbed className="mt-3" height={200} />
+            <OfficeMapEmbed className="mt-3 w-full" height={260} />
           </div>
         </div>
         <p className="mt-10 text-center text-xs text-slate-200">
