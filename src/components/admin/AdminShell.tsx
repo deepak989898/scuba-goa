@@ -97,6 +97,18 @@ function AdminGate({ children }: { children: React.ReactNode }) {
                   ☰
                 </span>
               </button>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ocean-200 bg-white px-3 text-sm font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500"
+                aria-label="Go back to previous page"
+                title="Go back to previous page"
+              >
+                <span className="text-lg leading-none" aria-hidden>
+                  ←
+                </span>
+                <span className="hidden sm:inline">Back</span>
+              </button>
               <div className="min-w-0">
                 <p className="truncate font-display text-lg font-bold text-ocean-900 sm:text-xl">
                   {pageLabel}
