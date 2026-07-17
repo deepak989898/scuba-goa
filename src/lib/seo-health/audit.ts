@@ -247,7 +247,10 @@ async function fetchGscLast7Days(): Promise<{
   const start = startDate.toISOString().slice(0, 10);
 
   const token = await import("@/lib/ai-analytics/connectors/google-auth").then((m) =>
-    m.getGoogleApiAccessToken(["https://www.googleapis.com/auth/webmasters.readonly"]),
+    m.getGoogleApiAccessToken(
+      ["https://www.googleapis.com/auth/webmasters.readonly"],
+      "search-console",
+    ),
   );
   if (!token) {
     return { status: "error", message: "Google API token failed — check FIREBASE_SERVICE_ACCOUNT_KEY", clicks: 0, impressions: 0 };

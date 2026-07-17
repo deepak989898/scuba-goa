@@ -1,4 +1,7 @@
-import { getGoogleApiAccessToken } from "@/lib/ai-analytics/connectors/google-auth";
+import {
+  getGoogleApiAccessToken,
+  getGoogleServiceAccountEmail,
+} from "@/lib/ai-analytics/connectors/google-auth";
 import type { SearchConsoleDailySnapshot } from "@/lib/ai-analytics/types";
 
 const SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"];
@@ -14,12 +17,13 @@ export async function fetchSearchConsoleDailySnapshot(
     process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim() ||
     `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.com").replace(/\/$/, "")}/`;
 
-  const token = await getGoogleApiAccessToken(SCOPES);
+  const token = await getGoogleApiAccessToken(SCOPES, "search-console");
+  const clientEmail = getGoogleServiceAccountEmail("search-console");
   if (!token) {
     return {
       data: null,
       status: "error",
-      message: "Could not obtain Google API token",
+      message: `Could not obtain Google API token${clientEmail ? ` for ${clientEmail}` : ""}`,
     };
   }
 
@@ -51,7 +55,7 @@ export async function fetchSearchConsoleDailySnapshot(
     return {
       data: null,
       status: "error",
-      message: `${summaryJson.error?.message ?? summaryRes.statusText}. Add service account to Search Console property.`,
+      message: `${summaryJson.error?.message ?? summaryRes.statusText}. Property: ${siteUrl}. Service account used: ${clientEmail ?? "unknown"}. Add this exact email as a Full user on this exact Search Console property.`,
     };
   }
 

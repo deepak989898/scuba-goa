@@ -30,7 +30,7 @@ export async function fetchGscRows(input: {
 }): Promise<{ ok: true; siteUrl: string; rows: GscRow[] } | { ok: false; error: string }> {
   const siteUrl = siteUrlFromEnv();
   try {
-    const token = await getGoogleApiAccessToken(SCOPES);
+    const token = await getGoogleApiAccessToken(SCOPES, "search-console");
     if (!token) return { ok: false, error: "Could not obtain Google API token" };
 
     const encodedSite = encodeURIComponent(siteUrl);
