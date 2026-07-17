@@ -5,11 +5,15 @@ import { ServiceDetailGallery } from "@/components/ServiceDetailGallery";
 import { ServiceDetailSections } from "@/components/ServiceDetailSections";
 import { ServiceSubServicesCart } from "@/components/ServiceSubServicesCart";
 import { ServiceMediaTabs } from "@/components/ServiceMediaTabs";
-import { getServiceBySlugServer } from "@/lib/get-services-server";
+import {
+  getAllServicesServer,
+  getServiceBySlugServer,
+} from "@/lib/get-services-server";
 import { serviceDetailImages } from "@/lib/service-images";
 import { fallbackServices } from "@/data/services";
 import { ServiceDetailActions } from "@/components/cart/ServiceDetailActions";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
+import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import {
   buildShareOpenGraph,
   buildShareTwitter,
@@ -88,39 +92,51 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ServiceDetailPage({ params }: Props) {
   const { slug } = await params;
-  const s = await getServiceBySlugServer(slug);
+  const allServices = await getAllServicesServer();
+  const s = allServices.find((service) => service.slug === slug);
   if (!s) notFound();
 
   const heroImages = serviceDetailImages(s);
+  const relatedServices = allServices
+    .filter((service) => service.slug !== s.slug)
+    .slice(0, 4);
 
   return (
     <article className="bg-white">
-      <ServiceDetailGallery images={heroImages} title={s.title} />
-      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-10">
-        <h1 className="font-display text-2xl font-bold text-ocean-900 sm:text-4xl">
-          {s.title}
-        </h1>
-      </div>
-      <div className="mx-auto max-w-3xl px-4 pb-10 pt-4 sm:px-6 sm:pb-12 sm:pt-6 lg:px-8">
-        <ServiceDetailSections service={s} />
-        <ServiceSubServicesCart service={s} />
-        <div className="mt-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-            Share this service
-          </p>
-          <div className="mt-2">
-            <SocialShareButtons
-              title={s.title}
-              path={`/services/${s.slug}`}
-              priceInr={s.priceFrom}
-              priceMode="from"
-            />
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8 lg:px-8">
+        <div className="min-w-0">
+          <ServiceDetailGallery images={heroImages} title={s.title} />
+
+          <div className="pt-8 sm:pt-10">
+            <h1 className="font-display text-2xl font-bold text-ocean-900 sm:text-4xl">
+              {s.title}
+            </h1>
+          </div>
+
+          <div className="pt-4 sm:pt-6">
+            <ServiceDetailSections service={s} />
+            <ServiceSubServicesCart service={s} />
+            <div className="mt-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                Share this service
+              </p>
+              <div className="mt-2">
+                <SocialShareButtons
+                  title={s.title}
+                  path={`/services/${s.slug}`}
+                  priceInr={s.priceFrom}
+                  priceMode="from"
+                />
+              </div>
+            </div>
+            <div className="mt-10">
+              <ServiceDetailActions service={s} />
+            </div>
+            <ServiceMediaTabs service={s} />
           </div>
         </div>
-        <div className="mt-10">
-          <ServiceDetailActions service={s} />
-        </div>
-        <ServiceMediaTabs service={s} />
+
+        <RelatedServicesSidebar services={relatedServices} />
       </div>
     </article>
   );
