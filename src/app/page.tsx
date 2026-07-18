@@ -8,7 +8,6 @@ import { BlogPreview } from "@/components/BlogPreview";
 import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
 import { HomeFaqSection } from "@/components/HomeFaqSection";
 import { HomeInternalLinksSection } from "@/components/HomeInternalLinksSection";
-import { TrustSection } from "@/components/TrustSection";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { getAllServicesServer } from "@/lib/get-services-server";
@@ -92,7 +91,6 @@ export default function HomePage() {
       </Suspense>
       <HeroSection />
       <HomeDeferredSections />
-      <TrustSection />
       <HomeInternalLinksSection />
       <HomeBookingCTASection />
       <BlogPreview />
