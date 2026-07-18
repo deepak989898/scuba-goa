@@ -153,6 +153,9 @@ export default function AdminBookingsPage() {
   const [whatsAppLoadingId, setWhatsAppLoadingId] = useState<string | null>(null);
   const [billPreviewUrl, setBillPreviewUrl] = useState<string | null>(null);
   const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+  /** Day keys open in the list — newest day starts expanded. */
+  const [openDayKeys, setOpenDayKeys] = useState<Set<string>>(new Set());
+  const daysInitializedRef = useRef(false);
   const billPreviewUrlRef = useRef<string | null>(null);
 
   const closeBillPreview = useCallback(() => {
@@ -410,6 +413,21 @@ export default function AdminBookingsPage() {
     return Array.from(groups.values());
   }, [rows]);
 
+  useEffect(() => {
+    if (daysInitializedRef.current || groupedRows.length === 0) return;
+    daysInitializedRef.current = true;
+    setOpenDayKeys(new Set([groupedRows[0]!.key]));
+  }, [groupedRows]);
+
+  function toggleDay(key: string) {
+    setOpenDayKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   if (!db) {
     return (
       <p className="text-ocean-700">
@@ -437,208 +455,240 @@ export default function AdminBookingsPage() {
       ) : rows.length === 0 ? (
         <p className="mt-8 text-ocean-700">No bookings yet.</p>
       ) : (
-        <div className="mt-8 space-y-9">
-          {groupedRows.map((group) => (
-            <section key={group.key} aria-labelledby={`booking-day-${group.key}`}>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b-2 border-ocean-100 pb-2">
-                <h2
+        <div className="mt-8 space-y-4">
+          <p className="text-xs text-ocean-600">
+            Click a date to show that day&apos;s bookings, then click a booking for full details.
+          </p>
+          {groupedRows.map((group) => {
+            const dayOpen = openDayKeys.has(group.key);
+            return (
+              <section
+                key={group.key}
+                aria-labelledby={`booking-day-${group.key}`}
+                className="overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm"
+              >
+                <button
+                  type="button"
                   id={`booking-day-${group.key}`}
-                  className="font-display text-lg font-bold text-ocean-900 sm:text-xl"
+                  aria-expanded={dayOpen}
+                  onClick={() => toggleDay(group.key)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-ocean-50/80 sm:px-5"
                 >
-                  {group.label}
-                </h2>
-                <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800">
-                  {group.rows.length} {group.rows.length === 1 ? "booking" : "bookings"}
-                </span>
-              </div>
+                  <span className="font-display text-base font-bold text-ocean-900 sm:text-lg">
+                    {group.label}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800">
+                      {group.rows.length}{" "}
+                      {group.rows.length === 1 ? "booking" : "bookings"}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={`flex h-8 w-8 items-center justify-center rounded-full bg-ocean-50 text-lg font-bold text-ocean-800 transition ${
+                        dayOpen ? "rotate-180 bg-cyan-100" : ""
+                      }`}
+                    >
+                      ⌄
+                    </span>
+                  </span>
+                </button>
 
-              <ul className="space-y-3">
-                {group.rows.map((r) => {
-                  const people = Number(r.people ?? r.payUnits ?? 0);
-                  const fullPaise = Number(r.fullAmountPaise ?? r.amountPaise ?? 0);
-                  const paidPaise = Number(r.amountPaise ?? 0);
-                  const cartItems = Array.isArray(r.cartItems)
-                    ? (r.cartItems as Record<string, unknown>[])
-                    : [];
+                {dayOpen ? (
+                  <ul className="space-y-3 border-t border-ocean-100 bg-sand/30 px-3 py-3 sm:px-4 sm:py-4">
+                    {group.rows.map((r) => {
+                      const people = Number(r.people ?? r.payUnits ?? 0);
+                      const fullPaise = Number(r.fullAmountPaise ?? r.amountPaise ?? 0);
+                      const paidPaise = Number(r.amountPaise ?? 0);
+                      const cartItems = Array.isArray(r.cartItems)
+                        ? (r.cartItems as Record<string, unknown>[])
+                        : [];
 
-                  return (
-                    <li key={r.id}>
-                      <details className="group overflow-hidden rounded-2xl border border-ocean-100 bg-white text-sm shadow-sm open:border-cyan-300 open:shadow-md">
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 marker:hidden transition hover:bg-ocean-50/70 sm:p-5">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                              <p className="truncate font-display text-base font-bold text-ocean-900 sm:text-lg">
-                                {String(r.packageName ?? "—")}
-                              </p>
-                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
-                                Paid {rupeesFromPaise(r.amountPaise)}
-                              </span>
+                      return (
+                        <li key={r.id}>
+                          <details className="group overflow-hidden rounded-2xl border border-ocean-100 bg-white text-sm shadow-sm open:border-cyan-300 open:shadow-md">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 marker:hidden transition hover:bg-ocean-50/70 sm:p-5">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                  <p className="truncate font-display text-base font-bold text-ocean-900 sm:text-lg">
+                                    {String(r.packageName ?? "—")}
+                                  </p>
+                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                                    Paid {rupeesFromPaise(r.amountPaise)}
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ocean-700 sm:text-sm">
+                                  <span className="font-medium text-ocean-900">
+                                    {String(r.customerName ?? "Guest")}
+                                  </span>
+                                  <span>Trip: {formatTripDate(r.date)}</span>
+                                  <span>Recorded: {formatDateTimeAmPm(r.createdAt)}</span>
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-2">
+                                <span className="hidden text-xs font-semibold text-cyan-800 sm:inline group-open:hidden">
+                                  View details
+                                </span>
+                                <span className="hidden text-xs font-semibold text-cyan-800 group-open:sm:inline">
+                                  Hide details
+                                </span>
+                                <span
+                                  aria-hidden
+                                  className="flex h-9 w-9 items-center justify-center rounded-full bg-ocean-50 text-xl font-bold text-ocean-800 transition group-open:rotate-180 group-open:bg-cyan-100"
+                                >
+                                  ⌄
+                                </span>
+                              </div>
+                            </summary>
+
+                            <div className="border-t border-ocean-100 px-4 pb-5 sm:px-5">
+                              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div>
+                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                    Guest name
+                                  </dt>
+                                  <dd className="mt-0.5 font-medium text-ocean-900">
+                                    {String(r.customerName ?? "—")}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                    Phone
+                                  </dt>
+                                  <dd className="mt-0.5 text-ocean-800">
+                                    {String(r.phone ?? "—")}
+                                  </dd>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                    Email
+                                  </dt>
+                                  <dd className="mt-0.5 break-all text-ocean-800">
+                                    {String(r.email ?? "—")}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                    Trip date
+                                  </dt>
+                                  <dd className="mt-0.5 text-ocean-800">
+                                    {formatTripDate(r.date)}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                    Units / people
+                                  </dt>
+                                  <dd className="mt-0.5 text-ocean-800">
+                                    {Number.isFinite(people) && people > 0 ? people : "—"}
+                                  </dd>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                    Pickup / address
+                                  </dt>
+                                  <dd className="mt-0.5 text-ocean-800">
+                                    {r.pickupLocation != null &&
+                                    String(r.pickupLocation).trim()
+                                      ? String(r.pickupLocation).trim()
+                                      : "—"}
+                                  </dd>
+                                </div>
+                              </dl>
+
+                              <div className="mt-4 rounded-xl bg-ocean-50/80 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
+                                  Payment
+                                </p>
+                                <p className="mt-1 text-ocean-800">
+                                  <span className="font-medium">Paid:</span>{" "}
+                                  {rupeesFromPaise(r.amountPaise)}
+                                  {fullPaise > paidPaise ? (
+                                    <>
+                                      {" "}
+                                      <span className="text-ocean-700">
+                                        · Full order {rupeesFromPaise(r.fullAmountPaise)} ·
+                                        Balance {rupeesFromPaise(r.balancePaise)}
+                                      </span>
+                                    </>
+                                  ) : null}
+                                </p>
+                                <p className="mt-1 text-xs text-ocean-700">
+                                  Mode: {String(r.paymentMode ?? "—")}
+                                  {r.razorpayPaymentId ? (
+                                    <> · Payment ID {String(r.razorpayPaymentId)}</>
+                                  ) : null}
+                                  {r.razorpayOrderId ? (
+                                    <> · Order {String(r.razorpayOrderId)}</>
+                                  ) : null}
+                                </p>
+                              </div>
+
+                              {cartItems.length > 0 ? (
+                                <div className="mt-4 border-t border-ocean-100 pt-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                    Cart lines
+                                  </p>
+                                  <ul className="mt-2 space-y-1.5 text-xs text-ocean-800">
+                                    {cartItems.map((it, idx) => (
+                                      <li
+                                        key={idx}
+                                        className="flex flex-wrap justify-between gap-2 rounded-lg bg-sand/60 px-2 py-1.5"
+                                      >
+                                        <span className="font-medium">
+                                          {String(it.name ?? "")} × {String(it.quantity ?? "")}
+                                        </span>
+                                        <span>
+                                          ₹
+                                          {Number(it.lineTotal ?? 0).toLocaleString("en-IN")}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+
+                              <div className="mt-4 flex flex-wrap gap-2 border-t border-ocean-100 pt-4">
+                                <button
+                                  type="button"
+                                  disabled={previewLoadingId === r.id}
+                                  onClick={() => previewBill(r.id)}
+                                  className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-semibold text-ocean-800 shadow-sm hover:bg-ocean-50 disabled:opacity-50"
+                                >
+                                  {previewLoadingId === r.id
+                                    ? "Loading bill…"
+                                    : "Preview bill"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={sendingEmailId === r.id}
+                                  onClick={() => sendConfirmationEmail(r.id)}
+                                  className="rounded-full bg-ocean-800 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-ocean-900 disabled:opacity-50"
+                                >
+                                  {sendingEmailId === r.id
+                                    ? "Sending…"
+                                    : "Send confirmation + bill (email)"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={whatsAppLoadingId === r.id}
+                                  onClick={() => openWhatsappGuestWithBill(r)}
+                                  className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                                >
+                                  {whatsAppLoadingId === r.id
+                                    ? "Preparing WhatsApp…"
+                                    : "WhatsApp guest + bill link"}
+                                </button>
+                              </div>
                             </div>
-                            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ocean-700 sm:text-sm">
-                              <span className="font-medium text-ocean-900">
-                                {String(r.customerName ?? "Guest")}
-                              </span>
-                              <span>Trip: {formatTripDate(r.date)}</span>
-                              <span>Recorded: {formatDateTimeAmPm(r.createdAt)}</span>
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span className="hidden text-xs font-semibold text-cyan-800 sm:inline group-open:hidden">
-                              View details
-                            </span>
-                            <span className="hidden text-xs font-semibold text-cyan-800 group-open:sm:inline">
-                              Hide details
-                            </span>
-                            <span
-                              aria-hidden
-                              className="flex h-9 w-9 items-center justify-center rounded-full bg-ocean-50 text-xl font-bold text-ocean-800 transition group-open:rotate-180 group-open:bg-cyan-100"
-                            >
-                              ⌄
-                            </span>
-                          </div>
-                        </summary>
-
-                        <div className="border-t border-ocean-100 px-4 pb-5 sm:px-5">
-                          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Guest name
-                    </dt>
-                    <dd className="mt-0.5 font-medium text-ocean-900">
-                      {String(r.customerName ?? "—")}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Phone
-                    </dt>
-                    <dd className="mt-0.5 text-ocean-800">{String(r.phone ?? "—")}</dd>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Email
-                    </dt>
-                    <dd className="mt-0.5 break-all text-ocean-800">
-                      {String(r.email ?? "—")}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Trip date
-                    </dt>
-                    <dd className="mt-0.5 text-ocean-800">
-                      {formatTripDate(r.date)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Units / people
-                    </dt>
-                    <dd className="mt-0.5 text-ocean-800">
-                      {Number.isFinite(people) && people > 0 ? people : "—"}
-                    </dd>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Pickup / address
-                    </dt>
-                    <dd className="mt-0.5 text-ocean-800">
-                      {r.pickupLocation != null && String(r.pickupLocation).trim()
-                        ? String(r.pickupLocation).trim()
-                        : "—"}
-                    </dd>
-                  </div>
-                </dl>
-
-                <div className="mt-4 rounded-xl bg-ocean-50/80 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
-                    Payment
-                  </p>
-                  <p className="mt-1 text-ocean-800">
-                    <span className="font-medium">Paid:</span>{" "}
-                    {rupeesFromPaise(r.amountPaise)}
-                    {fullPaise > paidPaise ? (
-                      <>
-                        {" "}
-                        <span className="text-ocean-700">
-                          · Full order {rupeesFromPaise(r.fullAmountPaise)} · Balance{" "}
-                          {rupeesFromPaise(r.balancePaise)}
-                        </span>
-                      </>
-                    ) : null}
-                  </p>
-                  <p className="mt-1 text-xs text-ocean-700">
-                    Mode: {String(r.paymentMode ?? "—")}
-                    {r.razorpayPaymentId ? (
-                      <> · Payment ID {String(r.razorpayPaymentId)}</>
-                    ) : null}
-                    {r.razorpayOrderId ? (
-                      <> · Order {String(r.razorpayOrderId)}</>
-                    ) : null}
-                  </p>
-                </div>
-
-                {cartItems.length > 0 ? (
-                  <div className="mt-4 border-t border-ocean-100 pt-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
-                      Cart lines
-                    </p>
-                    <ul className="mt-2 space-y-1.5 text-xs text-ocean-800">
-                      {cartItems.map((it, idx) => (
-                        <li
-                          key={idx}
-                          className="flex flex-wrap justify-between gap-2 rounded-lg bg-sand/60 px-2 py-1.5"
-                        >
-                          <span className="font-medium">
-                            {String(it.name ?? "")} × {String(it.quantity ?? "")}
-                          </span>
-                          <span>
-                            ₹{Number(it.lineTotal ?? 0).toLocaleString("en-IN")}
-                          </span>
+                          </details>
                         </li>
-                      ))}
-                    </ul>
-                  </div>
+                      );
+                    })}
+                  </ul>
                 ) : null}
-
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-ocean-100 pt-4">
-                  <button
-                    type="button"
-                    disabled={previewLoadingId === r.id}
-                    onClick={() => previewBill(r.id)}
-                    className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-semibold text-ocean-800 shadow-sm hover:bg-ocean-50 disabled:opacity-50"
-                  >
-                    {previewLoadingId === r.id ? "Loading bill…" : "Preview bill"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={sendingEmailId === r.id}
-                    onClick={() => sendConfirmationEmail(r.id)}
-                    className="rounded-full bg-ocean-800 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-ocean-900 disabled:opacity-50"
-                  >
-                    {sendingEmailId === r.id
-                      ? "Sending…"
-                      : "Send confirmation + bill (email)"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={whatsAppLoadingId === r.id}
-                    onClick={() => openWhatsappGuestWithBill(r)}
-                    className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
-                  >
-                    {whatsAppLoadingId === r.id
-                      ? "Preparing WhatsApp…"
-                      : "WhatsApp guest + bill link"}
-                  </button>
-                </div>
-                        </div>
-                      </details>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+              </section>
+            );
+          })}
         </div>
       )}
 

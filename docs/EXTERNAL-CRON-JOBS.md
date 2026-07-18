@@ -30,6 +30,7 @@ Actual run status is written to Firestore collection `cronRunStatus`.
 | Marketing agent | `https://bookscubagoa.com/api/cron/marketing-daily` | `0 6 * * *` | 11:30 daily |
 | Command Center | `https://bookscubagoa.com/api/cron/command-center-daily` | `15 6 * * *` | 11:45 daily |
 | SEO Blog Center | `https://bookscubagoa.com/api/cron/seo-blog-center-daily` | `45 6 * * *` | 12:15 daily |
+| AI Pricing (weekly) | `https://bookscubagoa.com/api/cron/pricing-agent-weekly` | `30 0 * * 2` | **Tuesday 06:00 IST** |
 
 For the hourly recovery schedule, cron-job.org's custom schedule should run at
 minute `15` UTC. The IST minute becomes `45`.

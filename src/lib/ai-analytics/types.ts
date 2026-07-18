@@ -105,6 +105,10 @@ export type AiAnalyticsReportDoc = {
   summaryMarkdown: string;
   summaryPlain: string;
   openaiModel: string;
+  /** Short email/Telegram headline */
+  headline?: string;
+  /** Validated "Tomorrow's 3 actions" (path/number specific) */
+  actions?: string[];
   notifications: {
     telegram?: boolean;
     email?: boolean;

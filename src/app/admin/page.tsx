@@ -91,6 +91,12 @@ const AI_AGENTS: DashCard[] = [
     description: "Funnel and CTA suggestions.",
   },
   {
+    href: "/admin/pricing-agent",
+    title: "AI Pricing",
+    description: "Weekly market price suggestions.",
+    accent: true,
+  },
+  {
     href: "/admin/business-agent",
     title: "Business ops agent",
     description: "Safe automatic site updates.",

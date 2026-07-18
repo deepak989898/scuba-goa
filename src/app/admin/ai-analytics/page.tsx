@@ -230,11 +230,37 @@ export default function AdminAiAnalyticsPage() {
             ) : null}
           </section>
 
+          {(report?.actions?.length || snapshot.insights?.recommendations?.length) ? (
+            <section className="mt-8 rounded-2xl border border-ocean-200 bg-ocean-50/40 p-6 shadow-sm">
+              <h2 className="font-display text-lg font-bold text-ocean-900">
+                Tomorrow&apos;s 3 actions
+              </h2>
+              <p className="mt-1 text-xs text-ocean-600">
+                Based on exit pages, bounce, and bookings — not generic marketing tips.
+              </p>
+              <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm text-ocean-900">
+                {(report?.actions?.length
+                  ? report.actions
+                  : snapshot.insights.recommendations
+                )
+                  .slice(0, 3)
+                  .map((a) => (
+                    <li key={a} className="leading-relaxed">
+                      {a}
+                    </li>
+                  ))}
+              </ol>
+            </section>
+          ) : null}
+
           {report?.summaryMarkdown ? (
             <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 AI daily report — {report.dateIst}
               </h2>
+              {report.headline ? (
+                <p className="mt-2 text-sm font-semibold text-ocean-800">{report.headline}</p>
+              ) : null}
               <div className="prose prose-ocean mt-4 max-w-none whitespace-pre-wrap text-sm text-ocean-800">
                 {report.summaryMarkdown}
               </div>
@@ -246,6 +272,9 @@ export default function AdminAiAnalyticsPage() {
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Agent recommendations
               </h2>
+              <p className="mt-1 text-xs text-ocean-600">
+                Rule-based alerts from today&apos;s paths and metrics.
+              </p>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ocean-800">
                 {snapshot.insights.recommendations.map((r) => (
                   <li key={r}>{r}</li>
@@ -255,8 +284,14 @@ export default function AdminAiAnalyticsPage() {
           ) : null}
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <TableBlock title="Top pages" rows={m?.topPages?.map((p) => [p.path, String(p.views)]) ?? []} />
-            <TableBlock title="Exit pages" rows={m?.exitPages?.map((p) => [p.path, String(p.views)]) ?? []} />
+            <TableBlock
+              title="Top pages (views)"
+              rows={m?.topPages?.map((p) => [p.path, String(p.views)]) ?? []}
+            />
+            <TableBlock
+              title="Exit pages (leaves)"
+              rows={m?.exitPages?.map((p) => [p.path, String(p.views)]) ?? []}
+            />
           </div>
 
           {snapshot.insights?.highTrafficLowConversion?.length ? (

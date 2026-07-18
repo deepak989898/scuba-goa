@@ -130,6 +130,12 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     hint: "Open Command Center first — these are detail pages",
     items: [
       { href: "/admin/conversion-opt", label: "Conversion AI", description: "Funnel & CTA ideas" },
+      {
+        href: "/admin/pricing-agent",
+        label: "AI Pricing",
+        description: "Weekly market price suggestions",
+        badge: "action",
+      },
       { href: "/admin/business-agent", label: "Business ops agent", description: "Safe auto site updates" },
       { href: "/admin/recovery-agent", label: "Recovery AI", description: "WhatsApp booking recovery" },
       { href: "/admin/marketing-engine", label: "Marketing AI", description: "Social & competitor scan" },

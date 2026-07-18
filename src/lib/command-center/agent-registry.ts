@@ -54,8 +54,8 @@ export const AGENT_REGISTRY: CommandCenterAgentMeta[] = [
   {
     id: "pricing",
     name: "Pricing Agent",
-    description: "Offers, seasonal pricing, conversion impact",
-    adminPath: "/admin/offers",
+    description: "Weekly AI market pricing suggestions & approvals",
+    adminPath: "/admin/pricing-agent",
     pipelineFn: "runPricingAgent",
   },
 ];
