@@ -1,4 +1,5 @@
 import type { ServiceItem } from "@/data/services";
+import Link from "next/link";
 
 function detailParagraphs(text: string): string[] {
   return text
@@ -7,40 +8,92 @@ function detailParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
+const SCUBA_FALLBACK_CONTENT = `Scuba diving in Goa is one of the easiest ways for beginners and families to experience the Arabian Sea underwater. You do not need to be an expert swimmer to try an introductory dive with a certified instructor.
+
+Your day usually starts with a clear safety briefing: hand signals, equalizing, mask clearing, and calm regulator breathing. Once you are comfortable, you join a supervised boat trip to the dive site — often around Grande Island or nearby coastal points — and explore at a controlled depth with one-on-one or small-group guidance.
+
+Packages typically include gear, instructor support, and boat transfer where listed. Optional underwater photos, hotel pickup, and longer dive time depend on the option you choose. Morning slots are popular for calmer seas and smoother logistics.
+
+Book online with live starting prices, then confirm your date, guests, and pickup on WhatsApp. Compare inclusions carefully before payment so your scuba diving price in Goa matches the experience you want.`;
+
 /**
- * Full service copy only: admin detail body, else short line — no stock marketing blurbs.
+ * Full service copy: admin detail body, scuba SEO fallback, else short line.
  */
 export function ServiceDetailSections({ service: s }: { service: ServiceItem }) {
   const custom = (s.detailContent ?? "").trim();
   const short = (s.short ?? "").trim();
+  const body =
+    custom ||
+    (s.slug === "scuba-diving" ? SCUBA_FALLBACK_CONTENT : "") ||
+    short;
 
-  if (custom) {
-    const paras = detailParagraphs(custom);
+  if (!body) {
     return (
-      <div className="space-y-4">
-        {paras.map((p, i) => (
-          <p
-            key={i}
-            className="text-base leading-relaxed text-ocean-800 sm:text-[17px] whitespace-pre-line"
-          >
-            {p}
-          </p>
-        ))}
-      </div>
-    );
-  }
-
-  if (short) {
-    return (
-      <p className="text-base leading-relaxed text-ocean-800 sm:text-[17px] whitespace-pre-line">
-        {short}
+      <p className="text-base text-ocean-700">
+        See options below or reach us on WhatsApp for timings and pickup.
       </p>
     );
   }
 
+  const paras = detailParagraphs(body);
+
   return (
-    <p className="text-base text-ocean-700">
-      See options below or reach us on WhatsApp for timings and pickup.
-    </p>
+    <div className="space-y-4">
+      {paras.map((p, i) => (
+        <p
+          key={i}
+          className="text-base leading-relaxed text-ocean-800 sm:text-[17px] whitespace-pre-line"
+        >
+          {p}
+        </p>
+      ))}
+
+      {s.slug === "scuba-diving" ? (
+        <div className="mt-6 rounded-2xl border border-cyan-100 bg-cyan-50/50 p-4 sm:p-5">
+          <h2 className="font-display text-xl font-bold text-cyan-900">
+            What you will experience
+          </h2>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ocean-800 sm:text-base">
+            <li>
+              <strong>Briefing &amp; skills:</strong> Breathing, signals, and
+              mask clearing before you enter the water.
+            </li>
+            <li>
+              <strong>Boat ride:</strong> Scenic transfer to the dive point with
+              crew safety instructions.
+            </li>
+            <li>
+              <strong>Guided dive:</strong> Supervised exploration at controlled
+              depth with instructor support.
+            </li>
+            <li>
+              <strong>Gear &amp; safety:</strong> Equipment checks, life jackets
+              for boat movement, and calm pacing for first-timers.
+            </li>
+          </ul>
+          <p className="mt-4 text-sm text-ocean-700">
+            Also explore{" "}
+            <Link
+              href="/services/water-sports"
+              className="font-semibold text-cyan-800 underline"
+            >
+              water sports in Goa
+            </Link>
+            {" · "}
+            <Link
+              href="/services/dudhsagar-trip"
+              className="font-semibold text-cyan-800 underline"
+            >
+              Dudhsagar trip
+            </Link>
+            {" · "}
+            <Link href="/booking" className="font-semibold text-cyan-800 underline">
+              book live slots
+            </Link>
+            .
+          </p>
+        </div>
+      ) : null}
+    </div>
   );
 }

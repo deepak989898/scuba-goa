@@ -8,6 +8,16 @@ export type ServiceFaq = {
 const SPECIFIC_FAQS: Record<string, ServiceFaq[]> = {
   "scuba-diving": [
     {
+      question: "What is the price for scuba diving in Goa?",
+      answer:
+        "Introductory scuba packages usually start from the live “from” price shown on this page. The final amount depends on the option you select, boat transfer, instructor time, gear, and optional photos. Always confirm the package total before payment.",
+    },
+    {
+      question: "What is included in scuba diving packages?",
+      answer:
+        "Typical inclusions are a safety briefing, diving gear, instructor guidance, and boat transfer where listed. Check your selected option for underwater photos, hotel pickup, and total duration.",
+    },
+    {
       question: "Can beginners book scuba diving in Goa?",
       answer:
         "Yes. Beginner experiences start with a safety briefing and guided practice. Tell the team about your swimming ability and any medical condition before confirming.",
@@ -16,6 +26,11 @@ const SPECIFIC_FAQS: Record<string, ServiceFaq[]> = {
       question: "Do I need to know swimming for scuba diving?",
       answer:
         "Requirements depend on the selected package. Many introductory dives accept non-swimmers under direct instructor supervision, but the operator makes the final safety decision.",
+    },
+    {
+      question: "What will I experience on a scuba diving day?",
+      answer:
+        "Most guests complete check-in and briefing, travel by boat to the dive site, practice basic skills with an instructor, then enjoy a supervised underwater exploration at controlled depth. Timing varies by package and sea conditions.",
     },
   ],
   "north-goa-tour": [

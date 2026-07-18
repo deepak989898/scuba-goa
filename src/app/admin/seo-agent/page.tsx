@@ -100,6 +100,26 @@ export default function AdminSeoAgentPage() {
     }
   }
 
+  async function queueClusterNow() {
+    setBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/seo-agent/queue-topics", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      setOk(
+        data.message ??
+          `Queued ${data.added?.length ?? 0} topic(s). Open Blog automation to prepare drafts.`,
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Queue failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -139,6 +159,14 @@ export default function AdminSeoAgentPage() {
           className="rounded-full bg-ocean-800 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {busy ? "Running…" : "Generate weekly report now"}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void queueClusterNow()}
+          className="rounded-full border border-cyan-300 bg-cyan-50 px-5 py-2 text-sm font-semibold text-cyan-900 disabled:opacity-50"
+        >
+          Queue SEO topic cluster
         </button>
         <button
           type="button"

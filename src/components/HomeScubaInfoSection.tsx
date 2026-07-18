@@ -120,12 +120,24 @@ export function HomeScubaInfoSection() {
 
         <p className="mt-8 text-sm text-ocean-700">
           Ready to book?{" "}
+          <Link href="/services/scuba-diving" className="font-semibold text-cyan-800 underline">
+            Scuba diving packages
+          </Link>
+          {" · "}
+          <Link href="/services/dudhsagar-trip" className="font-semibold text-cyan-800 underline">
+            Dudhsagar trip
+          </Link>
+          {" · "}
+          <Link href="/services/water-sports" className="font-semibold text-cyan-800 underline">
+            Water sports
+          </Link>
+          {" · "}
           <Link href="/booking" className="font-semibold text-ocean-800 underline">
-            Book scuba diving in Goa online
+            Book online
           </Link>
           {" · "}
           <Link href="/guides" className="font-semibold text-ocean-800 underline">
-            Read our guides
+            Guides
           </Link>
           {" · "}
           <Link href="/blog/scuba-diving-price-guide-2026" className="font-semibold text-ocean-800 underline">

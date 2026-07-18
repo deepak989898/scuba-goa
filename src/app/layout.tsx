@@ -21,22 +21,24 @@ const dm = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} | Scuba Diving in Goa — Book Online`,
+    default: `Book Scuba Diving & Water Sports in Goa - Best Prices & Packages`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Book scuba diving in Goa online: clear scuba diving price Goa, best scuba in Goa try-dives & packages, tours and water sports. Secure Razorpay checkout and WhatsApp confirmations.",
+    "Experience the thrill of scuba diving and exciting water sports in Goa. Compare live prices, packages & tours—book online with Razorpay and WhatsApp confirmation.",
   keywords: [
     ...PRIMARY_SEO_KEYWORDS,
     "water sports Goa booking",
+    "water sports in Goa",
+    "scuba diving packages Goa",
     "Goa tour packages",
     "Dudhsagar trip",
     "casino bookings Goa",
   ],
   openGraph: {
-    title: `${SITE_NAME} | Scuba Diving in Goa`,
+    title: `Book Scuba Diving & Water Sports in Goa - Best Prices & Packages`,
     description:
-      "Compare scuba diving price Goa, book the best scuba in Goa for your dates, and pay securely—try dives, boat trips, tours & more.",
+      "Experience the thrill of scuba diving and exciting water sports in Goa. Book your adventure today with clear pricing.",
     url: SITE_URL,
     siteName: SITE_NAME,
     locale: "en_IN",

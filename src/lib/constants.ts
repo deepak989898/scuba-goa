@@ -10,6 +10,8 @@ export const PRIMARY_SEO_KEYWORDS = [
   "scuba diving Goa booking",
   "book scuba goa",
   "Grande Island scuba",
+  "water sports in Goa",
+  "scuba diving packages Goa",
 ] as const;
 export const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "support@bookscubagoa.com";

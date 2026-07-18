@@ -6,6 +6,8 @@ import { PaymentSuccessBannerSlot } from "@/components/PaymentSuccessBannerSlot"
 import { HomeBookingCTASection } from "@/components/HomeBookingCTASection";
 import { BlogPreview } from "@/components/BlogPreview";
 import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
+import { HomeFaqSection } from "@/components/HomeFaqSection";
+import { HomeInternalLinksSection } from "@/components/HomeInternalLinksSection";
 import { TrustSection } from "@/components/TrustSection";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
@@ -27,19 +29,23 @@ export async function generateMetadata(): Promise<Metadata> {
     ? serviceDetailImages(featured).find(Boolean) ?? featured.image
     : DEFAULT_OG_SHARE_IMAGE;
   const canonical = `${SITE_URL.replace(/\/$/, "")}/`;
-  const title = `${SITE_NAME} | Scuba Diving in Goa — Price, Packages & Booking`;
+  const title = `Book Scuba Diving & Water Sports in Goa - Best Prices & Packages`;
   const description =
-    "Scuba diving in Goa: live scuba diving price Goa, guides to pick the best scuba in Goa, plus Dudhsagar, tours & water sports. Book online with Razorpay; WhatsApp slot confirmation.";
+    "Experience the thrill of scuba diving and exciting water sports in Goa. Compare live prices, packages & tours—book online with Razorpay and WhatsApp confirmation.";
 
   return {
-    title,
+    title: { absolute: title },
     description,
-    keywords: [...PRIMARY_SEO_KEYWORDS],
+    keywords: [
+      ...PRIMARY_SEO_KEYWORDS,
+      "water sports in Goa",
+      "scuba diving packages Goa",
+      "Dudhsagar trip",
+    ],
     alternates: { canonical },
     openGraph: buildShareOpenGraph({
-      title: `${SITE_NAME} | Scuba Diving in Goa`,
-      description:
-        "Book scuba diving in Goa with transparent pricing. Compare packages, read 2026 price & safety guides, checkout securely.",
+      title,
+      description,
       url: canonical,
       imageUrl: heroImage,
       imageAlt: featured?.title ?? "Scuba diving in Goa",
@@ -47,9 +53,8 @@ export async function generateMetadata(): Promise<Metadata> {
       priceMode: "from",
     }),
     twitter: buildShareTwitter({
-      title: `${SITE_NAME} | Scuba Diving in Goa`,
-      description:
-        "Scuba diving price Goa, best scuba in Goa packages, secure booking & WhatsApp support.",
+      title,
+      description,
       imageUrl: heroImage,
       priceInr: featured?.priceFrom,
       priceMode: "from",
@@ -88,9 +93,11 @@ export default function HomePage() {
       <HeroSection />
       <HomeDeferredSections />
       <TrustSection />
+      <HomeInternalLinksSection />
       <HomeBookingCTASection />
       <BlogPreview />
       <HomeScubaInfoSection />
+      <HomeFaqSection />
     </>
   );
 }

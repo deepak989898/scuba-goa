@@ -51,19 +51,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (slug === "scuba-diving") {
     const scubaDesc =
-      "Scuba diving in Goa: book try dives and packages with clear scuba diving price Goa, trained crews, and secure Razorpay checkout. Best scuba in Goa—compare inclusions before you pay.";
+      "Scuba diving in Goa: try dives & packages with clear scuba diving price Goa, certified instructors, boat trips, and secure Razorpay checkout. Compare inclusions and book the best scuba experience.";
     return {
-      title: `Scuba Diving in Goa — Book Try Dive & Packages | ${SITE_NAME}`,
+      title: `Scuba Diving in Goa — Prices, Packages & Beginner Experience`,
       description: scubaDesc.slice(0, 320),
-      keywords: [...PRIMARY_SEO_KEYWORDS, s.title, "try dive Goa", "Grande Island"],
+      keywords: [
+        ...PRIMARY_SEO_KEYWORDS,
+        s.title,
+        "try dive Goa",
+        "Grande Island",
+        "scuba diving packages Goa",
+      ],
       alternates: { canonical },
       openGraph: buildShareOpenGraph({
-        title: `Scuba diving in Goa`,
+        title: `Scuba diving in Goa — prices & packages`,
         ...ogBase,
         description: scubaDesc.slice(0, 200),
       }),
       twitter: buildShareTwitter({
-        title: `Scuba diving in Goa`,
+        title: `Scuba diving in Goa — prices & packages`,
         description: scubaDesc.slice(0, 200),
         imageUrl: shareImage,
         priceInr,

@@ -6,9 +6,14 @@ export const BOOK_SCUBA_FAQ = [
       "Visit Book Scuba Goa at bookscubagoa.com/booking, choose your scuba or tour package, enter your date and contact details, and pay securely with Razorpay. You receive WhatsApp confirmation after payment.",
   },
   {
-    question: "What is the scuba diving price in Goa?",
+    question: "What is the price for scuba diving in Goa?",
     answer:
-      "Scuba diving in Goa typically starts from introductory try-dive packages. Book Scuba Goa lists live package prices on the booking page and service pages — prices vary by activity, duration, and inclusions such as boat transfer and equipment.",
+      "Scuba diving prices in Goa typically start from introductory try-dive packages. Book Scuba Goa shows live starting prices on the scuba diving service page and booking page. Final cost depends on the package, boat transfer, gear, instructor time, and optional photos.",
+  },
+  {
+    question: "What is included in scuba diving packages?",
+    answer:
+      "Most packages include a safety briefing, diving gear, instructor guidance, and boat transfer where listed. Always check the selected option for inclusions such as underwater photos, hotel pickup, and trip duration before payment.",
   },
   {
     question: "Is scuba diving in Goa safe for beginners?",
@@ -24,6 +29,11 @@ export const BOOK_SCUBA_FAQ = [
     question: "Where does scuba diving happen in Goa?",
     answer:
       "Popular sites include Grande Island and coastal dive points accessible by boat from North Goa (Baga, Calangute, Candolim area). Book Scuba Goa coordinates pickup and slot timing when you book online.",
+  },
+  {
+    question: "Can I combine scuba diving with water sports or Dudhsagar?",
+    answer:
+      "Yes. Many guests book scuba diving plus water sports or a Dudhsagar trip on separate days for comfort. Compare options on the services pages, then confirm slots together on the booking page or WhatsApp.",
   },
   {
     question: "Can I book Grand Island scuba diving through Book Scuba Goa?",
