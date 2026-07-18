@@ -407,7 +407,10 @@ export default function AdminBlogAutomationPage() {
             }
           : e,
       );
-      setOkMsg("Image compressed (WebP) with logo and uploaded.");
+      setOkMsg(
+        "New image uploaded and saved to the live blog. Hard-refresh the public page if you still see the old photo.",
+      );
+      await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Image upload failed");
     } finally {
@@ -651,31 +654,53 @@ export default function AdminBlogAutomationPage() {
               Add to queue
             </button>
 
-            <ul className="mt-6 space-y-2">
-              {pending.length === 0 ? (
-                <li className="text-sm text-ocean-500">No pending titles — auto topics will be used.</li>
-              ) : (
-                pending.map((q, i) => (
-                  <li
-                    key={q.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ocean-100 bg-sand/30 px-3 py-2 text-sm"
-                  >
-                    <span>
-                      <span className="text-ocean-400">#{i + 1}</span> {q.title}{" "}
-                      <span className="text-ocean-500">({q.language})</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="text-red-600 hover:underline"
-                      disabled={busy === `q-${q.id}`}
-                      onClick={() => void removeQueue(q.id)}
-                    >
-                      Remove
-                    </button>
+            <details className="group mt-6 overflow-hidden rounded-xl border border-ocean-100 bg-sand/20 open:border-cyan-300 open:bg-cyan-50/30">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden transition hover:bg-ocean-50/80">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-ocean-900">
+                    Pending queue titles
+                  </p>
+                  <p className="mt-0.5 text-xs text-ocean-600">
+                    {pending.length === 0
+                      ? "No pending titles — auto topics will be used."
+                      : `${pending.length} title${pending.length === 1 ? "" : "s"} waiting · click to expand`}
+                  </p>
+                </div>
+                <span
+                  aria-hidden
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-ocean-800 shadow-sm transition group-open:rotate-180 group-open:bg-cyan-100"
+                >
+                  ⌄
+                </span>
+              </summary>
+              <ul className="space-y-2 border-t border-ocean-100 px-4 py-4">
+                {pending.length === 0 ? (
+                  <li className="text-sm text-ocean-500">
+                    No pending titles — auto topics will be used.
                   </li>
-                ))
-              )}
-            </ul>
+                ) : (
+                  pending.map((q, i) => (
+                    <li
+                      key={q.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ocean-100 bg-white px-3 py-2 text-sm"
+                    >
+                      <span>
+                        <span className="text-ocean-400">#{i + 1}</span> {q.title}{" "}
+                        <span className="text-ocean-500">({q.language})</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="text-red-600 hover:underline"
+                        disabled={busy === `q-${q.id}`}
+                        onClick={() => void removeQueue(q.id)}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </details>
           </section>
 
           <BlogPostsTable

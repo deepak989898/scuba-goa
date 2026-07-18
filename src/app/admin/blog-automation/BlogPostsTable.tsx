@@ -408,15 +408,40 @@ export function BlogPostsTable({
                               Featured image (WebP + logo bar)
                             </p>
                             {editing.featuredImageUrl ? (
-                              <a
-                                href={editing.featuredImageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-2 inline-block text-xs text-ocean-600 underline"
-                              >
-                                View current image
-                              </a>
-                            ) : null}
+                              <div className="mt-2 flex flex-wrap items-start gap-4">
+                                <a
+                                  href={editing.featuredImageUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="relative block h-24 w-40 overflow-hidden rounded-xl border border-ocean-200 bg-ocean-50 shadow-sm"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={editing.featuredImageUrl}
+                                    alt={editing.featuredImageAlt || editing.title}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </a>
+                                <div className="text-xs text-ocean-600">
+                                  <a
+                                    href={editing.featuredImageUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-cyan-800 underline"
+                                  >
+                                    View current image
+                                  </a>
+                                  <p className="mt-1 max-w-sm">
+                                    Choosing a new file uploads and saves it to the live blog
+                                    immediately (new unique URL).
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-xs text-ocean-500">
+                                No featured image yet — choose a file to upload.
+                              </p>
+                            )}
                             <input
                               type="file"
                               accept="image/*"

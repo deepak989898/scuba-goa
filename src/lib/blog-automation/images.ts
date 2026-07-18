@@ -149,13 +149,16 @@ async function uploadWebpToStorage(
     process.env.FIREBASE_STORAGE_BUCKET;
   if (!bucketName) throw new Error("Storage bucket not configured");
 
-  const storagePath = `blog/${slug}/featured.webp`;
+  // Versioned path so each replace gets a new public URL. Overwriting the same
+  // `featured.webp` kept browsers/CDNs on the old bytes for up to a year.
+  const version = Date.now().toString(36);
+  const storagePath = `blog/${slug}/featured-${version}.webp`;
   const bucket = getStorage(app).bucket(bucketName);
   const file = bucket.file(storagePath);
   await file.save(webpBuffer, {
     metadata: {
       contentType: "image/webp",
-      cacheControl: "public, max-age=31536000, immutable",
+      cacheControl: "public, max-age=86400",
     },
   });
   await file.makePublic();

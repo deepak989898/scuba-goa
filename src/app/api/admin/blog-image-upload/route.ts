@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { brandAndUploadBlogImageBuffer } from "@/lib/blog-automation/images";
-import { isValidBlogSlug, normalizeBlogSlugInput } from "@/lib/blog-firestore";
+import { getAdminDb } from "@/lib/firebase-admin";
+import {
+  isValidBlogSlug,
+  normalizeBlogSlugInput,
+  parseBlogPostFromFirestore,
+} from "@/lib/blog-firestore";
+import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 
 export const runtime = "nodejs";
 
@@ -37,6 +44,43 @@ export async function POST(req: Request) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const urls = await brandAndUploadBlogImageBuffer(buffer, slug);
+
+    const db = getAdminDb();
+    if (db) {
+      const ref = db.collection("blogPosts").doc(slug);
+      const snap = await ref.get();
+      const now = new Date().toISOString();
+      await ref.set(
+        {
+          featuredImageUrl: urls.featuredImageUrl,
+          ogImageUrl: urls.ogImageUrl,
+          updatedAt: now,
+        },
+        { merge: true },
+      );
+
+      const post = parseBlogPostFromFirestore(
+        slug,
+        { ...(snap.data() as Record<string, unknown> | undefined), ...urls },
+        { requirePublished: false },
+      );
+      if (post?.published && urls.featuredImageUrl) {
+        try {
+          await syncBlogImageToHomeGallery({
+            blogSlug: slug,
+            title: post.title,
+            featuredImageUrl: urls.featuredImageUrl,
+            serviceSlug: post.serviceSlug,
+            published: true,
+          });
+        } catch (e) {
+          console.error("[blog-image-upload] gallery sync:", e);
+        }
+        revalidatePath(`/blog/${slug}`);
+        revalidatePath("/blog");
+      }
+    }
+
     return NextResponse.json({ ok: true, ...urls });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upload failed";

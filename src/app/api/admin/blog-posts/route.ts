@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
@@ -14,6 +15,7 @@ import {
 } from "@/lib/blog-automation/schedule-ist";
 import { parseSlotToMinutes } from "@/lib/blog-automation/schedule-utils";
 import { publishBlogPostNow } from "@/lib/blog-automation/scheduled-posts";
+import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 
 export const runtime = "nodejs";
 
@@ -190,6 +192,10 @@ export async function PATCH(req: Request) {
 
   await ref.set(next, { merge: true });
 
+  const imageChanged =
+    String(next.featuredImageUrl ?? "") !== String(current.featuredImageUrl ?? "") ||
+    String(next.ogImageUrl ?? "") !== String(current.ogImageUrl ?? "");
+
   if (publishNow || (published && !wasPublished)) {
     const pub = await publishBlogPostNow(slug);
     if (!pub.ok) {
@@ -197,6 +203,23 @@ export async function PATCH(req: Request) {
     }
   } else if (!published && wasPublished) {
     await ref.set({ published: false, publishedAt: null }, { merge: true });
+  } else if (published && imageChanged && next.featuredImageUrl) {
+    try {
+      await syncBlogImageToHomeGallery({
+        blogSlug: slug,
+        title: String(next.title ?? current.title),
+        featuredImageUrl: String(next.featuredImageUrl),
+        serviceSlug: String(next.serviceSlug ?? current.serviceSlug ?? ""),
+        published: true,
+      });
+    } catch (e) {
+      console.error("[blog-posts] gallery sync on image change:", e);
+    }
+  }
+
+  if (published || publishNow || wasPublished) {
+    revalidatePath(`/blog/${slug}`);
+    revalidatePath("/blog");
   }
 
   return NextResponse.json({ ok: true, slug });
