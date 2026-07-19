@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { blogPosts } from "@/data/blog-posts";
@@ -21,6 +20,38 @@ type Props = { params: Promise<{ slug: string }> };
 
 export const dynamicParams = true;
 export const revalidate = 3600;
+
+const u = (id: string) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=75`;
+
+const DETAIL_FALLBACKS = [
+  u("photo-1544551763-46a013bb70d5"),
+  u("photo-1682687220063-4742bd7fd538"),
+  u("photo-1559827260-dc66d52bef19"),
+  u("photo-1582967788606-a171f1080dd0"),
+  u("photo-1530549387789-4c1017266635"),
+  u("photo-1507525428034-b723cf961d3e"),
+];
+
+/** Stable fallback when a post has no featured / OG image stored. */
+function blogDetailFallbackImage(slug: string, keywords: string[]): string {
+  const hay = `${slug} ${keywords.join(" ")}`.toLowerCase();
+  if (hay.includes("family") || hay.includes("beginner") || hay.includes("safe")) {
+    return DETAIL_FALLBACKS[1]!;
+  }
+  if (hay.includes("andaman") || hay.includes("island") || hay.includes("boat")) {
+    return DETAIL_FALLBACKS[2]!;
+  }
+  if (hay.includes("price") || hay.includes("cost") || hay.includes("budget")) {
+    return DETAIL_FALLBACKS[3]!;
+  }
+  if (hay.includes("water") || hay.includes("sport") || hay.includes("jet")) {
+    return DETAIL_FALLBACKS[4]!;
+  }
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) h = (h + slug.charCodeAt(i) * (i + 1)) % 997;
+  return DETAIL_FALLBACKS[h % DETAIL_FALLBACKS.length]!;
+}
 
 export async function generateStaticParams() {
   const staticSlugs = blogPosts.map((p) => p.slug);
@@ -196,7 +227,13 @@ export default async function BlogPostPage({ params }: Props) {
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const faqs = p.faqs ?? [];
-  const featuredImage = fs?.featuredImageUrl?.trim();
+  const featuredImage =
+    fs?.featuredImageUrl?.trim() ||
+    fs?.ogImageUrl?.trim() ||
+    p.imageUrl?.trim() ||
+    blogDetailFallbackImage(p.slug, p.keywords);
+  const featuredImageAlt =
+    fs?.featuredImageAlt?.trim() || p.imageAlt?.trim() || p.title;
   const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.date;
   const offerList = offerCatalogJsonLd(catalog.packages, pageUrl);
   const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
@@ -219,7 +256,7 @@ export default async function BlogPostPage({ params }: Props) {
               dateModified,
               slug: p.slug,
               keywords: p.keywords,
-              imageUrl: featuredImage || fs?.ogImageUrl,
+              imageUrl: featuredImage,
               language: fs?.language,
             }),
           ),
@@ -274,9 +311,9 @@ export default async function BlogPostPage({ params }: Props) {
         </div>
         {featuredImage ? (
           <div className="relative mt-3 aspect-[16/9] max-h-[min(280px,36vh)] w-full overflow-hidden rounded-xl border border-ocean-100 bg-ocean-900 sm:max-h-[320px]">
-            <Image
+            <CmsRemoteImage
               src={featuredImage}
-              alt={fs?.featuredImageAlt?.trim() || p.title}
+              alt={featuredImageAlt}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 720px"
