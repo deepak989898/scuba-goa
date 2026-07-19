@@ -123,7 +123,7 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
               fill
               sizes="95vw"
               className="rounded-xl object-contain"
-              priority
+              loading="eager"
             />
           </div>
         </div>

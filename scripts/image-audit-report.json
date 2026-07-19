@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-07-19T09:42:27.857Z",
+  "inventory": [
+    {
+      "path": "public/munnar1.jpg",
+      "bytes": 161034,
+      "ext": ".jpg",
+      "width": 1000,
+      "height": 667,
+      "hasAlpha": false
+    },
+    {
+      "path": "public/munnar1.webp",
+      "bytes": 113348,
+      "ext": ".webp",
+      "width": 1000,
+      "height": 667,
+      "hasAlpha": false
+    },
+    {
+      "path": "src/app/icon.png",
+      "bytes": 64524,
+      "ext": ".png",
+      "width": 512,
+      "height": 512,
+      "hasAlpha": true
+    },
+    {
+      "path": "src/app/icon.webp",
+      "bytes": 60848,
+      "ext": ".webp",
+      "width": 512,
+      "height": 512,
+      "hasAlpha": true
+    },
+    {
+      "path": "public/book-scuba-goa-logo-transparent.png",
+      "bytes": 35444,
+      "ext": ".png",
+      "width": 650,
+      "height": 238,
+      "hasAlpha": true
+    },
+    {
+      "path": "public/book-scuba-goa-logo-transparent.webp",
+      "bytes": 24502,
+      "ext": ".webp",
+      "width": 650,
+      "height": 238,
+      "hasAlpha": true
+    },
+    {
+      "path": "src/app/favicon.ico",
+      "bytes": 17906,
+      "ext": ".ico",
+      "width": 0,
+      "height": 0,
+      "hasAlpha": false
+    },
+    {
+      "path": "public/book-scuba-goa-logo.webp",
+      "bytes": 17786,
+      "ext": ".webp",
+      "width": 1024,
+      "height": 682,
+      "hasAlpha": false
+    },
+    {
+      "path": "src/app/apple-icon.webp",
+      "bytes": 15686,
+      "ext": ".webp",
+      "width": 180,
+      "height": 180,
+      "hasAlpha": true
+    },
+    {
+      "path": "public/book-scuba-goa-logo.png",
+      "bytes": 14913,
+      "ext": ".png",
+      "width": 1024,
+      "height": 682,
+      "hasAlpha": false
+    },
+    {
+      "path": "src/app/apple-icon.png",
+      "bytes": 12528,
+      "ext": ".png",
+      "width": 180,
+      "height": 180,
+      "hasAlpha": true
+    },
+    {
+      "path": "public/blog-bar-host.png",
+      "bytes": 3241,
+      "ext": ".png",
+      "width": 280,
+      "height": 48,
+      "hasAlpha": true
+    },
+    {
+      "path": "public/blog-watermark-tile.png",
+      "bytes": 3184,
+      "ext": ".png",
+      "width": 420,
+      "height": 72,
+      "hasAlpha": true
+    }
+  ]
+}

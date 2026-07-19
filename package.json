@@ -10,7 +10,10 @@
     "test:pricing-agent": "node scripts/test-pricing-agent-safety.mjs",
     "test:ai-analytics": "node scripts/test-ai-analytics-insights.mjs",
     "test:analytics": "node scripts/test-analytics-attribution.mjs",
-    "optimize:images": "node scripts/optimize-images.mjs",
+    "optimize:images": "node scripts/optimize-images.mjs --legacy-brand",
+    "images:audit": "node scripts/optimize-images.mjs --audit",
+    "images:optimize": "node scripts/optimize-images.mjs",
+    "images:optimize:dry-run": "node scripts/optimize-images.mjs --dry-run",
     "generate:blog-watermark": "node scripts/generate-blog-watermark.mjs"
   },
   "dependencies": {

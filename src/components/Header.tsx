@@ -43,7 +43,7 @@ export function Header() {
           aria-label="Book Scuba Goa home"
         >
           <Image
-            src="/book-scuba-goa-logo-transparent.png"
+            src="/book-scuba-goa-logo-transparent.webp"
             alt="Book Scuba Goa"
             width={240}
             height={88}

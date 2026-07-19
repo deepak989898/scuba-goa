@@ -42,7 +42,7 @@ export function Footer() {
               className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
             >
               <Image
-                src="/book-scuba-goa-logo-transparent.png"
+                src="/book-scuba-goa-logo-transparent.webp"
                 alt={SITE_NAME}
                 width={240}
                 height={88}

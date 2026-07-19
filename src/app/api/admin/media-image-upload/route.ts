@@ -11,7 +11,15 @@ import { getAdminApp } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
-const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_INPUT_BYTES = 25 * 1024 * 1024;
+
+const PROFILES = new Set<ContentImageProfile>([
+  "hero",
+  "featured",
+  "card",
+  "og",
+  "thumbnail",
+]);
 
 function normalizeBucket(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
@@ -29,6 +37,10 @@ function firebaseDownloadUrl(bucketName: string, objectPath: string, token: stri
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${enc}?alt=media&token=${token}`;
 }
 
+/**
+ * Generic admin image upload → WebP in Firebase Storage.
+ * Form fields: file, profile? (hero|featured|card|og|thumbnail), folder? (storage prefix)
+ */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
   if (!auth.ok) {
@@ -55,28 +67,31 @@ export async function POST(req: Request) {
 
   let form: FormData;
   try {
-    form = await req.formData();
+    form = await formDataSafe(req);
   } catch {
     return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
   }
 
-  const kind = String(form.get("kind") ?? "").trim();
-  if (kind !== "og" && kind !== "hero") {
-    return NextResponse.json(
-      { error: "kind must be og or hero" },
-      { status: 400 },
-    );
-  }
+  const profileRaw = String(form.get("profile") ?? "card").trim() as ContentImageProfile;
+  const profile = PROFILES.has(profileRaw) ? profileRaw : "card";
+
+  const folderRaw = String(form.get("folder") ?? "uploads/images").trim();
+  const folder = folderRaw
+    .replace(/\\/g, "/")
+    .replace(/\.\./g, "")
+    .replace(/^\/+|\/+$/g, "")
+    .slice(0, 120) || "uploads/images";
 
   const file = form.get("file");
   if (!(file instanceof Blob) || file.size <= 0) {
     return NextResponse.json({ error: "Missing file" }, { status: 400 });
   }
-
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "Image too large (max 25 MB)" }, { status: 413 });
+  if (file.size > MAX_INPUT_BYTES) {
+    return NextResponse.json(
+      { error: "Image too large (max 25 MB). We'll compress to WebP automatically." },
+      { status: 413 },
+    );
   }
-
   if (!isAllowedImageMime(file.type)) {
     return NextResponse.json(
       { error: "Unsupported file type. Use JPG, PNG, or WebP." },
@@ -84,25 +99,23 @@ export async function POST(req: Request) {
     );
   }
 
-  const profile: ContentImageProfile = kind === "og" ? "og" : "hero";
   const input = Buffer.from(await file.arrayBuffer());
   let converted;
   try {
     converted = await compressContentImage(input, profile);
   } catch (e) {
-    console.error("seo-image-upload compress failed", e);
+    console.error("media-image-upload compress failed", e);
     return NextResponse.json(
-      { error: "Could not process this image. Try a JPG/PNG/WebP." },
+      { error: "Could not process this image. Try a JPG/PNG/WebP under 25 MB." },
       { status: 400 },
     );
   }
 
-  const folder = kind === "og" ? "seo/og" : "seo/hero";
-  const original =
+  const originalRaw =
     file instanceof File && file.name.trim()
       ? file.name.replace(/[^\w.-]+/g, "_")
       : "upload.jpg";
-  const baseName = original.replace(/\.[^.]+$/, "") || "upload";
+  const baseName = originalRaw.replace(/\.[^.]+$/, "") || "upload";
   const objectPath = `${folder}/${Date.now()}_${baseName}.webp`;
   const token = randomUUID();
 
@@ -112,13 +125,11 @@ export async function POST(req: Request) {
       resumable: false,
       metadata: {
         contentType: converted.contentType,
-        metadata: {
-          firebaseStorageDownloadTokens: token,
-        },
+        metadata: { firebaseStorageDownloadTokens: token },
       },
     });
   } catch (e) {
-    console.error("seo-image-upload save failed", e);
+    console.error("media-image-upload save failed", e);
     return NextResponse.json({ error: "Storage upload failed" }, { status: 500 });
   }
 
@@ -128,6 +139,12 @@ export async function POST(req: Request) {
     bytes: converted.bytes,
     contentType: converted.contentType,
     width: converted.width,
+    height: converted.height,
     quality: converted.quality,
+    profile: converted.profile,
   });
+}
+
+async function formDataSafe(req: Request): Promise<FormData> {
+  return req.formData();
 }

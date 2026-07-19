@@ -136,7 +136,7 @@ function GalleryLightbox({
                 fill
                 sizes="95vw"
                 className="object-contain"
-                priority
+                loading="eager"
               />
             </div>
           )}

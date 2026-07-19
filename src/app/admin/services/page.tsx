@@ -9,8 +9,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { getDb } from "@/lib/firebase";
-import { getFirebaseStorageClient } from "@/lib/firebase";
+import { getDb, getFirebaseAuth, getFirebaseStorageClient } from "@/lib/firebase";
 import { docToService, serviceToPayload } from "@/lib/service-firestore";
 import type { ServiceItem, SubServiceItem } from "@/data/services";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -284,7 +283,43 @@ export default function AdminServicesPage() {
     setUploadingMediaType(mediaType);
     try {
       const uploadedUrls: string[] = [];
+      const auth = getFirebaseAuth();
+      let bearer: string | null = null;
+      try {
+        if (auth?.currentUser) {
+          await auth.currentUser.getIdToken(true);
+          bearer = await auth.currentUser.getIdToken();
+        }
+      } catch {
+        bearer = null;
+      }
+
       for (const file of Array.from(files)) {
+        const isImage =
+          mediaType === "posts" &&
+          (file.type.startsWith("image/") ||
+            /\.(jpe?g|png|webp|avif)$/i.test(file.name));
+
+        if (isImage && bearer) {
+          const fd = new FormData();
+          fd.append("file", file);
+          fd.append("profile", "card");
+          fd.append("folder", `services/${slug}/${mediaType}`);
+          const apiRes = await fetch("/api/admin/media-image-upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${bearer}` },
+            body: fd,
+          });
+          if (apiRes.ok) {
+            const data = (await apiRes.json()) as { url?: string };
+            if (data.url) {
+              uploadedUrls.push(data.url);
+              continue;
+            }
+          }
+          // Fall through to raw upload if server compress fails
+        }
+
         const safeName = file.name.replace(/[^\w.-]+/g, "_");
         const path = `services/${slug}/${mediaType}/${Date.now()}_${safeName}`;
         const fileRef = ref(storage, path);

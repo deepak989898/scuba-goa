@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-07-19T09:42:27.231Z",
+  "dryRun": false,
+  "allowlist": [
+    "public",
+    "src/app"
+  ],
+  "inventoryCount": 13,
+  "inventoryBytes": 544944,
+  "converted": [],
+  "skipped": [
+    {
+      "path": "public\\blog-bar-host.png",
+      "reason": "deny-list (text/favicon/tile)"
+    },
+    {
+      "path": "public\\blog-watermark-tile.png",
+      "reason": "deny-list (text/favicon/tile)"
+    },
+    {
+      "path": "public\\book-scuba-goa-logo-transparent.png",
+      "reason": "webp sibling exists (23.9 KB; source 34.6 KB) — use --force to overwrite"
+    },
+    {
+      "path": "public\\book-scuba-goa-logo-transparent.webp",
+      "reason": "already modern format"
+    },
+    {
+      "path": "public\\book-scuba-goa-logo.png",
+      "reason": "webp sibling exists (17.4 KB; source 14.6 KB) — use --force to overwrite"
+    },
+    {
+      "path": "public\\book-scuba-goa-logo.webp",
+      "reason": "already modern format"
+    },
+    {
+      "path": "public\\munnar1.jpg",
+      "reason": "webp sibling exists (110.7 KB; source 157.3 KB) — use --force to overwrite"
+    },
+    {
+      "path": "public\\munnar1.webp",
+      "reason": "already modern format"
+    },
+    {
+      "path": "src\\app\\apple-icon.png",
+      "reason": "webp sibling exists (15.3 KB; source 12.2 KB) — use --force to overwrite"
+    },
+    {
+      "path": "src\\app\\apple-icon.webp",
+      "reason": "already modern format"
+    },
+    {
+      "path": "src\\app\\favicon.ico",
+      "reason": "deny-list (text/favicon/tile)"
+    },
+    {
+      "path": "src\\app\\icon.png",
+      "reason": "webp sibling exists (59.4 KB; source 63.0 KB) — use --force to overwrite"
+    },
+    {
+      "path": "src\\app\\icon.webp",
+      "reason": "already modern format"
+    }
+  ],
+  "totals": {
+    "converted": 0,
+    "skipped": 13,
+    "beforeBytes": 0,
+    "afterBytes": 0,
+    "savedBytes": 0,
+    "savedPct": "0%"
+  },
+  "fingerprint": "da39a3ee5e6b"
+}
