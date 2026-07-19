@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
+import { PRIMARY_SEO_KEYWORDS, SITE_URL } from "@/lib/constants";
 import { ServiceDetailGallery } from "@/components/ServiceDetailGallery";
 import { ServiceDetailSections } from "@/components/ServiceDetailSections";
 import { ServiceSubServicesCart } from "@/components/ServiceSubServicesCart";
@@ -110,24 +110,27 @@ export default async function ServiceDetailPage({ params }: Props) {
 
   return (
     <article className="bg-white">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-4 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-5 lg:px-8">
         <div className="min-w-0">
           <ServiceDetailGallery images={heroImages} title={s.title} />
 
-          <div className="pt-8 sm:pt-10">
-            <h1 className="font-display text-2xl font-bold text-ocean-900 sm:text-4xl">
+          <div className="pt-3 sm:pt-4">
+            <h1 className="font-display text-2xl font-bold leading-tight text-ocean-900 sm:text-3xl">
               {s.title}
             </h1>
           </div>
 
-          <div className="pt-4 sm:pt-6">
+          <div className="pt-2.5 sm:pt-3">
             <ServiceDetailSections service={s} />
             <ServiceSubServicesCart service={s} />
-            <div className="mt-6">
+            <div className="mt-4 lg:hidden">
+              <ServiceDetailActions service={s} layout="sidebar" />
+            </div>
+            <div className="mt-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
                 Share this service
               </p>
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <SocialShareButtons
                   title={s.title}
                   path={`/services/${s.slug}`}
@@ -136,15 +139,21 @@ export default async function ServiceDetailPage({ params }: Props) {
                 />
               </div>
             </div>
-            <div className="mt-10">
-              <ServiceDetailActions service={s} />
-            </div>
             <ServiceMediaTabs service={s} />
             <ServiceFaqs service={s} />
           </div>
         </div>
 
-        <RelatedServicesSidebar services={relatedServices} />
+        <aside className="hidden min-w-0 lg:block">
+          <div className="lg:sticky lg:top-16 lg:space-y-4">
+            <ServiceDetailActions service={s} layout="sidebar" />
+            <RelatedServicesSidebar services={relatedServices} compact />
+          </div>
+        </aside>
+
+        <div className="lg:hidden">
+          <RelatedServicesSidebar services={relatedServices} compact />
+        </div>
       </div>
     </article>
   );

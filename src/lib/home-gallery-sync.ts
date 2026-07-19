@@ -3,6 +3,7 @@ import {
   inferGalleryCategoryFromBlog,
   type GalleryCategoryId,
 } from "@/lib/gallery-categories";
+import { galleryMediaDedupeKey } from "@/lib/home-gallery-dedupe";
 
 const BLOG_DOC_PREFIX = "blog-";
 
@@ -48,6 +49,24 @@ export async function syncBlogImageToHomeGallery(
     input.category ??
     inferGalleryCategoryFromBlog(String(input.serviceSlug ?? "").trim());
 
+  const mediaKey = galleryMediaDedupeKey(mediaUrl);
+  const existing = await db.collection("homeGallery").get();
+  const alreadyElsewhere = existing.docs.some((docSnap) => {
+    if (docSnap.id === docId) return false;
+    const data = docSnap.data();
+    const url = String(data.mediaUrl ?? data.imageUrl ?? "").trim();
+    return url ? galleryMediaDedupeKey(url) === mediaKey : false;
+  });
+  // Same file already listed under another gallery entry — keep one copy.
+  if (alreadyElsewhere) {
+    try {
+      await ref.delete();
+    } catch {
+      /* may not exist */
+    }
+    return;
+  }
+
   const sortOrder = -Math.floor(Date.now() / 1000);
 
   await ref.set(
@@ -82,10 +101,31 @@ export async function backfillBlogImagesToHomeGallery(): Promise<{
   let synced = 0;
   let skipped = 0;
 
+  const gallerySnap = await db.collection("homeGallery").get();
+  const seenMedia = new Set<string>();
+  for (const g of gallerySnap.docs) {
+    const url = String(g.data().mediaUrl ?? g.data().imageUrl ?? "").trim();
+    if (!url) continue;
+    // Ignore blog-* docs during seed — they will be re-synced uniquely below
+    if (String(g.id).startsWith(BLOG_DOC_PREFIX)) continue;
+    seenMedia.add(galleryMediaDedupeKey(url));
+  }
+
   for (const doc of snap.docs) {
     const data = doc.data();
     const url = String(data.featuredImageUrl ?? "").trim();
     if (!url) {
+      skipped += 1;
+      continue;
+    }
+    const key = galleryMediaDedupeKey(url);
+    if (seenMedia.has(key)) {
+      // Drop duplicate blog gallery row if it exists
+      try {
+        await db.collection("homeGallery").doc(blogHomeGalleryDocId(doc.id)).delete();
+      } catch {
+        /* ignore */
+      }
       skipped += 1;
       continue;
     }
@@ -96,6 +136,7 @@ export async function backfillBlogImagesToHomeGallery(): Promise<{
       serviceSlug: String(data.serviceSlug ?? ""),
       published: true,
     });
+    seenMedia.add(key);
     synced += 1;
   }
 

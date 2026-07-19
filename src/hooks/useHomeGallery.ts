@@ -1,9 +1,8 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { normalizeGalleryCategory } from "@/lib/gallery-categories";
+import { dedupeHomeGalleryItems } from "@/lib/home-gallery-dedupe";
 import {
   DEFAULT_HOME_GALLERY,
   type HomeGalleryItem,
@@ -37,13 +36,15 @@ function normalizeRow(
 }
 
 export function useHomeGallery() {
-  const [items, setItems] = useState<HomeGalleryItem[]>(DEFAULT_HOME_GALLERY);
+  const [items, setItems] = useState<HomeGalleryItem[]>(
+    () => dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY),
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const db = getDb();
     if (!db) {
-      setItems(DEFAULT_HOME_GALLERY);
+      setItems(dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY));
       setLoading(false);
       return;
     }
@@ -53,7 +54,7 @@ export function useHomeGallery() {
         const snap = await getDocs(collection(db, "homeGallery"));
         if (cancelled) return;
         if (snap.empty) {
-          setItems(DEFAULT_HOME_GALLERY);
+          setItems(dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY));
         } else {
           const rows = snap.docs
             .map((docSnap) =>
@@ -63,21 +64,33 @@ export function useHomeGallery() {
           rows.sort(
             (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
           );
-          const list: HomeGalleryItem[] = rows.map(
-            ({ type, mediaUrl, posterUrl, alt, category, source, sourceSlug }) => ({
-              type,
-              mediaUrl,
-              posterUrl,
-              alt,
-              category,
-              source,
-              sourceSlug,
-            }),
+          const list: HomeGalleryItem[] = dedupeHomeGalleryItems(
+            rows.map(
+              ({
+                type,
+                mediaUrl,
+                posterUrl,
+                alt,
+                category,
+                source,
+                sourceSlug,
+              }) => ({
+                type,
+                mediaUrl,
+                posterUrl,
+                alt,
+                category,
+                source,
+                sourceSlug,
+              }),
+            ),
           );
-          setItems(list.length ? list : DEFAULT_HOME_GALLERY);
+          setItems(
+            list.length ? list : dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY),
+          );
         }
       } catch {
-        if (!cancelled) setItems(DEFAULT_HOME_GALLERY);
+        if (!cancelled) setItems(dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY));
       } finally {
         if (!cancelled) setLoading(false);
       }

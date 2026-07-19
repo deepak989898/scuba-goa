@@ -15,6 +15,7 @@ import {
   normalizeGalleryCategory,
   type GalleryCategoryId,
 } from "@/lib/gallery-categories";
+import { galleryMediaDedupeKey } from "@/lib/home-gallery-dedupe";
 
 type Row = {
   id: string;
@@ -80,6 +81,16 @@ export default function AdminGalleryPage() {
 
   async function saveNew() {
     if (!db || !form.mediaUrl.trim()) return;
+    const newKey = galleryMediaDedupeKey(form.mediaUrl);
+    const duplicate = list.find(
+      (row) => galleryMediaDedupeKey(row.mediaUrl) === newKey,
+    );
+    if (duplicate) {
+      alert(
+        "This image/video is already in the gallery. Same media is not added twice.",
+      );
+      return;
+    }
     await addDoc(collection(db, "homeGallery"), {
       type: form.type,
       mediaUrl: form.mediaUrl.trim(),

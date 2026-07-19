@@ -39,9 +39,9 @@ export function ServiceMetaBlock({
   );
 
   return (
-    <div className="mt-1.5 space-y-1 sm:mt-2 sm:space-y-2">
-      <p className="text-xs font-medium text-ocean-700 sm:text-sm">{s.duration}</p>
-      <p className="text-xs font-medium text-amber-700 sm:text-sm">
+    <div className="mt-1 space-y-0.5 sm:mt-1.5 sm:space-y-1">
+      <p className="text-xs font-medium text-ocean-700">{s.duration}</p>
+      <p className="text-xs font-medium text-amber-700">
         ⭐ {s.rating.toFixed(1)} rated
       </p>
       {variant === "cardGrid" ? (

@@ -34,11 +34,11 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
   const currentList = tab === "posts" ? posts : tab === "reels" ? reels : videos;
 
   return (
-    <section className="mt-10 rounded-2xl border border-ocean-100 bg-white p-4 shadow-sm">
-      <h2 className="font-display text-lg font-semibold text-ocean-900">
+    <section className="mt-5 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm sm:p-3.5">
+      <h2 className="font-display text-base font-semibold text-ocean-900 sm:text-lg">
         Related media
       </h2>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {availableTabs.map((t) => (
           <button
             key={t.key}
@@ -56,13 +56,13 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
       </div>
 
       {tab === "posts" ? (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
           {currentList.map((url) => (
             <button
               key={url}
               type="button"
               onClick={() => setZoomImageUrl(url)}
-              className="relative block h-48 w-full overflow-hidden rounded-xl border border-ocean-100 text-left"
+              className="relative block h-36 w-full overflow-hidden rounded-lg border border-ocean-100 text-left sm:h-40"
             >
               <CmsRemoteImage
                 src={url}
@@ -76,11 +76,11 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
           ))}
         </div>
       ) : (
-        <div className="mt-4 grid gap-3">
+        <div className="mt-2.5 grid gap-2">
           {currentList.map((url) => (
             <div
               key={url}
-              className="overflow-hidden rounded-xl border border-ocean-100 bg-black/5 p-2"
+              className="overflow-hidden rounded-lg border border-ocean-100 bg-black/5 p-1.5"
               onContextMenu={(e) => e.preventDefault()}
             >
               <video
@@ -90,7 +90,7 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
                 disablePictureInPicture
                 playsInline
                 preload="metadata"
-                className="max-h-[26rem] w-full rounded-lg bg-black"
+                className="max-h-[20rem] w-full rounded-md bg-black"
                 onContextMenu={(e) => e.preventDefault()}
               />
             </div>

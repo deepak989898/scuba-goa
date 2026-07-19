@@ -29,7 +29,7 @@ export function ServiceDetailSections({ service: s }: { service: ServiceItem }) 
 
   if (!body) {
     return (
-      <p className="text-base text-ocean-700">
+      <p className="text-sm text-ocean-700 sm:text-base">
         See options below or reach us on WhatsApp for timings and pickup.
       </p>
     );
@@ -38,22 +38,22 @@ export function ServiceDetailSections({ service: s }: { service: ServiceItem }) 
   const paras = detailParagraphs(body);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {paras.map((p, i) => (
         <p
           key={i}
-          className="text-base leading-relaxed text-ocean-800 sm:text-[17px] whitespace-pre-line"
+          className="text-sm leading-relaxed text-ocean-800 sm:text-[15px] whitespace-pre-line"
         >
           {p}
         </p>
       ))}
 
       {s.slug === "scuba-diving" ? (
-        <div className="mt-6 rounded-2xl border border-cyan-100 bg-cyan-50/50 p-4 sm:p-5">
-          <h2 className="font-display text-xl font-bold text-cyan-900">
+        <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 sm:p-3.5">
+          <h2 className="font-display text-base font-bold text-cyan-900 sm:text-lg">
             What you will experience
           </h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ocean-800 sm:text-base">
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-sm leading-snug text-ocean-800">
             <li>
               <strong>Briefing &amp; skills:</strong> Breathing, signals, and
               mask clearing before you enter the water.
@@ -71,7 +71,7 @@ export function ServiceDetailSections({ service: s }: { service: ServiceItem }) 
               for boat movement, and calm pacing for first-timers.
             </li>
           </ul>
-          <p className="mt-4 text-sm text-ocean-700">
+          <p className="mt-2.5 text-xs text-ocean-700 sm:text-sm">
             Also explore{" "}
             <Link
               href="/services/water-sports"
