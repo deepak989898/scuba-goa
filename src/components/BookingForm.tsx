@@ -539,7 +539,7 @@ export function BookingForm() {
           <div
             className={
               hasCart
-                ? "mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-5"
+                ? "mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_17.5rem] lg:items-start lg:gap-5"
                 : "mt-4 space-y-3"
             }
           >
@@ -620,65 +620,6 @@ export function BookingForm() {
                 </ul>
               )}
             </div>
-
-            {hasCart ? (
-              <div className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-3 sm:p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
-                  Promo code (optional)
-                </p>
-                <p className="mt-1 text-[11px] text-amber-950/80">
-                  See{" "}
-                  <a href="/offers" className="font-semibold underline">
-                    current offers
-                  </a>
-                  .
-                </p>
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border border-amber-200/80 bg-white px-3 py-2 text-sm text-ocean-900 placeholder:text-ocean-400"
-                    placeholder="e.g. COUPLE10"
-                    value={promoDraft}
-                    onChange={(e) => setPromoDraft(e.target.value)}
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      disabled={promoBusy || (!promoApplied && !promoDraft.trim())}
-                      onClick={() => void applyPromoCode()}
-                      className={
-                        promoApplied
-                          ? "min-h-11 touch-manipulation rounded-full bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
-                          : "min-h-11 touch-manipulation rounded-full bg-amber-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50"
-                      }
-                    >
-                      {promoBusy ? "…" : promoApplied ? "Applied" : "Apply"}
-                    </button>
-                    {promoApplied ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPromoApplied(null);
-                          setMsg(null);
-                        }}
-                        className="min-h-11 touch-manipulation rounded-full border border-amber-700/30 bg-white px-4 py-3 text-sm font-bold text-amber-950"
-                      >
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-                {promoApplied ? (
-                  <p className="mt-2 text-xs font-medium text-green-900">
-                    {promoApplied.title} — {promoApplied.discountPercent}% off. New cart
-                    total ₹{(promoApplied.discountedFullPaise / 100).toLocaleString("en-IN")}
-                    .
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
 
             {hasCart && contactStepOpen ? (
               <>
@@ -776,7 +717,62 @@ export function BookingForm() {
             </div>
 
             {hasCart ? (
-              <aside className="min-w-0 lg:sticky lg:top-20">
+              <aside className="min-w-0 space-y-3 lg:sticky lg:top-20 lg:max-w-[17.5rem]">
+                <div className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-900">
+                    Promo code (optional)
+                  </p>
+                  <p className="mt-1 text-[11px] text-amber-950/80">
+                    See{" "}
+                    <a href="/offers" className="font-semibold underline">
+                      current offers
+                    </a>
+                    .
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 text-sm text-ocean-900 placeholder:text-ocean-400"
+                      placeholder="e.g. COUPLE10"
+                      value={promoDraft}
+                      onChange={(e) => setPromoDraft(e.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={promoBusy || (!promoApplied && !promoDraft.trim())}
+                        onClick={() => void applyPromoCode()}
+                        className={
+                          promoApplied
+                            ? "min-h-10 flex-1 touch-manipulation rounded-full bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
+                            : "min-h-10 flex-1 touch-manipulation rounded-full bg-amber-700 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50"
+                        }
+                      >
+                        {promoBusy ? "…" : promoApplied ? "Applied" : "Apply"}
+                      </button>
+                      {promoApplied ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPromoApplied(null);
+                            setMsg(null);
+                          }}
+                          className="min-h-10 shrink-0 touch-manipulation rounded-full border border-amber-700/30 bg-white px-3 py-2 text-sm font-bold text-amber-950"
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {promoApplied ? (
+                    <p className="mt-2 text-[11px] font-medium leading-snug text-green-900">
+                      {promoApplied.title} — {promoApplied.discountPercent}% off
+                    </p>
+                  ) : null}
+                </div>
+
                 {!contactStepOpen ? (
                   <div className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 text-center shadow-sm">
                     <p className="text-sm font-semibold text-ocean-900">
