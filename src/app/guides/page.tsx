@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { ListPagination } from "@/components/ListPagination";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
+import { getPageSlice } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 
 export const dynamic = "force-dynamic";
+
+type Props = { searchParams: Promise<{ page?: string }> };
 
 export const metadata: Metadata = {
   title: `Travel & activity guides | ${SITE_NAME}`,
@@ -43,11 +47,14 @@ const BLOG_FALLBACKS = [
   u("photo-1507525428034-b723cf961d3e"),
 ];
 
-export default async function GuidesIndexPage() {
+export default async function GuidesIndexPage({ searchParams }: Props) {
+  const sp = await searchParams;
   const [guides, blogs] = await Promise.all([
     listPublishedSeoPagesServer(),
     getAllBlogPostsMerged(),
   ]);
+  const slice = getPageSlice(guides.length, sp.page);
+  const pageGuides = guides.slice(slice.start, slice.end);
   const sidebarBlogs = blogs.slice(0, 5);
   const faqLd = faqPageJsonLd(BOOK_SCUBA_FAQ.slice(0, 6));
 
@@ -80,49 +87,60 @@ export default async function GuidesIndexPage() {
               (SEO pages).
             </p>
           ) : (
-            <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-              {guides.map((g, index) => {
-                const imageSrc =
-                  g.imageUrl?.trim() ||
-                  GUIDE_FALLBACKS[index % GUIDE_FALLBACKS.length]!;
-                return (
-                  <li key={g.slug} className="h-full">
-                    <Link
-                      href={`/guides/${g.slug}`}
-                      className="group flex h-full flex-col overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
-                    >
-                      <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
-                        <CmsRemoteImage
-                          src={imageSrc}
-                          alt={g.headline}
-                          fill
-                          className="object-cover transition duration-500 group-hover:scale-105"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="flex flex-1 flex-col p-3.5">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-ocean-500">
-                          Updated{" "}
-                          {new Date(g.updatedAt).toLocaleDateString("en-IN")}
-                        </p>
-                        <h2 className="mt-1 font-display text-base font-semibold leading-snug text-ocean-900 transition group-hover:text-cyan-800 sm:text-lg">
-                          {g.headline}
-                        </h2>
-                        {g.metaDescription ? (
-                          <p className="mt-1.5 line-clamp-2 text-sm text-ocean-700">
-                            {g.metaDescription}
+            <>
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                {pageGuides.map((g, index) => {
+                  const imageSrc =
+                    g.imageUrl?.trim() ||
+                    GUIDE_FALLBACKS[(slice.start + index) % GUIDE_FALLBACKS.length]!;
+                  return (
+                    <li key={g.slug} className="h-full">
+                      <Link
+                        href={`/guides/${g.slug}`}
+                        className="group flex h-full flex-col overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                      >
+                        <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
+                          <CmsRemoteImage
+                            src={imageSrc}
+                            alt={g.headline}
+                            fill
+                            className="object-cover transition duration-500 group-hover:scale-105"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="flex flex-1 flex-col p-3.5">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-ocean-500">
+                            Updated{" "}
+                            {new Date(g.updatedAt).toLocaleDateString("en-IN")}
                           </p>
-                        ) : null}
-                        <span className="mt-2.5 text-sm font-bold text-amber-700">
-                          Read guide →
-                        </span>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+                          <h2 className="mt-1 font-display text-base font-semibold leading-snug text-ocean-900 transition group-hover:text-cyan-800 sm:text-lg">
+                            {g.headline}
+                          </h2>
+                          {g.metaDescription ? (
+                            <p className="mt-1.5 line-clamp-2 text-sm text-ocean-700">
+                              {g.metaDescription}
+                            </p>
+                          ) : null}
+                          <span className="mt-2.5 text-sm font-bold text-amber-700">
+                            Read guide →
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              <ListPagination
+                basePath="/guides"
+                page={slice.page}
+                totalPages={slice.totalPages}
+                totalItems={slice.totalItems}
+                start={slice.start}
+                end={slice.end}
+                itemLabel="guides"
+              />
+            </>
           )}
 
           <section

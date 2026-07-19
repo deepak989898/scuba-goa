@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { ListPagination } from "@/components/ListPagination";
 import { blogPostsPillarFirst } from "@/data/blog-posts";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
+import { getPageSlice } from "@/lib/list-pagination";
+import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
+import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 
 export const revalidate = 3600;
+
+type Props = { searchParams: Promise<{ page?: string }> };
 
 export const metadata: Metadata = {
   title: "Scuba Diving in Goa Blog — Price, Safety & Best Time | Book Scuba Goa",
@@ -29,48 +36,267 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function BlogIndexPage() {
-  const merged = await getAllBlogPostsMerged();
-  const pillarSlugs = new Set(
-    blogPostsPillarFirst().map((p) => p.slug),
-  );
+const u = (id: string) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=70`;
+
+const BLOG_FALLBACKS = [
+  u("photo-1544551763-46a013bb70d5"),
+  u("photo-1682687220063-4742bd7fd538"),
+  u("photo-1559827260-dc66d52bef19"),
+  u("photo-1582967788606-a171f1080dd0"),
+  u("photo-1530549387789-4c1017266635"),
+  u("photo-1507525428034-b723cf961d3e"),
+];
+
+const GUIDE_FALLBACKS = [
+  u("photo-1488646953014-85cb44e25828"),
+  u("photo-1432405972618-c60b0225b8f9"),
+  u("photo-1544551763-46a013bb70d5"),
+  u("photo-1559827260-dc66d52bef19"),
+];
+
+export default async function BlogIndexPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const [merged, guides] = await Promise.all([
+    getAllBlogPostsMerged(),
+    listPublishedSeoPagesServer(),
+  ]);
+  const pillarSlugs = new Set(blogPostsPillarFirst().map((p) => p.slug));
   const pillarFirst = [
     ...merged.filter((p) => pillarSlugs.has(p.slug)),
     ...merged.filter((p) => !pillarSlugs.has(p.slug)),
   ];
+  const slice = getPageSlice(pillarFirst.length, sp.page);
+  const pagePosts = pillarFirst.slice(slice.start, slice.end);
+  const sidebarGuides = guides.slice(0, 5);
+  const faqLd = faqPageJsonLd(BOOK_SCUBA_FAQ.slice(0, 6));
+
   return (
-    <div className="bg-sand py-16 sm:py-20">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <h1 className="font-display text-4xl font-bold text-ocean-900">
-          Scuba diving in Goa — guides & blog
-        </h1>
-        <p className="mt-3 max-w-2xl text-ocean-700">
-          Start with our pillar guides (best time, safety, scuba diving with island trip,
-          and scuba diving price Goa for 2026), then explore comparison and intent pages
-          like Goa vs Andaman, couples planning, and family scuba—each article links to
-          live booking.
-        </p>
-        <ul className="mt-12 space-y-6">
-          {pillarFirst.map((p) => (
-            <li key={p.slug}>
+    <div className="bg-sand/30 py-5 sm:py-7">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+      />
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-7 lg:px-8">
+        <div className="min-w-0">
+          <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-ocean-800">
+              Home
+            </Link>
+            <span className="mx-2 text-ocean-400">/</span>
+            <span className="text-ocean-500">Blog</span>
+          </nav>
+          <h1 className="mt-2 font-display text-2xl font-bold text-ocean-900 sm:text-3xl">
+            Scuba diving in Goa — guides & blog
+          </h1>
+          <p className="mt-1.5 max-w-2xl text-sm text-ocean-700 sm:text-base">
+            Start with pillar guides (best time, safety, island trip, 2026 prices), then
+            explore planning articles — each links to live booking.
+          </p>
+
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+            {pagePosts.map((p, index) => {
+              const imageSrc =
+                p.imageUrl?.trim() ||
+                BLOG_FALLBACKS[(slice.start + index) % BLOG_FALLBACKS.length]!;
+              return (
+                <li key={p.slug} className="h-full">
+                  <Link
+                    href={`/blog/${p.slug}`}
+                    className="group flex h-full flex-col overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                  >
+                    <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
+                      <CmsRemoteImage
+                        src={imageSrc}
+                        alt={p.imageAlt || p.title}
+                        fill
+                        className="object-cover transition duration-500 group-hover:scale-105"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="flex flex-1 flex-col p-3.5">
+                      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
+                        <h2 className="min-w-0 flex-1 font-display text-base font-semibold leading-snug text-ocean-900 transition group-hover:text-cyan-800 sm:text-lg">
+                          {p.title}
+                        </h2>
+                        <p className="shrink-0 text-[11px] font-medium text-ocean-500 sm:pt-0.5 sm:text-right">
+                          {p.date} · {p.readTime}
+                        </p>
+                      </div>
+                      <p className="mt-1.5 line-clamp-2 text-sm text-ocean-700">
+                        {p.excerpt}
+                      </p>
+                      {p.keywords.length > 0 ? (
+                        <p className="mt-2 line-clamp-1 text-[11px] text-ocean-500">
+                          {p.keywords.slice(0, 4).join(" · ")}
+                        </p>
+                      ) : null}
+                      <span className="mt-2.5 text-sm font-bold text-amber-700">
+                        Read article →
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <ListPagination
+            basePath="/blog"
+            page={slice.page}
+            totalPages={slice.totalPages}
+            totalItems={slice.totalItems}
+            start={slice.start}
+            end={slice.end}
+            itemLabel="articles"
+          />
+
+          <section
+            className="mt-8 rounded-xl border border-ocean-100 bg-white p-5 sm:p-6"
+            aria-labelledby="blog-book-heading"
+          >
+            <h2
+              id="blog-book-heading"
+              className="font-display text-lg font-bold text-ocean-900 sm:text-xl"
+            >
+              Ready to book?
+            </h2>
+            <p className="mt-1.5 text-sm text-ocean-700">
+              Compare packages and services, then pay a small advance online to lock your
+              slot.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2.5">
               <Link
-                href={`/blog/${p.slug}`}
-                className="block rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm transition hover:border-ocean-300"
+                href="/booking"
+                className="inline-flex rounded-full bg-ocean-gradient px-5 py-2.5 text-sm font-bold text-white hover:opacity-95"
               >
-                <p className="text-xs text-ocean-500">
-                  {p.date} · {p.readTime}
-                </p>
-                <h2 className="mt-2 font-display text-xl font-semibold text-ocean-900">
-                  {p.title}
-                </h2>
-                <p className="mt-2 text-sm text-ocean-700">{p.excerpt}</p>
-                <p className="mt-3 text-xs text-ocean-500">
-                  {p.keywords.join(" · ")}
-                </p>
+                Book now
               </Link>
-            </li>
-          ))}
-        </ul>
+              <Link
+                href="/guides"
+                className="inline-flex rounded-full border border-ocean-200 px-5 py-2.5 text-sm font-semibold text-ocean-800 hover:border-ocean-400"
+              >
+                Travel guides
+              </Link>
+            </div>
+          </section>
+
+          <section
+            className="mt-8 border-t border-ocean-100 pt-8"
+            aria-labelledby="blog-faq-heading"
+          >
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+              Helpful answers
+            </p>
+            <h2
+              id="blog-faq-heading"
+              className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl"
+            >
+              Frequently asked questions
+            </h2>
+            <p className="mt-1.5 text-sm text-ocean-700">
+              Quick answers before you plan or book scuba diving in Goa.
+            </p>
+            <div className="mt-4 space-y-2.5">
+              {BOOK_SCUBA_FAQ.slice(0, 6).map((faq, index) => (
+                <details
+                  key={faq.question}
+                  className="group rounded-xl border border-ocean-100 bg-white px-4 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-5"
+                  open={index === 0}
+                >
+                  <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-semibold text-ocean-900 marker:hidden">
+                    <span>{faq.question}</span>
+                    <span
+                      aria-hidden
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sand text-lg text-ocean-700 shadow-sm transition group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="border-t border-ocean-100 pb-4 pt-3 text-sm leading-6 text-ocean-800">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside aria-labelledby="blog-guides-sidebar-title" className="min-w-0">
+          <div className="lg:sticky lg:top-20">
+            <div className="mb-3">
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+                Explore more Goa
+              </p>
+              <h2
+                id="blog-guides-sidebar-title"
+                className="mt-0.5 font-display text-xl font-bold text-ocean-900"
+              >
+                Travel guides
+              </h2>
+              <p className="mt-0.5 text-sm leading-relaxed text-ocean-700">
+                Short planning pages before you book.
+              </p>
+            </div>
+
+            {sidebarGuides.length === 0 ? (
+              <p className="rounded-xl border border-ocean-100 bg-white p-4 text-sm text-ocean-700">
+                Guides will appear here when published.
+              </p>
+            ) : (
+              <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                {sidebarGuides.map((g, index) => {
+                  const imageSrc =
+                    g.imageUrl?.trim() ||
+                    GUIDE_FALLBACKS[index % GUIDE_FALLBACKS.length]!;
+                  return (
+                    <li key={g.slug}>
+                      <Link
+                        href={`/guides/${g.slug}`}
+                        className="group flex flex-col overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                      >
+                        <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
+                          <CmsRemoteImage
+                            src={imageSrc}
+                            alt={g.headline}
+                            fill
+                            className="object-cover transition duration-500 group-hover:scale-105"
+                            sizes="(max-width: 1024px) 50vw, 320px"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="p-3">
+                          <p className="text-[11px] font-medium text-cyan-700">
+                            Updated {g.updatedAt.slice(0, 10)}
+                          </p>
+                          <h3 className="mt-1 font-display text-sm font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-800 sm:text-base">
+                            {g.headline}
+                          </h3>
+                          {g.metaDescription ? (
+                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ocean-700">
+                              {g.metaDescription}
+                            </p>
+                          ) : null}
+                          <span className="mt-2 inline-flex text-sm font-bold text-amber-700">
+                            Read guide →
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <Link
+              href="/guides"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border-2 border-ocean-700 px-5 py-2.5 text-sm font-bold text-ocean-800 transition hover:bg-ocean-50"
+            >
+              View all guides
+            </Link>
+          </div>
+        </aside>
       </div>
     </div>
   );
