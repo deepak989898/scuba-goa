@@ -3,6 +3,10 @@ import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { firestoreDocToJson } from "@/lib/firestore-json";
 import { runSeoHealthAudit } from "@/lib/seo-health/audit";
+import {
+  isSeoHealthPeriodId,
+  type SeoHealthPeriodId,
+} from "@/lib/seo-health/periods";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -33,6 +37,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const report = await runSeoHealthAudit();
+  let periodId: SeoHealthPeriodId = "7d";
+  try {
+    const body = (await req.json()) as { periodId?: string };
+    if (isSeoHealthPeriodId(body.periodId)) periodId = body.periodId;
+  } catch {
+    /* no body — default 7d */
+  }
+
+  const report = await runSeoHealthAudit({ periodId });
   return NextResponse.json({ ok: true, report });
 }

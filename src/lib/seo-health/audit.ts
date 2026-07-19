@@ -1,10 +1,14 @@
 import { getAdminDb } from "@/lib/firebase-admin";
-import { fetchGa4DailySnapshot } from "@/lib/ai-analytics/connectors/ga4";
-import { fetchSearchConsoleDailySnapshot } from "@/lib/ai-analytics/connectors/search-console";
+import { fetchGa4DateRange } from "@/lib/ai-analytics/connectors/ga4";
 import { istYesterdayString } from "@/lib/ai-analytics/ist";
 import { SITE_URL } from "@/lib/constants";
 import { stripUndefinedDeep } from "@/lib/firestore-json";
 import type { SeoHealthIssue, SeoHealthReportDoc } from "@/lib/seo-health/types";
+import {
+  isSeoHealthPeriodId,
+  resolveSeoHealthPeriodRange,
+  type SeoHealthPeriodId,
+} from "@/lib/seo-health/periods";
 
 /** Public routes that must have canonical URLs in metadata. */
 const CANONICAL_REQUIRED = [
@@ -25,10 +29,16 @@ const CANONICAL_REQUIRED = [
 /** Routes that must NOT appear in sitemap.xml. */
 const SITEMAP_BLOCKLIST = ["/admin/login", "/admin/"];
 
-export async function runSeoHealthAudit(): Promise<SeoHealthReportDoc> {
+export async function runSeoHealthAudit(opts?: {
+  periodId?: SeoHealthPeriodId;
+}): Promise<SeoHealthReportDoc> {
   const siteUrl = SITE_URL.replace(/\/$/, "");
   const now = new Date().toISOString();
   const reportId = istYesterdayString();
+  const periodId: SeoHealthPeriodId = isSeoHealthPeriodId(opts?.periodId)
+    ? opts!.periodId!
+    : "7d";
+  const range = resolveSeoHealthPeriodRange(periodId);
   const issues: SeoHealthIssue[] = [];
   const recommendations: string[] = [];
   const manualSteps: string[] = [];
@@ -150,24 +160,24 @@ export async function runSeoHealthAudit(): Promise<SeoHealthReportDoc> {
     }
   }
 
-  const gsc7 = await fetchGscLast7Days();
-  let gscStatus = gsc7.status;
-  let gscMessage = gsc7.message;
-  if (gsc7.status === "error") {
+  const gsc = await fetchGscRange(range.startDateIst, range.endDateIst);
+  let gscStatus = gsc.status;
+  let gscMessage = gsc.message;
+  if (gsc.status === "error") {
     issues.push({
       severity: "critical",
       category: "gsc",
-      message: gsc7.message,
+      message: gsc.message,
       fix: "Add Firebase service account email as Owner in Google Search Console → Settings → Users",
     });
     manualSteps.push(
       "Google Search Console → add property https://bookscubagoa.com → verify → add service account email with Full access",
     );
-  } else if (gsc7.impressions === 0) {
+  } else if (gsc.impressions === 0) {
     issues.push({
       severity: "warning",
       category: "indexing",
-      message: "0 Google Search impressions in the last 7 days — site may not be indexed or has no ranking yet",
+      message: `0 Google Search impressions in ${range.label} — site may not be indexed or has no ranking yet`,
       fix: "Submit sitemap in GSC and request indexing for homepage + /booking",
     });
     manualSteps.push("Search Console → Sitemaps → submit https://bookscubagoa.com/sitemap.xml");
@@ -175,7 +185,7 @@ export async function runSeoHealthAudit(): Promise<SeoHealthReportDoc> {
     manualSteps.push("URL Inspection → enter https://bookscubagoa.com/booking → Request indexing");
   }
 
-  const ga4 = await fetchGa4DailySnapshot(reportId);
+  const ga4 = await fetchGa4DateRange(range.startDateIst, range.endDateIst);
   const ga4Status = ga4.status;
   const ga4Message = ga4.message;
   if (ga4.status === "skipped" || ga4.status === "error") {
@@ -183,7 +193,8 @@ export async function runSeoHealthAudit(): Promise<SeoHealthReportDoc> {
       severity: "warning",
       category: "ga4",
       message: ga4.message,
-      fix: "Set GOOGLE_ANALYTICS_PROPERTY_ID and add service account as GA4 Viewer",
+      fix:
+        "1) Set GOOGLE_ANALYTICS_PROPERTY_ID (numeric, from GA4 URL p…). 2) Enable Google Analytics Data API on the Firebase GCP project. 3) Add the same service account email as Viewer on the GA4 property.",
     });
   }
 
@@ -219,10 +230,18 @@ export async function runSeoHealthAudit(): Promise<SeoHealthReportDoc> {
     pagesMissingCanonical,
     gscStatus,
     gscMessage,
-    gscClicks7d: gsc7.clicks,
-    gscImpressions7d: gsc7.impressions,
+    gscClicks7d: gsc.clicks,
+    gscImpressions7d: gsc.impressions,
+    gscClicks: gsc.clicks,
+    gscImpressions: gsc.impressions,
+    gscPeriodId: periodId,
+    gscPeriodLabel: range.label,
+    gscStartDateIst: range.startDateIst,
+    gscEndDateIst: range.endDateIst,
     ga4Status,
     ga4Message,
+    ga4ActiveUsers: ga4.data?.activeUsers,
+    ga4Sessions: ga4.data?.sessions,
     recommendations,
     manualSteps,
   };
@@ -235,17 +254,15 @@ export async function runSeoHealthAudit(): Promise<SeoHealthReportDoc> {
   return doc;
 }
 
-async function fetchGscLast7Days(): Promise<{
+async function fetchGscRange(
+  start: string,
+  end: string,
+): Promise<{
   status: string;
   message: string;
   clicks: number;
   impressions: number;
 }> {
-  const end = istYesterdayString();
-  const startDate = new Date(end);
-  startDate.setDate(startDate.getDate() - 6);
-  const start = startDate.toISOString().slice(0, 10);
-
   const token = await import("@/lib/ai-analytics/connectors/google-auth").then((m) =>
     m.getGoogleApiAccessToken(
       ["https://www.googleapis.com/auth/webmasters.readonly"],
@@ -253,7 +270,12 @@ async function fetchGscLast7Days(): Promise<{
     ),
   );
   if (!token) {
-    return { status: "error", message: "Google API token failed — check FIREBASE_SERVICE_ACCOUNT_KEY", clicks: 0, impressions: 0 };
+    return {
+      status: "error",
+      message: "Google API token failed — check FIREBASE_SERVICE_ACCOUNT_KEY",
+      clicks: 0,
+      impressions: 0,
+    };
   }
 
   const siteUrl =
@@ -295,7 +317,7 @@ async function fetchGscLast7Days(): Promise<{
   const row = json.rows?.[0] ?? {};
   return {
     status: "ok",
-    message: "Search Console API connected",
+    message: `Search Console API connected (${start} → ${end})`,
     clicks: row.clicks ?? 0,
     impressions: row.impressions ?? 0,
   };

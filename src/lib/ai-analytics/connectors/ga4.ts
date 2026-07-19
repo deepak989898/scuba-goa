@@ -1,10 +1,37 @@
-import { getGoogleApiAccessToken } from "@/lib/ai-analytics/connectors/google-auth";
+import { getGoogleApiAccessToken, getGoogleServiceAccountEmail } from "@/lib/ai-analytics/connectors/google-auth";
 import type { Ga4DailySnapshot } from "@/lib/ai-analytics/types";
 
 const SCOPES = ["https://www.googleapis.com/auth/analytics.readonly"];
 
+function propertyIdHint(): string {
+  const id = process.env.GOOGLE_ANALYTICS_PROPERTY_ID?.trim();
+  if (!id) {
+    return "Set GOOGLE_ANALYTICS_PROPERTY_ID to the numeric ID (e.g. 529273353 from GA4 Admin URL …/p529273353/…).";
+  }
+  return `Property ID in use: ${id}`;
+}
+
+function saHint(): string {
+  const email = getGoogleServiceAccountEmail("analytics");
+  return email
+    ? `Service account: ${email}`
+    : "No service account JSON found (FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_ANALYTICS_SERVICE_ACCOUNT_JSON).";
+}
+
 export async function fetchGa4DailySnapshot(
   dateIst: string,
+): Promise<{
+  data: Ga4DailySnapshot | null;
+  status: "ok" | "skipped" | "error";
+  message: string;
+}> {
+  return fetchGa4DateRange(dateIst, dateIst);
+}
+
+/** Inclusive GA4 date range (YYYY-MM-DD). */
+export async function fetchGa4DateRange(
+  startDateIst: string,
+  endDateIst: string,
 ): Promise<{
   data: Ga4DailySnapshot | null;
   status: "ok" | "skipped" | "error";
@@ -15,16 +42,16 @@ export async function fetchGa4DailySnapshot(
     return {
       data: null,
       status: "skipped",
-      message: "Set GOOGLE_ANALYTICS_PROPERTY_ID (numeric GA4 property ID)",
+      message: `Set GOOGLE_ANALYTICS_PROPERTY_ID (numeric GA4 property ID). ${saHint()}`,
     };
   }
 
-  const token = await getGoogleApiAccessToken(SCOPES);
+  const token = await getGoogleApiAccessToken(SCOPES, "analytics");
   if (!token) {
     return {
       data: null,
       status: "error",
-      message: "Could not obtain Google API token — check service account JSON",
+      message: `Could not obtain Google API token with analytics.readonly scope. Check FIREBASE_SERVICE_ACCOUNT_KEY JSON. ${saHint()}`,
     };
   }
 
@@ -37,7 +64,7 @@ export async function fetchGa4DailySnapshot(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        dateRanges: [{ startDate: dateIst, endDate: dateIst }],
+        dateRanges: [{ startDate: startDateIst, endDate: endDateIst }],
         metrics: [
           { name: "activeUsers" },
           { name: "sessions" },
@@ -51,14 +78,26 @@ export async function fetchGa4DailySnapshot(
 
   const json = (await res.json().catch(() => ({}))) as {
     rows?: { metricValues?: { value?: string }[] }[];
-    error?: { message?: string };
+    error?: { message?: string; status?: string };
   };
 
   if (!res.ok) {
+    const apiMsg = json.error?.message ?? res.statusText;
+    const lower = apiMsg.toLowerCase();
+    let fix = "";
+    if (lower.includes("insufficient") && lower.includes("scope")) {
+      fix =
+        " Enable Google Analytics Data API on the same GCP project as the service account (APIs & Services → Library → “Google Analytics Data API” → Enable), then redeploy. Scope used: analytics.readonly.";
+    } else if (lower.includes("permission") || lower.includes("denied")) {
+      fix =
+        " In GA4 Admin → Property access management, add the service account email as Viewer (or Analyst), wait a few minutes, re-run.";
+    } else {
+      fix = " Confirm property ID and Viewer access for the service account.";
+    }
     return {
       data: null,
       status: "error",
-      message: `${json.error?.message ?? res.statusText}. Add service account email as Viewer on GA4 property.`,
+      message: `${apiMsg}. ${saHint()}. ${propertyIdHint()}.${fix}`,
     };
   }
 
@@ -75,6 +114,6 @@ export async function fetchGa4DailySnapshot(
       averageSessionDuration: num(4),
     },
     status: "ok",
-    message: "GA4 Data API",
+    message: `GA4 Data API OK · ${saHint()} · ${startDateIst} → ${endDateIst}`,
   };
 }

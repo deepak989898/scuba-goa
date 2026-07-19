@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { getDb, getFirebaseAuth, getFirebaseStorageClient } from "@/lib/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import type { ServiceItem } from "@/data/services";
 import {
   encodePackageOption,
@@ -81,6 +82,11 @@ export default function AdminSeoPagesPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState<"og" | "hero" | null>(null);
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
 
   const [newPage, setNewPage] = useState({
     slug: "",
@@ -180,6 +186,15 @@ export default function AdminSeoPagesPage() {
       setCatalogLoading(false);
     }
   }, [db]);
+
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoomedImage(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomedImage]);
 
   useEffect(() => {
     if (!db) {
@@ -288,6 +303,7 @@ export default function AdminSeoPagesPage() {
         bookingOption: "",
         published: false,
       });
+      setAddFormOpen(false);
     }
   }
 
@@ -476,9 +492,34 @@ export default function AdminSeoPagesPage() {
         </p>
       ) : null}
 
-      <div className="mt-10 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
-        <h2 className="font-semibold text-ocean-900">Add guide page</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-10 overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setAddFormOpen((o) => !o)}
+          aria-expanded={addFormOpen}
+          className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition hover:bg-ocean-50/80"
+        >
+          <div>
+            <h2 className="font-semibold text-ocean-900">Add guide page</h2>
+            <p className="mt-0.5 text-xs text-ocean-600">
+              {addFormOpen
+                ? "Fill the form below, then save."
+                : "Click to expand and create a new /guides/… page."}
+            </p>
+          </div>
+          <span
+            aria-hidden
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ocean-50 text-lg font-bold text-ocean-800 transition ${
+              addFormOpen ? "rotate-180 bg-cyan-100" : ""
+            }`}
+          >
+            ⌄
+          </span>
+        </button>
+
+        {addFormOpen ? (
+          <div className="border-t border-ocean-100 px-5 pb-6 pt-4">
+            <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm sm:col-span-2">
             URL slug (lowercase, hyphens)
             <input
@@ -599,14 +640,16 @@ export default function AdminSeoPagesPage() {
               </span>
             </span>
           </label>
-        </div>
-        <button
-          type="button"
-          onClick={() => void createNew()}
-          className="mt-4 rounded-full bg-ocean-800 px-5 py-2 text-sm font-semibold text-white"
-        >
-          Save new page
-        </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => void createNew()}
+              className="mt-4 rounded-full bg-ocean-800 px-5 py-2 text-sm font-semibold text-white"
+            >
+              Save new page
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
@@ -657,6 +700,7 @@ export default function AdminSeoPagesPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 text-ocean-800">
               <tr>
+                <th className="p-3">Image</th>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Headline</th>
                 <th className="p-3 text-right">Page views</th>
@@ -666,9 +710,47 @@ export default function AdminSeoPagesPage() {
               </tr>
             </thead>
             <tbody>
-              {sortedList.map((r) => (
+              {sortedList.map((r) => {
+                const thumbSrc =
+                  r.heroImageUrl?.trim() || r.ogImageUrl?.trim() || "";
+                return (
                 <Fragment key={r.slug}>
                   <tr className="border-b border-ocean-100">
+                    <td className="p-3 align-top">
+                      {thumbSrc ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setZoomedImage({
+                              src: thumbSrc,
+                              alt: r.headline || r.slug,
+                            })
+                          }
+                          className="group relative block h-14 w-20 overflow-hidden rounded-lg border border-ocean-200 bg-ocean-50 shadow-sm transition hover:scale-105 hover:border-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                          aria-label={`Zoom image for ${r.headline || r.slug}`}
+                          title="Click to zoom"
+                        >
+                          <CmsRemoteImage
+                            src={thumbSrc}
+                            alt={r.headline || r.slug}
+                            fill
+                            className="object-cover transition group-hover:brightness-90"
+                            sizes="80px"
+                            loading="lazy"
+                          />
+                          <span
+                            aria-hidden
+                            className="absolute bottom-1 right-1 rounded bg-slate-950/75 px-1 text-[10px] text-white"
+                          >
+                            ⤢
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="flex h-14 w-20 items-center justify-center rounded-lg border border-dashed border-ocean-200 bg-ocean-50 text-[10px] text-ocean-500">
+                          No image
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3 align-top font-mono text-xs text-ocean-800">
                       {r.slug}
                     </td>
@@ -725,7 +807,7 @@ export default function AdminSeoPagesPage() {
                   </tr>
                   {editing?.slug === r.slug ? (
                     <tr className="border-b border-ocean-50 bg-ocean-50/50">
-                      <td colSpan={6} className="p-4">
+                      <td colSpan={7} className="p-4">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ocean-700">
                           Edit — slug is fixed ({editing.slug})
                         </p>
@@ -894,11 +976,49 @@ export default function AdminSeoPagesPage() {
                     </tr>
                   ) : null}
                 </Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
+
+      {zoomedImage ? (
+        <div
+          className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Image preview: ${zoomedImage.alt}`}
+          onClick={() => setZoomedImage(null)}
+        >
+          <div
+            className="relative h-[min(82vh,850px)] w-full max-w-6xl overflow-hidden rounded-2xl bg-black shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <CmsRemoteImage
+              src={zoomedImage.src}
+              alt={zoomedImage.alt}
+              fill
+              className="object-contain"
+              sizes="95vw"
+              priority
+            />
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 bg-gradient-to-b from-black/80 to-transparent p-4 text-white">
+              <p className="max-w-3xl text-sm font-semibold sm:text-base">
+                {zoomedImage.alt}
+              </p>
+              <button
+                type="button"
+                onClick={() => setZoomedImage(null)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/95 text-xl font-bold text-slate-950 shadow-lg transition hover:bg-cyan-200"
+                aria-label="Close image preview"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <p className="mt-6 text-xs text-ocean-500">
         Public index: open{" "}
