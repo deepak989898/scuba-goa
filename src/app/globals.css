@@ -108,4 +108,24 @@ body.site-3d {
   .text-balance {
     text-wrap: balance;
   }
+
+  .animate-review-marquee {
+    animation: review-marquee 55s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-review-marquee {
+      animation: none;
+    }
+  }
+}
+
+@keyframes review-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Half the duplicated track = one full set of cards */
+    transform: translateX(-50%);
+  }
 }

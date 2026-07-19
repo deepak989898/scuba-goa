@@ -59,7 +59,7 @@ export function AdConversionStrip() {
 
   return (
     <section
-      className="relative z-10 border-y border-amber-100/80 bg-amber-50/90 py-4 sm:py-5"
+      className="relative z-10 border-y border-amber-100/80 bg-amber-50/90 py-3 sm:py-3.5"
       id="urgency"
       aria-label="Limited-time offer"
     >

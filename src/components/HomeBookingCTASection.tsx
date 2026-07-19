@@ -19,7 +19,7 @@ export function HomeBookingCTASection() {
     // `sm:` upward as a high-impact closing CTA on tablets and desktop.
     <section
       id="book"
-      className="relative hidden overflow-hidden bg-gradient-to-b from-ocean-900 to-ocean-950 sm:block sm:py-8"
+      className="relative hidden overflow-hidden bg-gradient-to-b from-ocean-900 to-ocean-950 sm:block sm:py-5"
       aria-labelledby="home-book-cta-heading"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />

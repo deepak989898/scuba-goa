@@ -230,7 +230,7 @@ export function HeroSection() {
   );
 
   return (
-    <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(52dvh,420px)] sm:z-auto sm:-mt-[5.25rem] sm:min-h-[88vh] sm:overflow-hidden sm:pt-[5.25rem]">
+    <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(48dvh,380px)] sm:z-auto sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:pt-[4.75rem]">
       {/* Clip slides to hero box only; section can overflow on mobile for straddle card */}
       <div className="absolute inset-0 overflow-hidden">
         {current ? (

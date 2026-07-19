@@ -48,7 +48,7 @@ export async function HomeInternalLinksSection() {
   return (
     <section
       id="explore-goa"
-      className="bg-sand/50 py-6 sm:py-8"
+      className="bg-sand/50 py-4 sm:py-5"
       aria-labelledby="home-internal-links-heading"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

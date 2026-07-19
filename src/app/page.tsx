@@ -5,8 +5,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { PaymentSuccessBannerSlot } from "@/components/PaymentSuccessBannerSlot";
 import { HomeBookingCTASection } from "@/components/HomeBookingCTASection";
 import { BlogPreview } from "@/components/BlogPreview";
-import { HomeScubaInfoSection } from "@/components/HomeScubaInfoSection";
-import { HomeFaqSection } from "@/components/HomeFaqSection";
+import { HomeInfoFaqSplit } from "@/components/HomeInfoFaqSplit";
 import { HomeInternalLinksSection } from "@/components/HomeInternalLinksSection";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
@@ -94,8 +93,7 @@ export default function HomePage() {
       <HomeInternalLinksSection />
       <HomeBookingCTASection />
       <BlogPreview />
-      <HomeScubaInfoSection />
-      <HomeFaqSection />
+      <HomeInfoFaqSplit />
     </>
   );
 }

@@ -50,7 +50,7 @@ export async function BlogPreview() {
   ).filter((p): p is NonNullable<typeof p> => p != null);
 
   return (
-    <section className="bg-white py-6 sm:py-8" id="blog">
+    <section className="bg-white py-4 sm:py-5" id="blog">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">

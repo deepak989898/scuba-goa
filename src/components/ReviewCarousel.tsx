@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { GoogleStyleReviewCard } from "@/components/GoogleStyleReviewCard";
 
 export type CarouselReview = {
@@ -13,120 +12,48 @@ export type CarouselReview = {
   dateLabel: string;
 };
 
-const AUTO_MS = 5500;
-const FADE_MS = 450;
-
 type Props = {
   reviews: CarouselReview[];
 };
 
+/** Full-width continuous marquee: cards move right → left. */
 export function ReviewCarousel({ reviews }: Props) {
-  const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
+  if (reviews.length === 0) return null;
 
-  const count = reviews.length;
-
-  const goTo = useCallback(
-    (next: number) => {
-      if (count <= 1) return;
-      const normalized = ((next % count) + count) % count;
-      if (normalized === index) return;
-      setVisible(false);
-      window.setTimeout(() => {
-        setIndex(normalized);
-        setVisible(true);
-      }, FADE_MS);
-    },
-    [count, index]
-  );
-
-  const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
-  const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
-
-  useEffect(() => {
-    if (index >= count && count > 0) {
-      setIndex(0);
-    }
-  }, [count, index]);
-
-  useEffect(() => {
-    if (count <= 1) return;
-    const id = window.setInterval(goNext, AUTO_MS);
-    return () => window.clearInterval(id);
-  }, [count, goNext]);
-
-  if (count === 0) return null;
-
-  const current = reviews[index];
-  if (!current?.authorName) return null;
+  const track = [...reviews, ...reviews];
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div
+      className="relative w-full overflow-hidden"
+      aria-label="Guest reviews scrolling"
+    >
       <div
-        className="relative min-h-[11rem] overflow-hidden"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <div
-          className={`transition-all ease-in-out ${
-            visible
-              ? "translate-x-0 opacity-100 duration-500"
-              : "-translate-x-6 opacity-0 duration-[450ms]"
-          }`}
-        >
-          <GoogleStyleReviewCard
-            authorName={current.authorName}
-            profileReviewCount={current.profileReviewCount}
-            profilePhotoCount={current.profilePhotoCount}
-            comment={current.comment}
-            rating={current.rating}
-            dateLabel={current.dateLabel}
-          />
-        </div>
-      </div>
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-white to-transparent sm:w-12"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:w-12"
+        aria-hidden
+      />
 
-      {count > 1 ? (
-        <div className="mt-5 flex items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={goPrev}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#DADCE0] bg-white text-lg text-[#5F6368] shadow-sm transition hover:bg-[#F8F9FA] focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500"
-            aria-label="Previous review"
+      <div className="flex w-max animate-review-marquee gap-4 py-1 hover:[animation-play-state:paused] motion-reduce:animate-none">
+        {track.map((r, i) => (
+          <div
+            key={`${r.id}-${i}`}
+            className="w-[min(20rem,82vw)] shrink-0 sm:w-[22rem]"
+            aria-hidden={i >= reviews.length}
           >
-            ‹
-          </button>
-          <div className="flex gap-1.5" role="tablist" aria-label="Review slides">
-            {reviews.map((r, i) => (
-              <button
-                key={r.id}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`Review ${i + 1} of ${count}`}
-                onClick={() => goTo(i)}
-                className={`h-2 rounded-full transition-all ${
-                  i === index
-                    ? "w-6 bg-[#1A73E8]"
-                    : "w-2 bg-[#DADCE0] hover:bg-[#BDC1C6]"
-                }`}
-              />
-            ))}
+            <GoogleStyleReviewCard
+              authorName={r.authorName}
+              profileReviewCount={r.profileReviewCount}
+              profilePhotoCount={r.profilePhotoCount}
+              comment={r.comment}
+              rating={r.rating}
+              dateLabel={r.dateLabel}
+            />
           </div>
-          <button
-            type="button"
-            onClick={goNext}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#DADCE0] bg-white text-lg text-[#5F6368] shadow-sm transition hover:bg-[#F8F9FA] focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500"
-            aria-label="Next review"
-          >
-            ›
-          </button>
-        </div>
-      ) : null}
-
-      <p className="mt-3 text-center text-[11px] text-[#5F6368]">
-        Guest reviews shared on Book Scuba Goa — styled for readability, not
-        imported from Google.
-      </p>
+        ))}
+      </div>
     </div>
   );
 }

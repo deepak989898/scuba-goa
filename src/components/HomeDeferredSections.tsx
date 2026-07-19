@@ -30,7 +30,7 @@ export function HomeDeferredSections() {
     return (
       <div
         aria-hidden
-        className="bg-white py-8 text-center text-sm text-ocean-700"
+        className="bg-white py-4 text-center text-sm text-ocean-700"
       >
         Scroll to explore services, reviews, and Goa experiences.
       </div>

@@ -8,12 +8,12 @@ import { whatsappLink } from "@/lib/constants";
 
 const nav = [
   { href: "/", label: "Home" },
-  { href: "/offers", label: "Offers" },
   { href: "/services", label: "Services" },
   { href: "/booking", label: "Book" },
   { href: "/blog", label: "Blog" },
   { href: "/guides", label: "Guides" },
   { href: "/gallery", label: "Gallery" },
+  { href: "/offers", label: "Offers" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -32,7 +32,7 @@ export function Header() {
           : "sticky top-0 z-50 border-b border-slate-700/80 bg-slate-950/90 shadow-depth backdrop-blur-md"
       }
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8 sm:py-3">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8 sm:py-2.5">
         <Link
           href="/"
           className={
@@ -48,7 +48,7 @@ export function Header() {
             width={240}
             height={88}
             sizes="(max-width: 640px) 132px, 152px"
-            className="h-11 w-auto sm:h-12"
+            className="h-10 w-auto sm:h-11"
             quality={65}
             priority={!isHome}
             fetchPriority={isHome ? "low" : "high"}
