@@ -13,9 +13,9 @@ export function HomeScubaInfoSection() {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section className="bg-sand/40 py-12 sm:py-14" id="scuba-info">
+    <section className="bg-sand/40 py-6 sm:py-8" id="scuba-info">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <h2 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl">
+        <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
           Scuba diving in Goa — what to know
         </h2>
 
@@ -23,7 +23,7 @@ export function HomeScubaInfoSection() {
           Intro paragraph (≈ 5–6 mobile lines). Always visible on every
           breakpoint so the section never feels empty before expansion.
         */}
-        <p className="mt-4 leading-relaxed text-ocean-800">
+        <p className="mt-3 text-sm leading-relaxed text-ocean-800 sm:text-base">
           Scuba diving in Goa is one of the easiest ways for beginners and families to
           experience the underwater side of the Arabian Sea. You do not need to be an
           expert swimmer to try an introductory dive with a certified instructor.
@@ -43,7 +43,7 @@ export function HomeScubaInfoSection() {
           className={`${expanded ? "block" : "hidden"} sm:block`}
           aria-hidden={expanded ? undefined : true}
         >
-          <p className="mt-3 leading-relaxed text-ocean-800">
+          <p className="mt-2 text-sm leading-relaxed text-ocean-800 sm:text-base">
             Goa dive trips are popular because they combine a short boat journey,
             guided underwater time, and a complete end-to-end setup that includes
             equipment and briefing support. For first-time travelers, the biggest
@@ -54,10 +54,10 @@ export function HomeScubaInfoSection() {
             and memorable without feeling rushed.
           </p>
 
-          <h3 className="mt-8 font-display text-xl font-semibold text-ocean-900">
+          <h3 className="mt-5 font-display text-lg font-semibold text-ocean-900">
             What You Will Experience
           </h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-ocean-800">
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-ocean-800 sm:text-base">
             <li>
               <strong>Diving details:</strong> Basic training on breathing, mask
               clearing, and communication signals before guided underwater exploration.
@@ -72,10 +72,10 @@ export function HomeScubaInfoSection() {
             </li>
           </ul>
 
-          <h3 className="mt-8 font-display text-xl font-semibold text-ocean-900">
+          <h3 className="mt-5 font-display text-lg font-semibold text-ocean-900">
             Why Choose Us
           </h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-ocean-800">
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-ocean-800 sm:text-base">
             <li>
               <strong>Experience:</strong> We coordinate high-demand Goa activities
               daily with clear communication and reliable slot planning.
@@ -86,10 +86,10 @@ export function HomeScubaInfoSection() {
             </li>
           </ul>
 
-          <h3 className="mt-8 font-display text-xl font-semibold text-ocean-900">
+          <h3 className="mt-5 font-display text-lg font-semibold text-ocean-900">
             Safety Measures
           </h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-ocean-800">
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-ocean-800 sm:text-base">
             <li>
               <strong>Equipment:</strong> Verified diving gear, life jackets for boat
               movement, and routine pre-dive checks before entry.
@@ -118,7 +118,7 @@ export function HomeScubaInfoSection() {
           </span>
         </button>
 
-        <p className="mt-8 text-sm text-ocean-700">
+        <p className="mt-5 text-sm text-ocean-700">
           Ready to book?{" "}
           <Link href="/services/scuba-diving" className="font-semibold text-cyan-800 underline">
             Scuba diving packages

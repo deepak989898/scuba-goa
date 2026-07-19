@@ -48,7 +48,7 @@ export async function HomeInternalLinksSection() {
   return (
     <section
       id="explore-goa"
-      className="bg-sand/50 py-10 sm:py-14"
+      className="bg-sand/50 py-6 sm:py-8"
       aria-labelledby="home-internal-links-heading"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -57,15 +57,15 @@ export async function HomeInternalLinksSection() {
         </p>
         <h2
           id="home-internal-links-heading"
-          className="mt-1 font-display text-2xl font-bold text-ocean-900 sm:text-3xl"
+          className="mt-0.5 font-display text-xl font-bold text-ocean-900 sm:text-2xl"
         >
           Popular experiences & guides
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-ocean-700 sm:text-base">
+        <p className="mt-1 max-w-2xl text-sm text-ocean-700">
           Jump straight to scuba diving, Dudhsagar, water sports, or our guides —
           then confirm your date on booking.
         </p>
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {LINKS.map((item) => {
             const fromCatalog =
               item.slug != null ? bySlug.get(item.slug)?.image?.trim() : "";
@@ -76,7 +76,7 @@ export async function HomeInternalLinksSection() {
                   href={item.href}
                   className="group flex h-full flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
                 >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-ocean-100">
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-ocean-100">
                     <CmsRemoteImage
                       src={imageSrc}
                       alt={item.imageAlt}
@@ -89,14 +89,14 @@ export async function HomeInternalLinksSection() {
                       aria-hidden
                     />
                   </div>
-                  <div className="flex flex-1 flex-col p-4">
-                    <h3 className="font-display text-lg font-bold text-ocean-900 transition group-hover:text-cyan-800">
+                  <div className="flex flex-1 flex-col p-3">
+                    <h3 className="font-display text-base font-bold text-ocean-900 transition group-hover:text-cyan-800">
                       {item.title}
                     </h3>
-                    <p className="mt-1.5 flex-1 text-sm leading-relaxed text-ocean-700">
+                    <p className="mt-1 flex-1 text-xs leading-relaxed text-ocean-700 sm:text-sm">
                       {item.blurb}
                     </p>
-                    <span className="mt-3 text-sm font-bold text-amber-700">
+                    <span className="mt-2 text-sm font-bold text-amber-700">
                       Open page →
                     </span>
                   </div>

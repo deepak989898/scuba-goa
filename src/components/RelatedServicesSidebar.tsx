@@ -13,7 +13,7 @@ export function RelatedServicesSidebar({
 
   return (
     <aside aria-labelledby="related-services-title" className="min-w-0">
-      <div className="lg:sticky lg:top-24">
+      <div className="lg:sticky lg:top-20">
         <div className="mb-3">
           <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
             Explore more Goa

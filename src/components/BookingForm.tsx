@@ -522,7 +522,7 @@ export function BookingForm() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <div className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm sm:p-5">
         <h2 className="font-display text-xl font-semibold text-ocean-900">
           Book in 60 seconds
         </h2>
@@ -534,9 +534,9 @@ export function BookingForm() {
           </li>
         </ol>
         {loading ? (
-          <p className="mt-6 text-sm text-ocean-700">Loading packages…</p>
+          <p className="mt-4 text-sm text-ocean-700">Loading packages…</p>
         ) : (
-          <div className="mt-6 space-y-4">
+          <div className="mt-4 space-y-3">
             <label className="block cursor-pointer text-sm font-medium text-ocean-800">
               <span className="mb-0.5 block">Package or service option</span>
               <BookingPackagePicker
