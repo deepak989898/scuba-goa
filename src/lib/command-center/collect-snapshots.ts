@@ -1,6 +1,7 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { istYesterdayString } from "@/lib/ai-analytics/ist";
-import type { AgentId, AgentSnapshot } from "@/lib/command-center/types";
+import type { AgentSnapshot } from "@/lib/command-center/types";
+import { resolveGscForCommandCenter } from "@/lib/command-center/resolve-gsc";
 
 export async function collectAgentSnapshots(dateIst?: string): Promise<AgentSnapshot[]> {
   const db = getAdminDb();
@@ -14,6 +15,7 @@ export async function collectAgentSnapshots(dateIst?: string): Promise<AgentSnap
     aiSnap,
     convSnap,
     seoSnap,
+    seoWeeklySnap,
     bizSnap,
     recoveryLeadsSnap,
     marketingSnap,
@@ -22,10 +24,12 @@ export async function collectAgentSnapshots(dateIst?: string): Promise<AgentSnap
     offersSnap,
     bizActionsSnap,
     mktActionsSnap,
+    gscResolved,
   ] = await Promise.all([
     db.collection("aiAnalyticsDaily").doc(day).get(),
     db.collection("conversionOptDaily").doc(day).get(),
     db.collection("seoWeeklyReports").get(),
+    db.collection("seoWeekly").get(),
     db.collection("businessAgentReports").doc(day).get(),
     db.collection("recoveryLeads").limit(200).get(),
     db.collection("marketingAgentReports").doc(day).get(),
@@ -34,13 +38,27 @@ export async function collectAgentSnapshots(dateIst?: string): Promise<AgentSnap
     db.collection("offers").get(),
     db.collection("businessAgentActions").limit(50).get(),
     db.collection("marketingAgentActions").limit(50).get(),
+    resolveGscForCommandCenter(day),
   ]);
 
   const seoLatest = [...seoSnap.docs].sort((a, b) => b.id.localeCompare(a.id))[0];
+  const seoWeeklyLatest = [...seoWeeklySnap.docs].sort((a, b) =>
+    b.id.localeCompare(a.id),
+  )[0];
   const ai = aiSnap.exists ? (aiSnap.data() as Record<string, unknown>) : null;
   const internal = (ai?.internal ?? {}) as Record<string, unknown>;
   const insights = (ai?.insights ?? {}) as Record<string, unknown>;
-  const gsc = (ai?.searchConsole ?? {}) as Record<string, unknown>;
+  const gscRaw = (ai?.searchConsole ?? {}) as Record<string, unknown>;
+  const gsc = {
+    clicks: gscResolved.clicks,
+    impressions: gscResolved.impressions,
+    ctr: gscResolved.ctr,
+    position: gscResolved.position,
+    asOfDate: gscResolved.asOfDate,
+    source: gscResolved.source,
+    note: gscResolved.note,
+    rawYesterday: gscRaw,
+  };
 
   const hotLeads = recoveryLeadsSnap.docs.filter(
     (d) => (d.data() as { temperature?: string }).temperature === "hot",
@@ -87,11 +105,20 @@ export async function collectAgentSnapshots(dateIst?: string): Promise<AgentSnap
     },
     {
       agentId: "seo",
-      status: seoLatest ? "ok" : "skipped",
-      summary: seoLatest
-        ? `Latest SEO report: ${seoLatest.id}`
-        : "No SEO weekly report yet",
-      data: seoLatest ? (seoLatest.data() as Record<string, unknown>) : {},
+      status: seoLatest || seoWeeklyLatest || gscResolved.source !== "none" ? "ok" : "skipped",
+      summary:
+        gscResolved.source !== "none"
+          ? `GSC ${gscResolved.asOfDate}: ${gscResolved.clicks} clicks, pos ${gscResolved.position.toFixed(1)} (${gscResolved.source})`
+          : seoLatest
+            ? `Latest SEO report: ${seoLatest.id}`
+            : "No SEO / Search Console data yet",
+      data: {
+        ...(seoLatest ? (seoLatest.data() as Record<string, unknown>) : {}),
+        weekly: seoWeeklyLatest
+          ? (seoWeeklyLatest.data() as Record<string, unknown>)
+          : null,
+        gsc: gscResolved,
+      },
     },
     {
       agentId: "booking",

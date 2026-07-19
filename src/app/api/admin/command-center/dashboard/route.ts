@@ -7,6 +7,7 @@ import { loadAllMemorySummaries } from "@/lib/command-center/memory";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { firestoreDocToJson } from "@/lib/firestore-json";
 import { countPendingApprovals } from "@/lib/command-center/collect-snapshots";
+import { resolveGscForCommandCenter } from "@/lib/command-center/resolve-gsc";
 
 function latest(docs: QueryDocumentSnapshot[], limit: number) {
   return [...docs]
@@ -47,6 +48,7 @@ export async function GET(req: Request) {
       settings,
       memory,
       pendingApprovals,
+      liveSeo,
     ] = await Promise.all([
       db.collection("commandCenterReports").get(),
       db.collection("commandCenterRuns").get(),
@@ -58,6 +60,7 @@ export async function GET(req: Request) {
       getCommandCenterSettings(),
       loadAllMemorySummaries(),
       countPendingApprovals(),
+      resolveGscForCommandCenter(),
     ]);
 
     const reports = [...reportsSnap.docs]
@@ -75,6 +78,16 @@ export async function GET(req: Request) {
       memory,
       pendingApprovals,
       latestReport,
+      /** Fresh GSC resolution — use for metric cards (not stale report zeros). */
+      liveSeoSnapshot: {
+        clicks: liveSeo.clicks,
+        impressions: liveSeo.impressions,
+        position: liveSeo.position,
+        ctr: liveSeo.ctr,
+        asOfDate: liveSeo.asOfDate,
+        source: liveSeo.source,
+        note: liveSeo.note,
+      },
       reports,
       stats: {
         totalRuns: runsSnap.size,

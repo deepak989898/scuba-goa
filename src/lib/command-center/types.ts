@@ -142,6 +142,9 @@ export type CommandCenterReportDoc = {
     clicks: number;
     impressions: number;
     position: number;
+    asOfDate?: string;
+    source?: string;
+    note?: string;
   };
   pendingApprovals: number;
   openaiModel?: string;
