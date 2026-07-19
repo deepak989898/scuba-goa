@@ -422,9 +422,9 @@ export default function AdminBlogAutomationPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">
+          <h1 className="font-display text-lg font-bold text-ocean-900">
             Blog automation (SEO)
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
@@ -457,14 +457,14 @@ export default function AdminBlogAutomationPage() {
       )}
 
       {loading || !settings ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-3 text-ocean-600">Loading…</p>
       ) : (
         <>
-          <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
             <h2 className="font-display text-lg font-bold text-ocean-900">
               Automation settings
             </h2>
-            <div className="mt-4 flex flex-wrap items-center gap-6">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm font-medium text-ocean-800">
                 <input
                   type="checkbox"
@@ -491,7 +491,7 @@ export default function AdminBlogAutomationPage() {
               <p className="text-sm font-medium text-ocean-800">
                 Publish times (IST) — one per post
               </p>
-              <ul className="mt-3 flex flex-wrap gap-4">
+              <ul className="mt-3 flex flex-wrap gap-2.5">
                 {settings.publishSlotsIst.map((slot, i) => (
                   <li key={`${i}-${settings.postsPerDay}`}>
                     <label className="block text-xs text-ocean-600">
@@ -607,14 +607,14 @@ export default function AdminBlogAutomationPage() {
             }}
           />
 
-          <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
             <h2 className="font-display text-lg font-bold text-ocean-900">
               Title queue (admin priority)
             </h2>
             <p className="mt-1 text-sm text-ocean-600">
               Pending titles are used before auto-generated topics. One title per line for bulk add.
             </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
               <label className="block text-sm text-ocean-800">
                 Single title
                 <input
@@ -654,7 +654,7 @@ export default function AdminBlogAutomationPage() {
               Add to queue
             </button>
 
-            <details className="group mt-6 overflow-hidden rounded-xl border border-ocean-100 bg-sand/20 open:border-cyan-300 open:bg-cyan-50/30">
+            <details className="group mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-sand/20 open:border-cyan-300 open:bg-cyan-50/30">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden transition hover:bg-ocean-50/80">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-ocean-900">

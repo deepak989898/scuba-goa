@@ -120,6 +120,22 @@ body.site-3d {
   }
 }
 
+/** Admin panel density — slightly tighter default type + card rhythm */
+.admin-dense {
+  font-size: 0.925rem;
+  line-height: 1.4;
+}
+
+.admin-dense h1 {
+  margin-top: 0;
+}
+
+.admin-dense table th,
+.admin-dense table td {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
 @keyframes review-marquee {
   from {
     transform: translateX(0);

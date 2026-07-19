@@ -170,7 +170,7 @@ export default function AdminGalleryPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">
+      <h1 className="font-display text-base font-bold text-ocean-900">
         Gallery
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
@@ -184,7 +184,7 @@ export default function AdminGalleryPage() {
         when published.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
           disabled={syncingBlog}
@@ -196,7 +196,7 @@ export default function AdminGalleryPage() {
         {syncMsg ? <p className="text-sm text-ocean-700">{syncMsg}</p> : null}
       </div>
 
-      <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+      <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Add item</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
@@ -294,11 +294,11 @@ export default function AdminGalleryPage() {
         </button>
       </div>
 
-      <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-700">Loading…</p>
+          <p className="p-3 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-700">
+          <p className="p-3 text-ocean-700">
             No items — homepage uses built-in default photos until you add some.
           </p>
         ) : (

@@ -470,7 +470,7 @@ export default function AdminSeoPagesPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">SEO guide pages</h1>
+      <h1 className="font-display text-base font-bold text-ocean-900">SEO guide pages</h1>
       <p className="mt-2 max-w-3xl text-sm text-ocean-700">
         Create public URLs at{" "}
         <code className="rounded bg-ocean-50 px-1 text-xs">/guides/your-slug</code> with proper
@@ -492,7 +492,7 @@ export default function AdminSeoPagesPage() {
         </p>
       ) : null}
 
-      <div className="mt-10 overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
         <button
           type="button"
           onClick={() => setAddFormOpen((o) => !o)}
@@ -518,7 +518,7 @@ export default function AdminSeoPagesPage() {
         </button>
 
         {addFormOpen ? (
-          <div className="border-t border-ocean-100 px-5 pb-6 pt-4">
+          <div className="border-t border-ocean-100 px-5 pb-3 pt-4">
             <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm sm:col-span-2">
             URL slug (lowercase, hyphens)
@@ -652,7 +652,7 @@ export default function AdminSeoPagesPage() {
         ) : null}
       </div>
 
-      <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
         <div className="flex flex-col gap-2 border-b border-ocean-100 bg-ocean-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-semibold text-ocean-900">Existing pages</h2>
           <button
@@ -693,9 +693,9 @@ export default function AdminSeoPagesPage() {
           ) : null}
         </div>
         {loading ? (
-          <p className="p-6 text-ocean-700">Loading…</p>
+          <p className="p-3 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-700">No SEO pages yet.</p>
+          <p className="p-3 text-ocean-700">No SEO pages yet.</p>
         ) : (
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 text-ocean-800">
@@ -985,14 +985,14 @@ export default function AdminSeoPagesPage() {
 
       {zoomedImage ? (
         <div
-          className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm sm:p-8"
+          className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label={`Image preview: ${zoomedImage.alt}`}
           onClick={() => setZoomedImage(null)}
         >
           <div
-            className="relative h-[min(82vh,850px)] w-full max-w-6xl overflow-hidden rounded-2xl bg-black shadow-2xl"
+            className="relative h-[min(82vh,850px)] w-full max-w-6xl overflow-hidden rounded-xl bg-black shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <CmsRemoteImage
@@ -1003,7 +1003,7 @@ export default function AdminSeoPagesPage() {
               sizes="95vw"
               priority
             />
-            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 bg-gradient-to-b from-black/80 to-transparent p-4 text-white">
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2.5 bg-gradient-to-b from-black/80 to-transparent p-4 text-white">
               <p className="max-w-3xl text-sm font-semibold sm:text-base">
                 {zoomedImage.alt}
               </p>
@@ -1020,7 +1020,7 @@ export default function AdminSeoPagesPage() {
         </div>
       ) : null}
 
-      <p className="mt-6 text-xs text-ocean-500">
+      <p className="mt-3 text-xs text-ocean-500">
         Public index: open{" "}
         <Link href="/guides" className="underline" target="_blank" rel="noreferrer">
           /guides

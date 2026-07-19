@@ -228,7 +228,7 @@ export function GoogleBusinessSection({
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+    <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
       <h2 className="font-display text-lg font-bold text-ocean-900">
         Google Business Profile
       </h2>
@@ -331,7 +331,7 @@ export function GoogleBusinessSection({
         </button>
       </div>
 
-      <div className="mt-6 rounded-xl border border-sky-200 bg-sky-50/90 p-4">
+      <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/90 p-4">
         <h3 className="text-sm font-bold text-ocean-900">Manual account and location IDs</h3>
         <p className="mt-2 text-xs text-ocean-700">
           If <strong>Load accounts</strong> never works, paste your numeric{" "}

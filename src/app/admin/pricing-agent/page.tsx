@@ -231,9 +231,9 @@ export default function AdminPricingAgentPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">
+          <h1 className="font-display text-lg font-bold text-ocean-900">
             AI Pricing
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
@@ -274,11 +274,11 @@ export default function AdminPricingAgentPage() {
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-3 text-ocean-600">Loading…</p>
       ) : (
         <>
           {cards ? (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 ["Pending", cards.pending],
                 ["Approved", cards.approved],
@@ -291,12 +291,12 @@ export default function AdminPricingAgentPage() {
               ].map(([label, value]) => (
                 <div
                   key={String(label)}
-                  className="rounded-2xl border border-ocean-100 bg-white p-4 shadow-sm"
+                  className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm"
                 >
                   <p className="text-xs font-bold uppercase tracking-wide text-ocean-500">
                     {label}
                   </p>
-                  <p className="mt-1 font-display text-2xl font-bold text-ocean-900">
+                  <p className="mt-1 font-display text-lg font-bold text-ocean-900">
                     {value}
                   </p>
                 </div>
@@ -310,11 +310,11 @@ export default function AdminPricingAgentPage() {
           </p>
 
           {settings ? (
-            <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Safety &amp; auto-approve
               </h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 <label className="flex items-center gap-2 text-sm text-ocean-800">
                   <input
                     type="checkbox"
@@ -424,7 +424,7 @@ export default function AdminPricingAgentPage() {
             </section>
           ) : null}
 
-          <section className="mt-8 overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm">
+          <section className="mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ocean-100 px-4 py-3">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Suggestions
@@ -471,7 +471,7 @@ export default function AdminPricingAgentPage() {
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-6 text-ocean-500">
+                      <td colSpan={8} className="p-3 text-ocean-500">
                         No suggestions yet. Run analysis or wait for Tuesday cron.
                       </td>
                     </tr>
@@ -521,7 +521,7 @@ export default function AdminPricingAgentPage() {
           </section>
 
           {runs.length ? (
-            <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Recent runs
               </h2>
@@ -551,12 +551,12 @@ export default function AdminPricingAgentPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-3 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-display text-xl font-bold text-ocean-900">
+                <h3 className="font-display text-base font-bold text-ocean-900">
                   {selected.name}
                 </h3>
                 <p className="mt-1 text-sm text-ocean-600">{selected.reason}</p>
@@ -652,7 +652,7 @@ export default function AdminPricingAgentPage() {
             </div>
 
             {detail?.snapshots?.length ? (
-              <div className="mt-6">
+              <div className="mt-3">
                 <h4 className="text-sm font-bold text-ocean-900">Competitor sources</h4>
                 <ul className="mt-2 space-y-2 text-xs text-ocean-700">
                   {detail.snapshots.map((c, i) => (

@@ -75,7 +75,7 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const pageLabel = adminNavCurrentLabel(pathname);
 
   return (
-    <div className="min-h-screen bg-sand lg:pl-72">
+    <div className="min-h-screen bg-sand lg:pl-64">
       <AdminNavDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -84,47 +84,44 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-30 border-b border-ocean-100 bg-white/95 backdrop-blur-md">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="flex items-center justify-between gap-2 px-3 py-1.5 sm:px-4">
+            <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ocean-200 bg-white text-ocean-800 shadow-sm transition hover:bg-ocean-50 lg:hidden"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ocean-200 bg-white text-ocean-800 shadow-sm transition hover:bg-ocean-50 lg:hidden"
                 aria-label="Open admin menu"
                 aria-expanded={drawerOpen}
                 onClick={() => setDrawerOpen(true)}
               >
-                <span className="text-lg leading-none" aria-hidden>
+                <span className="text-base leading-none" aria-hidden>
                   ☰
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ocean-200 bg-white px-3 text-sm font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-ocean-200 bg-white px-2.5 text-xs font-semibold text-ocean-800 shadow-sm transition hover:bg-ocean-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-500"
                 aria-label="Go back to previous page"
                 title="Go back to previous page"
               >
-                <span className="text-lg leading-none" aria-hidden>
+                <span className="text-base leading-none" aria-hidden>
                   ←
                 </span>
                 <span className="hidden sm:inline">Back</span>
               </button>
               <div className="min-w-0">
-                <p className="truncate font-display text-lg font-bold text-ocean-900 sm:text-xl">
+                <p className="truncate font-display text-base font-bold text-ocean-900 sm:text-lg">
                   {pageLabel}
-                </p>
-                <p className="hidden truncate text-xs text-ocean-600 sm:block">
-                  Book Scuba Goa admin
                 </p>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden max-w-[12rem] truncate text-xs text-ocean-600 md:inline">
+              <span className="hidden max-w-[10rem] truncate text-[11px] text-ocean-600 md:inline">
                 {user.email}
               </span>
               <button
                 type="button"
-                className="rounded-full bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                className="rounded-full bg-red-50 px-2.5 py-1.5 text-[11px] font-semibold text-red-700 hover:bg-red-100"
                 onClick={() => getFirebaseAuth()?.signOut()}
               >
                 Sign out
@@ -133,8 +130,8 @@ function AdminGate({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl">{children}</div>
+        <main className="admin-dense flex-1 px-3 py-3 sm:px-4 lg:px-5">
+          <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>
     </div>
@@ -177,14 +174,14 @@ export function AdminLoginForm() {
   return (
     <form
       onSubmit={submit}
-      className="mx-auto mt-16 max-w-md rounded-2xl border border-ocean-100 bg-white p-8 shadow-sm"
+      className="mx-auto mt-12 max-w-md rounded-xl border border-ocean-100 bg-white p-6 shadow-sm"
     >
-      <h1 className="font-display text-2xl font-bold text-ocean-900">Admin login</h1>
+      <h1 className="font-display text-xl font-bold text-ocean-900">Admin login</h1>
       <p className="mt-2 text-sm text-ocean-700">
         Firebase Auth + <code className="text-xs">admins/&lt;uid&gt;</code> doc
         required.
       </p>
-      <label className="mt-6 block text-sm font-medium text-ocean-800">
+      <label className="mt-4 block text-sm font-medium text-ocean-800">
         Email
         <input
           type="email"
@@ -194,7 +191,7 @@ export function AdminLoginForm() {
           autoComplete="username"
         />
       </label>
-      <label className="mt-4 block text-sm font-medium text-ocean-800">
+      <label className="mt-3 block text-sm font-medium text-ocean-800">
         Password
         <input
           type="password"
@@ -208,7 +205,7 @@ export function AdminLoginForm() {
       <button
         type="submit"
         disabled={busy}
-        className="mt-6 w-full rounded-full bg-ocean-800 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        className="mt-4 w-full rounded-full bg-ocean-800 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
       >
         {busy ? "Signing in…" : "Sign in"}
       </button>

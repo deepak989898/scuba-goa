@@ -436,7 +436,7 @@ export default function AdminServicesPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">Services</h1>
+      <h1 className="font-display text-base font-bold text-ocean-900">Services</h1>
       <p className="mt-2 text-sm text-ocean-700">
         Home page &amp; /services cards. Document ID = URL slug (e.g.{" "}
         <code className="text-xs">scuba-diving</code>). Turn off{" "}
@@ -444,7 +444,7 @@ export default function AdminServicesPage() {
         (including its detail URL) without deleting the document.
       </p>
 
-      <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+      <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-semibold text-ocean-900">
           {editingSlug ? `Edit service (${editingSlug})` : "Add service"}
         </h2>
@@ -671,7 +671,7 @@ export default function AdminServicesPage() {
               Optional variants on the detail page. Set a price (&gt; 0) to show Add to
               cart. Optional cart id keeps a stable cart key if you reorder rows.
             </p>
-            <ul className="mt-3 space-y-4">
+            <ul className="mt-3 space-y-2.5">
               {subRows.map((row, idx) => (
                 <li
                   key={idx}
@@ -881,7 +881,7 @@ export default function AdminServicesPage() {
         </div>
       </div>
 
-      <div className="mt-10 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+      <div className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Quick price (existing services)</h2>
         <p className="mt-1 text-sm text-ocean-700">
           Change the main <strong>From ₹</strong> shown on cards—saved instantly to
@@ -912,11 +912,11 @@ export default function AdminServicesPage() {
         )}
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
+      <div className="mt-3 overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-700">Loading…</p>
+          <p className="p-3 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-700">
+          <p className="p-3 text-ocean-700">
             No Firestore documents — website shows default services from code. Add one
             above to override.
           </p>

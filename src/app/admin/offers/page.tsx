@@ -278,9 +278,9 @@ export default function AdminOffersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-bold text-ocean-900">Offers &amp; promos</h1>
+    <div className="mx-auto max-w-4xl px-4 py-4 sm:px-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <h1 className="font-display text-lg font-bold text-ocean-900">Offers &amp; promos</h1>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -309,7 +309,7 @@ export default function AdminOffersPage() {
       {msg ? <p className="mt-3 text-sm text-amber-800">{msg}</p> : null}
 
       {editingId ? (
-        <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-5 shadow-sm">
+        <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <h2 className="font-semibold text-ocean-900">
             {editingId === "new" ? "New offer" : "Edit offer"}
           </h2>
@@ -433,9 +433,9 @@ export default function AdminOffersPage() {
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-ocean-700">Loading…</p>
+        <p className="mt-3 text-ocean-700">Loading…</p>
       ) : (
-        <ul className="mt-8 space-y-3">
+        <ul className="mt-3 space-y-3">
           {list.map((o) => (
             <li
               key={o.id}

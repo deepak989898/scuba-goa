@@ -337,10 +337,10 @@ export default function AdminCommandCenterPage() {
   );
 
   return (
-    <div className="pb-6">
+    <div className="pb-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="font-display text-xl font-bold text-ocean-900">AI Command Center</h1>
+          <h1 className="font-display text-base font-bold text-ocean-900">AI Command Center</h1>
           <p className="text-xs text-ocean-600">
             7 agents · cron <code className="rounded bg-sand px-1">06:15 UTC</code>
           </p>

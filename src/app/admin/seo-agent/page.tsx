@@ -139,15 +139,15 @@ export default function AdminSeoAgentPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">AI SEO agent</h1>
+          <h1 className="font-display text-lg font-bold text-ocean-900">AI SEO agent</h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Weekly Search Console report + AI fixes (titles, meta, FAQs, schema, internal links).
             Optional: queue blog topics for publishing workflow.
           </p>
         </div>
-        <div className="flex flex-wrap gap-4 text-sm font-semibold text-ocean-700">
+        <div className="flex flex-wrap gap-2.5 text-sm font-semibold text-ocean-700">
           <Link href="/admin/blog-automation" className="underline">
             Blog automation →
           </Link>
@@ -168,7 +168,7 @@ export default function AdminSeoAgentPage() {
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
           disabled={busy}
@@ -204,14 +204,14 @@ export default function AdminSeoAgentPage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-3 text-ocean-600">Loading…</p>
       ) : !snapshot && !err ? (
-        <p className="mt-8 text-ocean-600">
+        <p className="mt-3 text-ocean-600">
           No weekly SEO reports yet. Click <strong>Generate weekly report now</strong>.
         </p>
       ) : snapshot ? (
         <>
-          <label className="mt-6 block text-sm text-ocean-800">
+          <label className="mt-3 block text-sm text-ocean-800">
             Week ending (IST)
             <select
               className="mt-1 rounded-lg border border-ocean-200 px-3 py-2"
@@ -226,7 +226,7 @@ export default function AdminSeoAgentPage() {
             </select>
           </label>
 
-          <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
             <h2 className="font-display text-lg font-bold text-ocean-900">Detected issues</h2>
             {visibleIssues.length ? (
               <ul className="mt-4 space-y-3">
@@ -256,7 +256,7 @@ export default function AdminSeoAgentPage() {
           </section>
 
           {report?.summaryMarkdown ? (
-            <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 AI weekly report — {report.weekId}
               </h2>
@@ -270,13 +270,13 @@ export default function AdminSeoAgentPage() {
               </div>
             </section>
           ) : (
-            <p className="mt-8 text-sm text-ocean-600">
+            <p className="mt-3 text-sm text-ocean-600">
               No OpenAI report for this week. Set <code>OPENAI_API_KEY</code> and run again.
             </p>
           )}
 
           {report?.recommendations?.length ? (
-            <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50/50 p-6">
+            <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50/50 p-3">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <h2 className="font-display text-lg font-bold text-ocean-900">
                   Recommendations
@@ -325,7 +325,7 @@ export default function AdminSeoAgentPage() {
           ) : null}
 
           {report?.blogTopicsToQueue?.length ? (
-            <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">Blog topic clusters</h2>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ocean-800">
                 {report.blogTopicsToQueue.slice(0, 12).map((t, i) => (
@@ -346,7 +346,7 @@ export default function AdminSeoAgentPage() {
         </>
       ) : null}
 
-      <section className="mt-10 rounded-xl border border-ocean-100 bg-white p-5 shadow-sm">
+      <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-display text-sm font-bold text-ocean-900">Integration status</h2>
         <ul className="mt-3 space-y-2 text-sm text-ocean-800">
           <li>

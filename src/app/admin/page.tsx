@@ -90,21 +90,21 @@ const AI_AGENTS: DashCard[] = [
 
 function CardGrid({ items }: { items: DashCard[] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((card) => (
         <Link
           key={card.href}
           href={card.href}
-          className={`rounded-2xl border p-6 shadow-sm transition hover:border-ocean-300 ${
+          className={`rounded-xl border p-3 shadow-sm transition hover:border-ocean-300 ${
             card.accent
               ? "border-amber-200 bg-gradient-to-br from-amber-50/90 to-white ring-1 ring-amber-100"
               : "border-ocean-100 bg-white"
           }`}
         >
-          <h2 className="font-display text-lg font-semibold text-ocean-900">
+          <h2 className="font-display text-base font-semibold text-ocean-900">
             {card.title}
           </h2>
-          <p className="mt-2 text-sm text-ocean-700">{card.description}</p>
+          <p className="mt-1 text-xs text-ocean-700">{card.description}</p>
         </Link>
       ))}
     </div>
@@ -121,12 +121,12 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="mt-12 first:mt-8">
-      <h2 className="font-display text-xl font-bold text-ocean-900">{title}</h2>
+    <section className="mt-4 first:mt-3">
+      <h2 className="font-display text-base font-bold text-ocean-900">{title}</h2>
       {description ? (
         <p className="mt-1 text-sm text-ocean-600">{description}</p>
       ) : null}
-      <div className="mt-5">{children}</div>
+      <div className="mt-2">{children}</div>
     </section>
   );
 }
@@ -134,7 +134,7 @@ function Section({
 export default function AdminHomePage() {
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">Dashboard</h1>
+      <h1 className="font-display text-base font-bold text-ocean-900">Dashboard</h1>
 
       <Section title="Blogs & SEO growth">
         <CardGrid items={BLOGS_SEO} />

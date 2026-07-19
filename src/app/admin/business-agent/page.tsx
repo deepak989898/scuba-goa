@@ -130,14 +130,14 @@ export default function AdminBusinessAgentPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">AI business ops agent</h1>
+          <h1 className="font-display text-lg font-bold text-ocean-900">AI business ops agent</h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Auto-monitors daily analytics, proposes safe SEO/meta updates, logs every change, and supports rollback + admin approvals.
           </p>
         </div>
-        <div className="flex flex-wrap gap-4 text-sm font-semibold text-ocean-700">
+        <div className="flex flex-wrap gap-2.5 text-sm font-semibold text-ocean-700">
           <Link href="/admin/ai-analytics" className="underline">
             AI analytics →
           </Link>
@@ -161,8 +161,8 @@ export default function AdminBusinessAgentPage() {
         </p>
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <h2 className="font-display text-lg font-bold text-ocean-900">Pending approvals</h2>
           {pending.length === 0 ? (
             <p className="mt-2 text-sm text-ocean-500">No pending actions right now.</p>
@@ -197,7 +197,7 @@ export default function AdminBusinessAgentPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+        <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <h2 className="font-display text-lg font-bold text-ocean-900">Applied actions (rollback ready)</h2>
           {applied.length === 0 ? (
             <p className="mt-2 text-sm text-ocean-500">No applied actions yet.</p>
@@ -225,7 +225,7 @@ export default function AdminBusinessAgentPage() {
         </section>
       </div>
 
-      <p className="mt-10 text-xs text-ocean-500">
+      <p className="mt-4 text-xs text-ocean-500">
         Setup: this agent runs on <code>CRON_SECRET</code> and uses <code>OPENAI_API_KEY</code> + your existing Admin SDK credentials.
       </p>
     </div>

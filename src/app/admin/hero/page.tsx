@@ -405,7 +405,7 @@ export default function AdminHeroPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">
+      <h1 className="font-display text-base font-bold text-ocean-900">
         Homepage hero slider
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
@@ -418,7 +418,7 @@ export default function AdminHeroPage() {
         with the matching package or service already in the cart.
       </p>
 
-      <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+      <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Add slide</h2>
         <p className="mt-2 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-900">
           Hero posters &amp; thumbnails are auto-converted on upload: WebP, max 1200 px wide,
@@ -613,11 +613,11 @@ export default function AdminHeroPage() {
         </button>
       </div>
 
-      <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-700">Loading…</p>
+          <p className="p-3 text-ocean-700">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="p-6 text-ocean-700">
+          <p className="p-3 text-ocean-700">
             No slides — homepage uses code defaults. Add one above.
           </p>
         ) : (

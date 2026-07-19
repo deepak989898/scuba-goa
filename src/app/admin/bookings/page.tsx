@@ -439,7 +439,7 @@ export default function AdminBookingsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">Bookings</h1>
+      <h1 className="font-display text-base font-bold text-ocean-900">Bookings</h1>
       {actionError ? (
         <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {actionError}
@@ -451,11 +451,11 @@ export default function AdminBookingsPage() {
         </p>
       ) : null}
       {loading ? (
-        <p className="mt-8 text-ocean-700">Loading…</p>
+        <p className="mt-3 text-ocean-700">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="mt-8 text-ocean-700">No bookings yet.</p>
+        <p className="mt-3 text-ocean-700">No bookings yet.</p>
       ) : (
-        <div className="mt-8 space-y-4">
+        <div className="mt-3 space-y-2.5">
           <p className="text-xs text-ocean-600">
             Click a date to show that day&apos;s bookings, then click a booking for full details.
           </p>
@@ -465,7 +465,7 @@ export default function AdminBookingsPage() {
               <section
                 key={group.key}
                 aria-labelledby={`booking-day-${group.key}`}
-                className="overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm"
+                className="overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm"
               >
                 <button
                   type="button"
@@ -505,8 +505,8 @@ export default function AdminBookingsPage() {
 
                       return (
                         <li key={r.id}>
-                          <details className="group overflow-hidden rounded-2xl border border-ocean-100 bg-white text-sm shadow-sm open:border-cyan-300 open:shadow-md">
-                            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 marker:hidden transition hover:bg-ocean-50/70 sm:p-5">
+                          <details className="group overflow-hidden rounded-xl border border-ocean-100 bg-white text-sm shadow-sm open:border-cyan-300 open:shadow-md">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 p-4 marker:hidden transition hover:bg-ocean-50/70 sm:p-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                   <p className="truncate font-display text-base font-bold text-ocean-900 sm:text-lg">
@@ -694,14 +694,14 @@ export default function AdminBookingsPage() {
 
       {billPreviewUrl ? (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-3 sm:p-6"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-3 sm:p-3"
           role="dialog"
           aria-modal="true"
           aria-labelledby="bill-preview-title"
           onClick={closeBillPreview}
         >
           <div
-            className="flex h-[min(90vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="flex h-[min(90vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-ocean-100 px-4 py-3">

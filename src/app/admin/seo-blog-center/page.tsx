@@ -207,10 +207,10 @@ export default function SeoBlogCenterPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">SEO Blog Center</h1>
+          <h1 className="font-display text-lg font-bold text-ocean-900">SEO Blog Center</h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-600">
             Keyword research from Google Search Console, Google Suggest, city names, and templates —
             then auto-generate SEO blogs with schema, ALT text, and internal links. Daily cron at{" "}
@@ -276,8 +276,8 @@ export default function SeoBlogCenterPage() {
       ) : null}
 
       {tab === "dashboard" && data ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className="rounded-xl border border-ocean-100 bg-white p-5 shadow-sm">
+        <div className="grid gap-2.5 lg:grid-cols-2">
+          <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
             <h2 className="font-semibold text-ocean-900">Google Search Console (7 days)</h2>
             {data.gsc.ok ? (
               <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -333,7 +333,7 @@ export default function SeoBlogCenterPage() {
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-ocean-100 bg-white p-5 shadow-sm">
+          <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
             <h2 className="font-semibold text-ocean-900">Pipeline stats</h2>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -353,7 +353,7 @@ export default function SeoBlogCenterPage() {
                 <dd className="text-xl font-bold">{data.draftStats.published ?? 0}</dd>
               </div>
             </dl>
-            <h3 className="mt-6 text-sm font-semibold text-ocean-800">Recent activity</h3>
+            <h3 className="mt-3 text-sm font-semibold text-ocean-800">Recent activity</h3>
             <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs text-ocean-600">
               {data.logs.map((l) => (
                 <li key={l.id}>
@@ -444,7 +444,7 @@ export default function SeoBlogCenterPage() {
       ) : null}
 
       {tab === "city" ? (
-        <div className="space-y-4 rounded-xl border border-ocean-100 bg-white p-5 shadow-sm">
+        <div className="space-y-2.5 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <p className="text-sm text-ocean-600">
             Research long-tail keywords like &quot;scuba diving Goa from Mumbai&quot; using city
             templates + Google Suggest.
@@ -479,7 +479,7 @@ export default function SeoBlogCenterPage() {
             ) : null}
           </div>
           {cityPreview.length > 0 ? (
-            <ul className="max-h-64 overflow-y-auto text-sm text-ocean-700">
+            <ul className="max-h-44 overflow-y-auto text-sm text-ocean-700">
               {cityPreview.map((k) => (
                 <li key={k.id} className="border-b border-ocean-50 py-1">
                   {k.keyword} <span className="text-ocean-400">score {k.seoScore}</span>
@@ -552,7 +552,7 @@ export default function SeoBlogCenterPage() {
       ) : null}
 
       {tab === "settings" && settings ? (
-        <div className="max-w-lg space-y-4 rounded-xl border border-ocean-100 bg-white p-5 shadow-sm">
+        <div className="max-w-lg space-y-2.5 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           {(
             [
               ["enabled", "Enable daily cron pipeline"],

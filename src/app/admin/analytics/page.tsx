@@ -678,7 +678,7 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">
+      <h1 className="font-display text-base font-bold text-ocean-900">
         Analytics
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
@@ -694,31 +694,31 @@ export default function AdminAnalyticsPage() {
       </div>
 
       {loadError ? (
-        <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
           <p className="font-semibold">Could not load analytics</p>
           <p className="mt-2 font-mono text-xs opacity-90">{loadError}</p>
         </div>
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-ocean-700">Loading…</p>
+        <p className="mt-3 text-ocean-700">Loading…</p>
       ) : loadError ? null : (
         <>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-green-200 bg-green-50/80 p-4 shadow-sm">
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-green-200 bg-green-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
                 Online humans
               </p>
-              <p className="mt-1 font-display text-3xl font-bold text-green-900">
+              <p className="mt-1 font-display text-base font-bold text-green-900">
                 {analytics.onlineCount}
               </p>
               <p className="mt-1 text-xs text-green-800">Active in last 2 minutes</p>
             </div>
-            <div className="rounded-2xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
+            <div className="rounded-xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
                 Humans today
               </p>
-              <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
+              <p className="mt-1 font-display text-base font-bold text-ocean-900">
                 {visitorFilter === "human"
                   ? analytics.todayVisitors
                   : analytics.todayHumans}
@@ -729,19 +729,19 @@ export default function AdminAnalyticsPage() {
                 </p>
               ) : null}
             </div>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
                 Suspected today
               </p>
-              <p className="mt-1 font-display text-3xl font-bold text-amber-950">
+              <p className="mt-1 font-display text-base font-bold text-amber-950">
                 {analytics.todaySuspected}
               </p>
             </div>
-            <div className="rounded-2xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
+            <div className="rounded-xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
                 Page views (filtered)
               </p>
-              <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
+              <p className="mt-1 font-display text-base font-bold text-ocean-900">
                 {analytics.todayPageViews}
               </p>
               <p className="mt-1 text-xs text-ocean-600">
@@ -750,7 +750,7 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium text-ocean-800">
               Show in visitor list
             </p>
@@ -787,7 +787,7 @@ export default function AdminAnalyticsPage() {
           </div>
 
           {analytics.trafficBreakdown.length > 0 ? (
-            <div className="mt-6 rounded-2xl border border-ocean-100 bg-white p-4 shadow-sm">
+            <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-ocean-900">
                 Today — where visitors came from
               </h2>
@@ -809,8 +809,8 @@ export default function AdminAnalyticsPage() {
             </div>
           ) : null}
 
-          <div className="mt-10">
-            <h2 className="font-display text-xl font-semibold text-ocean-900">
+          <div className="mt-4">
+            <h2 className="font-display text-base font-semibold text-ocean-900">
               Visitors by date
             </h2>
             <p className="mt-1 text-sm text-ocean-600">
@@ -824,7 +824,7 @@ export default function AdminAnalyticsPage() {
                 return (
                   <div
                     key={day.date}
-                    className={`overflow-hidden rounded-2xl border shadow-sm transition-colors ${
+                    className={`overflow-hidden rounded-xl border shadow-sm transition-colors ${
                       isOpen
                         ? "border-ocean-300 bg-white"
                         : "border-ocean-100 bg-white/90"
@@ -888,7 +888,7 @@ export default function AdminAnalyticsPage() {
                     {isOpen ? (
                       <div className="border-t border-ocean-100 px-4 pb-4 pt-2">
                         {day.visitors.length === 0 ? (
-                          <p className="py-6 text-center text-sm text-ocean-600">
+                          <p className="py-3 text-center text-sm text-ocean-600">
                             {visitorFilter === "bot"
                               ? "No bots recorded on this day."
                               : visitorFilter === "human"
@@ -896,7 +896,7 @@ export default function AdminAnalyticsPage() {
                                 : "No visitors recorded on this day."}
                           </p>
                         ) : (
-                          <div className="grid gap-4 lg:grid-cols-2">
+                          <div className="grid gap-2.5 lg:grid-cols-2">
                             <ul className="max-h-[36rem] space-y-2 overflow-y-auto">
                               {day.visitors.map((v) => (
                                 <li key={v.sessionId}>
@@ -1179,7 +1179,7 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
 
-          <p className="mt-8 text-xs text-ocean-500">
+          <p className="mt-3 text-xs text-ocean-500">
             Showing the latest {SAMPLE_LIMIT.toLocaleString("en-IN")} events.
             Location uses Vercel/Cloudflare IP headers on production.
           </p>

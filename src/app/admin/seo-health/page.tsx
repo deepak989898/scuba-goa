@@ -91,9 +91,9 @@ export default function AdminSeoHealthPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">
+          <h1 className="font-display text-lg font-bold text-ocean-900">
             SEO health audit
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
@@ -112,7 +112,7 @@ export default function AdminSeoHealthPage() {
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap items-end gap-3">
+      <div className="mt-3 flex flex-wrap items-end gap-3">
         <label className="text-sm text-ocean-800">
           Data period (IST)
           <select
@@ -149,14 +149,14 @@ export default function AdminSeoHealthPage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-3 text-ocean-600">Loading…</p>
       ) : !report ? (
-        <p className="mt-8 text-ocean-600">
+        <p className="mt-3 text-ocean-600">
           No audit yet. Choose a period and click Run SEO health audit.
         </p>
       ) : (
         <>
-          <p className="mt-6 text-xs text-ocean-600">
+          <p className="mt-3 text-xs text-ocean-600">
             Showing GSC/GA4 for <strong>{periodLabel}</strong>
             {report.gscStartDateIst && report.gscEndDateIst
               ? ` (${report.gscStartDateIst} → ${report.gscEndDateIst})`
@@ -164,7 +164,7 @@ export default function AdminSeoHealthPage() {
             . Change the period and run again to refresh numbers.
           </p>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
               ["Health score", `${report.healthScore}/100`],
               ["Sitemap URLs", report.sitemapUrlCount],
@@ -178,12 +178,12 @@ export default function AdminSeoHealthPage() {
                 className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm"
               >
                 <p className="text-xs uppercase text-ocean-500">{label}</p>
-                <p className="mt-1 text-2xl font-bold text-ocean-900">{value}</p>
+                <p className="mt-1 text-lg font-bold text-ocean-900">{value}</p>
               </div>
             ))}
           </div>
 
-          <section className="mt-8 rounded-xl border border-ocean-100 bg-white p-6">
+          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3">
             <h2 className="font-display text-lg font-bold text-ocean-900">Integrations</h2>
             <ul className="mt-3 space-y-2 text-sm text-ocean-800">
               <li>
@@ -222,7 +222,7 @@ export default function AdminSeoHealthPage() {
           </section>
 
           {report.manualSteps?.length ? (
-            <section className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-6">
+            <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <h2 className="font-display text-lg font-bold text-amber-900">
                 Do this manually in Google
               </h2>
@@ -234,7 +234,7 @@ export default function AdminSeoHealthPage() {
             </section>
           ) : null}
 
-          <section className="mt-8">
+          <section className="mt-3">
             <h2 className="font-display text-lg font-bold text-ocean-900">
               Issues ({issues.length})
             </h2>
@@ -255,7 +255,7 @@ export default function AdminSeoHealthPage() {
           </section>
 
           {report.recommendations?.length ? (
-            <section className="mt-8">
+            <section className="mt-3">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Recommendations
               </h2>

@@ -92,8 +92,8 @@ export function BlogPostsTable({
   }, [zoomedImage]);
 
   return (
-    <section className="mt-8 overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-sm">
-      <div className="border-b border-ocean-100 px-6 py-4">
+    <section className="mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
+      <div className="border-b border-ocean-100 px-3 py-4">
         <h2 className="font-display text-lg font-bold text-ocean-900">
           All blogs ({posts.length})
         </h2>
@@ -116,7 +116,7 @@ export function BlogPostsTable({
         ) : null}
       </div>
       {posts.length === 0 ? (
-        <p className="p-6 text-sm text-ocean-500">No Firestore blogs yet.</p>
+        <p className="p-3 text-sm text-ocean-500">No Firestore blogs yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -260,7 +260,7 @@ export function BlogPostsTable({
                         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ocean-700">
                           Edit blog post
                         </p>
-                        <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="grid gap-2.5 lg:grid-cols-2">
                           <label className="block text-sm text-ocean-800">
                             Title
                             <input
@@ -408,7 +408,7 @@ export function BlogPostsTable({
                               Featured image (WebP + logo bar)
                             </p>
                             {editing.featuredImageUrl ? (
-                              <div className="mt-2 flex flex-wrap items-start gap-4">
+                              <div className="mt-2 flex flex-wrap items-start gap-2.5">
                                 <a
                                   href={editing.featuredImageUrl}
                                   target="_blank"
@@ -496,14 +496,14 @@ export function BlogPostsTable({
 
       {zoomedImage ? (
         <div
-          className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm sm:p-8"
+          className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label={`Image preview: ${zoomedImage.alt}`}
           onClick={() => setZoomedImage(null)}
         >
           <div
-            className="relative h-[min(82vh,850px)] w-full max-w-6xl overflow-hidden rounded-2xl bg-black shadow-2xl"
+            className="relative h-[min(82vh,850px)] w-full max-w-6xl overflow-hidden rounded-xl bg-black shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <CmsRemoteImage
@@ -514,7 +514,7 @@ export function BlogPostsTable({
               sizes="95vw"
               priority
             />
-            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 bg-gradient-to-b from-black/80 to-transparent p-4 text-white">
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2.5 bg-gradient-to-b from-black/80 to-transparent p-4 text-white">
               <p className="max-w-3xl text-sm font-semibold sm:text-base">
                 {zoomedImage.alt}
               </p>

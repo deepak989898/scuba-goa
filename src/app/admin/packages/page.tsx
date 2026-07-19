@@ -159,14 +159,14 @@ export default function AdminPackagesPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">Packages</h1>
+      <h1 className="font-display text-base font-bold text-ocean-900">Packages</h1>
       <p className="mt-2 text-sm text-ocean-700">
         Includes scuba, tours, casinos, clubs, flyboarding, bungee. Uncheck{" "}
         <strong>Active</strong> to hide a package from the public site (booking,
         homepage, combos) without deleting it.
       </p>
 
-      <div className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+      <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-semibold text-ocean-900">
           {editingId ? "Edit package" : "Add package"}
         </h2>
@@ -340,9 +340,9 @@ export default function AdminPackagesPage() {
         </div>
       </div>
 
-      <div className="mt-10 overflow-x-auto rounded-2xl border border-ocean-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-ocean-700">Loading…</p>
+          <p className="p-3 text-ocean-700">Loading…</p>
         ) : (
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 bg-ocean-50 text-ocean-800">

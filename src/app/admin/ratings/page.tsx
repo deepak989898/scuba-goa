@@ -115,7 +115,7 @@ export default function AdminRatingsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">
+      <h1 className="font-display text-base font-bold text-ocean-900">
         Reviews & ratings
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
@@ -124,7 +124,7 @@ export default function AdminRatingsPage() {
       </p>
 
       {loadError ? (
-        <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
           <p className="font-semibold">Could not load reviews</p>
           <p className="mt-2 font-mono text-xs opacity-90">{loadError}</p>
           <p className="mt-3 text-ocean-800">
@@ -136,15 +136,15 @@ export default function AdminRatingsPage() {
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-ocean-700">Loading…</p>
+        <p className="mt-3 text-ocean-700">Loading…</p>
       ) : loadError ? null : rows.length === 0 ? (
-        <p className="mt-8 text-ocean-700">No reviews yet.</p>
+        <p className="mt-3 text-ocean-700">No reviews yet.</p>
       ) : (
-        <ul className="mt-8 space-y-4">
+        <ul className="mt-3 space-y-2.5">
           {rows.map((r) => (
             <li
               key={r.id}
-              className="rounded-2xl border border-ocean-100 bg-white p-4 text-sm shadow-sm"
+              className="rounded-xl border border-ocean-100 bg-white p-4 text-sm shadow-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>

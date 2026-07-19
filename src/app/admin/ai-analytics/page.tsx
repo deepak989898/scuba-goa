@@ -84,9 +84,9 @@ export default function AdminAiAnalyticsPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">
+          <h1 className="font-display text-lg font-bold text-ocean-900">
             AI analytics agent
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
@@ -95,7 +95,7 @@ export default function AdminAiAnalyticsPage() {
             <code className="rounded bg-sand px-1 text-xs">04:00 UTC</code> (yesterday IST).
           </p>
         </div>
-        <div className="flex flex-wrap gap-4 text-sm font-semibold text-ocean-700">
+        <div className="flex flex-wrap gap-2.5 text-sm font-semibold text-ocean-700">
           <Link href="/admin/conversion-opt" className="underline">
             Conversion AI →
           </Link>
@@ -116,7 +116,7 @@ export default function AdminAiAnalyticsPage() {
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-3 flex flex-wrap gap-3">
         <button
           type="button"
           disabled={busy}
@@ -144,15 +144,15 @@ export default function AdminAiAnalyticsPage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-3 text-ocean-600">Loading…</p>
       ) : !snapshot ? (
-        <p className="mt-8 text-ocean-600">
+        <p className="mt-3 text-ocean-600">
           No daily snapshots yet. Click <strong>Generate report now</strong> after you have
           site traffic.
         </p>
       ) : (
         <>
-          <label className="mt-6 block text-sm text-ocean-800">
+          <label className="mt-3 block text-sm text-ocean-800">
             Day (IST)
             <select
               className="mt-1 rounded-lg border border-ocean-200 px-3 py-2"
@@ -167,7 +167,7 @@ export default function AdminAiAnalyticsPage() {
             </select>
           </label>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard label="Visitors" value={m?.visitors ?? 0} />
             <MetricCard label="Page views" value={m?.pageViews ?? 0} />
             <MetricCard label="Bounce rate" value={`${m?.bounceRatePct ?? 0}%`} />
@@ -181,7 +181,7 @@ export default function AdminAiAnalyticsPage() {
             />
           </div>
 
-          <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
             <h2 className="font-display text-lg font-bold text-ocean-900">Connectors</h2>
             <ul className="mt-3 space-y-1 text-sm text-ocean-800">
               <li>
@@ -231,7 +231,7 @@ export default function AdminAiAnalyticsPage() {
           </section>
 
           {(report?.actions?.length || snapshot.insights?.recommendations?.length) ? (
-            <section className="mt-8 rounded-2xl border border-ocean-200 bg-ocean-50/40 p-6 shadow-sm">
+            <section className="mt-3 rounded-xl border border-ocean-200 bg-ocean-50/40 p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Tomorrow&apos;s 3 actions
               </h2>
@@ -254,7 +254,7 @@ export default function AdminAiAnalyticsPage() {
           ) : null}
 
           {report?.summaryMarkdown ? (
-            <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 AI daily report — {report.dateIst}
               </h2>
@@ -268,7 +268,7 @@ export default function AdminAiAnalyticsPage() {
           ) : null}
 
           {snapshot.insights?.recommendations?.length ? (
-            <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50/50 p-6">
+            <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50/50 p-3">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Agent recommendations
               </h2>
@@ -283,7 +283,7 @@ export default function AdminAiAnalyticsPage() {
             </section>
           ) : null}
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
             <TableBlock
               title="Top pages (views)"
               rows={m?.topPages?.map((p) => [p.path, String(p.views)]) ?? []}
@@ -295,7 +295,7 @@ export default function AdminAiAnalyticsPage() {
           </div>
 
           {snapshot.insights?.highTrafficLowConversion?.length ? (
-            <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 High traffic, low conversion
               </h2>
@@ -315,7 +315,7 @@ export default function AdminAiAnalyticsPage() {
         </>
       )}
 
-      <p className="mt-10 text-xs text-ocean-500">
+      <p className="mt-4 text-xs text-ocean-500">
         Setup: <code>docs/AI-ANALYTICS-AGENT.md</code>
       </p>
     </div>
@@ -326,7 +326,7 @@ function MetricCard({ label, value }: { label: string; value: string | number })
   return (
     <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wide text-ocean-500">{label}</p>
-      <p className="mt-1 font-display text-2xl font-bold text-ocean-900">{value}</p>
+      <p className="mt-1 font-display text-lg font-bold text-ocean-900">{value}</p>
     </div>
   );
 }
@@ -343,7 +343,7 @@ function StatusBadge({ status }: { status?: string }) {
 
 function TableBlock({ title, rows }: { title: string; rows: string[][] }) {
   return (
-    <section className="rounded-2xl border border-ocean-100 bg-white p-6 shadow-sm">
+    <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
       <h2 className="font-display text-lg font-bold text-ocean-900">{title}</h2>
       {rows.length === 0 ? (
         <p className="mt-2 text-sm text-ocean-500">No data</p>

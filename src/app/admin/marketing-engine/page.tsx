@@ -158,9 +158,9 @@ export default function AdminMarketingEnginePage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">AI marketing engine</h1>
+          <h1 className="font-display text-lg font-bold text-ocean-900">AI marketing engine</h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Autonomous content generation, social calendar, ad copy, SEO clusters, image prompts,
             reels ideas, and competitor insights. Daily cron at{" "}
@@ -188,7 +188,7 @@ export default function AdminMarketingEnginePage() {
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-3 flex flex-wrap gap-3">
         <button
           type="button"
           disabled={!!busy}
@@ -208,11 +208,11 @@ export default function AdminMarketingEnginePage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-3 text-ocean-600">Loading…</p>
       ) : (
         <>
           {stats ? (
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 ["Generated content", stats.contentCount],
                 ["Social posts", stats.socialPosts],
@@ -228,18 +228,18 @@ export default function AdminMarketingEnginePage() {
                   <p className="text-xs font-medium uppercase tracking-wide text-ocean-500">
                     {label}
                   </p>
-                  <p className="mt-1 font-display text-2xl font-bold text-ocean-900">{value}</p>
+                  <p className="mt-1 font-display text-lg font-bold text-ocean-900">{value}</p>
                 </div>
               ))}
             </div>
           ) : null}
 
           {analytics ? (
-            <section className="mt-10 rounded-xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Marketing performance
               </h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
                 <div>
                   <p className="text-xs text-ocean-500">Page views</p>
                   <p className="text-xl font-bold">{analytics.traffic?.pageViews ?? 0}</p>
@@ -257,7 +257,7 @@ export default function AdminMarketingEnginePage() {
           ) : null}
 
           {settings ? (
-            <section className="mt-10 rounded-xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">Engine settings</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {(
@@ -294,7 +294,7 @@ export default function AdminMarketingEnginePage() {
           ) : null}
 
           {pendingActions.length > 0 ? (
-            <section className="mt-10">
+            <section className="mt-4">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Pending campaign approvals
               </h2>
@@ -336,7 +336,7 @@ export default function AdminMarketingEnginePage() {
           ) : null}
 
           {latestReport ? (
-            <section className="mt-10">
+            <section className="mt-4">
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 Latest AI brief — {String(latestReport.headline ?? "")}
               </h2>
@@ -346,12 +346,12 @@ export default function AdminMarketingEnginePage() {
                   {(latestReport.trendingTopics as string[]).slice(0, 8).join(" · ")}
                 </p>
               ) : null}
-              <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-sand p-4 text-sm text-ocean-800">
+              <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-sand p-4 text-sm text-ocean-800">
                 {reportMd || String(latestReport.summaryPlain ?? "")}
               </pre>
             </section>
           ) : (
-            <p className="mt-8 text-ocean-600">
+            <p className="mt-3 text-ocean-600">
               No marketing reports yet. Click <strong>Run marketing engine now</strong>.
             </p>
           )}
@@ -380,9 +380,9 @@ function Section({
 }) {
   if (!data.length) return null;
   return (
-    <section id={id} className="mt-10 scroll-mt-24">
+    <section id={id} className="mt-4 scroll-mt-24">
       <h2 className="font-display text-lg font-bold text-ocean-900">{title}</h2>
-      <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
+      <pre className="mt-2 max-h-44 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
         {JSON.stringify(data, null, 2)}
       </pre>
     </section>

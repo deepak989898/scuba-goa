@@ -161,7 +161,7 @@ export default function AdminMarketingPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-ocean-900">
+      <h1 className="font-display text-base font-bold text-ocean-900">
         Marketing Automation
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
@@ -174,8 +174,8 @@ export default function AdminMarketingPage() {
         </p>
       ) : null}
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-ocean-100 bg-white p-5 shadow-sm">
+      <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+        <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Broadcast Offers
           </h2>
@@ -222,7 +222,7 @@ export default function AdminMarketingPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-ocean-100 bg-white p-5 shadow-sm">
+        <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-ocean-900">
             Festival Deals
           </h2>
@@ -255,7 +255,7 @@ export default function AdminMarketingPage() {
         </section>
       </div>
 
-      <section className="mt-8 rounded-2xl border border-ocean-100 bg-white p-5 shadow-sm">
+      <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-display text-lg font-semibold text-ocean-900">
           Abandoned User Follow-up
         </h2>

@@ -119,9 +119,9 @@ export default function AdminRecoveryAgentPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ocean-900">
+          <h1 className="font-display text-lg font-bold text-ocean-900">
             WhatsApp + booking recovery AI
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
@@ -149,7 +149,7 @@ export default function AdminRecoveryAgentPage() {
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-3 flex flex-wrap gap-3">
         <button
           type="button"
           disabled={busy}
@@ -169,11 +169,11 @@ export default function AdminRecoveryAgentPage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-ocean-600">Loading…</p>
+        <p className="mt-3 text-ocean-600">Loading…</p>
       ) : (
         <>
           {stats ? (
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 ["Active leads", stats.activeLeads],
                 ["Hot leads", stats.hotLeads],
@@ -189,16 +189,16 @@ export default function AdminRecoveryAgentPage() {
                   <p className="text-xs font-medium uppercase tracking-wide text-ocean-500">
                     {label}
                   </p>
-                  <p className="mt-1 font-display text-2xl font-bold text-ocean-900">{value}</p>
+                  <p className="mt-1 font-display text-lg font-bold text-ocean-900">{value}</p>
                 </div>
               ))}
             </div>
           ) : null}
 
           {settings ? (
-            <section className="mt-10 rounded-xl border border-ocean-100 bg-white p-6 shadow-sm">
+            <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
               <h2 className="font-display text-lg font-bold text-ocean-900">Automation settings</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                 <label className="flex items-center gap-2 text-sm text-ocean-800">
                   <input
                     type="checkbox"
@@ -291,7 +291,7 @@ export default function AdminRecoveryAgentPage() {
             </section>
           ) : null}
 
-          <section className="mt-10">
+          <section className="mt-4">
             <h2 className="font-display text-lg font-bold text-ocean-900">Hot leads</h2>
             {hotLeads.length === 0 ? (
               <p className="mt-2 text-sm text-ocean-600">No hot leads yet.</p>
@@ -325,32 +325,32 @@ export default function AdminRecoveryAgentPage() {
             )}
           </section>
 
-          <section className="mt-10">
+          <section className="mt-4">
             <h2 className="font-display text-lg font-bold text-ocean-900">
               Recent recovery campaigns
             </h2>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
+            <pre className="mt-2 max-h-44 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
               {JSON.stringify(campaigns.slice(0, 10), null, 2)}
             </pre>
           </section>
 
-          <section className="mt-10">
+          <section className="mt-4">
             <h2 className="font-display text-lg font-bold text-ocean-900">Abandoned bookings</h2>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
+            <pre className="mt-2 max-h-44 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
               {JSON.stringify(abandoned.slice(0, 10), null, 2)}
             </pre>
           </section>
 
-          <section className="mt-10">
+          <section className="mt-4">
             <h2 className="font-display text-lg font-bold text-ocean-900">AI conversations</h2>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
+            <pre className="mt-2 max-h-44 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
               {JSON.stringify(conversations.slice(0, 5), null, 2)}
             </pre>
           </section>
 
-          <section className="mt-10">
+          <section className="mt-4">
             <h2 className="font-display text-lg font-bold text-ocean-900">WhatsApp events</h2>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
+            <pre className="mt-2 max-h-44 overflow-auto rounded-lg bg-sand p-3 text-xs text-ocean-800">
               {JSON.stringify(whatsappEvents.slice(0, 10), null, 2)}
             </pre>
           </section>
