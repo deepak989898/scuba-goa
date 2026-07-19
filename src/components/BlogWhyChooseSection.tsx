@@ -42,7 +42,7 @@ const points: { title: string; body: ReactNode }[] = [
 export function BlogWhyChooseSection() {
   return (
     <section
-      className="mt-14 rounded-2xl border border-ocean-200 bg-gradient-to-br from-ocean-50 to-white p-6 sm:p-8"
+      className="mt-8 rounded-xl border border-ocean-200 bg-gradient-to-br from-ocean-50 to-white p-5 sm:p-6"
       aria-labelledby="why-choose-heading"
     >
       <h2

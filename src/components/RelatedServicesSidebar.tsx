@@ -13,23 +13,23 @@ export function RelatedServicesSidebar({
 
   return (
     <aside aria-labelledby="related-services-title" className="min-w-0">
-      <div className="lg:sticky lg:top-28">
-        <div className="mb-5">
+      <div className="lg:sticky lg:top-24">
+        <div className="mb-3">
           <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
             Explore more Goa
           </p>
           <h2
             id="related-services-title"
-            className="mt-1 font-display text-2xl font-bold text-ocean-900"
+            className="mt-0.5 font-display text-xl font-bold text-ocean-900"
           >
             Related services
           </h2>
-          <p className="mt-1 text-sm leading-relaxed text-ocean-700">
+          <p className="mt-0.5 text-sm leading-relaxed text-ocean-700">
             Compare another experience or add it to your booking.
           </p>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           {services.map((service) => (
             <article
               key={service.slug}

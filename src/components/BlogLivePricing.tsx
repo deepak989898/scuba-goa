@@ -22,19 +22,19 @@ export async function BlogLivePricing({ focusServiceSlug }: Props) {
 
   return (
     <section
-      className="mt-14"
+      className="mt-8"
       aria-labelledby="live-pricing-heading"
       data-seo="live-pricing"
     >
-      <details className="group overflow-hidden rounded-2xl border border-cyan-200 bg-cyan-50/50 shadow-sm open:border-cyan-400 open:shadow-md">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 marker:hidden transition hover:bg-cyan-50 sm:p-6">
+      <details className="group overflow-hidden rounded-xl border border-cyan-200 bg-cyan-50/50 shadow-sm open:border-cyan-400 open:shadow-md">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 marker:hidden transition hover:bg-cyan-50 sm:p-5">
           <div className="min-w-0">
             <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-700">
               Current official rates
             </p>
             <h2
               id="live-pricing-heading"
-              className="mt-1 font-display text-xl font-extrabold sm:text-2xl"
+              className="mt-1 font-display text-lg font-extrabold sm:text-xl"
             >
               <span className="text-cyan-800">Live prices</span>
               <span className="text-ocean-600"> — </span>
