@@ -24,16 +24,13 @@ import {
   trafficChannelStyles,
   type TrafficChannel,
 } from "@/lib/analytics-traffic";
+import {
+  resolveAdminVisitorKind,
+  matchesAdminVisitorKind,
+  type AdminVisitorKind,
+} from "@/lib/analytics-visitor-kind";
 
-type VisitorKindFilter = "human" | "bot" | "both";
-
-function matchesVisitorFilter(
-  isBot: boolean,
-  filter: VisitorKindFilter
-): boolean {
-  if (filter === "both") return true;
-  return filter === "bot" ? isBot : !isBot;
-}
+type VisitorKindFilter = "human" | "suspected" | "bot" | "all";
 
 type Row = {
   id: string;
@@ -80,6 +77,11 @@ type SessionDoc = {
   utmMedium?: string;
   utmCampaign?: string;
   landingPath?: string;
+  visitorType?: string;
+  sourceConfidence?: string;
+  attributionReason?: string;
+  analyticsVersion?: number;
+  rawReferrer?: string;
 };
 
 type PageStay = {
@@ -111,6 +113,11 @@ type VisitorSummary = {
   isBot: boolean;
   botLabel: string;
   uaSnippet: string;
+  visitorKind: AdminVisitorKind;
+  sourceConfidence: string;
+  attributionReason: string;
+  analyticsVersion: number;
+  rawReferrer: string;
 };
 
 type DayGroup = {
@@ -268,6 +275,22 @@ function buildVisitorSummary(
   const pages = buildPageStays(sorted);
   const geoSource = sess ?? first;
   const trafficSource = sess ?? sorted.find((r) => r.trafficChannel) ?? first;
+  const pageViews = sorted.filter((r) => r.eventType === "view").length;
+  const isBot = resolveIsBot(
+    sess?.isBot ?? first?.isBot,
+    sess?.uaSnippet || first?.uaSnippet || "",
+  );
+  const visitorKind = resolveAdminVisitorKind({
+    isBot,
+    visitorType: sess?.visitorType,
+    uaSnippet: sess?.uaSnippet || first?.uaSnippet || "",
+    deviceLabel: sess?.deviceLabel || first?.deviceLabel || "",
+    trafficChannel: trafficSource?.trafficChannel ?? sess?.trafficChannel,
+    sourceConfidence: sess?.sourceConfidence,
+    totalDurationMs,
+    pageViews,
+    analyticsVersion: sess?.analyticsVersion,
+  });
 
   return {
     sessionId: sid,
@@ -276,7 +299,7 @@ function buildVisitorSummary(
     arrivedAtMs,
     leftAtMs,
     totalDurationMs,
-    pageViews: sorted.filter((r) => r.eventType === "view").length,
+    pageViews,
     uniquePages: pages.length,
     pages,
     lastPath: last?.path ?? sess?.lastPath ?? "—",
@@ -300,14 +323,16 @@ function buildVisitorSummary(
       trafficSource?.trafficDetail ?? sess?.trafficDetail ?? "",
     landingPath: sess?.landingPath ?? first?.path ?? "—",
     isOnline: onlineIdSet.has(sid),
-    isBot: resolveIsBot(
-      sess?.isBot ?? first?.isBot,
-      sess?.uaSnippet || first?.uaSnippet || ""
-    ),
+    isBot,
     botLabel: botLabelFromUserAgent(
       sess?.uaSnippet || first?.uaSnippet || ""
     ),
     uaSnippet: sess?.uaSnippet || first?.uaSnippet || "",
+    visitorKind,
+    sourceConfidence: sess?.sourceConfidence ?? "",
+    attributionReason: sess?.attributionReason ?? "",
+    analyticsVersion: sess?.analyticsVersion ?? 1,
+    rawReferrer: sess?.rawReferrer ?? "",
   };
 }
 
@@ -409,6 +434,14 @@ export default function AdminAnalyticsPage() {
               typeof data.isBot === "boolean" ? data.isBot : undefined,
             lastSeenAt: data.lastSeenAt,
             firstSeenAt: data.firstSeenAt,
+            visitorType: String(data.visitorType ?? "") || undefined,
+            sourceConfidence: String(data.sourceConfidence ?? "") || undefined,
+            attributionReason: String(data.attributionReason ?? "") || undefined,
+            analyticsVersion:
+              typeof data.analyticsVersion === "number"
+                ? data.analyticsVersion
+                : undefined,
+            rawReferrer: String(data.rawReferrer ?? "") || undefined,
             ...pickGeoFields(data),
             ...pickTrafficFields(data),
           };
@@ -436,39 +469,9 @@ export default function AdminAnalyticsPage() {
   const analytics = useMemo(() => {
     const sessionById = new Map(sessions.map((s) => [s.sessionId, s]));
     const now = Date.now();
-    const sessionIsBot = new Map<string, boolean>();
-    for (const s of sessions) {
-      sessionIsBot.set(
-        s.sessionId,
-        resolveIsBot(s.isBot, s.uaSnippet)
-      );
-    }
-    for (const r of rows) {
-      if (!r.sessionId || sessionIsBot.has(r.sessionId)) continue;
-      sessionIsBot.set(
-        r.sessionId,
-        resolveIsBot(r.isBot, r.uaSnippet)
-      );
-    }
-
-    const onlineIdSet = new Set(
-      sessions
-        .filter((s) => {
-          const ts = toTimestamp(s.lastSeenAt);
-          if (!ts) return false;
-          if (!matchesVisitorFilter(sessionIsBot.get(s.sessionId) ?? false, visitorFilter)) {
-            return false;
-          }
-          return (
-            now - ts.toMillis() <= ONLINE_WINDOW_MS &&
-            s.lastEventType !== "leave"
-          );
-        })
-        .map((s) => s.sessionId)
-    );
+    const sessionKind = new Map<string, AdminVisitorKind>();
 
     const rowsBySession = new Map<string, Row[]>();
-
     for (const r of rows) {
       const ts = toTimestamp(r.createdAt);
       if (!ts || !r.sessionId) continue;
@@ -476,6 +479,64 @@ export default function AdminAnalyticsPage() {
       list.push(r);
       rowsBySession.set(r.sessionId, list);
     }
+
+    // Precompute kinds with duration context
+    for (const [sid, sessionRows] of rowsBySession) {
+      const sess = sessionById.get(sid);
+      const totalDurationMs = sessionRows
+        .filter((r) => r.eventType === "leave")
+        .reduce((acc, r) => acc + (r.durationMs ?? 0), 0);
+      const pageViews = sessionRows.filter((r) => r.eventType === "view").length;
+      const isBot = resolveIsBot(
+        sess?.isBot ?? sessionRows[0]?.isBot,
+        sess?.uaSnippet || sessionRows[0]?.uaSnippet || "",
+      );
+      sessionKind.set(
+        sid,
+        resolveAdminVisitorKind({
+          isBot,
+          visitorType: sess?.visitorType,
+          uaSnippet: sess?.uaSnippet || sessionRows[0]?.uaSnippet || "",
+          deviceLabel: sess?.deviceLabel || sessionRows[0]?.deviceLabel || "",
+          trafficChannel: sess?.trafficChannel || sessionRows.find((r) => r.trafficChannel)?.trafficChannel,
+          sourceConfidence: sess?.sourceConfidence,
+          totalDurationMs,
+          pageViews,
+          analyticsVersion: sess?.analyticsVersion,
+        }),
+      );
+    }
+    for (const s of sessions) {
+      if (!sessionKind.has(s.sessionId)) {
+        sessionKind.set(
+          s.sessionId,
+          resolveAdminVisitorKind({
+            isBot: resolveIsBot(s.isBot, s.uaSnippet),
+            visitorType: s.visitorType,
+            uaSnippet: s.uaSnippet,
+            deviceLabel: s.deviceLabel,
+            trafficChannel: s.trafficChannel,
+            sourceConfidence: s.sourceConfidence,
+            analyticsVersion: s.analyticsVersion,
+          }),
+        );
+      }
+    }
+
+    const onlineIdSet = new Set(
+      sessions
+        .filter((s) => {
+          const ts = toTimestamp(s.lastSeenAt);
+          if (!ts) return false;
+          const kind = sessionKind.get(s.sessionId) ?? "unknown";
+          if (!matchesAdminVisitorKind(kind, visitorFilter)) return false;
+          return (
+            now - ts.toMillis() <= ONLINE_WINDOW_MS &&
+            s.lastEventType !== "leave"
+          );
+        })
+        .map((s) => s.sessionId)
+    );
 
     const visitorsByDay = new Map<string, VisitorSummary[]>();
 
@@ -512,27 +573,50 @@ export default function AdminAnalyticsPage() {
           pageViews: allVisitors.reduce((acc, v) => acc + v.pageViews, 0),
           visitors: allVisitors,
           totalVisitors: allVisitors.length,
-          totalBots: allVisitors.filter((v) => v.isBot).length,
+          totalBots: allVisitors.filter((v) => v.visitorKind === "bot").length,
         };
       });
 
     const dayGroups: DayGroup[] = dayGroupsRaw.map((day) => {
       const visible = day.visitors.filter((v) =>
-        matchesVisitorFilter(v.isBot, visitorFilter)
+        matchesAdminVisitorKind(v.visitorKind, visitorFilter)
       );
       const pageViews = visible.reduce((acc, v) => acc + v.pageViews, 0);
       return { ...day, visitors: visible, pageViews };
     });
 
     const todayGroup = dayGroups.find((d) => d.date === todayIstYmd);
+    const todayRaw = dayGroupsRaw.find((d) => d.date === todayIstYmd);
     const todayVisitors = todayGroup?.visitors.length ?? 0;
     const todayPageViews = todayGroup?.pageViews ?? 0;
 
     const trafficBreakdown = new Map<string, number>();
     for (const v of todayGroup?.visitors ?? []) {
-      const key = v.trafficLabel || "Unknown";
+      // Only count high-confidence Google as "Google (search)" in cards
+      let key = v.trafficLabel || "Unknown";
+      if (
+        v.trafficChannel === "google_organic" &&
+        v.sourceConfidence &&
+        v.sourceConfidence !== "high"
+      ) {
+        key = "Unknown / low-confidence";
+      }
       trafficBreakdown.set(key, (trafficBreakdown.get(key) ?? 0) + 1);
     }
+
+    const todaySuspected =
+      todayRaw?.visitors.filter((v) => v.visitorKind === "suspected").length ?? 0;
+    const todayBots =
+      todayRaw?.visitors.filter((v) => v.visitorKind === "bot").length ?? 0;
+    const todayHumans =
+      todayRaw?.visitors.filter((v) => v.visitorKind === "human").length ?? 0;
+
+    const googleHighConfidence =
+      todayGroup?.visitors.filter(
+        (v) =>
+          v.trafficChannel === "google_organic" &&
+          v.sourceConfidence === "high",
+      ).length ?? 0;
 
     return {
       onlineCount: onlineIdSet.size,
@@ -543,10 +627,11 @@ export default function AdminAnalyticsPage() {
       trafficBreakdown: [...trafficBreakdown.entries()].sort(
         (a, b) => b[1] - a[1]
       ),
-      todayBotsHidden:
-        visitorFilter === "human"
-          ? (dayGroupsRaw.find((d) => d.date === todayIstYmd)?.totalBots ?? 0)
-          : 0,
+      todayBotsHidden: visitorFilter === "human" ? todayBots + todaySuspected : 0,
+      todaySuspected,
+      todayBots,
+      todayHumans,
+      googleHighConfidence,
     };
   }, [rows, sessions, todayIstYmd, visitorFilter]);
 
@@ -597,11 +682,16 @@ export default function AdminAnalyticsPage() {
         Analytics
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
-        See who visited, when they arrived and left, how long they stayed on each
-        page, where they are from, and whether they came from Facebook,
-        Instagram, Google, or a direct link. Bots and crawlers are hidden by
-        default. All times are <strong>IST (India)</strong>.
+        Confirmed humans by default. Suspected automation and bots are kept for
+        debugging — they are not deleted. All times are <strong>IST (India)</strong>.
       </p>
+
+      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <strong>Analytics v2:</strong> Google Search is only counted with a verified
+        Google referrer (or organic UTM). Legacy records from before v2 may have
+        inaccurate source or bot classification — open the{" "}
+        <em>Suspected</em> tab to review zero-engagement / Linux scrapers.
+      </div>
 
       {loadError ? (
         <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
@@ -614,41 +704,48 @@ export default function AdminAnalyticsPage() {
         <p className="mt-8 text-ocean-700">Loading…</p>
       ) : loadError ? null : (
         <>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-green-200 bg-green-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
-                Online now
+                Online humans
               </p>
               <p className="mt-1 font-display text-3xl font-bold text-green-900">
                 {analytics.onlineCount}
               </p>
-              <p className="mt-1 text-xs text-green-800">
-                Active in last 2 minutes
-                {visitorFilter !== "both"
-                  ? ` · ${visitorFilter === "human" ? "humans" : "bots"} only`
-                  : ""}
-              </p>
+              <p className="mt-1 text-xs text-green-800">Active in last 2 minutes</p>
             </div>
             <div className="rounded-2xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
-                Visitors today
+                Humans today
               </p>
               <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
-                {analytics.todayVisitors}
+                {visitorFilter === "human"
+                  ? analytics.todayVisitors
+                  : analytics.todayHumans}
               </p>
-              {analytics.todayBotsHidden > 0 ? (
+              {analytics.todayBotsHidden > 0 && visitorFilter === "human" ? (
                 <p className="mt-1 text-xs text-ocean-600">
-                  {analytics.todayBotsHidden} bot
-                  {analytics.todayBotsHidden === 1 ? "" : "s"} hidden
+                  {analytics.todayBotsHidden} bot/suspected hidden
                 </p>
               ) : null}
             </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                Suspected today
+              </p>
+              <p className="mt-1 font-display text-3xl font-bold text-amber-950">
+                {analytics.todaySuspected}
+              </p>
+            </div>
             <div className="rounded-2xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
-                Page views today
+                Page views (filtered)
               </p>
               <p className="mt-1 font-display text-3xl font-bold text-ocean-900">
                 {analytics.todayPageViews}
+              </p>
+              <p className="mt-1 text-xs text-ocean-600">
+                High-confidence Google organic: {analytics.googleHighConfidence}
               </p>
             </div>
           </div>
@@ -658,15 +755,16 @@ export default function AdminAnalyticsPage() {
               Show in visitor list
             </p>
             <div
-              className="inline-flex rounded-xl border border-ocean-200 bg-white p-1 shadow-sm"
+              className="inline-flex flex-wrap rounded-xl border border-ocean-200 bg-white p-1 shadow-sm"
               role="group"
               aria-label="Visitor type filter"
             >
               {(
                 [
                   ["human", "Humans"],
+                  ["suspected", "Suspected"],
                   ["bot", "Bots"],
-                  ["both", "Both"],
+                  ["all", "All"],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -676,7 +774,7 @@ export default function AdminAnalyticsPage() {
                     setVisitorFilter(value);
                     setSelectedSessionId("");
                   }}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     visitorFilter === value
                       ? "bg-ocean-800 text-white shadow-sm"
                       : "text-ocean-700 hover:bg-ocean-50"
@@ -771,17 +869,17 @@ export default function AdminAnalyticsPage() {
                         {visitorFilter === "human" && day.totalBots > 0 ? (
                           <p className="text-[10px] text-ocean-500">
                             {day.totalBots} bot{day.totalBots === 1 ? "" : "s"}{" "}
-                            hidden
+                            on this day
                           </p>
                         ) : null}
                         {visitorFilter === "bot" &&
                         day.totalVisitors > day.totalBots ? (
                           <p className="text-[10px] text-ocean-500">
-                            {day.totalVisitors - day.totalBots} human
+                            {day.totalVisitors - day.totalBots} other
                             {day.totalVisitors - day.totalBots === 1
                               ? ""
                               : "s"}{" "}
-                            hidden
+                            on this day
                           </p>
                         ) : null}
                       </div>
@@ -820,9 +918,19 @@ export default function AdminAnalyticsPage() {
                                             Online
                                           </span>
                                         ) : null}
-                                        {v.isBot ? (
+                                        {v.visitorKind === "bot" ? (
                                           <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800">
                                             Bot · {v.botLabel}
+                                          </span>
+                                        ) : null}
+                                        {v.visitorKind === "suspected" ? (
+                                          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                                            Suspected
+                                          </span>
+                                        ) : null}
+                                        {v.analyticsVersion < 2 ? (
+                                          <span className="rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-800">
+                                            Legacy
                                           </span>
                                         ) : null}
                                         {v.trafficChannel ? (
@@ -943,9 +1051,20 @@ export default function AdminAnalyticsPage() {
                                         Visitor type
                                       </dt>
                                       <dd>
-                                        {selectedVisitor.isBot
+                                        {selectedVisitor.visitorKind === "bot"
                                           ? `Bot (${selectedVisitor.botLabel})`
-                                          : "Human"}
+                                          : selectedVisitor.visitorKind === "suspected"
+                                            ? "Suspected automation"
+                                            : "Human"}
+                                        {selectedVisitor.sourceConfidence
+                                          ? ` · ${selectedVisitor.sourceConfidence} confidence`
+                                          : ""}
+                                        {selectedVisitor.attributionReason
+                                          ? ` · ${selectedVisitor.attributionReason}`
+                                          : ""}
+                                        {selectedVisitor.analyticsVersion < 2
+                                          ? " · legacy"
+                                          : " · v2"}
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">

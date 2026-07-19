@@ -94,6 +94,21 @@ export async function aggregateInternalDaily(
     for (const doc of viewsSnap.docs) {
       const data = doc.data() as Record<string, unknown>;
       if (data.isBot === true) continue;
+      const visitorType = String(data.visitorType ?? "");
+      if (visitorType === "bot" || visitorType === "suspected_bot") continue;
+      // Legacy zero-engagement Google scrapers: skip from business totals
+      const deviceLabel = String(data.deviceLabel ?? "").toLowerCase();
+      const durationMs = Number(data.durationMs ?? -1);
+      const channel = String(data.trafficChannel ?? "");
+      if (
+        data.eventType === "leave" &&
+        durationMs >= 0 &&
+        durationMs < 1500 &&
+        channel === "google_organic" &&
+        deviceLabel.includes("linux")
+      ) {
+        continue;
+      }
       const eventType = String(data.eventType ?? "");
       const path = String(data.path ?? "/");
       const sid = String(data.sessionId ?? "");
@@ -158,13 +173,20 @@ export async function aggregateInternalDaily(
     for (const doc of sessionsSnap.docs) {
       const data = doc.data() as Record<string, unknown>;
       if (data.isBot === true) continue;
+      const visitorType = String(data.visitorType ?? "");
+      if (visitorType === "bot" || visitorType === "suspected_bot") continue;
       const lastPath = String(data.lastPath ?? "");
       const lastEvent = String(data.lastEventType ?? "");
       if (lastEvent === "view" && lastPath) {
         bounceSessions += 1;
       }
       const channel = String(data.trafficChannel ?? "direct");
-      const label = String(data.trafficLabel ?? channel);
+      const confidence = String(data.sourceConfidence ?? "");
+      // Don't treat low-confidence google_organic as real Google search in AI reports
+      const label =
+        channel === "google_organic" && confidence && confidence !== "high"
+          ? "Unknown / low-confidence"
+          : String(data.trafficLabel ?? channel);
       const key = `${channel}::${label}`;
       const cur = sourceCounts.get(key) ?? { channel, label, sessions: 0 };
       cur.sessions += 1;

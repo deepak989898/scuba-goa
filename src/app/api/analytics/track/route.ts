@@ -4,6 +4,16 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { parseRequestDevice } from "@/lib/clientDevice";
 import { geoFromRequestHeaders } from "@/lib/analytics-geo";
 import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
+import { classifyAttribution } from "@/lib/analytics-attribution";
+import {
+  classifyBotFromUserAgent,
+  classifyEngagementSuspicion,
+} from "@/lib/analytics-bot";
+import {
+  ANALYTICS_DATA_VERSION,
+  clientIpFromHeaders,
+  hashIp,
+} from "@/lib/analytics-v2";
 
 const PATH_MAX = 512;
 const SESSION_MAX = 128;
@@ -13,9 +23,10 @@ const LANG_MAX = 48;
 const TZ_MAX = 80;
 const DIM_MAX = 10000;
 const TRAFFIC_STR_MAX = 256;
-const TRAFFIC_CHANNEL_MAX = 32;
 const GUIDE_INDEX_KEY = "__guides_index__";
 const BLOG_INDEX_KEY = "__blog_index__";
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_PER_IP = 40;
 
 type TrackEventType = "view" | "leave" | "heartbeat" | "click" | "scroll";
 
@@ -43,13 +54,10 @@ function clampDim(raw: unknown): number | null {
 }
 
 function parseGuideTrafficKey(path: string): { key: string; slug: string; path: string } | null {
-  if (path === "/guides") {
-    return { key: GUIDE_INDEX_KEY, slug: "", path };
-  }
+  if (path === "/guides") return { key: GUIDE_INDEX_KEY, slug: "", path };
   const m = /^\/guides\/([a-z0-9-]+)$/.exec(path);
   if (!m) return null;
-  const slug = m[1];
-  return { key: slug, slug, path };
+  return { key: m[1], slug: m[1], path };
 }
 
 function normalizeTrackPath(pathRaw: string): string {
@@ -59,13 +67,10 @@ function normalizeTrackPath(pathRaw: string): string {
 }
 
 function parseBlogTrafficKey(path: string): { key: string; slug: string; path: string } | null {
-  if (path === "/blog") {
-    return { key: BLOG_INDEX_KEY, slug: "", path };
-  }
+  if (path === "/blog") return { key: BLOG_INDEX_KEY, slug: "", path };
   const m = /^\/blog\/([a-z0-9-]+)$/.exec(path);
   if (!m) return null;
-  const slug = m[1];
-  return { key: slug, slug, path };
+  return { key: m[1], slug: m[1], path };
 }
 
 async function incrementContentTraffic(
@@ -80,10 +85,8 @@ async function incrementContentTraffic(
     .collection(visitorsCollection)
     .doc(`${keyInfo.key}__${sessionId || "anon"}`);
 
-  // Firestore requires all reads before any writes in a transaction.
   await db.runTransaction(async (tx) => {
     const visitorSnap = await tx.get(visitorRef);
-
     tx.set(
       trafficRef,
       {
@@ -95,7 +98,6 @@ async function incrementContentTraffic(
       },
       { merge: true },
     );
-
     if (!visitorSnap.exists) {
       tx.set(visitorRef, {
         key: keyInfo.key,
@@ -109,19 +111,39 @@ async function incrementContentTraffic(
   });
 }
 
+async function checkRateLimit(
+  db: NonNullable<ReturnType<typeof getAdminDb>>,
+  ipHash: string,
+): Promise<boolean> {
+  if (!ipHash) return true;
+  const ref = db.collection("analyticsRateLimits").doc(ipHash);
+  const now = Date.now();
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.data() as { windowStartMs?: number; count?: number } | undefined;
+      const windowStart = data?.windowStartMs ?? now;
+      const count = data?.count ?? 0;
+      if (now - windowStart > RATE_WINDOW_MS) {
+        tx.set(ref, { windowStartMs: now, count: 1, updatedAt: FieldValue.serverTimestamp() });
+        return true;
+      }
+      if (count >= RATE_MAX_PER_IP) return false;
+      tx.set(
+        ref,
+        { windowStartMs: windowStart, count: count + 1, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+      return true;
+    });
+  } catch {
+    return true;
+  }
+}
+
 /**
- * Best-effort analytics ingest.
- *
- * This endpoint is called from every public page (view + leave + heartbeat +
- * click). It must NEVER return a 5xx to the browser, otherwise:
- *
- * - DevTools spams the console with `POST /api/analytics/track 500`.
- * - Web Vitals look worse than they are.
- * - End users sometimes see the "request failed" badge in our error overlay.
- *
- * Strategy: do the writes inside a try/catch and always reply with 204. If the
- * Admin SDK is unavailable (env not set, project disabled, quota exceeded) we
- * silently no-op. Diagnostics still land in Vercel logs via console.error.
+ * Analytics ingest (v2). Always prefer 204 over 5xx for the browser.
+ * Server re-classifies attribution — client trafficChannel is never trusted.
  */
 export async function POST(req: Request) {
   const db = getAdminDb();
@@ -129,37 +151,9 @@ export async function POST(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
-  let body: {
-    path?: string;
-    sessionId?: string;
-    eventType?: string;
-    pageLabel?: string;
-    enteredAtMs?: number;
-    leftAtMs?: number;
-    durationMs?: number;
-    clickLabel?: string;
-    clickTarget?: string;
-    clickHref?: string;
-    clickCategory?: string;
-    scrollDepthPct?: number;
-    maxScrollDepthPct?: number;
-    screenWidth?: number;
-    screenHeight?: number;
-    viewportWidth?: number;
-    viewportHeight?: number;
-    language?: string;
-    timeZone?: string;
-    trafficChannel?: string;
-    trafficLabel?: string;
-    trafficDetail?: string;
-    referrerHost?: string;
-    utmSource?: string;
-    utmMedium?: string;
-    utmCampaign?: string;
-    landingPath?: string;
-  };
+  let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    body = (await req.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -171,13 +165,16 @@ export async function POST(req: Request) {
   if (!pathRaw.startsWith("/") || pathRaw.length > PATH_MAX) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
-
   if (pathRaw.startsWith("/admin") || pathRaw.startsWith("/api")) {
     return new NextResponse(null, { status: 204 });
   }
 
   const path = normalizeTrackPath(pathRaw.slice(0, PATH_MAX));
   const sessionId = sessionRaw.slice(0, SESSION_MAX);
+  const visitorId =
+    typeof body.visitorId === "string" ? body.visitorId.slice(0, SESSION_MAX) : "";
+  const eventIdRaw =
+    typeof body.eventId === "string" ? body.eventId.trim().slice(0, 80) : "";
   const eventTypeRaw =
     typeof body.eventType === "string" ? body.eventType : "view";
   const eventType = eventTypeRaw.slice(0, EVENT_TYPE_MAX);
@@ -185,20 +182,107 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid eventType" }, { status: 400 });
   }
 
-  const { category, label, uaSnippet, isBot } = parseRequestDevice(req.headers);
+  const ua = req.headers.get("user-agent") ?? "";
+  const botUa = classifyBotFromUserAgent(ua);
+  const { category, label, uaSnippet } = parseRequestDevice(req.headers);
 
-  /** Crawlers should not consume Firestore writes or serverless invocations. */
-  if (isBot) {
+  const purpose =
+    req.headers.get("purpose")?.toLowerCase() ||
+    req.headers.get("sec-purpose")?.toLowerCase() ||
+    "";
+  if (purpose.includes("prefetch") || purpose.includes("preview")) {
     return new NextResponse(null, { status: 204 });
+  }
+
+  const ipSecret = process.env.ANALYTICS_IP_HASH_SECRET?.trim() || "";
+  const ip = clientIpFromHeaders(req.headers);
+  const ipHash = ipSecret ? hashIp(ip, ipSecret) : hashIp(ip, "bsg-analytics-fallback");
+  const allowed = await checkRateLimit(db, ipHash || sessionId);
+  if (!allowed) {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  // Confirmed UA bots: store evidence but never inflate human/blog counters
+  if (botUa.isBot) {
+    try {
+      const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
+      await sessionRef.set(
+        {
+          sessionId: sessionId || "anon",
+          lastPath: path,
+          isActive: false,
+          lastEventType: eventType,
+          lastSeenAt: FieldValue.serverTimestamp(),
+          firstSeenAt: FieldValue.serverTimestamp(),
+          deviceCategory: category,
+          deviceLabel: label,
+          uaSnippet,
+          isBot: true,
+          visitorType: "bot",
+          botName: botUa.botName,
+          botCategory: botUa.botCategory,
+          botReason: botUa.botReason,
+          botConfidence: botUa.botConfidence,
+          botSignals: botUa.botSignals,
+          analyticsVersion: ANALYTICS_DATA_VERSION,
+          trafficChannel: "other",
+          trafficLabel: "Bot / crawler",
+          source: "unknown",
+          medium: "unknown",
+          sourceConfidence: "unknown",
+          attributionReason: "classified as bot from User-Agent",
+        },
+        { merge: true },
+      );
+      if (eventType === "view") {
+        await db.collection("pageViews").add({
+          path,
+          sessionId,
+          eventType: "view",
+          isBot: true,
+          visitorType: "bot",
+          botName: botUa.botName,
+          botCategory: botUa.botCategory,
+          deviceCategory: category,
+          deviceLabel: label,
+          uaSnippet,
+          analyticsVersion: ANALYTICS_DATA_VERSION,
+          createdAt: FieldValue.serverTimestamp(),
+          trafficChannel: "other",
+          trafficLabel: "Bot / crawler",
+        });
+      }
+    } catch (e) {
+      console.error("bot analytics write failed", e);
+    }
+    return new NextResponse(null, { status: 204 });
+  }
+
+  // Idempotent event id
+  if (eventIdRaw) {
+    const eventRef = db.collection("analyticsEventIds").doc(eventIdRaw);
+    try {
+      const created = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(eventRef);
+        if (snap.exists) return false;
+        tx.set(eventRef, {
+          createdAt: FieldValue.serverTimestamp(),
+          sessionId,
+          eventType,
+          path,
+        });
+        return true;
+      });
+      if (!created) {
+        return new NextResponse(null, { status: 204 });
+      }
+    } catch {
+      /* continue without idempotency if txn fails */
+    }
   }
 
   const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
 
-  /**
-   * Heartbeat only refreshes session liveness for admin “active now”. Skip
-   * pageViews writes and side effects — this event type was the largest share
-   * of /api/analytics/track invocations on Hobby plans.
-   */
   if (eventType === "heartbeat") {
     try {
       await sessionRef.set(
@@ -208,6 +292,7 @@ export async function POST(req: Request) {
           isActive: true,
           lastEventType: "heartbeat",
           lastSeenAt: FieldValue.serverTimestamp(),
+          analyticsVersion: ANALYTICS_DATA_VERSION,
         },
         { merge: true },
       );
@@ -217,16 +302,14 @@ export async function POST(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
-  const pageLabel =
-    typeof body.pageLabel === "string"
-      ? body.pageLabel.slice(0, PAGE_LABEL_MAX)
-      : "";
-  const clickLabel =
-    typeof body.clickLabel === "string" ? body.clickLabel.slice(0, 140) : "";
-  const clickTarget =
-    typeof body.clickTarget === "string" ? body.clickTarget.slice(0, 32) : "";
-  const clickHref =
-    typeof body.clickHref === "string" ? body.clickHref.slice(0, 500) : "";
+  const sliceStr = (raw: unknown, max: number) =>
+    typeof raw === "string" ? raw.trim().slice(0, max) || undefined : undefined;
+
+  const pageLabel = sliceStr(body.pageLabel, PAGE_LABEL_MAX) ?? "";
+  const clickLabel = sliceStr(body.clickLabel, 140) ?? "";
+  const clickTarget = sliceStr(body.clickTarget, 32) ?? "";
+  const clickHref = sliceStr(body.clickHref, 500) ?? "";
+  const clickCategory = sliceStr(body.clickCategory, 24);
   const scrollDepthPct = toFiniteNumber(body.scrollDepthPct);
   const maxScrollDepthPct = toFiniteNumber(body.maxScrollDepthPct);
   const enteredAtMs = toFiniteNumber(body.enteredAtMs);
@@ -236,33 +319,61 @@ export async function POST(req: Request) {
     durationMsRaw === null
       ? null
       : Math.max(0, Math.min(Math.round(durationMsRaw), 1000 * 60 * 60 * 6));
+  const interactionCount = toFiniteNumber(body.interactionCount);
+  const webdriver = body.webdriver === true;
   const geo = geoFromRequestHeaders(req.headers);
 
   const screenWidth = clampDim(body.screenWidth);
   const screenHeight = clampDim(body.screenHeight);
   const viewportWidth = clampDim(body.viewportWidth);
   const viewportHeight = clampDim(body.viewportHeight);
-  const language =
-    typeof body.language === "string"
-      ? body.language.trim().slice(0, LANG_MAX) || undefined
-      : undefined;
-  const timeZone =
-    typeof body.timeZone === "string"
-      ? body.timeZone.trim().slice(0, TZ_MAX) || undefined
-      : undefined;
+  const language = sliceStr(body.language, LANG_MAX);
+  const timeZone = sliceStr(body.timeZone, TZ_MAX);
 
-  const sliceStr = (raw: unknown, max: number) =>
-    typeof raw === "string" ? raw.trim().slice(0, max) || undefined : undefined;
+  // Server-side attribution — ignore client trafficChannel
+  const attribution = classifyAttribution({
+    rawReferrer: sliceStr(body.rawReferrer, 500),
+    utmSource: sliceStr(body.utmSource, TRAFFIC_STR_MAX),
+    utmMedium: sliceStr(body.utmMedium, TRAFFIC_STR_MAX),
+    utmCampaign: sliceStr(body.utmCampaign, TRAFFIC_STR_MAX),
+    gclid: sliceStr(body.gclid, 128),
+    fbclid: sliceStr(body.fbclid, 128),
+    landingPath: sliceStr(body.landingPath, PATH_MAX) || path,
+  });
 
-  const clickCategory = sliceStr(body.clickCategory, 24);
-  const trafficChannel = sliceStr(body.trafficChannel, TRAFFIC_CHANNEL_MAX);
-  const trafficLabel = sliceStr(body.trafficLabel, TRAFFIC_STR_MAX);
-  const trafficDetail = sliceStr(body.trafficDetail, TRAFFIC_STR_MAX);
-  const referrerHost = sliceStr(body.referrerHost, TRAFFIC_STR_MAX);
-  const utmSource = sliceStr(body.utmSource, TRAFFIC_STR_MAX);
-  const utmMedium = sliceStr(body.utmMedium, TRAFFIC_STR_MAX);
-  const utmCampaign = sliceStr(body.utmCampaign, TRAFFIC_STR_MAX);
-  const landingPath = sliceStr(body.landingPath, PATH_MAX);
+  const suspicion = classifyEngagementSuspicion({
+    durationMs: eventType === "leave" ? durationMs : null,
+    maxScrollDepthPct,
+    interactionCount,
+    deviceLabel: label,
+    claimedGoogleOrganic: attribution.channel === "google_organic",
+    sourceConfidence: attribution.sourceConfidence,
+    hasRawReferrer: Boolean(attribution.rawReferrer),
+    secFetchDest: req.headers.get("sec-fetch-dest"),
+    purposePrefetch: purpose.includes("prefetch"),
+  });
+
+  let visitorType: "human" | "suspected_bot" | "unknown" = "unknown";
+  let botSignals = [...suspicion.signals];
+  if (webdriver) {
+    visitorType = "suspected_bot";
+    botSignals.push("navigator_webdriver");
+  } else if (eventType === "leave" && suspicion.suspected) {
+    visitorType = "suspected_bot";
+  } else if (
+    eventType === "view" &&
+    attribution.channel === "google_organic" &&
+    attribution.sourceConfidence !== "high"
+  ) {
+    visitorType = "suspected_bot";
+    botSignals.push("low_confidence_google");
+  } else if (eventType === "click" || (maxScrollDepthPct != null && maxScrollDepthPct >= 10)) {
+    visitorType = "human";
+  } else if (eventType === "leave" && !suspicion.suspected && (durationMs ?? 0) >= 3000) {
+    visitorType = "human";
+  } else if (eventType === "view") {
+    visitorType = "unknown"; // provisional until engagement
+  }
 
   const sessionSnap = await sessionRef.get();
   const existing = sessionSnap.exists
@@ -279,30 +390,59 @@ export async function POST(req: Request) {
     deviceCategory: category,
     deviceLabel: label,
     uaSnippet,
-    ...geo,
+    analyticsVersion: ANALYTICS_DATA_VERSION,
+    visitorType,
+    source: attribution.source,
+    medium: attribution.medium,
+    sourceConfidence: attribution.sourceConfidence,
+    attributionReason: attribution.attributionReason,
+    rawReferrer: attribution.rawReferrer || undefined,
   };
+  if (visitorId) sessionPayload.visitorId = visitorId;
+  if (ipHash) sessionPayload.ipHash = ipHash;
   if (screenWidth != null) sessionPayload.screenWidth = screenWidth;
   if (screenHeight != null) sessionPayload.screenHeight = screenHeight;
   if (viewportWidth != null) sessionPayload.viewportWidth = viewportWidth;
   if (viewportHeight != null) sessionPayload.viewportHeight = viewportHeight;
   if (language) sessionPayload.language = language;
   if (timeZone) sessionPayload.timeZone = timeZone;
+  if (interactionCount != null) sessionPayload.interactionCount = interactionCount;
+  if (maxScrollDepthPct != null) {
+    sessionPayload.maxScrollDepthPct = Math.min(100, Math.max(0, Math.round(maxScrollDepthPct)));
+  }
+  Object.assign(sessionPayload, geo);
+
   if (!sessionSnap.exists) {
     sessionPayload.firstSeenAt = FieldValue.serverTimestamp();
-    sessionPayload.isBot = isBot;
-  } else if (typeof existing.isBot !== "boolean") {
-    sessionPayload.isBot = isBot;
+    sessionPayload.isBot = false;
+    sessionPayload.botSignals = botSignals;
+  } else {
+    const prevType = String(existing.visitorType ?? "");
+    // Escalate to suspected, or confirm human; never downgrade human → suspected on later heartbeat clicks
+    if (visitorType === "human") {
+      sessionPayload.visitorType = "human";
+      sessionPayload.isEngagedSession = true;
+    } else if (visitorType === "suspected_bot" && prevType !== "human") {
+      sessionPayload.visitorType = "suspected_bot";
+      sessionPayload.botReason = suspicion.reason || "Suspected automation";
+      sessionPayload.botSignals = botSignals;
+      sessionPayload.botConfidence = "medium";
+    }
+    if (typeof existing.isBot !== "boolean") {
+      sessionPayload.isBot = false;
+    }
   }
-  const hasTraffic = Boolean(existing.trafficChannel);
-  if (!hasTraffic && trafficChannel) {
-    sessionPayload.trafficChannel = trafficChannel;
-    if (trafficLabel) sessionPayload.trafficLabel = trafficLabel;
-    if (trafficDetail) sessionPayload.trafficDetail = trafficDetail;
-    if (referrerHost) sessionPayload.referrerHost = referrerHost;
-    if (utmSource) sessionPayload.utmSource = utmSource;
-    if (utmMedium) sessionPayload.utmMedium = utmMedium;
-    if (utmCampaign) sessionPayload.utmCampaign = utmCampaign;
-    if (landingPath) sessionPayload.landingPath = landingPath;
+
+  const hasTraffic = Boolean(existing.trafficChannel || existing.source);
+  if (!hasTraffic) {
+    sessionPayload.trafficChannel = attribution.channel;
+    sessionPayload.trafficLabel = attribution.label;
+    sessionPayload.trafficDetail = attribution.detail;
+    sessionPayload.referrerHost = attribution.referrerHost || undefined;
+    sessionPayload.utmSource = attribution.utmSource || undefined;
+    sessionPayload.utmMedium = attribution.utmMedium || undefined;
+    sessionPayload.utmCampaign = attribution.utmCampaign || undefined;
+    sessionPayload.landingPath = attribution.landingUrl || path;
   }
 
   const pageViewPayload: Record<string, unknown> = {
@@ -316,10 +456,19 @@ export async function POST(req: Request) {
     deviceCategory: category,
     deviceLabel: label,
     uaSnippet,
-    isBot,
+    isBot: false,
+    visitorType,
+    analyticsVersion: ANALYTICS_DATA_VERSION,
     createdAt: FieldValue.serverTimestamp(),
+    source: attribution.source,
+    medium: attribution.medium,
+    sourceConfidence: attribution.sourceConfidence,
+    attributionReason: attribution.attributionReason,
     ...geo,
   };
+  if (visitorId) pageViewPayload.visitorId = visitorId;
+  if (eventIdRaw) pageViewPayload.eventId = eventIdRaw;
+  if (ipHash) pageViewPayload.ipHash = ipHash;
   if (screenWidth != null) pageViewPayload.screenWidth = screenWidth;
   if (screenHeight != null) pageViewPayload.screenHeight = screenHeight;
   if (viewportWidth != null) pageViewPayload.viewportWidth = viewportWidth;
@@ -339,38 +488,38 @@ export async function POST(req: Request) {
       Math.max(0, Math.round(maxScrollDepthPct)),
     );
   }
-  if (eventType === "view" && trafficChannel && !hasTraffic) {
-    pageViewPayload.trafficChannel = trafficChannel;
-    if (trafficLabel) pageViewPayload.trafficLabel = trafficLabel;
-    if (trafficDetail) pageViewPayload.trafficDetail = trafficDetail;
-    if (referrerHost) pageViewPayload.referrerHost = referrerHost;
-    if (utmSource) pageViewPayload.utmSource = utmSource;
-    if (utmMedium) pageViewPayload.utmMedium = utmMedium;
-    if (utmCampaign) pageViewPayload.utmCampaign = utmCampaign;
-    if (landingPath) pageViewPayload.landingPath = landingPath;
+  if (interactionCount != null) pageViewPayload.interactionCount = interactionCount;
+  if (botSignals.length) pageViewPayload.botSignals = botSignals;
+
+  if (eventType === "view" && !hasTraffic) {
+    pageViewPayload.trafficChannel = attribution.channel;
+    pageViewPayload.trafficLabel = attribution.label;
+    pageViewPayload.trafficDetail = attribution.detail;
+    pageViewPayload.referrerHost = attribution.referrerHost || undefined;
+    pageViewPayload.utmSource = attribution.utmSource || undefined;
+    pageViewPayload.utmMedium = attribution.utmMedium || undefined;
+    pageViewPayload.utmCampaign = attribution.utmCampaign || undefined;
+    pageViewPayload.landingPath = attribution.landingUrl || path;
+    pageViewPayload.rawReferrer = attribution.rawReferrer || undefined;
   }
 
-  /**
-   * Primary write (pageView + session). Wrap in try/catch and swallow — never
-   * surface a 5xx to the client.
-   */
   try {
-    await Promise.all([
-      db.collection("pageViews").add(pageViewPayload),
-      sessionRef.set(sessionPayload, { merge: true }),
-    ]);
+    const writes: Promise<unknown>[] = [sessionRef.set(sessionPayload, { merge: true })];
+    if (eventIdRaw) {
+      writes.push(
+        db.collection("pageViews").doc(eventIdRaw).set(pageViewPayload, { merge: true }),
+      );
+    } else {
+      writes.push(db.collection("pageViews").add(pageViewPayload));
+    }
+    await Promise.all(writes);
   } catch (e) {
     console.error("pageViews write failed", e);
     return new NextResponse(null, { status: 204 });
   }
 
-  /**
-   * Guide-traffic aggregation runs in the background. Awaiting the transaction
-   * inline added ~150–400 ms to every "view" event and any failure (contention,
-   * cold start) would surface as a 500 in the browser. Fire-and-forget keeps
-   * the response snappy and the console clean.
-   */
-  if (eventType === "view") {
+  // Only count blog/guide uniqueness for non-suspected traffic
+  if (eventType === "view" && visitorType !== "suspected_bot") {
     const guideKey = parseGuideTrafficKey(path);
     if (guideKey) {
       try {
@@ -385,7 +534,6 @@ export async function POST(req: Request) {
         console.error("analyticsGuideTraffic txn failed", e);
       }
     }
-
     const blogKey = parseBlogTrafficKey(path);
     if (blogKey) {
       try {
@@ -401,21 +549,23 @@ export async function POST(req: Request) {
       }
     }
 
-    void trackRecoveryFromPageView({
-      path,
-      sessionId,
-      landingPath,
-      clickCategory,
-      eventType,
-      durationMs: durationMs ?? undefined,
-    }).catch((e) => console.error("[recovery-agent] track view failed", e));
+    if (visitorType === "human" || visitorType === "unknown") {
+      void trackRecoveryFromPageView({
+        path,
+        sessionId,
+        landingPath: attribution.landingUrl,
+        clickCategory,
+        eventType,
+        durationMs: durationMs ?? undefined,
+      }).catch((e) => console.error("[recovery-agent] track view failed", e));
+    }
   }
 
   if (eventType === "click" && clickCategory === "whatsapp") {
     void upsertRecoveryLead({
       sessionId,
       path,
-      landingPath,
+      landingPath: attribution.landingUrl,
       event: "whatsapp_click",
     }).catch(() => {});
   }
@@ -429,7 +579,7 @@ export async function POST(req: Request) {
     void upsertRecoveryLead({
       sessionId,
       path,
-      landingPath,
+      landingPath: attribution.landingUrl,
       event: "booking_page_view",
       dwellSec: Math.round(durationMs / 1000),
     }).catch(() => {});

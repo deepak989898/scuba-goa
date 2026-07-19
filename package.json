@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test:pricing-agent": "node scripts/test-pricing-agent-safety.mjs",
     "test:ai-analytics": "node scripts/test-ai-analytics-insights.mjs",
+    "test:analytics": "node scripts/test-analytics-attribution.mjs",
     "optimize:images": "node scripts/optimize-images.mjs",
     "generate:blog-watermark": "node scripts/generate-blog-watermark.mjs"
   },

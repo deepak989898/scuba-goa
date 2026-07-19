@@ -6,21 +6,12 @@ import { classifyTrafficSource } from "@/lib/analytics-traffic";
 import { classifyClick } from "@/lib/conversion-opt/click-category";
 
 const SESSION_KEY = "bsg_analytics_sid";
+const VISITOR_KEY = "bsg_analytics_vid";
 const TRAFFIC_KEY = "bsg_analytics_traffic";
 /** Dedupe React Strict Mode double-invoke (same path within a few seconds). */
 const lastTrackAt = new Map<string, number>();
-/**
- * Session liveness ping. 3 minutes keeps admin “active now” useful while cutting
- * Vercel function invocations vs the previous 60s interval (~3× fewer heartbeats).
- */
 const HEARTBEAT_MS = 180_000;
-/**
- * Hard cap on each `/api/analytics/track` request. Without this an unhealthy
- * serverless cold start could leave the browser stuck on the request and
- * eventually fail with `net::ERR_TIMED_OUT`, which then surfaces in DevTools.
- */
 const TRACK_TIMEOUT_MS = 5_000;
-/** Per-element click dedupe window — collapses bursts of taps. */
 const CLICK_THROTTLE_MS = 1_500;
 
 type EventType = "view" | "leave" | "heartbeat" | "click" | "scroll";
@@ -36,7 +27,31 @@ type TrafficPayload = {
   utmMedium: string;
   utmCampaign: string;
   landingPath: string;
+  rawReferrer: string;
+  gclid: string;
+  fbclid: string;
 };
+
+function newId(prefix: string): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+function getVisitorId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let id = localStorage.getItem(VISITOR_KEY);
+    if (!id) {
+      id = newId("v");
+      localStorage.setItem(VISITOR_KEY, id);
+    }
+    return id;
+  } catch {
+    return newId("v");
+  }
+}
 
 function getTrafficPayload(landingPath: string): TrafficPayload {
   if (typeof window === "undefined") {
@@ -49,6 +64,9 @@ function getTrafficPayload(landingPath: string): TrafficPayload {
       utmMedium: "",
       utmCampaign: "",
       landingPath,
+      rawReferrer: "",
+      gclid: "",
+      fbclid: "",
     };
   }
   try {
@@ -59,8 +77,9 @@ function getTrafficPayload(landingPath: string): TrafficPayload {
   }
 
   const params = new URLSearchParams(window.location.search);
+  const rawReferrer = typeof document !== "undefined" ? document.referrer : "";
   const info = classifyTrafficSource({
-    referrer: typeof document !== "undefined" ? document.referrer : "",
+    referrer: rawReferrer,
     utmSource: params.get("utm_source") ?? undefined,
     utmMedium: params.get("utm_medium") ?? undefined,
     utmCampaign: params.get("utm_campaign") ?? undefined,
@@ -78,6 +97,9 @@ function getTrafficPayload(landingPath: string): TrafficPayload {
     utmMedium: info.utmMedium,
     utmCampaign: info.utmCampaign,
     landingPath: info.landingPath,
+    rawReferrer: rawReferrer.slice(0, 500),
+    gclid: (params.get("gclid") ?? "").slice(0, 128),
+    fbclid: (params.get("fbclid") ?? "").slice(0, 128),
   };
 
   try {
@@ -99,6 +121,7 @@ function clientContextPayload() {
       viewportHeight: window.innerHeight,
       language: navigator.language?.slice(0, 48),
       timeZone: timeZone?.slice(0, 80),
+      webdriver: Boolean((navigator as Navigator & { webdriver?: boolean }).webdriver),
     };
   } catch {
     return {};
@@ -109,7 +132,6 @@ function isAnalyticsEnabled(): boolean {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
   if (!host) return false;
-  // Skip in local dev so the dev console stays clean of expected network noise.
   if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
     return false;
   }
@@ -120,6 +142,8 @@ function track(
   payload: {
     path: string;
     sessionId: string;
+    visitorId?: string;
+    eventId?: string;
     eventType: EventType;
     pageLabel?: string;
     clickLabel?: string;
@@ -131,12 +155,21 @@ function track(
     enteredAtMs?: number;
     leftAtMs?: number;
     durationMs?: number;
+    interactionCount?: number;
   } & ReturnType<typeof clientContextPayload> &
     Partial<TrafficPayload>
 ) {
   if (!isAnalyticsEnabled()) return;
 
-  const body = JSON.stringify({ ...clientContextPayload(), ...payload });
+  const eventId = payload.eventId || newId("e");
+  const visitorId = payload.visitorId || getVisitorId();
+  const body = JSON.stringify({
+    ...clientContextPayload(),
+    ...payload,
+    eventId,
+    visitorId,
+    analyticsVersion: 2,
+  });
   if (
     payload.eventType === "leave" &&
     typeof navigator !== "undefined" &&
@@ -146,15 +179,11 @@ function track(
     try {
       navigator.sendBeacon("/api/analytics/track", blob);
     } catch {
-      /* sendBeacon can throw under strict permissions — swallow silently */
+      /* ignore */
     }
     return;
   }
 
-  /**
-   * Abort the request after `TRACK_TIMEOUT_MS` so a slow / cold serverless
-   * function can never block the page or surface `ERR_TIMED_OUT` to users.
-   */
   let signal: AbortSignal | undefined;
   if (typeof AbortController !== "undefined") {
     const controller = new AbortController();
@@ -176,15 +205,12 @@ function getSessionId(): string {
   try {
     let id = sessionStorage.getItem(SESSION_KEY);
     if (!id) {
-      id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `s_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      id = newId("s");
       sessionStorage.setItem(SESSION_KEY, id);
     }
     return id;
   } catch {
-    return `s_${Date.now()}`;
+    return newId("s");
   }
 }
 
@@ -192,6 +218,7 @@ export function AnalyticsTracker() {
   const pathname = usePathname() ?? "/";
   const visitRef = useRef<VisitState | null>(null);
   const maxScrollRef = useRef(0);
+  const interactionCountRef = useRef(0);
 
   useEffect(() => {
     if (!pathname.startsWith("/") || pathname.startsWith("/admin")) return;
@@ -203,6 +230,7 @@ export function AnalyticsTracker() {
     lastTrackAt.set(key, now);
 
     const sessionId = getSessionId();
+    const visitorId = getVisitorId();
     const pageLabel =
       typeof document !== "undefined" ? document.title.trim() : "";
 
@@ -214,24 +242,28 @@ export function AnalyticsTracker() {
       track({
         path: prevVisit.path,
         sessionId,
+        visitorId,
         eventType: "leave",
         pageLabel: prevVisit.pageLabel,
         enteredAtMs: prevVisit.enteredAtMs,
         leftAtMs: now,
         durationMs,
         maxScrollDepthPct: maxScrollRef.current,
+        interactionCount: interactionCountRef.current,
       });
     }
 
     visitRef.current = { path: key, enteredAtMs: now, pageLabel };
     const traffic = getTrafficPayload(key);
-    track({ path: key, sessionId, eventType: "view", pageLabel, ...traffic });
+    track({
+      path: key,
+      sessionId,
+      visitorId,
+      eventType: "view",
+      pageLabel,
+      ...traffic,
+    });
 
-    /**
-     * Heartbeat fires on a fixed interval but skips ticks while the tab is
-     * hidden — we already emit a "leave" on visibility change, so there is no
-     * reason to keep pinging Firestore for background tabs.
-     */
     const hb = window.setInterval(() => {
       const v = visitRef.current;
       if (!v || v.path !== key) return;
@@ -241,8 +273,11 @@ export function AnalyticsTracker() {
       track({
         path: v.path,
         sessionId,
+        visitorId,
         eventType: "heartbeat",
         pageLabel: v.pageLabel,
+        interactionCount: interactionCountRef.current,
+        maxScrollDepthPct: maxScrollRef.current,
       });
     }, HEARTBEAT_MS);
 
@@ -254,12 +289,14 @@ export function AnalyticsTracker() {
       track({
         path: current.path,
         sessionId,
+        visitorId,
         eventType: "leave",
         pageLabel: current.pageLabel,
         enteredAtMs: current.enteredAtMs,
         leftAtMs: leftNow,
         durationMs: Math.max(0, leftNow - current.enteredAtMs),
         maxScrollDepthPct: maxScrollRef.current,
+        interactionCount: interactionCountRef.current,
       });
     };
 
@@ -270,24 +307,27 @@ export function AnalyticsTracker() {
       const scrollTop = window.scrollY || doc.scrollTop;
       const height = Math.max(doc.scrollHeight - window.innerHeight, 1);
       const pct = Math.min(100, Math.round((scrollTop / height) * 100));
-      if (pct > maxScrollRef.current) maxScrollRef.current = pct;
+      if (pct > maxScrollRef.current) {
+        maxScrollRef.current = pct;
+        if (pct >= 10) interactionCountRef.current += 1;
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
 
-    /**
-     * Per-element throttle. Without this, rapid taps (mobile double-tap, slow
-     * cards, ripple buttons) generated 3–5 click events for one user intent,
-     * which both spammed Firestore and inflated the click counters.
-     */
     const lastClickAt = new Map<string, number>();
     const onDocumentClick = (ev: MouseEvent) => {
       const target = ev.target;
       if (!(target instanceof Element)) return;
-      const clickable = target.closest("a,button,[role='button'],[data-analytics-click]");
+      const clickable = target.closest(
+        "a,button,[role='button'],[data-analytics-click]",
+      );
       if (!(clickable instanceof Element)) return;
 
+      interactionCountRef.current += 1;
+
       const rawText =
-        clickable instanceof HTMLAnchorElement || clickable instanceof HTMLButtonElement
+        clickable instanceof HTMLAnchorElement ||
+        clickable instanceof HTMLButtonElement
           ? clickable.innerText || clickable.textContent || ""
           : clickable.textContent || "";
       const clickLabel = rawText.replace(/\s+/g, " ").trim().slice(0, 140);
@@ -307,12 +347,14 @@ export function AnalyticsTracker() {
       track({
         path: current?.path || key,
         sessionId,
+        visitorId,
         eventType: "click",
         pageLabel: current?.pageLabel || pageLabel,
         clickLabel,
         clickTarget,
         clickHref,
         clickCategory: classifyClick(clickHref, clickLabel, clickable),
+        interactionCount: interactionCountRef.current,
       });
     };
 
@@ -331,16 +373,19 @@ export function AnalyticsTracker() {
       const current = visitRef.current;
       if (!current) return;
       const sessionId = getSessionId();
+      const visitorId = getVisitorId();
       const now = Date.now();
       track({
         path: current.path,
         sessionId,
+        visitorId,
         eventType: "leave",
         pageLabel: current.pageLabel,
         enteredAtMs: current.enteredAtMs,
         leftAtMs: now,
         durationMs: Math.max(0, now - current.enteredAtMs),
         maxScrollDepthPct: maxScrollRef.current,
+        interactionCount: interactionCountRef.current,
       });
     };
   }, []);
