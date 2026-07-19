@@ -521,7 +521,7 @@ export function BookingForm() {
   }, [cartReady, lines, name, phone, date, leadSentAt, contactStepOpen]);
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="mx-auto max-w-5xl">
       <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm sm:p-5">
         <h2 className="font-display text-xl font-semibold text-ocean-900">
           Book in 60 seconds
@@ -536,7 +536,14 @@ export function BookingForm() {
         {loading ? (
           <p className="mt-4 text-sm text-ocean-700">Loading packages…</p>
         ) : (
-          <div className="mt-4 space-y-3">
+          <div
+            className={
+              hasCart
+                ? "mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-5"
+                : "mt-4 space-y-3"
+            }
+          >
+            <div className="min-w-0 space-y-3">
             <label className="block cursor-pointer text-sm font-medium text-ocean-800">
               <span className="mb-0.5 block">Package or service option</span>
               <BookingPackagePicker
@@ -615,12 +622,12 @@ export function BookingForm() {
             </div>
 
             {hasCart ? (
-              <div className="mt-4 rounded-xl border border-amber-200/90 bg-amber-50/60 p-3 sm:p-4">
+              <div className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-3 sm:p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
-                  Promo code (optional · online checkout only)
+                  Promo code (optional)
                 </p>
                 <p className="mt-1 text-[11px] text-amber-950/80">
-                  One code per booking. See{" "}
+                  See{" "}
                   <a href="/offers" className="font-semibold underline">
                     current offers
                   </a>
@@ -639,11 +646,15 @@ export function BookingForm() {
                   <div className="flex shrink-0 gap-2">
                     <button
                       type="button"
-                      disabled={promoBusy || !promoDraft.trim()}
+                      disabled={promoBusy || (!promoApplied && !promoDraft.trim())}
                       onClick={() => void applyPromoCode()}
-                      className="min-h-11 touch-manipulation rounded-full bg-amber-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50"
+                      className={
+                        promoApplied
+                          ? "min-h-11 touch-manipulation rounded-full bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
+                          : "min-h-11 touch-manipulation rounded-full bg-amber-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50"
+                      }
                     >
-                      {promoBusy ? "…" : "Apply"}
+                      {promoBusy ? "…" : promoApplied ? "Applied" : "Apply"}
                     </button>
                     {promoApplied ? (
                       <button
@@ -666,34 +677,6 @@ export function BookingForm() {
                     .
                   </p>
                 ) : null}
-              </div>
-            ) : null}
-
-            {hasCart && !contactStepOpen ? (
-              <div className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 text-center">
-                <p className="text-sm font-semibold text-ocean-900">
-                  {promoApplied ? (
-                    <>
-                      <span className="text-ocean-500 line-through">
-                        ₹{subtotalInr.toLocaleString("en-IN")}
-                      </span>{" "}
-                      → ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
-                    </>
-                  ) : (
-                    <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
-                  )}
-                </p>
-                <p className="mt-1 text-xs text-ocean-700">
-                  Pay ₹{(cartMinPayPaise / 100).toLocaleString("en-IN")} now to lock (advance) ·
-                  balance on the day, unless you choose full pay in the next step.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setContactStepOpen(true)}
-                  className="mt-4 w-full rounded-full bg-ocean-gradient py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110"
-                >
-                  Continue — enter details &amp; pay
-                </button>
               </div>
             ) : null}
 
@@ -747,66 +730,36 @@ export function BookingForm() {
                   />
                 </label>
 
-                <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4">
-                  <p className="text-lg font-bold text-ocean-900">
-                    {promoApplied ? (
-                      <>
-                        <span className="text-base font-semibold text-ocean-700 line-through">
-                          ₹{subtotalInr.toLocaleString("en-IN")}
-                        </span>{" "}
-                        <span className="text-ocean-900">
-                          ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
-                        </span>
-                        <span className="mt-1 block text-xs font-normal text-green-800">
-                          {promoApplied.title} ({promoApplied.discountPercent}% off)
-                        </span>
-                      </>
-                    ) : (
-                      <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
-                    )}
-                  </p>
-                  {cartMinPayPaise < cartFullAmountPaise ? (
-                    <>
-                      <p className="text-sm text-ocean-700">
-                        Minimum advance: ₹
-                        {(cartMinPayPaise / 100).toLocaleString("en-IN")} (₹
-                        {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
-                        {itemCount} {itemCount === 1 ? "unit" : "units"} in cart)
-                      </p>
-                      <div className="flex flex-wrap gap-3 text-sm">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="radio"
-                            name="payModeBooking"
-                            checked={payMode === "min"}
-                            onChange={() => setPayMode("min")}
-                            className="text-ocean-700"
-                          />
-                          Pay minimum (₹
-                          {(cartMinPayPaise / 100).toLocaleString("en-IN")})
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="radio"
-                            name="payModeBooking"
-                            checked={payMode === "full"}
-                            onChange={() => setPayMode("full")}
-                          />
-                          Pay full (₹
-                          {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
-                        </label>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-sm text-ocean-700">
-                      Cart total is below ₹
-                      {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × units; you’ll pay
-                      the full amount.
-                    </p>
-                  )}
-                </div>
+                {cartMinPayPaise < cartFullAmountPaise ? (
+                  <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4 lg:hidden">
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="radio"
+                          name="payModeBooking"
+                          checked={payMode === "min"}
+                          onChange={() => setPayMode("min")}
+                          className="text-ocean-700"
+                        />
+                        Pay minimum (₹
+                        {(cartMinPayPaise / 100).toLocaleString("en-IN")})
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="radio"
+                          name="payModeBooking"
+                          checked={payMode === "full"}
+                          onChange={() => setPayMode("full")}
+                        />
+                        Pay full (₹
+                        {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+
                 {msg ? (
-                  <p className="text-sm text-ocean-700" role="status">
+                  <p className="text-sm text-ocean-700 lg:hidden" role="status">
                     {msg}
                   </p>
                 ) : null}
@@ -814,15 +767,121 @@ export function BookingForm() {
                   type="button"
                   onClick={pay}
                   disabled={busy}
-                  className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
+                  className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60 lg:hidden"
                 >
                   {payButtonLabel}
                 </button>
-                <p className="text-center text-xs text-ocean-700">
-                  Razorpay (UPI / card / netbanking) → instant confirm on this site + email when
-                  configured.
-                </p>
               </>
+            ) : null}
+            </div>
+
+            {hasCart ? (
+              <aside className="min-w-0 lg:sticky lg:top-20">
+                {!contactStepOpen ? (
+                  <div className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 text-center shadow-sm">
+                    <p className="text-sm font-semibold text-ocean-900">
+                      {promoApplied ? (
+                        <>
+                          <span className="text-ocean-500 line-through">
+                            ₹{subtotalInr.toLocaleString("en-IN")}
+                          </span>{" "}
+                          → ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
+                        </>
+                      ) : (
+                        <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
+                      )}
+                    </p>
+                    <p className="mt-1 text-xs text-ocean-700">
+                      Pay ₹{(cartMinPayPaise / 100).toLocaleString("en-IN")} now to lock
+                      (advance) · balance on the day, unless you choose full pay in the next
+                      step.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setContactStepOpen(true)}
+                      className="mt-4 w-full rounded-full bg-ocean-gradient py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110"
+                    >
+                      Continue — enter details &amp; pay
+                    </button>
+                  </div>
+                ) : (
+                  <div className="hidden space-y-3 rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 shadow-sm lg:block">
+                    <p className="text-lg font-bold text-ocean-900">
+                      {promoApplied ? (
+                        <>
+                          <span className="text-base font-semibold text-ocean-700 line-through">
+                            ₹{subtotalInr.toLocaleString("en-IN")}
+                          </span>{" "}
+                          <span className="text-ocean-900">
+                            ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
+                          </span>
+                          <span className="mt-1 block text-xs font-normal text-green-800">
+                            {promoApplied.title} ({promoApplied.discountPercent}% off)
+                          </span>
+                        </>
+                      ) : (
+                        <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
+                      )}
+                    </p>
+                    {cartMinPayPaise < cartFullAmountPaise ? (
+                      <>
+                        <p className="text-sm text-ocean-700">
+                          Minimum advance: ₹
+                          {(cartMinPayPaise / 100).toLocaleString("en-IN")} (₹
+                          {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
+                          {itemCount} {itemCount === 1 ? "unit" : "units"} in cart)
+                        </p>
+                        <div className="flex flex-col gap-2 text-sm">
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="radio"
+                              name="payModeBookingSidebar"
+                              checked={payMode === "min"}
+                              onChange={() => setPayMode("min")}
+                              className="text-ocean-700"
+                            />
+                            Pay minimum (₹
+                            {(cartMinPayPaise / 100).toLocaleString("en-IN")})
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="radio"
+                              name="payModeBookingSidebar"
+                              checked={payMode === "full"}
+                              onChange={() => setPayMode("full")}
+                            />
+                            Pay full (₹
+                            {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
+                          </label>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-ocean-700">
+                        Cart total is below ₹
+                        {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × units; you’ll
+                        pay the full amount.
+                      </p>
+                    )}
+                    {msg ? (
+                      <p className="text-sm text-ocean-700" role="status">
+                        {msg}
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={pay}
+                      disabled={busy}
+                      className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
+                    >
+                      {payButtonLabel}
+                    </button>
+                    <p className="text-center text-xs text-ocean-700">
+                      Razorpay (UPI / card / netbanking) → instant confirm on this site +
+                      email when configured.
+                    </p>
+                  </div>
+                )}
+              </aside>
             ) : null}
           </div>
         )}
