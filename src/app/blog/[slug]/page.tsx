@@ -264,17 +264,16 @@ export default async function BlogPostPage({ params }: Props) {
         >
           ← All articles
         </Link>
-        <p className="mt-3 text-sm text-ocean-500">
-          {p.date} · {p.readTime}
-        </p>
-        <h1 className="mt-1 font-display text-2xl font-extrabold leading-snug text-ocean-900 sm:text-3xl">
-          {p.title}
-        </h1>
-        <p className="mt-3 border-l-4 border-amber-400 bg-amber-50/60 py-2 pl-3 text-base leading-relaxed text-ocean-800">
-          {p.excerpt}
-        </p>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+          <h1 className="min-w-0 flex-1 font-display text-2xl font-extrabold leading-snug text-ocean-900 sm:text-3xl">
+            {p.title}
+          </h1>
+          <p className="shrink-0 pt-1 text-sm text-ocean-500 sm:pt-1.5 sm:text-right">
+            {p.date} · {p.readTime}
+          </p>
+        </div>
         {featuredImage ? (
-          <div className="relative mt-4 aspect-[16/9] max-h-[min(280px,36vh)] w-full overflow-hidden rounded-xl border border-ocean-100 bg-ocean-900 sm:max-h-[320px]">
+          <div className="relative mt-3 aspect-[16/9] max-h-[min(280px,36vh)] w-full overflow-hidden rounded-xl border border-ocean-100 bg-ocean-900 sm:max-h-[320px]">
             <Image
               src={featuredImage}
               alt={fs?.featuredImageAlt?.trim() || p.title}
@@ -285,7 +284,10 @@ export default async function BlogPostPage({ params }: Props) {
             />
           </div>
         ) : null}
-        <div className="prose prose-ocean mt-6 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
+        <p className="mt-3 border-l-4 border-amber-400 bg-amber-50/60 py-2 pl-3 text-base leading-relaxed text-ocean-800">
+          {p.excerpt}
+        </p>
+        <div className="prose prose-ocean mt-5 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
           <BlogContent content={p.content} />
         </div>
 
