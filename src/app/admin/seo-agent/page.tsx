@@ -42,6 +42,23 @@ async function adminFetch(path: string, init?: RequestInit) {
   return data;
 }
 
+/** Format AI suggestion time in IST for admin clarity. */
+function formatSuggestionWhen(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export default function AdminSeoAgentPage() {
   const [weekly, setWeekly] = useState<WeeklyRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
@@ -243,6 +260,11 @@ export default function AdminSeoAgentPage() {
               <h2 className="font-display text-lg font-bold text-ocean-900">
                 AI weekly report — {report.weekId}
               </h2>
+              {report.generatedAt ? (
+                <p className="mt-1 text-xs text-ocean-600">
+                  Generated {formatSuggestionWhen(report.generatedAt)} IST
+                </p>
+              ) : null}
               <div className="prose prose-ocean mt-4 max-w-none whitespace-pre-wrap text-sm text-ocean-800">
                 {report.summaryMarkdown}
               </div>
@@ -255,7 +277,16 @@ export default function AdminSeoAgentPage() {
 
           {report?.recommendations?.length ? (
             <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50/50 p-6">
-              <h2 className="font-display text-lg font-bold text-ocean-900">Recommendations</h2>
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <h2 className="font-display text-lg font-bold text-ocean-900">
+                  Recommendations
+                </h2>
+                {report.generatedAt ? (
+                  <p className="text-xs font-medium text-ocean-600">
+                    AI generated: {formatSuggestionWhen(report.generatedAt)} IST
+                  </p>
+                ) : null}
+              </div>
               <div className="mt-4 space-y-3">
                 {report.recommendations.slice(0, 12).map((r, i) => (
                   <div key={`${r.area}-${i}`} className="rounded-lg border border-amber-100 bg-white p-4">
@@ -270,6 +301,15 @@ export default function AdminSeoAgentPage() {
                         <a href={r.targetUrl} className="font-mono text-xs underline" target="_blank" rel="noreferrer">
                           open
                         </a>
+                      ) : null}
+                      {report.generatedAt ? (
+                        <time
+                          dateTime={report.generatedAt}
+                          className="ml-auto text-[11px] font-medium text-ocean-500"
+                          title="When this AI suggestion was generated"
+                        >
+                          {formatSuggestionWhen(report.generatedAt)}
+                        </time>
                       ) : null}
                     </div>
                     <p className="mt-2 text-sm text-ocean-800">{r.suggestion}</p>

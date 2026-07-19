@@ -12,32 +12,7 @@ type DashCard = {
   title: string;
   description: string;
   accent?: boolean;
-  step?: string;
 };
-
-const DAILY_CHECKLIST: DashCard[] = [
-  {
-    href: "/admin/command-center",
-    title: "Command Center",
-    description: "Read the daily AI brief, alerts, and approve pending agent actions.",
-    accent: true,
-    step: "1",
-  },
-  {
-    href: "/admin/bookings",
-    title: "Bookings",
-    description: "Confirm new paid orders, send bills, and reply to customers.",
-    accent: true,
-    step: "2",
-  },
-  {
-    href: "/admin/seo-blog-center",
-    title: "SEO Blog Center",
-    description: "Approve GSC keywords and publish auto-generated SEO blogs.",
-    accent: true,
-    step: "3",
-  },
-];
 
 const BLOGS_SEO: DashCard[] = [
   {
@@ -126,14 +101,7 @@ function CardGrid({ items }: { items: DashCard[] }) {
               : "border-ocean-100 bg-white"
           }`}
         >
-          {card.step ? (
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">
-              {card.step}
-            </span>
-          ) : null}
-          <h2
-            className={`font-display text-lg font-semibold text-ocean-900 ${card.step ? "mt-3" : ""}`}
-          >
+          <h2 className="font-display text-lg font-semibold text-ocean-900">
             {card.title}
           </h2>
           <p className="mt-2 text-sm text-ocean-700">{card.description}</p>
@@ -167,26 +135,6 @@ export default function AdminHomePage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ocean-900">Dashboard</h1>
-      <p className="mt-2 max-w-2xl text-ocean-700">
-        Use the left menu — sections are ordered by priority. Start with{" "}
-        <strong>1 · Check first</strong> every morning, then open other groups as needed.
-      </p>
-
-      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 px-5 py-4 text-sm text-amber-950">
-        <p className="font-semibold">Daily workflow (about 10 minutes)</p>
-        <ol className="mt-2 list-inside list-decimal space-y-1 text-amber-900/90">
-          <li>Command Center — brief, alerts, approve pending items</li>
-          <li>Bookings — new payments and customer emails</li>
-          <li>SEO Blog Center — approve keywords and publish blogs</li>
-        </ol>
-      </div>
-
-      <Section
-        title="1 · Check first"
-        description="Same as the highlighted block at the top of the sidebar menu."
-      >
-        <CardGrid items={DAILY_CHECKLIST} />
-      </Section>
 
       <Section title="Blogs & SEO growth">
         <CardGrid items={BLOGS_SEO} />
