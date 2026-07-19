@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  CONTACT_PHONE_HREF,
+  CONTACT_PHONE_LABEL,
   OFFICE_ADDRESS_LINES,
   OFFICE_ADDRESS_SINGLELINE,
   SITE_NAME,
@@ -11,10 +13,14 @@ import {
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1024&q=65";
+  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=70";
+const MID_IMAGE =
+  "https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=900&q=70";
 
 const waMessage =
   "Hi, I read your About page. I want to know more about scuba in Goa and booking.";
+
+const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(OFFICE_ADDRESS_SINGLELINE)}`;
 
 export const metadata: Metadata = {
   title: "About Us",
@@ -29,6 +35,169 @@ export const metadata: Metadata = {
     url: `${SITE_URL.replace(/\/$/, "")}/about`,
   },
 };
+
+function IconShield({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 3l7 3v5c0 4.5-2.8 8.4-7 10-4.2-1.6-7-5.5-7-10V6l7-3z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconCard({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path d="M3 10h18" stroke="currentColor" strokeWidth="1.75" />
+    </svg>
+  );
+}
+
+function IconPeople({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="17" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M3 19c0-2.8 2.7-5 6-5s6 2.2 6 5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14.5 14.2c1.1-.7 2.5-1.1 4-1.1 2.5 0 4.5 1.4 4.5 3.4V19"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconStar({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 3.5l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.8 7.2 18.4l.9-5.4L4.2 9.2l5.4-.8L12 3.5z" />
+    </svg>
+  );
+}
+
+function IconPin({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 21s7-5.4 7-11a7 7 0 10-14 0c0 5.6 7 11 7 11z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.75" />
+    </svg>
+  );
+}
+
+function IconClock({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M12 7v5l3 2"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconPhone({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M7 3h3.2l1.2 4.2-2 1.4a12.5 12.5 0 006 6l1.4-2 4.2 1.2V17a2 2 0 01-2.2 2A15.8 15.8 0 015 5.2 2 2 0 017 3z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconMask({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <ellipse cx="12" cy="11" rx="8" ry="5.5" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="9" cy="11" r="1.5" fill="currentColor" />
+      <circle cx="15" cy="11" r="1.5" fill="currentColor" />
+      <path d="M8 16.5c1.2 1.2 2.6 1.8 4 1.8s2.8-.6 4-1.8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const FEATURES = [
+  {
+    title: "Safety First",
+    body: "Certified briefings, sensible ratios, and boats we are happy to explain before you pay.",
+    Icon: IconShield,
+  },
+  {
+    title: "Pay With Confidence",
+    body: `Razorpay checkout (UPI / card). Lock slots with a small advance from ₹${ADVANCE_BOOKING_INR.toLocaleString("en-IN")}.`,
+    Icon: IconCard,
+  },
+  {
+    title: "Humans, Not Bots",
+    body: "WhatsApp confirmation with reporting time, what to bring, and a real person if plans shift.",
+    Icon: IconPeople,
+  },
+  {
+    title: "10,000+ Happy Divers",
+    body: "First-timers and repeat guests book this same clear flow every season.",
+    Icon: IconStar,
+  },
+] as const;
+
+const EXPECT = [
+  {
+    title: "Small Groups",
+    body: "Try-dives and water sports sized for comfort and supervision.",
+  },
+  {
+    title: "Live Packages",
+    body: "See what exists today on the site—not yesterday’s flyer price.",
+  },
+  {
+    title: "Refund Rules",
+    body: "Published on the site so surprises stay rare before you book.",
+  },
+  {
+    title: "North Goa Logistics",
+    body: "Pickup zones, timing, and realistic meeting points we help coordinate.",
+  },
+  {
+    title: "10,000+ Guests",
+    body: "Have booked through this flow—beginners and return visitors alike.",
+  },
+] as const;
+
+const STATS = [
+  { label: "10,000+ Happy Divers", Icon: IconPeople },
+  { label: "4.9 / 5 Google Rating", Icon: IconStar },
+  { label: "50+ Daily Experiences", Icon: IconMask },
+  { label: "100% Safety Commitment", Icon: IconShield },
+] as const;
 
 export default function AboutPage() {
   const site = SITE_URL.replace(/\/$/, "");
@@ -55,179 +224,205 @@ export default function AboutPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="bg-gradient-to-b from-ocean-50 via-white to-ocean-50/40">
-        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ocean-700 sm:text-sm">
-                About us
-              </p>
-              <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ocean-900 sm:text-4xl lg:text-[2.35rem] lg:leading-tight">
-                Real dives, clear prices, and a team you can reach on WhatsApp
-              </h1>
-              <p className="mt-4 text-base leading-relaxed text-ocean-800 sm:text-lg">
-                {SITE_NAME} works with trusted scuba and boat partners in North Goa. We
-                focus on what travellers actually need: honest briefings, sensible pickup
-                windows, secure online payment, and a booking reference you can show on
-                the day—without haggling on the beach.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <Link
-                  href="/booking"
-                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-ocean-gradient px-8 py-3 text-sm font-bold text-white shadow-lg shadow-ocean-900/20 transition hover:brightness-110"
-                >
-                  Reserve Your Dive Today
-                </Link>
-                <a
-                  href={whatsappLink(waMessage)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-12 items-center justify-center rounded-full border-2 border-ocean-300 bg-white px-8 py-3 text-sm font-semibold text-ocean-800 transition hover:border-ocean-400 hover:bg-ocean-50"
-                >
-                  WhatsApp us
-                </a>
+
+      {/* Hero */}
+      <section className="relative isolate overflow-hidden bg-ocean-950">
+        <div className="absolute inset-0">
+          <Image
+            src={HERO_IMAGE}
+            alt="Scuba diver underwater with OK hand signal"
+            fill
+            className="object-cover object-center"
+            sizes="100vw"
+            quality={70}
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-ocean-950/90 via-ocean-950/65 to-ocean-900/35" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ocean-950/80 via-transparent to-ocean-950/20" />
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 sm:pb-28 sm:pt-12 lg:px-8 lg:pb-32">
+          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-300">
+            About us
+          </p>
+          <h1 className="mt-2 max-w-2xl font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl lg:text-5xl">
+            Real Dives.{" "}
+            <span className="text-cyan-300">Clear Prices.</span>{" "}
+            A Team You Can Trust.
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/90 sm:text-base">
+            We are local dive professionals in North Goa—honest briefings, secure Razorpay
+            checkout, and WhatsApp support from a real Baga office.
+          </p>
+          <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
+            <Link
+              href="/booking"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-7 py-2.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-300"
+            >
+              Reserve Your Dive Today
+            </Link>
+            <a
+              href={whatsappLink(waMessage)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-white/50 bg-white/10 px-7 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
+            >
+              Chat on WhatsApp
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature strip overlapping hero */}
+      <section className="relative z-10 -mt-14 px-4 sm:-mt-16 sm:px-6 lg:px-8" aria-label="Why book with us">
+        <div className="mx-auto grid max-w-7xl gap-3 rounded-2xl border border-ocean-100 bg-white p-4 shadow-depth sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-4">
+          {FEATURES.map(({ title, body, Icon }) => (
+            <div key={title} className="flex gap-3 sm:block sm:text-center lg:text-left">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 sm:mx-auto lg:mx-0">
+                <Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="mt-0 font-display text-sm font-bold text-ocean-900 sm:mt-2">
+                  {title}
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-ocean-700 sm:text-sm">
+                  {body}
+                </p>
               </div>
             </div>
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-ocean-100 shadow-depth u-depth-card lg:aspect-[5/4]">
-              <Image
-                src={HERO_IMAGE}
-                alt="Scuba divers underwater in clear blue water"
-                fill
-                className="object-cover object-center"
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                quality={65}
-                priority
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ocean-950/50 via-transparent to-transparent" />
-              <p className="absolute bottom-4 left-4 right-4 text-sm font-medium text-white drop-shadow-md">
-                Small groups, certified crew, and photos you will actually want to share.
-              </p>
-            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Mid: expect | image | visit */}
+      <section className="bg-white px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_minmax(0,18rem)_1fr] lg:items-start lg:gap-6">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+              What you can expect
+            </p>
+            <ul className="mt-4 space-y-3.5">
+              {EXPECT.map((item, i) => (
+                <li key={item.title} className="flex gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ocean-800 text-xs font-bold text-white">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <p className="font-display text-sm font-bold text-ocean-900 sm:text-base">
+                      {item.title}
+                    </p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-ocean-700">
+                      {item.body}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <ul className="mt-14 grid gap-4 sm:mt-16 sm:grid-cols-3 sm:gap-6">
-            <li className="rounded-2xl border border-ocean-100 bg-white p-5 shadow-sm sm:p-6">
-              <p className="font-display text-lg font-semibold text-ocean-900">
-                Safety first
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-ocean-700">
-                Briefings, ratios, and boats run to a standard we are happy to explain
-                before you pay—not vague promises on the sand.
-              </p>
-            </li>
-            <li className="rounded-2xl border border-ocean-100 bg-white p-5 shadow-sm sm:p-6">
-              <p className="font-display text-lg font-semibold text-ocean-900">
-                Pay with confidence
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-ocean-700">
-                Checkout uses Razorpay (UPI, cards, netbanking). Lock your slot with a
-                small advance (from ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} per
-                person on the booking page)—balance as agreed for your package.
-              </p>
-            </li>
-            <li className="rounded-2xl border border-ocean-100 bg-white p-5 shadow-sm sm:p-6">
-              <p className="font-display text-lg font-semibold text-ocean-900">
-                Humans, not bots
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-ocean-700">
-                After payment you get clear next steps on WhatsApp: reporting time, what
-                to bring, and who to ping if plans shift.
-              </p>
-            </li>
-          </ul>
+          <div className="relative mx-auto aspect-[3/4] w-full max-w-xs overflow-hidden rounded-2xl border border-ocean-100 shadow-md lg:max-w-none">
+            <Image
+              src={MID_IMAGE}
+              alt="Tropical Goa coastline and turquoise water"
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 80vw, 288px"
+              quality={65}
+            />
+          </div>
 
-          <section
-            className="mt-14 rounded-2xl border border-ocean-100 bg-ocean-50/50 p-6 sm:mt-16 sm:p-8"
-            aria-labelledby="about-promise-heading"
-          >
-            <h2
-              id="about-promise-heading"
-              className="font-display text-xl font-bold text-ocean-900 sm:text-2xl"
-            >
-              What you can expect from us
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+              Visit us in Baga
+            </p>
+            <h2 className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl">
+              A real desk, not just a form
             </h2>
-            <ul className="mt-5 space-y-3 text-ocean-800 sm:columns-2 sm:gap-x-8 sm:gap-y-3">
-              <li className="break-inside-avoid sm:pr-2">
-                <span className="font-semibold text-ocean-900">Small groups</span> for
-                try-dives and water sports where it matters for comfort and supervision.
+            <p className="mt-2 text-sm leading-relaxed text-ocean-700">
+              Ask questions face-to-face—same team that answers WhatsApp after you book.
+            </p>
+
+            <ul className="mt-4 space-y-2.5">
+              <li className="flex gap-3 rounded-xl border border-ocean-100 bg-ocean-50/60 p-3">
+                <IconPin className="mt-0.5 h-5 w-5 shrink-0 text-cyan-700" />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-ocean-600">
+                    Office address
+                  </p>
+                  <address className="mt-0.5 text-sm not-italic leading-snug text-ocean-900">
+                    {OFFICE_ADDRESS_LINES.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </address>
+                </div>
               </li>
-              <li className="break-inside-avoid sm:pr-2">
-                <span className="font-semibold text-ocean-900">Live packages</span> on the
-                site so you see what exists today—not yesterday&apos;s flyer price.
+              <li className="flex gap-3 rounded-xl border border-ocean-100 bg-ocean-50/60 p-3">
+                <IconClock className="mt-0.5 h-5 w-5 shrink-0 text-cyan-700" />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-ocean-600">
+                    Opening hours
+                  </p>
+                  <p className="mt-0.5 text-sm text-ocean-900">
+                    Daily 8:00 AM – 8:00 PM (IST)
+                  </p>
+                </div>
               </li>
-              <li className="break-inside-avoid sm:pr-2">
-                <span className="font-semibold text-ocean-900">Razorpay-backed checkout</span>{" "}
-                for domestic cards, UPI, and netbanking with an instant reference.
-              </li>
-              <li className="break-inside-avoid sm:pr-2">
-                <span className="font-semibold text-ocean-900">Refund rules</span> published
-                on the site so surprises are rare—read them anytime before you book.
-              </li>
-              <li className="break-inside-avoid sm:pr-2">
-                <span className="font-semibold text-ocean-900">North Goa logistics</span> we
-                help coordinate: pickup zones, timing, and realistic meeting points.
-              </li>
-              <li className="break-inside-avoid sm:pr-2">
-                <span className="font-semibold text-ocean-900">10,000+ guests</span> have
-                booked through this flow—first-timers and repeat visitors alike.
+              <li className="flex gap-3 rounded-xl border border-ocean-100 bg-ocean-50/60 p-3">
+                <IconPhone className="mt-0.5 h-5 w-5 shrink-0 text-cyan-700" />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-ocean-600">
+                    Contact
+                  </p>
+                  <a
+                    href={CONTACT_PHONE_HREF}
+                    className="mt-0.5 block text-sm font-semibold text-ocean-900 hover:text-cyan-800"
+                  >
+                    {CONTACT_PHONE_LABEL}
+                  </a>
+                </div>
               </li>
             </ul>
-          </section>
 
-          <section
-            className="mt-14 overflow-hidden rounded-2xl bg-ocean-900 px-6 py-10 text-white sm:mt-16 sm:px-10 sm:py-12"
-            aria-labelledby="about-office-heading"
-          >
-            <div className="mx-auto max-w-2xl text-center">
-              <h2
-                id="about-office-heading"
-                className="font-display text-2xl font-bold sm:text-3xl"
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Link
+                href="/contact"
+                className="inline-flex min-h-10 items-center justify-center rounded-full bg-ocean-800 px-5 py-2 text-sm font-bold text-white transition hover:bg-ocean-700"
               >
-                Visit us in Baga
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-cyan-100/95 sm:text-base">
-                We keep a real desk where you can ask questions face-to-face—not just a
-                website form. Same team that answers WhatsApp.
-              </p>
-              <address className="mt-4 text-sm not-italic text-white/90 sm:text-base">
-                {OFFICE_ADDRESS_LINES.map((line) => (
-                  <span key={line} className="block">
-                    {line}
-                  </span>
-                ))}
-              </address>
-              <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap">
-                <Link
-                  href="/contact"
-                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-6 py-2.5 text-sm font-bold text-ocean-950 transition hover:bg-cyan-300"
-                >
-                  Map &amp; contact details
-                </Link>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(OFFICE_ADDRESS_SINGLELINE)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/15"
-                >
-                  Open in Google Maps
-                </a>
-              </div>
+                Map &amp; Contact Details
+              </Link>
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-10 items-center justify-center rounded-full border-2 border-ocean-300 bg-white px-5 py-2 text-sm font-semibold text-ocean-800 transition hover:border-ocean-400"
+              >
+                Open in Google Maps
+              </a>
             </div>
-          </section>
-
-          <p className="mx-auto mt-12 max-w-2xl text-center text-sm text-ocean-700 sm:mt-14">
-            Ready to pick a date?{" "}
-            <Link href="/services" className="font-semibold text-ocean-700 underline-offset-2 hover:underline">
-              Browse services
-            </Link>{" "}
-            or{" "}
-            <Link href="/booking" className="font-semibold text-ocean-700 underline-offset-2 hover:underline">
-              go straight to booking
-            </Link>
-            .
-          </p>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Stats bar */}
+      <section
+        className="border-t border-ocean-100 bg-sand/60 px-4 py-6 sm:px-6 sm:py-7 lg:px-8"
+        aria-label="Book Scuba Goa highlights"
+      >
+        <ul className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+          {STATS.map(({ label, Icon }) => (
+            <li key={label} className="flex flex-col items-center text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-cyan-700 shadow-sm ring-1 ring-ocean-100">
+                <Icon className="h-5 w-5" />
+              </span>
+              <p className="mt-2 font-display text-sm font-bold text-ocean-900 sm:text-base">
+                {label}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
     </>
   );
 }
