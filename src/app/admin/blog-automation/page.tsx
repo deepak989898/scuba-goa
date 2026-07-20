@@ -363,6 +363,59 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
+  async function bulkBlogAction(
+    action: "publish" | "unpublish" | "delete",
+    slugs: string[],
+  ): Promise<boolean> {
+    if (slugs.length === 0) return false;
+    const labels = {
+      publish: "publish",
+      unpublish: "unpublish",
+      delete: "DELETE permanently",
+    } as const;
+    if (
+      !confirm(
+        `${labels[action]} ${slugs.length} selected blog${slugs.length === 1 ? "" : "s"}?`,
+      )
+    ) {
+      return false;
+    }
+    setBusy("bulk");
+    setErr(null);
+    setOkMsg(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-posts/bulk", {
+        method: "POST",
+        body: JSON.stringify({ action, slugs }),
+      });
+      const okN = Number(data.successCount ?? 0);
+      const failN = Number(data.failCount ?? 0);
+      const failed =
+        (data.failed as { slug: string; error: string }[] | undefined) ?? [];
+      if (failN > 0) {
+        setErr(
+          `${okN} succeeded, ${failN} failed` +
+            (failed[0] ? `: ${failed[0].slug} — ${failed[0].error}` : ""),
+        );
+      }
+      setOkMsg(
+        failN === 0
+          ? `${action === "delete" ? "Deleted" : action === "publish" ? "Published" : "Unpublished"} ${okN} blog${okN === 1 ? "" : "s"}.`
+          : `Bulk ${action}: ${okN} ok, ${failN} failed.`,
+      );
+      if (action === "delete") {
+        setEditing((e) => (e && slugs.includes(e.slug) ? null : e));
+      }
+      await refresh();
+      return okN > 0;
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Bulk action failed");
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function prepareScheduledToday() {
     setBusy("prepare");
     setErr(null);
@@ -823,6 +876,7 @@ export default function AdminBlogAutomationPage() {
             onPublishNow={(slug) => void publishPostNow(slug)}
             onUnpublish={(slug) => void unpublishPost(slug)}
             onDelete={(slug) => void deletePost(slug)}
+            onBulkAction={bulkBlogAction}
             onUploadImage={(file) => void uploadBlogImage(file)}
             onGenerateAiImage={() => void generateBlogImageWithAi()}
             aiImageProgress={aiImageProgress}

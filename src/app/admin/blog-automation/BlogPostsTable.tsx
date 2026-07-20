@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
@@ -28,6 +28,10 @@ type Props = {
   onPublishNow: (slug: string) => void;
   onUnpublish: (slug: string) => void;
   onDelete: (slug: string) => void;
+  onBulkAction: (
+    action: "publish" | "unpublish" | "delete",
+    slugs: string[],
+  ) => Promise<boolean>;
   onUploadImage: (file: File | null) => void;
   onGenerateAiImage: () => void;
   /** Estimated 0–100 while AI image is generating; null when idle. */
@@ -74,6 +78,7 @@ export function BlogPostsTable({
   onPublishNow,
   onUnpublish,
   onDelete,
+  onBulkAction,
   onUploadImage,
   onGenerateAiImage,
   aiImageProgress = null,
@@ -82,10 +87,32 @@ export function BlogPostsTable({
 }: Props) {
   const scheduledCount = posts.filter((p) => isBlogScheduled(p)).length;
   const liveCount = posts.filter((p) => p.published).length;
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [zoomedImage, setZoomedImage] = useState<{
     src: string;
     alt: string;
   } | null>(null);
+
+  const visibleSlugs = useMemo(
+    () => sortedPosts.map((p) => p.slug),
+    [sortedPosts],
+  );
+  const allVisibleSelected =
+    visibleSlugs.length > 0 && visibleSlugs.every((s) => selected.has(s));
+  const someVisibleSelected =
+    visibleSlugs.some((s) => selected.has(s)) && !allVisibleSelected;
+
+  useEffect(() => {
+    // Drop selections for posts that disappeared after refresh/delete.
+    setSelected((prev) => {
+      const next = new Set<string>();
+      const known = new Set(posts.map((p) => p.slug));
+      for (const slug of prev) {
+        if (known.has(slug)) next.add(slug);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [posts]);
 
   useEffect(() => {
     if (!zoomedImage) return;
@@ -95,6 +122,36 @@ export function BlogPostsTable({
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [zoomedImage]);
+
+  function toggleSlug(slug: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const slug of visibleSlugs) next.delete(slug);
+      } else {
+        for (const slug of visibleSlugs) next.add(slug);
+      }
+      return next;
+    });
+  }
+
+  function runBulk(action: "publish" | "unpublish" | "delete") {
+    const slugs = [...selected];
+    if (slugs.length === 0) return;
+    void (async () => {
+      const done = await onBulkAction(action, slugs);
+      if (done) setSelected(new Set());
+    })();
+  }
 
   return (
     <section className="mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
@@ -109,16 +166,61 @@ export function BlogPostsTable({
             ? "…"
             : `${blogIndexTraffic.views.toLocaleString("en-IN")} views · ${blogIndexTraffic.visitors.toLocaleString("en-IN")} visitors`}
         </p>
-        {onRefreshTraffic ? (
-          <button
-            type="button"
-            disabled={trafficLoading || trafficRefreshing}
-            onClick={onRefreshTraffic}
-            className="mt-2 rounded-full border border-ocean-300 px-3 py-1 text-xs font-semibold text-ocean-800 disabled:opacity-50"
-          >
-            {trafficLoading || trafficRefreshing ? "Refreshing…" : "Refresh view counts"}
-          </button>
-        ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {onRefreshTraffic ? (
+            <button
+              type="button"
+              disabled={trafficLoading || trafficRefreshing}
+              onClick={onRefreshTraffic}
+              className="rounded-full border border-ocean-300 px-3 py-1 text-xs font-semibold text-ocean-800 disabled:opacity-50"
+            >
+              {trafficLoading || trafficRefreshing ? "Refreshing…" : "Refresh view counts"}
+            </button>
+          ) : null}
+        </div>
+        {selected.size > 0 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2.5">
+            <span className="text-xs font-semibold text-cyan-950 sm:text-sm">
+              {selected.size} selected
+            </span>
+            <button
+              type="button"
+              disabled={busy === "bulk"}
+              onClick={() => runBulk("publish")}
+              className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {busy === "bulk" ? "Working…" : "Publish"}
+            </button>
+            <button
+              type="button"
+              disabled={busy === "bulk"}
+              onClick={() => runBulk("unpublish")}
+              className="rounded-full border border-amber-400 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 disabled:opacity-50"
+            >
+              Unpublish
+            </button>
+            <button
+              type="button"
+              disabled={busy === "bulk"}
+              onClick={() => runBulk("delete")}
+              className="rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 disabled:opacity-50"
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              disabled={busy === "bulk"}
+              onClick={() => setSelected(new Set())}
+              className="rounded-full border border-ocean-200 px-3 py-1 text-xs font-semibold text-ocean-700 disabled:opacity-50"
+            >
+              Clear
+            </button>
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-ocean-500">
+            Select blogs with checkboxes to publish, unpublish, or delete together.
+          </p>
+        )}
       </div>
       {posts.length === 0 ? (
         <p className="p-3 text-sm text-ocean-500">No Firestore blogs yet.</p>
@@ -127,6 +229,18 @@ export function BlogPostsTable({
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 text-ocean-800">
               <tr>
+                <th className="w-10 p-3">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someVisibleSelected;
+                    }}
+                    onChange={toggleSelectAllVisible}
+                    aria-label="Select all blogs"
+                    className="h-4 w-4 accent-cyan-700"
+                  />
+                </th>
                 <th className="p-3">Image</th>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Title</th>
@@ -140,7 +254,20 @@ export function BlogPostsTable({
             <tbody>
               {sortedPosts.map((p) => (
                 <Fragment key={p.slug}>
-                  <tr className="border-b border-ocean-100">
+                  <tr
+                    className={`border-b border-ocean-100 ${
+                      selected.has(p.slug) ? "bg-cyan-50/60" : ""
+                    }`}
+                  >
+                    <td className="p-3 align-top">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(p.slug)}
+                        onChange={() => toggleSlug(p.slug)}
+                        aria-label={`Select ${p.title}`}
+                        className="h-4 w-4 accent-cyan-700"
+                      />
+                    </td>
                     <td className="p-3 align-top">
                       {p.featuredImageUrl || p.ogImageUrl ? (
                         <button
@@ -233,7 +360,7 @@ export function BlogPostsTable({
                           <button
                             type="button"
                             className="text-amber-700 hover:underline"
-                            disabled={busy === `post-${p.slug}`}
+                            disabled={busy === `post-${p.slug}` || busy === "bulk"}
                             onClick={() => onUnpublish(p.slug)}
                           >
                             Unpublish
@@ -242,7 +369,7 @@ export function BlogPostsTable({
                           <button
                             type="button"
                             className="font-semibold text-emerald-800 hover:underline"
-                            disabled={busy === `save-${p.slug}`}
+                            disabled={busy === `save-${p.slug}` || busy === "bulk"}
                             onClick={() => onPublishNow(p.slug)}
                           >
                             Publish now
@@ -251,7 +378,7 @@ export function BlogPostsTable({
                         <button
                           type="button"
                           className="text-red-600 hover:underline"
-                          disabled={busy === `del-${p.slug}`}
+                          disabled={busy === `del-${p.slug}` || busy === "bulk"}
                           onClick={() => onDelete(p.slug)}
                         >
                           Delete
@@ -261,7 +388,7 @@ export function BlogPostsTable({
                   </tr>
                   {editing?.slug === p.slug ? (
                     <tr className="bg-ocean-50/50">
-                      <td colSpan={8} className="p-4">
+                      <td colSpan={9} className="p-4">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ocean-700">
                           Edit blog post
                         </p>
