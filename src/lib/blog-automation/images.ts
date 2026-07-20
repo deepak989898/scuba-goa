@@ -15,8 +15,6 @@ const LOGO_FILES = [
   "book-scuba-goa-logo.png",
 ];
 
-const BAR_HOST_PNG = "blog-bar-host.png";
-
 async function readPublicAsset(name: string): Promise<Buffer | null> {
   const siteBase = SITE_URL.replace(/\/$/, "");
   try {
@@ -46,78 +44,23 @@ async function loadBrandLogoBuffer(): Promise<Buffer> {
   throw new Error("Brand logo not found");
 }
 
-function buildBrandBarBackground(width: number, barHeight: number): Buffer {
-  const svg = `<svg width="${width}" height="${barHeight}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#0c4a6e"/>
-      <stop offset="100%" stop-color="#0369a1"/>
-    </linearGradient>
-  </defs>
-  <rect width="${width}" height="${barHeight}" fill="url(#g)" fill-opacity="0.94"/>
-</svg>`;
-  return Buffer.from(svg);
-}
-
-/** Full-width bottom bar with logo (left) + site URL (right), nothing cropped. */
-async function buildBrandBarLayer(
-  width: number,
-  barHeight: number,
-): Promise<Buffer> {
-  const padY = 10;
-  const padX = 16;
-  const innerH = barHeight - padY * 2;
-
-  const composites: sharp.OverlayOptions[] = [
-    { input: buildBrandBarBackground(width, barHeight), top: 0, left: 0 },
-  ];
+/**
+ * Top-left watermark: site logo (already includes “Book Scuba Goa”) on a
+ * fully transparent background — no solid bottom bar.
+ */
+async function buildTopLeftLogoBadge(imageWidth: number): Promise<Buffer> {
+  const logoMaxW = Math.round(imageWidth * 0.34);
+  const logoMaxH = Math.max(52, Math.round(imageWidth * 0.11));
 
   const logoRaw = await loadBrandLogoBuffer();
-  const logoMaxW = Math.round(width * 0.42);
-  const logoBuf = await sharp(logoRaw)
-    .resize(logoMaxW, innerH, { fit: "inside", withoutEnlargement: true })
-    .png()
-    .toBuffer();
-  const logoMeta = await sharp(logoBuf).metadata();
-  const logoW = logoMeta.width ?? logoMaxW;
-  const logoH = logoMeta.height ?? innerH;
-  composites.push({
-    input: logoBuf,
-    top: padY + Math.round((innerH - logoH) / 2),
-    left: padX,
-  });
-
-  const hostPng = await readPublicAsset(BAR_HOST_PNG);
-  if (hostPng) {
-    const hostMaxW = Math.round(width * 0.32);
-    const hostBuf = await sharp(hostPng)
-      .resize(hostMaxW, innerH, { fit: "inside", withoutEnlargement: true })
-      .png()
-      .toBuffer();
-    const hostMeta = await sharp(hostBuf).metadata();
-    const hostW = hostMeta.width ?? hostMaxW;
-    const hostH = hostMeta.height ?? innerH;
-    composites.push({
-      input: hostBuf,
-      top: padY + Math.round((innerH - hostH) / 2),
-      left: Math.max(padX + logoW + 12, width - hostW - padX),
-    });
-  }
-
-  return sharp({
-    create: {
-      width,
-      height: barHeight,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    },
-  })
-    .composite(composites)
+  return sharp(logoRaw)
+    .resize(logoMaxW, logoMaxH, { fit: "inside", withoutEnlargement: true })
+    .ensureAlpha()
     .png()
     .toBuffer();
 }
 
-/** Resize to WebP + bottom brand bar (logo left, site URL right). No text watermark. */
+/** Resize to WebP + top-left transparent logo (no bottom bar). */
 export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
   const resizedBuf = await sharp(photoBuffer)
     .rotate()
@@ -126,13 +69,11 @@ export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
 
   const meta = await sharp(resizedBuf).metadata();
   const width = meta.width ?? MAX_WIDTH;
-  const height = meta.height ?? Math.round(width * 0.56);
-  const barHeight = Math.max(80, Math.round(height * 0.14));
-
-  const barLayer = await buildBrandBarLayer(width, barHeight);
+  const logoBadge = await buildTopLeftLogoBadge(width);
+  const margin = Math.max(14, Math.round(width * 0.022));
 
   return sharp(resizedBuf)
-    .composite([{ input: barLayer, top: height - barHeight, left: 0 }])
+    .composite([{ input: logoBadge, top: margin, left: margin }])
     .webp({ quality: WEBP_QUALITY })
     .toBuffer();
 }

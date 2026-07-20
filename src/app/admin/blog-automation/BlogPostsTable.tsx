@@ -410,7 +410,7 @@ export function BlogPostsTable({
                           </label>
                           <div className="lg:col-span-2">
                             <p className="text-sm font-medium text-ocean-800">
-                              Featured image (WebP + logo bar)
+                              Featured image (WebP + top-left logo)
                             </p>
                             {editing.featuredImageUrl ? (
                               <div className="mt-2 flex flex-wrap items-start gap-2.5">
@@ -438,8 +438,8 @@ export function BlogPostsTable({
                                   </a>
                                   <p className="mt-1 max-w-sm">
                                     Upload a file or use <strong>Generate with AI</strong> —
-                                    either saves a new WebP (with logo bar) to the live blog
-                                    immediately.
+                                    either saves a new WebP (logo top-left, no bottom bar)
+                                    to the live blog immediately.
                                   </p>
                                 </div>
                               </div>
@@ -499,7 +499,7 @@ export function BlogPostsTable({
                             ) : null}
                             <p className="mt-1.5 text-xs text-ocean-500">
                               Upload a file, or generate from the blog title with OpenAI
-                              (saved as WebP + logo bar on the live post).
+                              (saved as WebP with transparent logo top-left).
                             </p>
                           </div>
                           {editing.publishedAt ? (

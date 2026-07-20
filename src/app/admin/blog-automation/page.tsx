@@ -470,7 +470,7 @@ export default function AdminBlogAutomationPage() {
           : e,
       );
       setOkMsg(
-        "AI image generated from the title, saved as WebP with logo bar, and applied to the live blog.",
+        "AI image generated from the title, saved as WebP with top-left logo, and applied to the live blog.",
       );
       await refresh();
       window.setTimeout(() => setAiImageProgress(null), 900);
@@ -518,7 +518,7 @@ export default function AdminBlogAutomationPage() {
           </div>
           <p className="mt-1.5 text-xs text-cyan-100">
             {aiImageProgress >= 100
-              ? "Saved as WebP with logo bar"
+              ? "Saved as WebP with top-left logo"
               : aiImageProgress < 20
                 ? "Starting OpenAI…"
                 : aiImageProgress < 70
