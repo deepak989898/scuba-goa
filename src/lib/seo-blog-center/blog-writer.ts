@@ -1,6 +1,10 @@
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
-import { downloadCompressUploadBlogImage } from "@/lib/blog-automation/images";
+import {
+  brandAndUploadBlogImageBuffer,
+  downloadCompressUploadBlogImage,
+} from "@/lib/blog-automation/images";
+import { generateBlogImageBufferFromTitle } from "@/lib/blog-automation/openai-image";
 import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
 import { blogSlugExists } from "@/lib/blog-posts-server";
 import { getPostBySlug } from "@/data/blog-posts";
@@ -79,29 +83,42 @@ export async function generateSeoBlogDraft(input: {
     content += buildOfficialPricingMarkdown(catalog, serviceSlug);
   }
 
-  const pexels = await searchPexelsPhotoForPost({
-    title: draft.title,
-    serviceSlug,
-    serviceName,
-  });
   let featuredImageUrl = "";
   let ogImageUrl = "";
-  if (pexels) {
-    try {
-      const uploaded = await downloadCompressUploadBlogImage({
-        imageUrl: pexels.url,
-        slug,
-      });
-      featuredImageUrl = uploaded.featuredImageUrl;
-      ogImageUrl = uploaded.ogImageUrl;
-    } catch {
-      /* optional image */
+  let pexelsAlt = "";
+
+  try {
+    const aiBuf = await generateBlogImageBufferFromTitle(draft.title);
+    const uploaded = await brandAndUploadBlogImageBuffer(aiBuf, slug);
+    featuredImageUrl = uploaded.featuredImageUrl;
+    ogImageUrl = uploaded.ogImageUrl;
+  } catch (e) {
+    console.warn(
+      "[seo-blog-center] OpenAI image failed, trying Pexels:",
+      e instanceof Error ? e.message : e,
+    );
+    const pexels = await searchPexelsPhotoForPost({
+      title: draft.title,
+      serviceSlug,
+      serviceName,
+    });
+    if (pexels) {
+      pexelsAlt = pexels.alt?.trim() || "";
+      try {
+        const uploaded = await downloadCompressUploadBlogImage({
+          imageUrl: pexels.url,
+          slug,
+        });
+        featuredImageUrl = uploaded.featuredImageUrl;
+        ogImageUrl = uploaded.ogImageUrl;
+      } catch {
+        /* optional image */
+      }
     }
   }
 
   const featuredImageAlt =
-    pexels?.alt?.trim() ||
-    generateImageAltText(input.keyword.keyword, draft.title);
+    pexelsAlt || generateImageAltText(input.keyword.keyword, draft.title);
 
   const now = new Date().toISOString();
   const schemaMarkup = {

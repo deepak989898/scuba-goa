@@ -419,6 +419,47 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
+  async function generateBlogImageWithAi() {
+    if (!editing) return;
+    const title = editing.title.trim();
+    if (!title) {
+      setErr("Enter a blog title first, then generate the image.");
+      return;
+    }
+    setBusy(`ai-img-${editing.slug}`);
+    setErr(null);
+    setOkMsg(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-image-generate", {
+        method: "POST",
+        body: JSON.stringify({ slug: editing.slug, title }),
+      });
+      setEditing((e) =>
+        e
+          ? {
+              ...e,
+              featuredImageUrl:
+                (data.featuredImageUrl as string) ?? e.featuredImageUrl,
+              ogImageUrl:
+                (data.ogImageUrl as string) ??
+                (data.featuredImageUrl as string) ??
+                e.ogImageUrl,
+              featuredImageAlt:
+                (data.featuredImageAlt as string) ?? e.featuredImageAlt,
+            }
+          : e,
+      );
+      setOkMsg(
+        "AI image generated from the title, saved as WebP with logo bar, and applied to the live blog.",
+      );
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "AI image generation failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const pending = queue.filter((q) => q.status === "pending");
 
   const automationHint = settings
@@ -726,6 +767,7 @@ export default function AdminBlogAutomationPage() {
             onUnpublish={(slug) => void unpublishPost(slug)}
             onDelete={(slug) => void deletePost(slug)}
             onUploadImage={(file) => void uploadBlogImage(file)}
+            onGenerateAiImage={() => void generateBlogImageWithAi()}
             onRefreshTraffic={() => void refreshTrafficOnly()}
             trafficRefreshing={trafficRefreshing}
           />

@@ -12,8 +12,12 @@ import {
   buildOfficialPricingMarkdown,
 } from "@/lib/blog-automation/catalog-context";
 import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
+import { generateBlogImageBufferFromTitle } from "@/lib/blog-automation/openai-image";
 import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
-import { downloadCompressUploadBlogImage } from "@/lib/blog-automation/images";
+import {
+  brandAndUploadBlogImageBuffer,
+  downloadCompressUploadBlogImage,
+} from "@/lib/blog-automation/images";
 import {
   buildAutoTopic,
   getNextPendingTopic,
@@ -128,18 +132,31 @@ export async function generateBlogDraftOnly(options?: {
 
   let featuredImageUrl = "";
   let ogImageUrl = "";
-  const photo = await searchPexelsPhotoForPost({
-    title: draft.title,
-    serviceSlug,
-    serviceName,
-  });
-  if (photo?.url) {
-    const uploaded = await downloadCompressUploadBlogImage({
-      imageUrl: photo.url,
-      slug,
-    });
+
+  // Prefer OpenAI image from title; fall back to Pexels stock photo.
+  try {
+    const aiBuf = await generateBlogImageBufferFromTitle(draft.title);
+    const uploaded = await brandAndUploadBlogImageBuffer(aiBuf, slug);
     featuredImageUrl = uploaded.featuredImageUrl;
     ogImageUrl = uploaded.ogImageUrl;
+  } catch (e) {
+    console.warn(
+      "[generate-blog-draft] OpenAI image failed, trying Pexels:",
+      e instanceof Error ? e.message : e,
+    );
+    const photo = await searchPexelsPhotoForPost({
+      title: draft.title,
+      serviceSlug,
+      serviceName,
+    });
+    if (photo?.url) {
+      const uploaded = await downloadCompressUploadBlogImage({
+        imageUrl: photo.url,
+        slug,
+      });
+      featuredImageUrl = uploaded.featuredImageUrl;
+      ogImageUrl = uploaded.ogImageUrl;
+    }
   }
 
   const istDate = new Date().toLocaleDateString("en-CA", {

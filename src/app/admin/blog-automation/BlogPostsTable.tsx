@@ -29,6 +29,7 @@ type Props = {
   onUnpublish: (slug: string) => void;
   onDelete: (slug: string) => void;
   onUploadImage: (file: File | null) => void;
+  onGenerateAiImage: () => void;
   onRefreshTraffic?: () => void;
   trafficRefreshing?: boolean;
 };
@@ -72,6 +73,7 @@ export function BlogPostsTable({
   onUnpublish,
   onDelete,
   onUploadImage,
+  onGenerateAiImage,
   onRefreshTraffic,
   trafficRefreshing,
 }: Props) {
@@ -432,8 +434,9 @@ export function BlogPostsTable({
                                     View current image
                                   </a>
                                   <p className="mt-1 max-w-sm">
-                                    Choosing a new file uploads and saves it to the live blog
-                                    immediately (new unique URL).
+                                    Upload a file or use <strong>Generate with AI</strong> —
+                                    either saves a new WebP (with logo bar) to the live blog
+                                    immediately.
                                   </p>
                                 </div>
                               </div>
@@ -442,13 +445,36 @@ export function BlogPostsTable({
                                 No featured image yet — choose a file to upload.
                               </p>
                             )}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="mt-2 block w-full text-sm"
-                              disabled={busy === `img-${editing.slug}`}
-                              onChange={(e) => onUploadImage(e.target.files?.[0] ?? null)}
-                            />
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="block min-w-0 flex-1 text-sm"
+                                disabled={
+                                  busy === `img-${editing.slug}` ||
+                                  busy === `ai-img-${editing.slug}`
+                                }
+                                onChange={(e) => onUploadImage(e.target.files?.[0] ?? null)}
+                              />
+                              <button
+                                type="button"
+                                disabled={
+                                  !editing.title.trim() ||
+                                  busy === `img-${editing.slug}` ||
+                                  busy === `ai-img-${editing.slug}`
+                                }
+                                onClick={onGenerateAiImage}
+                                className="shrink-0 rounded-full bg-cyan-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-800 disabled:opacity-50 sm:text-sm"
+                              >
+                                {busy === `ai-img-${editing.slug}`
+                                  ? "Generating AI image…"
+                                  : "Generate with AI"}
+                              </button>
+                            </div>
+                            <p className="mt-1.5 text-xs text-ocean-500">
+                              Upload a file, or generate from the blog title with OpenAI
+                              (saved as WebP + logo bar on the live post).
+                            </p>
                           </div>
                           {editing.publishedAt ? (
                             <p className="text-sm text-ocean-600 lg:col-span-2">
