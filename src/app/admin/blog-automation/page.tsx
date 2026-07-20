@@ -57,6 +57,8 @@ export default function AdminBlogAutomationPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
+  /** Estimated % while OpenAI image generation runs (API has no real progress stream). */
+  const [aiImageProgress, setAiImageProgress] = useState<number | null>(null);
 
   const [titleInput, setTitleInput] = useState("");
   const [bulkTitles, setBulkTitles] = useState("");
@@ -429,11 +431,29 @@ export default function AdminBlogAutomationPage() {
     setBusy(`ai-img-${editing.slug}`);
     setErr(null);
     setOkMsg(null);
+    setAiImageProgress(3);
+
+    // OpenAI does not stream image % — advance an estimate so admin can wait calmly.
+    const started = Date.now();
+    const tick = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      // ~45s typical; asymptote toward 92% until the request finishes.
+      const estimated = Math.min(
+        92,
+        Math.round(3 + 89 * (1 - Math.exp(-elapsed / 18000))),
+      );
+      setAiImageProgress((prev) =>
+        prev == null ? estimated : Math.max(prev, estimated),
+      );
+    }, 400);
+
     try {
       const data = await adminFetch("/api/admin/blog-image-generate", {
         method: "POST",
         body: JSON.stringify({ slug: editing.slug, title }),
       });
+      window.clearInterval(tick);
+      setAiImageProgress(100);
       setEditing((e) =>
         e
           ? {
@@ -453,7 +473,10 @@ export default function AdminBlogAutomationPage() {
         "AI image generated from the title, saved as WebP with logo bar, and applied to the live blog.",
       );
       await refresh();
+      window.setTimeout(() => setAiImageProgress(null), 900);
     } catch (e) {
+      window.clearInterval(tick);
+      setAiImageProgress(null);
       setErr(e instanceof Error ? e.message : "AI image generation failed");
     } finally {
       setBusy(null);
@@ -473,6 +496,40 @@ export default function AdminBlogAutomationPage() {
 
   return (
     <div>
+      {aiImageProgress != null ? (
+        <div
+          className="fixed bottom-5 right-5 z-[200] w-[min(100%-2rem,20rem)] rounded-2xl border border-cyan-200 bg-cyan-800 px-4 py-3 text-white shadow-xl"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center justify-between gap-2 text-sm font-semibold">
+            <span>
+              {aiImageProgress >= 100
+                ? "Image ready"
+                : "Generating AI image…"}
+            </span>
+            <span className="tabular-nums">{aiImageProgress}%</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-cyan-950/40">
+            <div
+              className="h-full rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"
+              style={{ width: `${aiImageProgress}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-cyan-100">
+            {aiImageProgress >= 100
+              ? "Saved as WebP with logo bar"
+              : aiImageProgress < 20
+                ? "Starting OpenAI…"
+                : aiImageProgress < 70
+                  ? "Creating image from title — please wait"
+                  : aiImageProgress < 92
+                    ? "Almost done — compressing & uploading WebP"
+                    : "Finalizing on live blog…"}
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
           <h1 className="font-display text-lg font-bold text-ocean-900">
@@ -768,6 +825,7 @@ export default function AdminBlogAutomationPage() {
             onDelete={(slug) => void deletePost(slug)}
             onUploadImage={(file) => void uploadBlogImage(file)}
             onGenerateAiImage={() => void generateBlogImageWithAi()}
+            aiImageProgress={aiImageProgress}
             onRefreshTraffic={() => void refreshTrafficOnly()}
             trafficRefreshing={trafficRefreshing}
           />

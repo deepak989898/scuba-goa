@@ -30,6 +30,8 @@ type Props = {
   onDelete: (slug: string) => void;
   onUploadImage: (file: File | null) => void;
   onGenerateAiImage: () => void;
+  /** Estimated 0–100 while AI image is generating; null when idle. */
+  aiImageProgress?: number | null;
   onRefreshTraffic?: () => void;
   trafficRefreshing?: boolean;
 };
@@ -74,6 +76,7 @@ export function BlogPostsTable({
   onDelete,
   onUploadImage,
   onGenerateAiImage,
+  aiImageProgress = null,
   onRefreshTraffic,
   trafficRefreshing,
 }: Props) {
@@ -466,11 +469,34 @@ export function BlogPostsTable({
                                 onClick={onGenerateAiImage}
                                 className="shrink-0 rounded-full bg-cyan-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-800 disabled:opacity-50 sm:text-sm"
                               >
-                                {busy === `ai-img-${editing.slug}`
-                                  ? "Generating AI image…"
-                                  : "Generate with AI"}
+                                {busy === `ai-img-${editing.slug}` &&
+                                aiImageProgress != null
+                                  ? `Generating… ${aiImageProgress}%`
+                                  : busy === `ai-img-${editing.slug}`
+                                    ? "Generating AI image…"
+                                    : "Generate with AI"}
                               </button>
                             </div>
+                            {busy === `ai-img-${editing.slug}` &&
+                            aiImageProgress != null ? (
+                              <div className="mt-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2.5">
+                                <div className="flex items-center justify-between gap-2 text-xs font-semibold text-cyan-950">
+                                  <span>AI image progress</span>
+                                  <span className="tabular-nums">
+                                    {aiImageProgress}%
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-cyan-100">
+                                  <div
+                                    className="h-full rounded-full bg-cyan-600 transition-[width] duration-300 ease-out"
+                                    style={{ width: `${aiImageProgress}%` }}
+                                  />
+                                </div>
+                                <p className="mt-1 text-[11px] text-cyan-800">
+                                  Usually 20–60 seconds — please wait until 100%.
+                                </p>
+                              </div>
+                            ) : null}
                             <p className="mt-1.5 text-xs text-ocean-500">
                               Upload a file, or generate from the blog title with OpenAI
                               (saved as WebP + logo bar on the live post).
