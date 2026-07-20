@@ -7,9 +7,12 @@ import { ServiceCardAddToCart } from "@/components/cart/ServiceCardAddToCart";
 export function RelatedServicesSidebar({
   services,
   compact = false,
+  showScarcity = true,
 }: {
   services: ServiceItem[];
   compact?: boolean;
+  /** When false, hide “Most Booked / Limited Slots / booked today” style claims. */
+  showScarcity?: boolean;
 }) {
   if (services.length === 0) return null;
 
@@ -55,12 +58,12 @@ export function RelatedServicesSidebar({
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
                 loading="lazy"
               />
-              {service.mostBooked ? (
+              {showScarcity && service.mostBooked ? (
                 <span className="absolute left-2 top-2 rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white shadow">
                   Most Booked
                 </span>
               ) : null}
-              {service.limitedSlots ? (
+              {showScarcity && service.limitedSlots ? (
                 <span className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow">
                   Limited Slots
                 </span>
@@ -83,7 +86,11 @@ export function RelatedServicesSidebar({
               >
                 {service.short}
               </p>
-              <ServiceMetaBlock s={service} variant="cardGrid" />
+              <ServiceMetaBlock
+                s={service}
+                variant="cardGrid"
+                showScarcity={showScarcity}
+              />
 
               <div
                 className={`flex items-end justify-between gap-2 rounded-lg border border-ocean-200 bg-white ${

@@ -10,11 +10,19 @@ import {
 export async function getAllBlogPostsMerged(): Promise<BlogPost[]> {
   const fs = await listPublishedBlogPostsServer();
   const fsMap = new Map(fs.map((p) => [p.slug, blogFirestoreToBlogPost(p)]));
-  const staticSlugs = new Set(blogPosts.map((p) => p.slug));
-  const merged: BlogPost[] = [...blogPosts];
+  const merged: BlogPost[] = [];
+  const seen = new Set<string>();
+
   for (const [slug, post] of fsMap) {
-    if (!staticSlugs.has(slug)) merged.push(post);
+    merged.push(post);
+    seen.add(slug);
   }
+  for (const post of blogPosts) {
+    if (seen.has(post.slug)) continue;
+    merged.push(post);
+    seen.add(post.slug);
+  }
+
   merged.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
   return merged;
 }
@@ -57,16 +65,33 @@ function relatedScore(a: BlogPost, b: BlogPost): number {
 
 export async function getRelatedBlogPostsMerged(
   currentSlug: string,
-  limit = 3,
+  limit = 6,
 ): Promise<BlogPost[]> {
   const all = await getAllBlogPostsMerged();
   const current = all.find((p) => p.slug === currentSlug);
   if (!current) return [];
-  return all
+  const scored = all
     .filter((p) => p.slug !== currentSlug)
     .map((p) => ({ post: p, score: relatedScore(current, p) }))
     .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score || b.post.date.localeCompare(a.post.date))
-    .slice(0, limit)
-    .map((x) => x.post);
+    .sort((a, b) => b.score - a.score || b.post.date.localeCompare(a.post.date));
+
+  const picked: BlogPost[] = [];
+  const usedImages = new Set<string>();
+  for (const row of scored) {
+    if (picked.length >= limit) break;
+    const img = row.post.imageUrl?.trim();
+    if (img && usedImages.has(img) && scored.length > limit) continue;
+    if (img) usedImages.add(img);
+    picked.push(row.post);
+  }
+  // Fallback fill if uniqueness filter removed too many
+  if (picked.length < Math.min(3, limit)) {
+    for (const row of scored) {
+      if (picked.length >= limit) break;
+      if (picked.some((p) => p.slug === row.post.slug)) continue;
+      picked.push(row.post);
+    }
+  }
+  return picked;
 }

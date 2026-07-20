@@ -5,9 +5,13 @@ import { SITE_URL } from "@/lib/constants";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
+import { BLOG_PERMANENT_REDIRECTS } from "@/lib/blog-redirects";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
+  const redirectedBlogPaths = new Set(
+    BLOG_PERMANENT_REDIRECTS.map((r) => r.source),
+  );
   const staticPaths = [
     "",
     "/about",
@@ -62,6 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   const staticBlogSlugs = new Set(blogPosts.map((p) => p.slug));
   for (const p of blogPosts) {
+    if (redirectedBlogPaths.has(`/blog/${p.slug}`)) continue;
     const modified = p.updatedAt ?? p.date;
     entries.push({
       url: `${base}/blog/${p.slug}`,
@@ -73,6 +78,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fsBlogs = await listPublishedBlogPostsServer();
   for (const p of fsBlogs) {
     if (staticBlogSlugs.has(p.slug)) continue;
+    if (redirectedBlogPaths.has(`/blog/${p.slug}`)) continue;
     entries.push({
       url: `${base}/blog/${p.slug}`,
       lastModified: new Date(p.updatedAt),

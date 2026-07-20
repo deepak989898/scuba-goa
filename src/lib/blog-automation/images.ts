@@ -49,8 +49,9 @@ async function loadBrandLogoBuffer(): Promise<Buffer> {
  * fully transparent background — no solid bottom bar.
  */
 async function buildTopLeftLogoBadge(imageWidth: number): Promise<Buffer> {
-  const logoMaxW = Math.round(imageWidth * 0.34);
-  const logoMaxH = Math.max(52, Math.round(imageWidth * 0.11));
+  // Subtle brand mark — keep small so it does not dominate the hero.
+  const logoMaxW = Math.round(imageWidth * 0.18);
+  const logoMaxH = Math.max(36, Math.round(imageWidth * 0.055));
 
   const logoRaw = await loadBrandLogoBuffer();
   return sharp(logoRaw)

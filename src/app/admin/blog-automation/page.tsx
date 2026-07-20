@@ -438,6 +438,34 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
+  async function migrateTop5ScubaArticle() {
+    if (
+      !confirm(
+        "Publish rewritten Top 5 Scuba Spots to /blog/top-5-scuba-diving-spots-in-goa and unpublish the old -6 slug? (301 redirect is already in next.config)",
+      )
+    ) {
+      return;
+    }
+    setBusy("migrate-top5");
+    setErr(null);
+    setOkMsg(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-migrate-top5", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      const steps = Array.isArray(data.steps) ? data.steps.join(" · ") : "";
+      setOkMsg(
+        `Migrated ${data.cleanSlug}. Old ${data.oldSlug} unpublished. ${steps}`,
+      );
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Migration failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function uploadBlogImage(file: File | null) {
     if (!file || !editing) return;
     setBusy(`img-${editing.slug}`);
@@ -727,6 +755,16 @@ export default function AdminBlogAutomationPage() {
                 className="rounded-full border border-ocean-300 px-4 py-1.5 text-sm font-semibold text-ocean-800 disabled:opacity-50"
               >
                 Run cron now (publish due)
+              </button>
+              <button
+                type="button"
+                disabled={busy === "migrate-top5"}
+                onClick={() => void migrateTop5ScubaArticle()}
+                className="rounded-full border border-emerald-400 bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-900 disabled:opacity-50"
+              >
+                {busy === "migrate-top5"
+                  ? "Migrating…"
+                  : "Migrate Top 5 spots → clean slug"}
               </button>
               <button
                 type="button"

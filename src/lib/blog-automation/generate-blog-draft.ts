@@ -4,7 +4,7 @@ import {
   type BlogLanguage,
   type BlogPostFirestore,
 } from "@/lib/blog-firestore";
-import { blogSlugExists } from "@/lib/blog-posts-server";
+import { blogSlugBlocksNewPost } from "@/lib/blog-posts-server";
 import { getPostBySlug } from "@/data/blog-posts";
 import { getAllServicesServer, getServiceBySlugServer } from "@/lib/get-services-server";
 import {
@@ -55,9 +55,13 @@ async function ensureUniqueSlug(base: string): Promise<string> {
   if (!isValidBlogSlug(slug)) slug = `goa-blog-${Date.now()}`;
   let attempt = slug;
   let n = 0;
-  while (getPostBySlug(attempt) || (await blogSlugExists(attempt))) {
+  while (getPostBySlug(attempt) || (await blogSlugBlocksNewPost(attempt))) {
     n += 1;
     attempt = `${slug}-${n}`;
+    if (n > 50) {
+      attempt = `${slug}-${Date.now().toString(36)}`;
+      break;
+    }
   }
   return attempt;
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { slugifyHeading } from "@/lib/blog-seo/headings";
 
 function parseInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -26,7 +27,7 @@ function parseInline(text: string): ReactNode[] {
       nodes.push(
         <strong key={key++} className="font-semibold text-ocean-900">
           {text.slice(bold + 2, end)}
-        </strong>
+        </strong>,
       );
       i = end + 2;
       continue;
@@ -69,7 +70,7 @@ function parseInline(text: string): ReactNode[] {
         >
           {parseInline(label)}
         </a>
-      )
+      ),
     );
     i = closeHref + 1;
   }
@@ -77,14 +78,40 @@ function parseInline(text: string): ReactNode[] {
 }
 
 function Paragraph({ children }: { children: string }) {
-  return (
-    <p className="mt-4 leading-relaxed">{parseInline(children)}</p>
-  );
+  return <p className="mt-4 leading-relaxed">{parseInline(children)}</p>;
+}
+
+function uniqueHeadingId(text: string, seen: Map<string, number>): string {
+  let id = slugifyHeading(text);
+  const count = (seen.get(id) ?? 0) + 1;
+  seen.set(id, count);
+  if (count > 1) id = `${id}-${count}`;
+  return id;
+}
+
+function parseTableBlock(raw: string): string[][] | null {
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return null;
+  if (!lines.every((l) => l.includes("|"))) return null;
+  const rows = lines
+    .filter((l) => !/^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/.test(l))
+    .map((l) =>
+      l
+        .replace(/^\|/, "")
+        .replace(/\|$/, "")
+        .split("|")
+        .map((c) => c.trim()),
+    );
+  return rows.length >= 2 ? rows : null;
 }
 
 export function BlogContent({ content }: { content: string }) {
   const blocks = content.split(/\n\n+/);
   const out: React.ReactNode[] = [];
+  const seenIds = new Map<string, number>();
   let i = 0;
   while (i < blocks.length) {
     const raw = blocks[i].trim();
@@ -93,26 +120,69 @@ export function BlogContent({ content }: { content: string }) {
       continue;
     }
     if (raw.startsWith("## ")) {
+      const text = raw.replace(/^##\s+/, "");
+      const id = uniqueHeadingId(text, seenIds);
       out.push(
         <h2
           key={i}
-          className="mt-10 scroll-mt-24 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-1 pl-4 text-2xl font-bold text-ocean-900 first:mt-0"
+          id={id}
+          className="mt-10 scroll-mt-28 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-1 pl-4 text-2xl font-bold text-ocean-900 first:mt-0"
         >
-          {raw.replace(/^##\s+/, "")}
-        </h2>
+          {text}
+        </h2>,
       );
       i += 1;
       continue;
     }
     if (raw.startsWith("### ")) {
+      const text = raw.replace(/^###\s+/, "");
+      const id = uniqueHeadingId(text, seenIds);
       out.push(
-        <h3 key={i} className="mt-8 text-xl font-bold text-cyan-800">
-          {raw.replace(/^###\s+/, "")}
-        </h3>
+        <h3
+          key={i}
+          id={id}
+          className="mt-8 scroll-mt-28 text-xl font-bold text-cyan-800"
+        >
+          {text}
+        </h3>,
       );
       i += 1;
       continue;
     }
+
+    const table = parseTableBlock(raw);
+    if (table) {
+      const [header, ...body] = table;
+      out.push(
+        <div key={i} className="mt-5 overflow-x-auto rounded-xl border border-ocean-100">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-ocean-50 text-ocean-900">
+              <tr>
+                {header.map((cell, j) => (
+                  <th key={j} className="whitespace-nowrap px-3 py-2 font-semibold">
+                    {parseInline(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {body.map((row, ri) => (
+                <tr key={ri} className="border-t border-ocean-100">
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-3 py-2 align-top text-ocean-800">
+                      {parseInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      i += 1;
+      continue;
+    }
+
     const lines = raw.split("\n").map((l) => l.trim());
     const isList = lines.every((l) => !l || l.startsWith("- "));
     if (isList && lines.some((l) => l.startsWith("- "))) {
@@ -125,7 +195,7 @@ export function BlogContent({ content }: { content: string }) {
                 {parseInline(l.replace(/^-\s+/, ""))}
               </li>
             ))}
-        </ul>
+        </ul>,
       );
       i += 1;
       continue;

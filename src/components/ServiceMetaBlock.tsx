@@ -7,9 +7,11 @@ type Variant = "default" | "cardGrid";
 export function ServiceMetaBlock({
   s,
   variant = "default",
+  showScarcity = true,
 }: {
   s: ServiceItem;
   variant?: Variant;
+  showScarcity?: boolean;
 }) {
   const { slotsLeft, bookedToday, fromSubServices } =
     getAggregatedServiceSlots(s);
@@ -45,34 +47,36 @@ export function ServiceMetaBlock({
         ⭐ {s.rating.toFixed(1)} rated
       </p>
       {variant === "cardGrid" ? (
-        <div className="mt-1 box-border h-[2.875rem] w-full shrink-0 overflow-x-hidden overflow-y-auto overscroll-y-contain sm:mt-1.5 sm:h-[4rem]">
+        <div className="mt-1 box-border max-h-[4rem] w-full shrink-0 overflow-x-hidden overflow-y-auto overscroll-y-contain sm:mt-1.5">
           {includesList}
         </div>
       ) : (
         includesList
       )}
-      <div
-        className={
-          variant === "cardGrid"
-            ? "flex min-h-[2.125rem] flex-col justify-end gap-0.5 text-[10px] font-medium text-ocean-700 sm:min-h-[2.25rem] sm:text-xs"
-            : "flex flex-col gap-0.5 text-[10px] font-medium text-ocean-700 sm:text-xs"
-        }
-      >
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          {slotsLeft != null ? (
-            <span className="font-semibold text-red-600">
-              {slotsLeft} slots left
-              {fromSubServices ? " (total)" : ""}
-            </span>
-          ) : null}
-          {bookedToday != null ? (
-            <span>
-              {bookedToday} booked today
-              {fromSubServices ? " (total)" : ""}
-            </span>
-          ) : null}
+      {showScarcity ? (
+        <div
+          className={
+            variant === "cardGrid"
+              ? "flex min-h-[1.5rem] flex-col justify-end gap-0.5 text-[10px] font-medium text-ocean-700 sm:text-xs"
+              : "flex flex-col gap-0.5 text-[10px] font-medium text-ocean-700 sm:text-xs"
+          }
+        >
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {slotsLeft != null ? (
+              <span className="font-semibold text-red-600">
+                {slotsLeft} slots left
+                {fromSubServices ? " (total)" : ""}
+              </span>
+            ) : null}
+            {bookedToday != null ? (
+              <span>
+                {bookedToday} booked today
+                {fromSubServices ? " (total)" : ""}
+              </span>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

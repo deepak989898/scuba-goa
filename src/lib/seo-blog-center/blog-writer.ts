@@ -6,7 +6,7 @@ import {
 } from "@/lib/blog-automation/images";
 import { generateBlogImageBufferFromTitle } from "@/lib/blog-automation/openai-image";
 import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
-import { blogSlugExists } from "@/lib/blog-posts-server";
+import { blogSlugBlocksNewPost } from "@/lib/blog-posts-server";
 import { getPostBySlug } from "@/data/blog-posts";
 import {
   isValidBlogSlug,
@@ -30,9 +30,13 @@ async function ensureUniqueSlug(base: string): Promise<string> {
   if (!isValidBlogSlug(slug)) slug = `goa-scuba-${Date.now()}`;
   let attempt = slug;
   let n = 0;
-  while (getPostBySlug(attempt) || (await blogSlugExists(attempt))) {
+  while (getPostBySlug(attempt) || (await blogSlugBlocksNewPost(attempt))) {
     n += 1;
     attempt = `${slug}-${n}`;
+    if (n > 50) {
+      attempt = `${slug}-${Date.now().toString(36)}`;
+      break;
+    }
   }
   return attempt;
 }

@@ -1,14 +1,13 @@
 import type { NextConfig } from "next";
+import { getAllPermanentRedirects } from "./src/lib/blog-redirects";
 
 const nextConfig: NextConfig = {
   async redirects() {
-    return [
-      {
-        source: "/blog/scuba-diving-cost-in-goa",
-        destination: "/blog/scuba-diving-price-guide-2026",
-        permanent: true,
-      },
-    ];
+    return getAllPermanentRedirects().map((r) => ({
+      source: r.source,
+      destination: r.destination,
+      permanent: true,
+    }));
   },
   images: {
     // Prefer AVIF (smallest) and fall back to WebP — both are dramatically

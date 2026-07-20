@@ -6,11 +6,12 @@
 export function buildBlogImagePrompt(title: string): string {
   const clean = title.replace(/\s+/g, " ").trim().slice(0, 200);
   return [
-    `Photorealistic travel photography for a scuba diving tourism blog about: "${clean}".`,
-    "Setting: Goa, India — clear turquoise Arabian Sea, tropical coastline, scuba diving or water sports.",
-    "Style: bright natural daylight, high resolution, editorial magazine quality, landscape composition.",
-    "Important: NO text, NO titles, NO logos, NO watermarks, NO UI overlays, NO people looking at camera awkwardly.",
-    "Safe for family tourism marketing. Realistic photo, not illustration or cartoon.",
+    `Create a realistic editorial travel photograph for an article titled "${clean}".`,
+    "Show a properly equipped scuba diver exploring clear tropical water with visible coral and small reef fish where relevant,",
+    "natural sunlight rays underwater, realistic diving gear and body proportions, authentic Indian coastal / Arabian Sea atmosphere,",
+    "wide landscape 16:9 composition, premium travel photography.",
+    "No text, no titles, no large logo, no watermark, no UI, no distorted anatomy, no extra limbs,",
+    "no fantasy creatures, no fake monuments, no unsafe diving behaviour, no surface-only parasailing unless the title is about that activity.",
   ].join(" ");
 }
 
