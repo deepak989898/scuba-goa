@@ -11,6 +11,7 @@ import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
 import { BlogDailySchedulePanel } from "@/app/admin/blog-automation/BlogDailySchedulePanel";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 
 type BlogTraffic = { views: number; visitors: number };
 
@@ -420,6 +421,15 @@ export default function AdminBlogAutomationPage() {
 
   const pending = queue.filter((q) => q.status === "pending");
 
+  const automationHint = settings
+    ? `${settings.enabled ? "Auto-publish on" : "Auto-publish off"} · ${settings.postsPerDay} post(s)/day · slots ${settings.publishSlotsIst.join(", ")}`
+    : undefined;
+
+  const titleQueueHint =
+    pending.length === 0
+      ? "No pending titles — auto topics will be used"
+      : `${pending.length} title${pending.length === 1 ? "" : "s"} waiting in queue`;
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-2.5">
@@ -460,11 +470,8 @@ export default function AdminBlogAutomationPage() {
         <p className="mt-3 text-ocean-600">Loading…</p>
       ) : (
         <>
-          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-ocean-900">
-              Automation settings
-            </h2>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+          <AdminCollapseSection title="Automation settings" hint={automationHint}>
+            <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm font-medium text-ocean-800">
                 <input
                   type="checkbox"
@@ -487,11 +494,11 @@ export default function AdminBlogAutomationPage() {
                 />
               </label>
             </div>
-            <div className="mt-5">
+            <div className="mt-3">
               <p className="text-sm font-medium text-ocean-800">
                 Publish times (IST) — one per post
               </p>
-              <ul className="mt-3 flex flex-wrap gap-2.5">
+              <ul className="mt-2 flex flex-wrap gap-2.5">
                 {settings.publishSlotsIst.map((slot, i) => (
                   <li key={`${i}-${settings.postsPerDay}`}>
                     <label className="block text-xs text-ocean-600">
@@ -508,7 +515,7 @@ export default function AdminBlogAutomationPage() {
                 ))}
               </ul>
             </div>
-            <p className="mt-3 text-xs text-ocean-500">
+            <p className="mt-2 text-xs text-ocean-500">
               Set{" "}
               <code className="rounded bg-sand px-1">CRON_SECRET</code>,{" "}
               <code className="rounded bg-sand px-1">OPENAI_API_KEY</code>,{" "}
@@ -543,12 +550,12 @@ export default function AdminBlogAutomationPage() {
                 {settings.lastRunError ? ` (${settings.lastRunError})` : ""}
               </p>
             )}
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 disabled={busy === "generate"}
                 onClick={() => void generateNow({ title: titleInput.trim() || undefined })}
-                className="rounded-full bg-ocean-gradient px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-full bg-ocean-gradient px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy === "generate" ? "Working…" : "Generate 1 post now"}
               </button>
@@ -556,7 +563,7 @@ export default function AdminBlogAutomationPage() {
                 type="button"
                 disabled={busy === "prepare"}
                 onClick={() => void prepareScheduledToday()}
-                className="rounded-full border border-sky-300 bg-sky-50 px-5 py-2 text-sm font-semibold text-sky-900 disabled:opacity-50"
+                className="rounded-full border border-sky-300 bg-sky-50 px-4 py-1.5 text-sm font-semibold text-sky-900 disabled:opacity-50"
               >
                 {busy === "prepare"
                   ? "Preparing…"
@@ -566,7 +573,7 @@ export default function AdminBlogAutomationPage() {
                 type="button"
                 disabled={busy === "generate"}
                 onClick={() => void generateNow({ runNextSlot: true })}
-                className="rounded-full border border-ocean-300 px-5 py-2 text-sm font-semibold text-ocean-800 disabled:opacity-50"
+                className="rounded-full border border-ocean-300 px-4 py-1.5 text-sm font-semibold text-ocean-800 disabled:opacity-50"
               >
                 Run cron now (publish due)
               </button>
@@ -583,12 +590,12 @@ export default function AdminBlogAutomationPage() {
                   }
                   void generateNow({ runDaily: true });
                 }}
-                className="rounded-full border border-amber-300 bg-amber-50 px-5 py-2 text-sm font-semibold text-amber-950 disabled:opacity-50"
+                className="rounded-full border border-amber-300 bg-amber-50 px-4 py-1.5 text-sm font-semibold text-amber-950 disabled:opacity-50"
               >
                 Publish all remaining today
               </button>
             </div>
-          </section>
+          </AdminCollapseSection>
 
           <BlogDailySchedulePanel
             adminFetch={adminFetch}
@@ -607,14 +614,15 @@ export default function AdminBlogAutomationPage() {
             }}
           />
 
-          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-ocean-900">
-              Title queue (admin priority)
-            </h2>
-            <p className="mt-1 text-sm text-ocean-600">
-              Pending titles are used before auto-generated topics. One title per line for bulk add.
+          <AdminCollapseSection
+            title="Title queue (admin priority)"
+            hint={titleQueueHint}
+          >
+            <p className="text-xs text-ocean-600">
+              Pending titles are used before auto-generated topics. One title per line for
+              bulk add.
             </p>
-            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
               <label className="block text-sm text-ocean-800">
                 Single title
                 <input
@@ -637,10 +645,10 @@ export default function AdminBlogAutomationPage() {
                 </select>
               </label>
             </div>
-            <label className="mt-4 block text-sm text-ocean-800">
+            <label className="mt-3 block text-sm text-ocean-800">
               Bulk titles (one per line)
               <textarea
-                className="mt-1 min-h-[100px] w-full rounded-lg border border-ocean-200 px-3 py-2 font-mono text-sm"
+                className="mt-1 min-h-[80px] w-full rounded-lg border border-ocean-200 px-3 py-2 font-mono text-sm"
                 value={bulkTitles}
                 onChange={(e) => setBulkTitles(e.target.value)}
               />
@@ -649,17 +657,15 @@ export default function AdminBlogAutomationPage() {
               type="button"
               disabled={busy === "queue"}
               onClick={() => void addTitles()}
-              className="mt-4 rounded-full border border-ocean-300 px-5 py-2 text-sm font-semibold text-ocean-800 disabled:opacity-50"
+              className="mt-3 rounded-full border border-ocean-300 px-4 py-1.5 text-sm font-semibold text-ocean-800 disabled:opacity-50"
             >
               Add to queue
             </button>
 
             <details className="group mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-sand/20 open:border-cyan-300 open:bg-cyan-50/30">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden transition hover:bg-ocean-50/80">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 marker:hidden transition hover:bg-ocean-50/80">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-ocean-900">
-                    Pending queue titles
-                  </p>
+                  <p className="text-sm font-bold text-ocean-900">Pending queue titles</p>
                   <p className="mt-0.5 text-xs text-ocean-600">
                     {pending.length === 0
                       ? "No pending titles — auto topics will be used."
@@ -668,12 +674,12 @@ export default function AdminBlogAutomationPage() {
                 </div>
                 <span
                   aria-hidden
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-ocean-800 shadow-sm transition group-open:rotate-180 group-open:bg-cyan-100"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-base font-bold text-ocean-800 shadow-sm transition group-open:rotate-180 group-open:bg-cyan-100"
                 >
                   ⌄
                 </span>
               </summary>
-              <ul className="space-y-2 border-t border-ocean-100 px-4 py-4">
+              <ul className="space-y-2 border-t border-ocean-100 px-3 py-3">
                 {pending.length === 0 ? (
                   <li className="text-sm text-ocean-500">
                     No pending titles — auto topics will be used.
@@ -701,7 +707,7 @@ export default function AdminBlogAutomationPage() {
                 )}
               </ul>
             </details>
-          </section>
+          </AdminCollapseSection>
 
           <BlogPostsTable
             posts={posts}

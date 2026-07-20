@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 
 type GbpPublicSettings = {
   enabled: boolean;
@@ -223,16 +224,26 @@ export function GoogleBusinessSection({
 
   if (!settings) {
     return (
-      <p className="mt-4 text-sm text-ocean-600">Loading Google Business settings…</p>
+      <AdminCollapseSection
+        title="Google Business Profile"
+        hint="Loading connection status…"
+      >
+        <p className="text-sm text-ocean-600">Loading Google Business settings…</p>
+      </AdminCollapseSection>
     );
   }
 
+  const gbpHint = [
+    settings.hasRefreshToken ? "OAuth connected" : "OAuth not connected",
+    settings.locationTitle || settings.locationId
+      ? `Location: ${settings.locationTitle || settings.locationId}`
+      : "Location not selected",
+    settings.enabled ? "Auto-post on" : "Auto-post off",
+  ].join(" · ");
+
   return (
-    <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-      <h2 className="font-display text-lg font-bold text-ocean-900">
-        Google Business Profile
-      </h2>
-      <p className="mt-2 text-sm text-ocean-700">
+    <AdminCollapseSection title="Google Business Profile" hint={gbpHint}>
+      <p className="text-sm text-ocean-700">
         When a blog is auto-published, also create an <strong>Update</strong> post on your
         scuba diving Google Business Profile (title, excerpt, photo, link to the blog).
       </p>
@@ -446,6 +457,6 @@ export function GoogleBusinessSection({
           </ul>
         </div>
       ) : null}
-    </section>
+    </AdminCollapseSection>
   );
 }
