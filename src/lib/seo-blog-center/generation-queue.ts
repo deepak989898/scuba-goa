@@ -1,4 +1,5 @@
 import { getAdminDb } from "@/lib/firebase-admin";
+import { stripUndefinedDeep } from "@/lib/firestore-json";
 import {
   generateSeoBlogDraft,
   seoBlogDraftToFirestorePost,
@@ -79,7 +80,7 @@ export async function claimNextGenerationJob(): Promise<AiBlogGenerationJob | nu
         startedAt: data.startedAt || new Date().toISOString(),
         attempts: (data.attempts || 0) + 1,
       };
-      tx.set(ref, locked, { merge: true });
+      tx.set(ref, stripUndefinedDeep(locked), { merge: true });
     });
     return getGenerationJobById(target.id);
   } catch {

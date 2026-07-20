@@ -99,10 +99,10 @@ export interface SeoBlogKeyword {
   language?: "en" | "hi" | "both";
   status: KeywordStatus;
   source: KeywordSource;
-  gscClicks?: number;
-  gscImpressions?: number;
-  gscCtr?: number;
-  gscPosition?: number;
+  gscClicks?: number | null;
+  gscImpressions?: number | null;
+  gscCtr?: number | null;
+  gscPosition?: number | null;
   researchJobId?: string;
   createdAt: string;
   updatedAt?: string;

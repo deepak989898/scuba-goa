@@ -75,4 +75,8 @@ assert.match(page, /Approve selected/);
 const cronDoc = readFileSync(join(root, "docs/EXTERNAL-CRON-JOBS.md"), "utf8");
 assert.match(cronDoc, /ai-blog-generation/);
 
+const store = readFileSync(join(root, "src/lib/seo-blog-center/store.ts"), "utf8");
+assert.match(store, /stripUndefinedDeep\(kw\)/);
+assert.match(store, /stripUndefinedDeep\(cluster\)/);
+
 console.log("OK — AI Blog Automation checks passed");

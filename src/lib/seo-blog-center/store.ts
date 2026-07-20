@@ -1,4 +1,5 @@
 import { getAdminDb } from "@/lib/firebase-admin";
+import { stripUndefinedDeep } from "@/lib/firestore-json";
 import {
   DEFAULT_SEO_BLOG_SETTINGS,
   type AiBlogGenerationJob,
@@ -44,7 +45,10 @@ export async function updateSeoBlogSettings(
     id: "global" as const,
     updatedAt: new Date().toISOString(),
   };
-  await db.collection(COL.settings).doc("settings").set(next, { merge: true });
+  await db
+    .collection(COL.settings)
+    .doc("settings")
+    .set(stripUndefinedDeep(next), { merge: true });
   return next;
 }
 
@@ -96,7 +100,7 @@ export async function addSeoBlogLog(
     ...input,
     createdAt: new Date().toISOString(),
   };
-  await db.collection(COL.logs).doc(log.id).set(log);
+  await db.collection(COL.logs).doc(log.id).set(stripUndefinedDeep(log));
 }
 
 export async function listKeywords(
@@ -196,31 +200,46 @@ export async function listGenerationJobs(
 export async function saveKeyword(kw: SeoBlogKeyword): Promise<void> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
-  await db.collection(COL.keywords).doc(kw.id).set(kw, { merge: true });
+  await db
+    .collection(COL.keywords)
+    .doc(kw.id)
+    .set(stripUndefinedDeep(kw), { merge: true });
 }
 
 export async function saveMeta(meta: SeoBlogMeta): Promise<void> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
-  await db.collection(COL.meta).doc(meta.id).set(meta, { merge: true });
+  await db
+    .collection(COL.meta)
+    .doc(meta.id)
+    .set(stripUndefinedDeep(meta), { merge: true });
 }
 
 export async function saveDraft(draft: SeoBlogDraft): Promise<void> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
-  await db.collection(COL.drafts).doc(draft.id).set(draft, { merge: true });
+  await db
+    .collection(COL.drafts)
+    .doc(draft.id)
+    .set(stripUndefinedDeep(draft), { merge: true });
 }
 
 export async function saveCluster(cluster: SeoKeywordCluster): Promise<void> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
-  await db.collection(COL.clusters).doc(cluster.id).set(cluster, { merge: true });
+  await db
+    .collection(COL.clusters)
+    .doc(cluster.id)
+    .set(stripUndefinedDeep(cluster), { merge: true });
 }
 
 export async function saveGenerationJob(job: AiBlogGenerationJob): Promise<void> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
-  await db.collection(COL.jobs).doc(job.id).set(job, { merge: true });
+  await db
+    .collection(COL.jobs)
+    .doc(job.id)
+    .set(stripUndefinedDeep(job), { merge: true });
 }
 
 export async function getKeywordById(id: string): Promise<SeoBlogKeyword | null> {

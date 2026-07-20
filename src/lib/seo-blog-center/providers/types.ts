@@ -12,10 +12,10 @@ export type RawKeywordIdea = {
   competitionIndex?: number | null;
   cpcLow?: number | null;
   cpcHigh?: number | null;
-  gscClicks?: number;
-  gscImpressions?: number;
-  gscCtr?: number;
-  gscPosition?: number;
+  gscClicks?: number | null;
+  gscImpressions?: number | null;
+  gscCtr?: number | null;
+  gscPosition?: number | null;
   serviceSlug?: string;
 };
 
