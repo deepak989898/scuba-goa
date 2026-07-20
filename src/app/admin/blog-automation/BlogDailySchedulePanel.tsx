@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import type { BlogDayOverride } from "@/lib/blog-automation/daily-schedule";
 import { normalizePublishSlotsIst } from "@/lib/blog-automation/schedule-utils";
@@ -133,16 +134,25 @@ export function BlogDailySchedulePanel({
     return [...s].sort();
   }, [settings]);
 
+  const scheduleHint = useMemo(() => {
+    if (loading) return "Loading calendar…";
+    if (rows.length === 0) return "No schedule loaded";
+    const last = rows[rows.length - 1];
+    const totalPosts = rows.reduce((sum, r) => sum + r.postsPerDay, 0);
+    return `${rows.length} days · ${rows[0].date} → ${last.date} · ${totalPosts} posts planned`;
+  }, [loading, rows]);
+
   if (loading) {
-    return <p className="mt-4 text-sm text-ocean-600">Loading 30-day calendar…</p>;
+    return (
+      <AdminCollapseSection title="30-day schedule (IST)" hint={scheduleHint}>
+        <p className="text-sm text-ocean-600">Loading 30-day calendar…</p>
+      </AdminCollapseSection>
+    );
   }
 
   return (
-    <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-      <h2 className="font-display text-lg font-bold text-ocean-900">
-        30-day schedule (IST)
-      </h2>
-      <p className="mt-2 text-sm text-ocean-700">
+    <AdminCollapseSection title="30-day schedule (IST)" hint={scheduleHint}>
+      <p className="text-sm text-ocean-700">
         Set <strong>posts per day</strong> (1–5) and <strong>publish times</strong> for each
         calendar date. Days you do not customize use the global defaults above. Cron uses
         this calendar when preparing scheduled drafts.
@@ -275,6 +285,6 @@ export function BlogDailySchedulePanel({
           </tbody>
         </table>
       </div>
-    </section>
+    </AdminCollapseSection>
   );
 }
