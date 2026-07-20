@@ -45,9 +45,9 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         badge: "action",
       },
       {
-        href: "/admin/seo-blog-center",
-        label: "SEO Blog Center",
-        description: "GSC keywords → approve → publish blogs",
+        href: "/admin/ai-blog-automation",
+        label: "AI Blog Automation",
+        description: "Keyword research → clusters → generate → review",
         highlight: true,
         badge: "action",
       },

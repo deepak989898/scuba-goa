@@ -1,11 +1,13 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
   DEFAULT_SEO_BLOG_SETTINGS,
+  type AiBlogGenerationJob,
   type SeoBlogCenterLog,
   type SeoBlogCenterSettings,
   type SeoBlogDraft,
   type SeoBlogKeyword,
   type SeoBlogMeta,
+  type SeoKeywordCluster,
 } from "@/lib/seo-blog-center/types";
 
 const COL = {
@@ -14,7 +16,13 @@ const COL = {
   drafts: "seoBlogDrafts",
   settings: "seoBlogCenter",
   logs: "seoBlogCenterLogs",
+  clusters: "seoBlogClusters",
+  jobs: "seoBlogGenerationJobs",
 } as const;
+
+function todayIst(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
 
 export async function getSeoBlogSettings(): Promise<SeoBlogCenterSettings> {
   const db = getAdminDb();
@@ -38,6 +46,44 @@ export async function updateSeoBlogSettings(
   };
   await db.collection(COL.settings).doc("settings").set(next, { merge: true });
   return next;
+}
+
+/** Reset daily counters when the IST date rolls over. */
+export async function bumpDailyCounter(
+  field: "researchCalls" | "blogsGenerated" | "imagesGenerated" | "blogsPublished",
+  by = 1,
+): Promise<SeoBlogCenterSettings> {
+  const settings = await getSeoBlogSettings();
+  const day = todayIst();
+  const map = {
+    researchCalls: {
+      count: "researchCallsToday",
+      date: "researchCallsDate",
+    },
+    blogsGenerated: {
+      count: "blogsGeneratedToday",
+      date: "blogsGeneratedDate",
+    },
+    imagesGenerated: {
+      count: "imagesGeneratedToday",
+      date: "imagesGeneratedDate",
+    },
+    blogsPublished: {
+      count: "blogsPublishedToday",
+      date: "blogsPublishedDate",
+    },
+  } as const;
+  const keys = map[field];
+  const prevDate = settings[keys.date as keyof SeoBlogCenterSettings] as
+    | string
+    | undefined;
+  const prevCount =
+    (settings[keys.count as keyof SeoBlogCenterSettings] as number | undefined) ?? 0;
+  const nextCount = prevDate === day ? prevCount + by : by;
+  return updateSeoBlogSettings({
+    [keys.count]: nextCount,
+    [keys.date]: day,
+  } as Partial<SeoBlogCenterSettings>);
 }
 
 export async function addSeoBlogLog(
@@ -123,6 +169,30 @@ export async function listLogs(limit = 50): Promise<SeoBlogCenterLog[]> {
   }
 }
 
+export async function listClusters(limit = 100): Promise<SeoKeywordCluster[]> {
+  const db = getAdminDb();
+  if (!db) return [];
+  const snap = await db.collection(COL.clusters).limit(Math.min(300, limit * 2)).get();
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as SeoKeywordCluster)
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+    .slice(0, limit);
+}
+
+export async function listGenerationJobs(
+  status?: AiBlogGenerationJob["status"],
+  limit = 100,
+): Promise<AiBlogGenerationJob[]> {
+  const db = getAdminDb();
+  if (!db) return [];
+  const snap = await db.collection(COL.jobs).limit(Math.min(300, limit * 2)).get();
+  let all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AiBlogGenerationJob);
+  if (status) all = all.filter((j) => j.status === status);
+  return all
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+    .slice(0, limit);
+}
+
 export async function saveKeyword(kw: SeoBlogKeyword): Promise<void> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
@@ -141,6 +211,18 @@ export async function saveDraft(draft: SeoBlogDraft): Promise<void> {
   await db.collection(COL.drafts).doc(draft.id).set(draft, { merge: true });
 }
 
+export async function saveCluster(cluster: SeoKeywordCluster): Promise<void> {
+  const db = getAdminDb();
+  if (!db) throw new Error("Firebase Admin not configured");
+  await db.collection(COL.clusters).doc(cluster.id).set(cluster, { merge: true });
+}
+
+export async function saveGenerationJob(job: AiBlogGenerationJob): Promise<void> {
+  const db = getAdminDb();
+  if (!db) throw new Error("Firebase Admin not configured");
+  await db.collection(COL.jobs).doc(job.id).set(job, { merge: true });
+}
+
 export async function getKeywordById(id: string): Promise<SeoBlogKeyword | null> {
   const db = getAdminDb();
   if (!db) return null;
@@ -155,6 +237,24 @@ export async function getDraftById(id: string): Promise<SeoBlogDraft | null> {
   const snap = await db.collection(COL.drafts).doc(id).get();
   if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() } as SeoBlogDraft;
+}
+
+export async function getClusterById(id: string): Promise<SeoKeywordCluster | null> {
+  const db = getAdminDb();
+  if (!db) return null;
+  const snap = await db.collection(COL.clusters).doc(id).get();
+  if (!snap.exists) return null;
+  return { id: snap.id, ...snap.data() } as SeoKeywordCluster;
+}
+
+export async function getGenerationJobById(
+  id: string,
+): Promise<AiBlogGenerationJob | null> {
+  const db = getAdminDb();
+  if (!db) return null;
+  const snap = await db.collection(COL.jobs).doc(id).get();
+  if (!snap.exists) return null;
+  return { id: snap.id, ...snap.data() } as AiBlogGenerationJob;
 }
 
 export async function getMetaForKeyword(keywordId: string): Promise<SeoBlogMeta | null> {
