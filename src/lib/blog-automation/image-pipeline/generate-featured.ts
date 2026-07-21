@@ -102,8 +102,19 @@ export async function generateFeaturedImageForArticle(
         registry,
       });
 
-      if (dup.isDuplicate || dup.uniquenessScore < minUniqueness) {
-        lastError = dup.reason || `uniqueness_${dup.uniquenessScore}`;
+      // Hard reject only exact / near-exact duplicates.
+      // Soft "theme similarity" must NOT discard a paid OpenAI image.
+      const hardDup = dup.isDuplicate;
+      if (hardDup && attempt < maxRetries) {
+        lastError =
+          dup.reason ||
+          `Image too similar to an existing blog photo (${dup.matchedArticleId || "another post"}). Retrying with a different composition…`;
+        continue;
+      }
+      if (hardDup && attempt >= maxRetries) {
+        lastError =
+          dup.reason ||
+          `Image still too similar to an existing blog after ${maxRetries} tries. OpenAI was billed for each attempt. Try again or upload manually.`;
         continue;
       }
 
@@ -112,7 +123,8 @@ export async function generateFeaturedImageForArticle(
         brandingEnabled,
       });
 
-      const uniquenessScore = Math.max(dup.uniquenessScore, minUniqueness);
+      const uniquenessScore = dup.uniquenessScore;
+      const softLow = uniquenessScore < minUniqueness;
       const overall = Math.round(
         briefValidation.relevanceScore * 0.5 +
           briefValidation.qualityScore * 0.2 +
@@ -154,9 +166,10 @@ export async function generateFeaturedImageForArticle(
         overallImageScore: overall,
         validationNotes: [
           ...briefValidation.validationNotes,
-          ...(dup.reason ? [`dedupe_near:${dup.reason}`] : []),
+          ...(dup.reason ? [`dedupe:${dup.reason}`] : []),
+          softLow ? "accepted_soft_uniqueness_below_ideal_threshold" : "",
           `attempt_${attempt}`,
-        ],
+        ].filter(Boolean),
         imageStatus: status,
         brandingApplied: uploaded.brandingApplied,
         articleId: input.articleId,

@@ -90,7 +90,14 @@ export async function POST(req: Request) {
 
     if (!result.meta) {
       return NextResponse.json(
-        { error: result.error || "Image generation failed" },
+        {
+          error:
+            result.error ||
+            "Image generation failed after uniqueness checks. Each OpenAI attempt is billed even if the image was rejected.",
+          attempts: result.attempts,
+          costNote:
+            "OpenAI image API charges per successful generation call. Failed uniqueness retries still cost money.",
+        },
         { status: 500 },
       );
     }

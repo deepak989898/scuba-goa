@@ -126,14 +126,10 @@ export function checkImageDuplicate(input: {
         };
       }
     }
-    if (r.promptHash && r.promptHash === input.promptHash) {
-      return {
-        isDuplicate: true,
-        uniquenessScore: 20,
-        reason: "identical_prompt_hash",
-        matchedArticleId: r.articleId,
-        matchedUrl: r.imageUrl,
-      };
+      if (r.promptHash && r.promptHash === input.promptHash) {
+      // Same prompt text as another article — soft retry signal, not hard duplicate
+      if (bestSim < 80) bestSim = 80;
+      best = r;
     }
   }
 
@@ -142,20 +138,31 @@ export function checkImageDuplicate(input: {
       r.visualCategory === input.visualCategory &&
       r.compositionSignature === input.compositionSignature,
   );
-  if (sameComp.length >= (input.compositionReuseLimit ?? 1)) {
-    return {
-      isDuplicate: true,
-      uniquenessScore: 35,
-      reason: "composition_signature_reuse",
-      matchedArticleId: sameComp[0]?.articleId,
-      matchedUrl: sameComp[0]?.imageUrl,
-    };
+  // Soft signal only — do not hard-fail on shared composition labels
+  const compositionReuse = sameComp.length >= (input.compositionReuseLimit ?? 1);
+
+  // Soft uniqueness: thematic AI photos often share 40–70% aHash similarity.
+  // Only near-duplicates (≥85% similar) should tank the score.
+  let uniquenessScore: number;
+  if (others.length === 0 || bestSim < 50) {
+    uniquenessScore = 100;
+  } else if (bestSim < 85) {
+    uniquenessScore = Math.max(70, 100 - Math.round((bestSim - 50) * 0.6));
+  } else {
+    uniquenessScore = Math.max(0, 100 - bestSim);
+  }
+  if (compositionReuse) {
+    uniquenessScore = Math.min(uniquenessScore, 78);
   }
 
-  const uniquenessScore = Math.max(0, 100 - bestSim);
   return {
     isDuplicate: false,
-    uniquenessScore: uniquenessScore === 100 && others.length === 0 ? 100 : uniquenessScore,
+    uniquenessScore,
+    reason: compositionReuse
+      ? "composition_signature_reuse_soft"
+      : bestSim >= 70
+        ? `near_theme_similarity_${bestSim}`
+        : undefined,
     matchedArticleId: best?.articleId,
     matchedUrl: best?.imageUrl,
   };
