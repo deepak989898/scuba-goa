@@ -1,11 +1,6 @@
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
-import {
-  brandAndUploadBlogImageBuffer,
-  downloadCompressUploadBlogImage,
-} from "@/lib/blog-automation/images";
-import { generateBlogImageBufferFromTitle } from "@/lib/blog-automation/openai-image";
-import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
+import { generateFeaturedImageForArticle } from "@/lib/blog-automation/image-pipeline";
 import { blogSlugBlocksNewPost } from "@/lib/blog-posts-server";
 import { getPostBySlug } from "@/data/blog-posts";
 import {
@@ -16,8 +11,9 @@ import {
 import { getServiceBySlugServer } from "@/lib/get-services-server";
 import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
 import type { SeoBlogDraft, SeoBlogKeyword, SeoBlogMeta } from "@/lib/seo-blog-center/types";
-import { generateImageAltText, generateSeoMetaForKeyword } from "@/lib/seo-blog-center/seo-meta";
+import { generateSeoMetaForKeyword } from "@/lib/seo-blog-center/seo-meta";
 import { inferServiceSlug } from "@/lib/seo-blog-center/utils";
+import { getSeoBlogSettings } from "@/lib/seo-blog-center/store";
 
 function estimateReadTime(content: string): string {
   const words = content.split(/\s+/).filter(Boolean).length;
@@ -89,40 +85,60 @@ export async function generateSeoBlogDraft(input: {
 
   let featuredImageUrl = "";
   let ogImageUrl = "";
-  let pexelsAlt = "";
+  let featuredImageAlt = "";
+  let imageMeta: SeoBlogDraft["imageMeta"] | undefined;
 
-  try {
-    const aiBuf = await generateBlogImageBufferFromTitle(draft.title);
-    const uploaded = await brandAndUploadBlogImageBuffer(aiBuf, slug);
-    featuredImageUrl = uploaded.featuredImageUrl;
-    ogImageUrl = uploaded.ogImageUrl;
-  } catch (e) {
-    console.warn(
-      "[seo-blog-center] OpenAI image failed, trying Pexels:",
-      e instanceof Error ? e.message : e,
-    );
-    const pexels = await searchPexelsPhotoForPost({
+  const settings = await getSeoBlogSettings();
+  if (settings.generateImages !== false) {
+    const articleId = `sbc_${slug}`;
+    const img = await generateFeaturedImageForArticle({
+      articleId,
+      slug,
       title: draft.title,
+      primaryKeyword: input.keyword.keyword,
       serviceSlug,
       serviceName,
+      contentExcerpt: content.slice(0, 600),
+      brandingEnabled: true,
+      allowPexelsFallback: true,
+      maxRetries: 3,
+      minRelevanceScore: 90,
+      minUniquenessScore: 85,
+      minOverallScore: 88,
     });
-    if (pexels) {
-      pexelsAlt = pexels.alt?.trim() || "";
-      try {
-        const uploaded = await downloadCompressUploadBlogImage({
-          imageUrl: pexels.url,
-          slug,
-        });
-        featuredImageUrl = uploaded.featuredImageUrl;
-        ogImageUrl = uploaded.ogImageUrl;
-      } catch {
-        /* optional image */
-      }
+    if (img.meta) {
+      featuredImageUrl = img.meta.imageUrl;
+      ogImageUrl = img.meta.ogImageUrl;
+      featuredImageAlt = img.meta.imageAlt;
+      imageMeta = {
+        visualCategory: img.meta.visualCategory,
+        compositionSignature: img.meta.compositionSignature,
+        generatedPrompt: img.meta.generatedPrompt,
+        generationModel: img.meta.generationModel,
+        sha256: img.meta.sha256,
+        perceptualHash: img.meta.perceptualHash,
+        differenceHash: img.meta.differenceHash,
+        promptHash: img.meta.promptHash,
+        relevanceScore: img.meta.relevanceScore,
+        uniquenessScore: img.meta.uniquenessScore,
+        qualityScore: img.meta.qualityScore,
+        safetyScore: img.meta.safetyScore,
+        overallImageScore: img.meta.overallImageScore,
+        validationNotes: img.meta.validationNotes,
+        imageStatus: img.meta.imageStatus,
+        imageTitle: img.meta.imageTitle,
+        imageCaption: img.meta.imageCaption,
+        width: img.meta.width,
+        height: img.meta.height,
+        mimeType: img.meta.mimeType,
+        fileSize: img.meta.fileSize,
+        source: img.meta.source,
+        brandingApplied: img.meta.brandingApplied,
+      };
+    } else if (img.error) {
+      console.warn("[seo-blog-center] Image pipeline failed:", img.error);
     }
   }
-
-  const featuredImageAlt =
-    pexelsAlt || generateImageAltText(input.keyword.keyword, draft.title);
 
   const now = new Date().toISOString();
   const schemaMarkup = {
@@ -163,6 +179,7 @@ export async function generateSeoBlogDraft(input: {
     language: "en",
     status: "draft",
     source: "seo-blog-center",
+    imageMeta,
     createdAt: now,
   };
 }
@@ -195,5 +212,6 @@ export function seoBlogDraftToFirestorePost(
     pillar: false,
     createdAt: draft.createdAt,
     publishedAt: published ? now : undefined,
+    imageMeta: draft.imageMeta,
   };
 }

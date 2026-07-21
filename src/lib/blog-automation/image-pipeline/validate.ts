@@ -1,0 +1,162 @@
+import type { ImageBrief, VisualCategory } from "./types";
+
+export type RelevanceValidation = {
+  relevanceScore: number;
+  qualityScore: number;
+  safetyScore: number;
+  overallImageScore: number;
+  validationNotes: string[];
+  passed: boolean;
+};
+
+const SCUBA_MARKERS = [
+  "scuba",
+  "diver",
+  "underwater",
+  "coral",
+  "regulator",
+  "bcd",
+  "fins",
+  "oxygen tank",
+];
+
+/**
+ * Heuristic relevance gate (prompt/brief based).
+ * Vision API optional later — this blocks wrong-topic prompts before/after gen.
+ */
+export function validateImageBriefRelevance(
+  brief: ImageBrief,
+  opts?: {
+    minRelevance?: number;
+    minOverall?: number;
+  },
+): RelevanceValidation {
+  const notes: string[] = [];
+  let relevance = 82;
+  let quality = 88;
+  let safety = 92;
+
+  const title = brief.articleTitle.toLowerCase();
+  const promptBlob = [
+    brief.scene,
+    brief.mainSubject,
+    brief.activity,
+    brief.visualCategory,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  // Category coherence with title
+  const nightlifeTitle = /night.?club|nightlife|disco|party night/.test(title);
+  const waterSportsTitle = /water.?sport|parasail|jet.?ski|banana/.test(title);
+  const scubaTitle = /scuba|diving|underwater/.test(title);
+  const safetyTitle = /safety|beginner tip|buddy/.test(title);
+
+  if (nightlifeTitle) {
+    if (brief.visualCategory === "nightlife" || brief.visualCategory === "night_club") {
+      relevance += 15;
+    } else {
+      relevance -= 45;
+      notes.push("Nightlife title mapped to non-nightlife visual category");
+    }
+    if (SCUBA_MARKERS.some((m) => promptBlob.includes(m))) {
+      relevance -= 50;
+      notes.push("Scuba markers present in nightlife image brief");
+    }
+  } else if (waterSportsTitle && !scubaTitle) {
+    if (
+      ["water_sports", "parasailing", "jet_ski", "flyboarding"].includes(
+        brief.visualCategory,
+      )
+    ) {
+      relevance += 15;
+    } else if (brief.visualCategory.startsWith("scuba_")) {
+      relevance -= 45;
+      notes.push("Water-sports title incorrectly classified as scuba");
+    }
+  } else if (scubaTitle && safetyTitle) {
+    if (brief.visualCategory === "scuba_safety" || brief.visualCategory === "scuba_beginner") {
+      relevance += 15;
+    } else if (
+      brief.visualCategory === "scuba_diving" &&
+      /coral|reef|exploring/.test(promptBlob) &&
+      !/instructor|mask|regulator|buddy|briefing/.test(promptBlob)
+    ) {
+      relevance -= 20;
+      notes.push("Safety article still using generic reef exploration scene");
+    } else if (brief.visualCategory.startsWith("scuba_")) {
+      relevance += 8;
+    }
+  } else if (scubaTitle && brief.visualCategory.startsWith("scuba_")) {
+    relevance += 12;
+  } else if (
+    brief.visualCategory === "general_travel" ||
+    brief.visualCategory === "beach_guide" ||
+    brief.visualCategory === "north_goa" ||
+    brief.visualCategory === "south_goa" ||
+    brief.visualCategory === "island_guide" ||
+    brief.visualCategory === "family" ||
+    brief.visualCategory === "couples" ||
+    brief.visualCategory === "dudhsagar" ||
+    brief.visualCategory === "booking_guide" ||
+    brief.visualCategory === "dinner_cruise" ||
+    brief.visualCategory === "yacht" ||
+    brief.visualCategory === "bungee"
+  ) {
+    relevance += 10;
+  }
+
+  if (!brief.mustAvoid.length) {
+    quality -= 5;
+    notes.push("Missing mustAvoid exclusions");
+  }
+  if (!brief.uniquenessSignature) {
+    quality -= 10;
+    notes.push("Missing uniqueness signature");
+  }
+  if (brief.mustAvoid.some((x) => /unsafe|panic|emergency|children/.test(x.toLowerCase()))) {
+    safety += 5;
+  }
+
+  relevance = Math.max(0, Math.min(100, relevance));
+  quality = Math.max(0, Math.min(100, quality));
+  safety = Math.max(0, Math.min(100, safety));
+
+  const overall = Math.round(relevance * 0.5 + quality * 0.25 + safety * 0.25);
+  const minRel = opts?.minRelevance ?? 90;
+  const minOverall = opts?.minOverall ?? 88;
+  const passed = relevance >= minRel && overall >= minOverall;
+
+  if (!passed) {
+    notes.push(
+      `Scores below threshold (relevance ${relevance}/${minRel}, overall ${overall}/${minOverall})`,
+    );
+  }
+
+  return {
+    relevanceScore: relevance,
+    qualityScore: quality,
+    safetyScore: safety,
+    overallImageScore: overall,
+    validationNotes: notes,
+    passed,
+  };
+}
+
+export function categorySuggestsWrongTopic(
+  visualCategory: VisualCategory,
+  title: string,
+): boolean {
+  const t = title.toLowerCase();
+  if (/nightlife|night.?club|disco/.test(t) && visualCategory.startsWith("scuba_")) {
+    return true;
+  }
+  if (
+    /water.?sport|parasail|jet.?ski/.test(t) &&
+    !/scuba|diving/.test(t) &&
+    visualCategory.startsWith("scuba_")
+  ) {
+    return true;
+  }
+  return false;
+}

@@ -223,6 +223,32 @@ export interface SeoBlogDraft {
   featuredImageUrl: string;
   featuredImageAlt: string;
   ogImageUrl: string;
+  /** Topic-aware image generation metadata (hashes, scores, prompt). */
+  imageMeta?: {
+    visualCategory?: string;
+    compositionSignature?: string;
+    generatedPrompt?: string;
+    generationModel?: string;
+    sha256?: string;
+    perceptualHash?: string;
+    differenceHash?: string;
+    promptHash?: string;
+    relevanceScore?: number;
+    uniquenessScore?: number;
+    qualityScore?: number;
+    safetyScore?: number;
+    overallImageScore?: number;
+    validationNotes?: string[];
+    imageStatus?: "approved" | "needs_manual_review" | "rejected" | "generated";
+    imageTitle?: string;
+    imageCaption?: string;
+    width?: number;
+    height?: number;
+    mimeType?: string;
+    fileSize?: number;
+    source?: string;
+    brandingApplied?: boolean;
+  };
   schemaMarkup: Record<string, unknown>;
   serviceSlug: string;
   language: "en" | "hi" | "hinglish";

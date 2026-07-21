@@ -181,8 +181,17 @@ export async function processGenerationJob(
     if (draft.featuredImageUrl) await bumpDailyCounter("imagesGenerated");
 
     let finalStatus: AiBlogGenerationJob["status"] = "draft-ready";
+    const imageBlocksPublish =
+      draft.imageMeta?.imageStatus === "needs_manual_review" ||
+      draft.imageMeta?.imageStatus === "rejected" ||
+      (draft.imageMeta != null &&
+        ((draft.imageMeta.relevanceScore ?? 100) < 90 ||
+          (draft.imageMeta.uniquenessScore ?? 100) < 85 ||
+          (draft.imageMeta.overallImageScore ?? 100) < 88));
+
     if (
       settings.autoPublish &&
+      !imageBlocksPublish &&
       quality.score >= settings.minAutoPublishQualityScore &&
       (settings.blogsPublishedDate !== day ||
         (settings.blogsPublishedToday ?? 0) < settings.maxBlogsPublishedPerDay)

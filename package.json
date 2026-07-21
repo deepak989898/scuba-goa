@@ -12,6 +12,7 @@
     "test:analytics": "node scripts/test-analytics-attribution.mjs",
     "test:blog-seo": "node scripts/test-blog-seo-mvp.mjs",
     "test:ai-blog": "node scripts/test-ai-blog-automation.mjs",
+    "test:blog-images": "node scripts/test-blog-image-pipeline.mjs",
     "optimize:images": "node scripts/optimize-images.mjs --legacy-brand",
     "images:audit": "node scripts/optimize-images.mjs --audit",
     "images:optimize": "node scripts/optimize-images.mjs",

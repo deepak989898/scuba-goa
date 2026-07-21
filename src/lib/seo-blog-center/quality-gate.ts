@@ -23,7 +23,9 @@ export async function validateDraftQuality(
     | "faqs"
     | "featuredImageUrl"
     | "featuredImageAlt"
+    | "imageMeta"
   >,
+  options?: { requireImageForPublish?: boolean },
 ): Promise<QualityResult> {
   const notes: string[] = [];
   const blocking: string[] = [];
@@ -73,10 +75,35 @@ export async function validateDraftQuality(
   if (!draft.featuredImageUrl?.trim()) {
     notes.push("Missing featured image");
     score -= 10;
+    if (options?.requireImageForPublish) {
+      blocking.push("Featured image required before publish");
+    }
   }
   if (draft.featuredImageUrl && !draft.featuredImageAlt?.trim()) {
     notes.push("Missing image alt text");
     score -= 5;
+    if (options?.requireImageForPublish) {
+      blocking.push("Image alt text required before publish");
+    }
+  }
+  const img = draft.imageMeta;
+  if (img?.imageStatus === "needs_manual_review" || img?.imageStatus === "rejected") {
+    blocking.push(
+      `Image status ${img.imageStatus}: ${(img.validationNotes || []).join("; ") || "manual review required"}`,
+    );
+    score -= 15;
+  }
+  if (img && (img.relevanceScore ?? 100) < 90) {
+    blocking.push(`Image relevance score too low (${img.relevanceScore})`);
+    score -= 12;
+  }
+  if (img && (img.uniquenessScore ?? 100) < 85) {
+    blocking.push(`Image uniqueness score too low (${img.uniquenessScore})`);
+    score -= 12;
+  }
+  if (img && (img.overallImageScore ?? 100) < 88) {
+    notes.push(`Overall image score ${img.overallImageScore} below 88`);
+    score -= 8;
   }
 
   score = Math.max(0, Math.min(100, score));

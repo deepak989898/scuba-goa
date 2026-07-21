@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
-import { brandAndUploadBlogImageBuffer } from "@/lib/blog-automation/images";
-import { generateBlogImageBufferFromTitle } from "@/lib/blog-automation/openai-image";
+import { generateFeaturedImageForArticle } from "@/lib/blog-automation/image-pipeline";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { stripUndefinedDeep } from "@/lib/firestore-json";
 import {
   isValidBlogSlug,
   normalizeBlogSlugInput,
@@ -15,8 +15,8 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 /**
- * Generate a featured image with OpenAI from the blog title, compress to WebP
- * with brand bar, save to Storage, and update the blog post document.
+ * Generate a topic-specific featured image (classify → brief → OpenAI →
+ * dedupe → unique Storage path) and update the blog post.
  */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -24,9 +24,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  let body: { slug?: string; title?: string } = {};
+  let body: {
+    slug?: string;
+    title?: string;
+    brandingEnabled?: boolean;
+    allowPexelsFallback?: boolean;
+  } = {};
   try {
-    body = (await req.json()) as { slug?: string; title?: string };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -61,36 +66,81 @@ export async function POST(req: Request) {
     );
   }
 
+  const previousUrl = String(existing.featuredImageUrl ?? "").trim();
+  const previousMeta =
+    existing.imageMeta && typeof existing.imageMeta === "object"
+      ? (existing.imageMeta as Record<string, unknown>)
+      : null;
+
   try {
-    const raw = await generateBlogImageBufferFromTitle(title);
-    const urls = await brandAndUploadBlogImageBuffer(raw, slug);
+    const result = await generateFeaturedImageForArticle({
+      articleId: slug,
+      slug,
+      title,
+      primaryKeyword: Array.isArray(existing.keywords)
+        ? String(existing.keywords[0] || title)
+        : title,
+      serviceSlug: String(existing.serviceSlug ?? ""),
+      serviceName: String(existing.serviceSlug ?? "").replace(/-/g, " "),
+      contentExcerpt: String(existing.content ?? "").slice(0, 600),
+      brandingEnabled: body.brandingEnabled !== false,
+      allowPexelsFallback: body.allowPexelsFallback === true,
+      maxRetries: 3,
+    });
+
+    if (!result.meta) {
+      return NextResponse.json(
+        { error: result.error || "Image generation failed" },
+        { status: 500 },
+      );
+    }
 
     const now = new Date().toISOString();
-    const featuredImageAlt =
-      String(existing.featuredImageAlt ?? "").trim() ||
-      `${title} — Book Scuba Goa`;
+    const history = Array.isArray(previousMeta?.history)
+      ? [...(previousMeta.history as unknown[])]
+      : [];
+    if (previousUrl) {
+      history.unshift({
+        imageUrl: previousUrl,
+        sha256: previousMeta?.sha256,
+        createdAt: String(previousMeta?.createdAt || existing.updatedAt || now),
+        reason: "replaced_by_regenerate",
+      });
+    }
+
+    const imageMeta = {
+      ...result.meta,
+      history: history.slice(0, 10),
+    };
 
     await ref.set(
-      {
-        featuredImageUrl: urls.featuredImageUrl,
-        ogImageUrl: urls.ogImageUrl,
-        featuredImageAlt,
+      stripUndefinedDeep({
+        featuredImageUrl: result.meta.imageUrl,
+        ogImageUrl: result.meta.ogImageUrl,
+        featuredImageAlt: result.meta.imageAlt,
+        imageMeta,
         updatedAt: now,
-      },
+      }),
       { merge: true },
     );
 
     const post = parseBlogPostFromFirestore(
       slug,
-      { ...existing, ...urls, featuredImageAlt },
+      {
+        ...existing,
+        featuredImageUrl: result.meta.imageUrl,
+        ogImageUrl: result.meta.ogImageUrl,
+        featuredImageAlt: result.meta.imageAlt,
+        imageMeta,
+      },
       { requirePublished: false },
     );
-    if (post?.published && urls.featuredImageUrl) {
+    if (post?.published && result.meta.imageUrl) {
       try {
         await syncBlogImageToHomeGallery({
           blogSlug: slug,
           title: post.title,
-          featuredImageUrl: urls.featuredImageUrl,
+          featuredImageUrl: result.meta.imageUrl,
           serviceSlug: post.serviceSlug,
           published: true,
         });
@@ -103,9 +153,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      ...urls,
-      featuredImageAlt,
+      featuredImageUrl: result.meta.imageUrl,
+      ogImageUrl: result.meta.ogImageUrl,
+      featuredImageAlt: result.meta.imageAlt,
+      imageMeta,
       title,
+      attempts: result.attempts,
+      blockedPublish: result.blockedPublish,
+      visualCategory: result.meta.visualCategory,
+      relevanceScore: result.meta.relevanceScore,
+      uniquenessScore: result.meta.uniquenessScore,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Image generation failed";

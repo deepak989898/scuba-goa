@@ -12,12 +12,7 @@ import {
   buildOfficialPricingMarkdown,
 } from "@/lib/blog-automation/catalog-context";
 import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
-import { generateBlogImageBufferFromTitle } from "@/lib/blog-automation/openai-image";
-import { searchPexelsPhotoForPost } from "@/lib/blog-automation/pexels";
-import {
-  brandAndUploadBlogImageBuffer,
-  downloadCompressUploadBlogImage,
-} from "@/lib/blog-automation/images";
+import { generateFeaturedImageForArticle } from "@/lib/blog-automation/image-pipeline";
 import {
   buildAutoTopic,
   getNextPendingTopic,
@@ -39,12 +34,14 @@ export type GenerateBlogDraftResult =
         date: string;
         readTime: string;
         featuredImageUrl: string;
+        featuredImageAlt?: string;
         ogImageUrl: string;
         language: BlogLanguage;
         serviceSlug: string;
         source: "auto";
         pillar: false;
         createdAt: string;
+        imageMeta?: BlogPostFirestore["imageMeta"];
       };
       queueId?: string;
     }
@@ -136,31 +133,52 @@ export async function generateBlogDraftOnly(options?: {
 
   let featuredImageUrl = "";
   let ogImageUrl = "";
+  let featuredImageAlt = "";
+  let imageMeta: BlogPostFirestore["imageMeta"] | undefined;
 
-  // Prefer OpenAI image from title; fall back to Pexels stock photo.
-  try {
-    const aiBuf = await generateBlogImageBufferFromTitle(draft.title);
-    const uploaded = await brandAndUploadBlogImageBuffer(aiBuf, slug);
-    featuredImageUrl = uploaded.featuredImageUrl;
-    ogImageUrl = uploaded.ogImageUrl;
-  } catch (e) {
-    console.warn(
-      "[generate-blog-draft] OpenAI image failed, trying Pexels:",
-      e instanceof Error ? e.message : e,
-    );
-    const photo = await searchPexelsPhotoForPost({
-      title: draft.title,
-      serviceSlug,
-      serviceName,
-    });
-    if (photo?.url) {
-      const uploaded = await downloadCompressUploadBlogImage({
-        imageUrl: photo.url,
-        slug,
-      });
-      featuredImageUrl = uploaded.featuredImageUrl;
-      ogImageUrl = uploaded.ogImageUrl;
-    }
+  const img = await generateFeaturedImageForArticle({
+    articleId: slug,
+    slug,
+    title: draft.title,
+    primaryKeyword: draft.title,
+    serviceSlug,
+    serviceName,
+    contentExcerpt: content.slice(0, 600),
+    brandingEnabled: true,
+    allowPexelsFallback: true,
+    maxRetries: 3,
+  });
+  if (img.meta) {
+    featuredImageUrl = img.meta.imageUrl;
+    ogImageUrl = img.meta.ogImageUrl;
+    featuredImageAlt = img.meta.imageAlt;
+    imageMeta = {
+      visualCategory: img.meta.visualCategory,
+      compositionSignature: img.meta.compositionSignature,
+      generatedPrompt: img.meta.generatedPrompt,
+      generationModel: img.meta.generationModel,
+      sha256: img.meta.sha256,
+      perceptualHash: img.meta.perceptualHash,
+      differenceHash: img.meta.differenceHash,
+      promptHash: img.meta.promptHash,
+      relevanceScore: img.meta.relevanceScore,
+      uniquenessScore: img.meta.uniquenessScore,
+      qualityScore: img.meta.qualityScore,
+      safetyScore: img.meta.safetyScore,
+      overallImageScore: img.meta.overallImageScore,
+      validationNotes: img.meta.validationNotes,
+      imageStatus: img.meta.imageStatus,
+      imageTitle: img.meta.imageTitle,
+      imageCaption: img.meta.imageCaption,
+      width: img.meta.width,
+      height: img.meta.height,
+      mimeType: img.meta.mimeType,
+      fileSize: img.meta.fileSize,
+      source: img.meta.source,
+      brandingApplied: img.meta.brandingApplied,
+    };
+  } else if (img.error) {
+    console.warn("[generate-blog-draft] Image pipeline failed:", img.error);
   }
 
   const istDate = new Date().toLocaleDateString("en-CA", {
@@ -182,12 +200,14 @@ export async function generateBlogDraftOnly(options?: {
       date: istDate,
       readTime: draft.readTime,
       featuredImageUrl,
+      featuredImageAlt,
       ogImageUrl,
       language: lang,
       source: "auto",
       serviceSlug,
       pillar: false,
       createdAt: now,
+      imageMeta,
     },
     queueId,
   };

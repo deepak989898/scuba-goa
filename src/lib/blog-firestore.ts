@@ -23,6 +23,38 @@ export type BlogPostFirestore = {
   /** Descriptive ALT for featured image (SEO + accessibility). */
   featuredImageAlt?: string;
   ogImageUrl: string;
+  /** Topic-aware AI image metadata (optional; older posts may omit). */
+  imageMeta?: {
+    visualCategory?: string;
+    compositionSignature?: string;
+    generatedPrompt?: string;
+    generationModel?: string;
+    sha256?: string;
+    perceptualHash?: string;
+    differenceHash?: string;
+    promptHash?: string;
+    relevanceScore?: number;
+    uniquenessScore?: number;
+    qualityScore?: number;
+    safetyScore?: number;
+    overallImageScore?: number;
+    validationNotes?: string[];
+    imageStatus?: "approved" | "needs_manual_review" | "rejected" | "generated";
+    imageTitle?: string;
+    imageCaption?: string;
+    width?: number;
+    height?: number;
+    mimeType?: string;
+    fileSize?: number;
+    source?: string;
+    brandingApplied?: boolean;
+    history?: Array<{
+      imageUrl: string;
+      sha256?: string;
+      createdAt: string;
+      reason?: string;
+    }>;
+  };
   /** Optional stored JSON-LD Article/BlogPosting schema. */
   schemaMarkup?: Record<string, unknown>;
   language: BlogLanguage;
@@ -127,6 +159,10 @@ export function parseBlogPostFromFirestore(
         ? String(data.featuredImageAlt).trim()
         : undefined,
     ogImageUrl: String(data.ogImageUrl ?? data.featuredImageUrl ?? "").trim(),
+    imageMeta:
+      data.imageMeta && typeof data.imageMeta === "object"
+        ? (data.imageMeta as BlogPostFirestore["imageMeta"])
+        : undefined,
     schemaMarkup:
       data.schemaMarkup && typeof data.schemaMarkup === "object"
         ? (data.schemaMarkup as Record<string, unknown>)
@@ -174,6 +210,7 @@ export function blogPostToFirestorePayload(
     featuredImageUrl: post.featuredImageUrl,
     ...(post.featuredImageAlt ? { featuredImageAlt: post.featuredImageAlt } : {}),
     ogImageUrl: post.ogImageUrl,
+    ...(post.imageMeta ? { imageMeta: post.imageMeta } : {}),
     ...(post.schemaMarkup ? { schemaMarkup: post.schemaMarkup } : {}),
     language: post.language,
     published: post.published,

@@ -81,6 +81,21 @@ export default function AiBlogAutomationPage() {
   const [maxKeywords, setMaxKeywords] = useState(100);
   const [includeAds, setIncludeAds] = useState(true);
   const [includeGsc, setIncludeGsc] = useState(true);
+  const [imageAudit, setImageAudit] = useState<{
+    scanned?: number;
+    exactUrlDuplicateGroups?: number;
+    nearDuplicateCount?: number;
+    wrongTopicCount?: number;
+    regenerationRequired?: number;
+    note?: string;
+    rows?: Array<{
+      slug: string;
+      title: string;
+      recommendedAction: string;
+      suggestedVisualCategory: string;
+      wrongTopic?: boolean;
+    }>;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -210,6 +225,23 @@ export default function AiBlogAutomationPage() {
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Queue process failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runImageAudit() {
+    setBusy("image-audit");
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-image-audit?limit=100");
+      setImageAudit(data);
+      setOk(
+        `Image audit: ${data.regenerationRequired ?? 0} need regen, ${data.wrongTopicCount ?? 0} wrong-topic, ${data.exactUrlDuplicateGroups ?? 0} shared-URL groups. (Does not auto-regenerate.)`,
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Image audit failed");
     } finally {
       setBusy(null);
     }
@@ -699,6 +731,39 @@ export default function AiBlogAutomationPage() {
               }
             />
           </label>
+          <div className="rounded-lg border border-ocean-100 bg-ocean-50/40 p-3">
+            <p className="text-sm font-medium text-ocean-900">Featured image audit</p>
+            <p className="mt-1 text-xs text-ocean-600">
+              Detects shared URLs, wrong-topic scuba images, and near-duplicates. Does not
+              regenerate until you confirm (API cost). Unique images alone do not guarantee
+              Google indexing.
+            </p>
+            <button
+              type="button"
+              className="btn-ocean mt-2 text-sm"
+              disabled={busy === "image-audit"}
+              onClick={() => void runImageAudit()}
+            >
+              {busy === "image-audit" ? "Auditing…" : "Run image audit"}
+            </button>
+            {imageAudit ? (
+              <ul className="mt-2 space-y-1 text-xs text-ocean-800">
+                <li>Scanned: {imageAudit.scanned}</li>
+                <li>Shared URL groups: {imageAudit.exactUrlDuplicateGroups}</li>
+                <li>Near-duplicates: {imageAudit.nearDuplicateCount}</li>
+                <li>Wrong-topic: {imageAudit.wrongTopicCount}</li>
+                <li>Regeneration required: {imageAudit.regenerationRequired}</li>
+                {(imageAudit.rows || [])
+                  .filter((r) => r.recommendedAction !== "OK")
+                  .slice(0, 12)
+                  .map((r) => (
+                    <li key={r.slug} className="truncate">
+                      {r.title} → {r.recommendedAction} ({r.suggestedVisualCategory})
+                    </li>
+                  ))}
+              </ul>
+            ) : null}
+          </div>
         </section>
       ) : null}
 

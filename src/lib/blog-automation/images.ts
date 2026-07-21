@@ -5,8 +5,11 @@ import sharp from "sharp";
 import { getAdminApp } from "@/lib/firebase-admin";
 import { SITE_URL } from "@/lib/constants";
 
-const MAX_WIDTH = 1200;
+const MAX_WIDTH = 1600;
+const TARGET_HEIGHT = 900;
 const WEBP_QUALITY = 82;
+/** Logo ≤ ~9% of image width — subtle, not dominant. */
+const LOGO_WIDTH_RATIO = 0.09;
 
 const LOGO_FILES = [
   "book-scuba-goa-logo-transparent.webp",
@@ -44,14 +47,9 @@ async function loadBrandLogoBuffer(): Promise<Buffer> {
   throw new Error("Brand logo not found");
 }
 
-/**
- * Top-left watermark: site logo (already includes “Book Scuba Goa”) on a
- * fully transparent background — no solid bottom bar.
- */
 async function buildTopLeftLogoBadge(imageWidth: number): Promise<Buffer> {
-  // Subtle brand mark — keep small so it does not dominate the hero.
-  const logoMaxW = Math.round(imageWidth * 0.18);
-  const logoMaxH = Math.max(36, Math.round(imageWidth * 0.055));
+  const logoMaxW = Math.round(imageWidth * LOGO_WIDTH_RATIO);
+  const logoMaxH = Math.max(28, Math.round(imageWidth * 0.04));
 
   const logoRaw = await loadBrandLogoBuffer();
   return sharp(logoRaw)
@@ -61,28 +59,64 @@ async function buildTopLeftLogoBadge(imageWidth: number): Promise<Buffer> {
     .toBuffer();
 }
 
-/** Resize to WebP + top-left transparent logo (no bottom bar). */
-export async function applyBrandOverlay(photoBuffer: Buffer): Promise<Buffer> {
-  const resizedBuf = await sharp(photoBuffer)
-    .rotate()
-    .resize({ width: MAX_WIDTH, withoutEnlargement: true })
-    .toBuffer();
+/** Resize toward 16:9 WebP; optionally composite subtle top-left logo. */
+export async function applyBrandOverlay(
+  photoBuffer: Buffer,
+  options?: { brandingEnabled?: boolean },
+): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const brandingEnabled = options?.brandingEnabled !== false;
 
+  let pipeline = sharp(photoBuffer).rotate().resize({
+    width: MAX_WIDTH,
+    height: TARGET_HEIGHT,
+    fit: "cover",
+    position: "attention",
+    withoutEnlargement: false,
+  });
+
+  let resizedBuf = await pipeline.toBuffer();
   const meta = await sharp(resizedBuf).metadata();
   const width = meta.width ?? MAX_WIDTH;
-  const logoBadge = await buildTopLeftLogoBadge(width);
-  const margin = Math.max(14, Math.round(width * 0.022));
+  const height = meta.height ?? TARGET_HEIGHT;
 
-  return sharp(resizedBuf)
-    .composite([{ input: logoBadge, top: margin, left: margin }])
-    .webp({ quality: WEBP_QUALITY })
-    .toBuffer();
+  if (brandingEnabled) {
+    try {
+      const logoBadge = await buildTopLeftLogoBadge(width);
+      const margin = Math.max(12, Math.round(width * 0.018));
+      resizedBuf = await sharp(resizedBuf)
+        .composite([{ input: logoBadge, top: margin, left: margin }])
+        .webp({ quality: WEBP_QUALITY })
+        .toBuffer();
+    } catch {
+      resizedBuf = await sharp(resizedBuf).webp({ quality: WEBP_QUALITY }).toBuffer();
+    }
+  } else {
+    resizedBuf = await sharp(resizedBuf).webp({ quality: WEBP_QUALITY }).toBuffer();
+  }
+
+  const outMeta = await sharp(resizedBuf).metadata();
+  return {
+    buffer: resizedBuf,
+    width: outMeta.width ?? width,
+    height: outMeta.height ?? height,
+  };
 }
+
+export type UploadBlogImageResult = {
+  featuredImageUrl: string;
+  ogImageUrl: string;
+  storagePath: string;
+  width: number;
+  height: number;
+  fileSize: number;
+  mimeType: string;
+  brandingApplied: boolean;
+};
 
 async function uploadWebpToStorage(
   webpBuffer: Buffer,
-  slug: string,
-): Promise<{ featuredImageUrl: string; ogImageUrl: string }> {
+  input: { slug: string; articleId?: string },
+): Promise<UploadBlogImageResult> {
   const app = getAdminApp();
   if (!app) throw new Error("Firebase Admin not configured");
 
@@ -91,10 +125,13 @@ async function uploadWebpToStorage(
     process.env.FIREBASE_STORAGE_BUCKET;
   if (!bucketName) throw new Error("Storage bucket not configured");
 
-  // Versioned path so each replace gets a new public URL. Overwriting the same
-  // `featured.webp` kept browsers/CDNs on the old bytes for up to a year.
   const version = Date.now().toString(36);
-  const storagePath = `blog/${slug}/featured-${version}.webp`;
+  const unique = Math.random().toString(36).slice(2, 8);
+  const articleKey = (input.articleId || input.slug)
+    .replace(/[^a-z0-9_-]/gi, "-")
+    .slice(0, 80);
+  // Unique path per article + timestamp — never overwrite shared filenames
+  const storagePath = `blog/${articleKey}/hero/${version}-${unique}.webp`;
   const bucket = getStorage(app).bucket(bucketName);
   const file = bucket.file(storagePath);
   await file.save(webpBuffer, {
@@ -105,25 +142,51 @@ async function uploadWebpToStorage(
   });
   await file.makePublic();
   const publicUrl = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
-  return { featuredImageUrl: publicUrl, ogImageUrl: publicUrl };
+  const meta = await sharp(webpBuffer).metadata();
+  return {
+    featuredImageUrl: publicUrl,
+    ogImageUrl: publicUrl,
+    storagePath,
+    width: meta.width ?? MAX_WIDTH,
+    height: meta.height ?? TARGET_HEIGHT,
+    fileSize: webpBuffer.length,
+    mimeType: "image/webp",
+    brandingApplied: true,
+  };
 }
 
 export async function brandAndUploadBlogImageBuffer(
   imageBuffer: Buffer,
   slug: string,
-): Promise<{ featuredImageUrl: string; ogImageUrl: string }> {
-  const compressed = await applyBrandOverlay(imageBuffer);
-  return uploadWebpToStorage(compressed, slug);
+  options?: { articleId?: string; brandingEnabled?: boolean },
+): Promise<UploadBlogImageResult> {
+  const brandingEnabled = options?.brandingEnabled !== false;
+  const compressed = await applyBrandOverlay(imageBuffer, { brandingEnabled });
+  const uploaded = await uploadWebpToStorage(compressed.buffer, {
+    slug,
+    articleId: options?.articleId || slug,
+  });
+  return {
+    ...uploaded,
+    width: compressed.width,
+    height: compressed.height,
+    brandingApplied: brandingEnabled,
+  };
 }
 
 export async function downloadCompressUploadBlogImage(input: {
   imageUrl: string;
   slug: string;
-}): Promise<{ featuredImageUrl: string; ogImageUrl: string }> {
+  articleId?: string;
+  brandingEnabled?: boolean;
+}): Promise<UploadBlogImageResult> {
   const res = await fetch(input.imageUrl, {
     headers: { "User-Agent": "BlueSharkGoa-BlogBot/1.0" },
   });
   if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
   const buffer = Buffer.from(await res.arrayBuffer());
-  return brandAndUploadBlogImageBuffer(buffer, input.slug);
+  return brandAndUploadBlogImageBuffer(buffer, input.slug, {
+    articleId: input.articleId,
+    brandingEnabled: input.brandingEnabled,
+  });
 }
