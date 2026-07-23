@@ -57,6 +57,8 @@ function injectInternalLinks(content: string, serviceSlug: string): string {
 export async function generateSeoBlogDraft(input: {
   keyword: SeoBlogKeyword;
   seoMeta?: SeoBlogMeta | null;
+  /** When false, skip AI/Pexels featured image (admin uploads later). */
+  generateAiImage?: boolean;
 }): Promise<SeoBlogDraft> {
   const meta = input.seoMeta ?? (await generateSeoMetaForKeyword(input.keyword));
   const serviceSlug = meta.serviceSlug || inferServiceSlug(input.keyword.keyword);
@@ -89,7 +91,9 @@ export async function generateSeoBlogDraft(input: {
   let imageMeta: SeoBlogDraft["imageMeta"] | undefined;
 
   const settings = await getSeoBlogSettings();
-  if (settings.generateImages !== false) {
+  const wantImage =
+    input.generateAiImage !== false && settings.generateImages !== false;
+  if (wantImage) {
     const articleId = `sbc_${slug}`;
     const img = await generateFeaturedImageForArticle({
       articleId,

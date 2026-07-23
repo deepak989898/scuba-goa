@@ -1,5 +1,9 @@
 import { slugify } from "@/lib/seo-blog-center/utils";
-import type { SeoKeywordCluster } from "@/lib/seo-blog-center/types";
+import type {
+  ClusterConflict,
+  ClusterConflictReasonCode,
+  SeoKeywordCluster,
+} from "@/lib/seo-blog-center/types";
 import { normalizeKeywordKey } from "@/lib/seo-blog-center/normalize-keywords";
 import type { ScoredKeyword } from "@/lib/seo-blog-center/opportunity-score";
 
@@ -12,6 +16,59 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   for (const t of a) if (b.has(t)) inter += 1;
   const union = a.size + b.size - inter;
   return union === 0 ? 0 : inter / union;
+}
+
+function conflictReason(
+  similarityPercent: number,
+): { reason: string; reasonCode: ClusterConflictReasonCode } {
+  if (similarityPercent >= 80) {
+    return {
+      reasonCode: "near_duplicate_topic",
+      reason: "Near-duplicate topic — existing blog covers almost the same keywords",
+    };
+  }
+  if (similarityPercent >= 65) {
+    return {
+      reasonCode: "high_keyword_overlap",
+      reason: "High keyword overlap — risk of cannibalizing an existing post",
+    };
+  }
+  if (similarityPercent >= 50) {
+    return {
+      reasonCode: "medium_keyword_overlap",
+      reason: "Medium keyword overlap — review before writing a new article",
+    };
+  }
+  return {
+    reasonCode: "related_slug",
+    reason: "Related existing URL — check if optimize is better than a new post",
+  };
+}
+
+export function buildClusterConflicts(
+  primaryKeyword: string,
+  existingUrls: string[],
+): ClusterConflict[] {
+  const pTokens = tokenSet(primaryKeyword);
+  const out: ClusterConflict[] = [];
+
+  for (const u of existingUrls) {
+    const path = u.startsWith("/") ? u : `/${u.replace(/^https?:\/\/[^/]+/i, "")}`;
+    const slug = path.split("/").filter(Boolean).pop() ?? "";
+    const sim = jaccard(pTokens, tokenSet(slug.replace(/-/g, " ")));
+    if (sim < 0.45) continue;
+    const similarityPercent = Math.round(sim * 100);
+    const { reason, reasonCode } = conflictReason(similarityPercent);
+    out.push({
+      url: path,
+      path: path.startsWith("/blog/") ? path : `/blog/${slug}`,
+      similarityPercent,
+      reason,
+      reasonCode,
+    });
+  }
+
+  return out.sort((a, b) => b.similarityPercent - a.similarityPercent);
 }
 
 /**
@@ -46,7 +103,6 @@ export function buildKeywordClusters(
         remaining.splice(i, 1);
         continue;
       }
-      // Different intent → separate article
       if (cand.intent !== primary.intent) continue;
       const sim = jaccard(pTokens, tokenSet(cand.keyword));
       if (sim >= 0.55) {
@@ -66,10 +122,23 @@ export function buildKeywordClusters(
 
     const now = new Date().toISOString();
     const titleBase = primary.displayKeyword.replace(/\b\w/g, (c) => c.toUpperCase());
-    const conflictingUrls = input.existingUrls.filter((u) => {
-      const slug = u.split("/").pop() ?? "";
-      return jaccard(pTokens, tokenSet(slug.replace(/-/g, " "))) >= 0.5;
-    });
+    const conflicts = buildClusterConflicts(
+      primary.displayKeyword,
+      input.existingUrls,
+    );
+    if (
+      primary.suggestedAction === "optimize_existing" &&
+      conflicts.length === 0 &&
+      input.existingUrls[0]
+    ) {
+      conflicts.push({
+        url: input.existingUrls[0]!,
+        path: input.existingUrls[0]!,
+        similarityPercent: 70,
+        reasonCode: "same_intent_covered",
+        reason: "Same intent already covered — optimize existing page instead",
+      });
+    }
 
     clusters.push({
       id: `cl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
@@ -87,19 +156,18 @@ export function buildKeywordClusters(
       suggestedSlug: slugify(primary.displayKeyword),
       opportunityScore: primary.opportunityScore,
       cannibalizationScore: Math.round(
-        (primary.cannibalizationRisk === "high"
+        primary.cannibalizationRisk === "high"
           ? 80
           : primary.cannibalizationRisk === "medium"
             ? 50
             : primary.cannibalizationRisk === "low"
               ? 25
-              : 0),
+              : 0,
       ),
-      conflictingUrls,
+      conflictingUrls: conflicts.map((c) => c.path),
+      conflicts,
       status:
-        primary.suggestedAction === "optimize_existing"
-          ? "rejected"
-          : "pending",
+        primary.suggestedAction === "optimize_existing" ? "rejected" : "pending",
       createdAt: now,
       updatedAt: now,
     });

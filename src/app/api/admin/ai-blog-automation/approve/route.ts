@@ -18,9 +18,12 @@ import { getServiceBySlugServer } from "@/lib/get-services-server";
 export const runtime = "nodejs";
 
 /** Rough estimate — labeled as estimate in UI. */
-function estimateBatchCostUsd(clusterCount: number): number {
-  // ~$0.08 text + ~$0.04 image per article (order-of-magnitude)
-  return Math.round(clusterCount * 0.12 * 100) / 100;
+function estimateBatchCostUsd(
+  clusterCount: number,
+  generateAiImage: boolean,
+): number {
+  const per = generateAiImage ? 0.12 : 0.08;
+  return Math.round(clusterCount * per * 100) / 100;
 }
 
 export async function POST(req: Request) {
@@ -33,6 +36,8 @@ export async function POST(req: Request) {
     clusterIds?: string[];
     confirmCost?: boolean;
     action?: "approve" | "reject" | "preview";
+    /** Default true — set false to skip AI featured image (manual upload later). */
+    generateAiImage?: boolean;
   } = {};
   try {
     body = await req.json();
@@ -48,8 +53,9 @@ export async function POST(req: Request) {
   }
 
   const action = body.action || "approve";
+  const generateAiImage = body.generateAiImage !== false;
   const settings = await getSeoBlogSettings();
-  const estimatedCostUsd = estimateBatchCostUsd(clusterIds.length);
+  const estimatedCostUsd = estimateBatchCostUsd(clusterIds.length, generateAiImage);
 
   if (action === "preview") {
     return NextResponse.json({
@@ -58,11 +64,15 @@ export async function POST(req: Request) {
       estimatedArticles: clusterIds.length,
       estimatedCostUsd,
       costIsEstimate: true,
+      generateAiImage,
       autoPublish: settings.autoPublish,
       warning:
         settings.autoPublish
           ? "Auto-publish is ON — only high-quality drafts may go live."
           : "Auto-publish is OFF — drafts will wait for review.",
+      imageNote: generateAiImage
+        ? "AI featured images will be generated (extra OpenAI image cost)."
+        : "No AI image — admin can upload image manually after draft/publish.",
     });
   }
 
@@ -131,8 +141,9 @@ export async function POST(req: Request) {
       maximumAttempts: 3,
       createdBy: actorId,
       createdAt: now,
-      estimatedCostUsd: estimateBatchCostUsd(1),
+      estimatedCostUsd: estimateBatchCostUsd(1, generateAiImage),
       promptVersion: PROMPT_VERSION,
+      generateAiImage,
     };
     await saveGenerationJob(job);
     jobs.push(job);
@@ -163,7 +174,7 @@ export async function POST(req: Request) {
     message:
       action === "reject"
         ? `Rejected ${rejected} clusters`
-        : `Approved ${approved} clusters → ${jobs.length} generation jobs (est. $${estimatedCostUsd})`,
+        : `Approved ${approved} clusters → ${jobs.length} generation jobs (AI image: ${generateAiImage ? "on" : "off"}, est. $${estimatedCostUsd})`,
   });
 
   return NextResponse.json({
@@ -173,6 +184,7 @@ export async function POST(req: Request) {
     jobsCreated: jobs.length,
     estimatedCostUsd,
     costIsEstimate: true,
+    generateAiImage,
     jobIds: jobs.map((j) => j.id),
   });
 }

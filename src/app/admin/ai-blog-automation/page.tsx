@@ -5,11 +5,13 @@ import Link from "next/link";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type {
   AiBlogGenerationJob,
+  ClusterConflict,
   SeoBlogCenterSettings,
   SeoBlogDraft,
   SeoBlogKeyword,
   SeoKeywordCluster,
 } from "@/lib/seo-blog-center/types";
+import { enrichConflictsFromUrls } from "@/lib/seo-blog-center/conflict-display";
 
 type Tab =
   | "dashboard"
@@ -29,6 +31,36 @@ const SERVICE_OPTIONS = [
   { slug: "dudhsagar-trip", name: "Dudhsagar waterfall trip" },
   { slug: "island-trip", name: "Island trip" },
 ];
+
+function conflictStyle(code: ClusterConflict["reasonCode"] | string): string {
+  switch (code) {
+    case "near_duplicate_topic":
+      return "border-red-200 bg-red-50 text-red-900";
+    case "high_keyword_overlap":
+      return "border-orange-200 bg-orange-50 text-orange-900";
+    case "medium_keyword_overlap":
+      return "border-amber-200 bg-amber-50 text-amber-900";
+    case "same_intent_covered":
+      return "border-violet-200 bg-violet-50 text-violet-900";
+    default:
+      return "border-sky-200 bg-sky-50 text-sky-900";
+  }
+}
+
+function similarityBadgeClass(pct: number): string {
+  if (pct >= 80) return "bg-red-600 text-white";
+  if (pct >= 65) return "bg-orange-500 text-white";
+  if (pct >= 50) return "bg-amber-500 text-white";
+  return "bg-sky-600 text-white";
+}
+
+function clusterConflictsList(c: SeoKeywordCluster): ClusterConflict[] {
+  if (c.conflicts?.length) return c.conflicts;
+  if (c.conflictingUrls?.length) {
+    return enrichConflictsFromUrls(c.primaryKeyword, c.conflictingUrls);
+  }
+  return [];
+}
 
 async function adminToken(): Promise<string> {
   const auth = getFirebaseAuth();
@@ -81,6 +113,7 @@ export default function AiBlogAutomationPage() {
   const [maxKeywords, setMaxKeywords] = useState(100);
   const [includeAds, setIncludeAds] = useState(true);
   const [includeGsc, setIncludeGsc] = useState(true);
+  const [generateAiImage, setGenerateAiImage] = useState(true);
   const [imageAudit, setImageAudit] = useState<{
     scanned?: number;
     exactUrlDuplicateGroups?: number;
@@ -180,11 +213,18 @@ export default function AiBlogAutomationPage() {
     try {
       const preview = await adminFetch("/api/admin/ai-blog-automation/approve", {
         method: "POST",
-        body: JSON.stringify({ clusterIds: ids, action: "preview" }),
+        body: JSON.stringify({
+          clusterIds: ids,
+          action: "preview",
+          generateAiImage,
+        }),
       });
       if (
         !confirm(
-          `Queue ${preview.estimatedArticles} article(s)?\nEstimated OpenAI cost: ~$${preview.estimatedCostUsd} (estimate only).\n${preview.warning}`,
+          `Queue ${preview.estimatedArticles} article(s)?\n` +
+            `AI featured image: ${generateAiImage ? "YES (extra cost)" : "NO — upload manually later"}\n` +
+            `Estimated OpenAI cost: ~$${preview.estimatedCostUsd} (estimate only).\n` +
+            `${preview.imageNote || ""}\n${preview.warning}`,
         )
       ) {
         setBusy(null);
@@ -196,10 +236,11 @@ export default function AiBlogAutomationPage() {
           clusterIds: ids,
           action: "approve",
           confirmCost: true,
+          generateAiImage,
         }),
       });
       setOk(
-        `Queued ${data.jobsCreated} job(s). Est. cost ~$${data.estimatedCostUsd}`,
+        `Queued ${data.jobsCreated} job(s). AI image: ${generateAiImage ? "on" : "off"}. Est. cost ~$${data.estimatedCostUsd}`,
       );
       setSelectedClusters(new Set());
       setTab("queue");
@@ -518,17 +559,26 @@ export default function AiBlogAutomationPage() {
       {tab === "clusters" ? (
         <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 rounded-full border border-ocean-200 bg-ocean-50 px-3 py-1.5 text-xs font-semibold text-ocean-900">
+              <input
+                type="checkbox"
+                checked={
+                  clusters.length > 0 &&
+                  selectedClusters.size === clusters.length
+                }
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedClusters(new Set(clusters.map((c) => c.id)));
+                  } else {
+                    setSelectedClusters(new Set());
+                  }
+                }}
+              />
+              Select all ({clusters.length})
+            </label>
             <p className="text-sm font-semibold text-ocean-900">
-              {clusters.length} clusters · {selectedClusters.size} selected
+              {selectedClusters.size} selected
             </p>
-            <button
-              type="button"
-              disabled={busy === "approve" || selectedClusters.size === 0}
-              onClick={() => void approveSelected()}
-              className="rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              Approve selected → queue
-            </button>
             <button
               type="button"
               className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold"
@@ -550,41 +600,102 @@ export default function AiBlogAutomationPage() {
               Clear
             </button>
           </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-ocean-100 bg-ocean-50/50 p-3">
+            <p className="text-xs font-semibold text-ocean-800">
+              Featured image for selected:
+            </p>
+            <label className="flex items-center gap-1.5 text-xs text-ocean-900">
+              <input
+                type="radio"
+                name="cluster-image-mode"
+                checked={generateAiImage}
+                onChange={() => setGenerateAiImage(true)}
+              />
+              With AI image (OpenAI cost)
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-ocean-900">
+              <input
+                type="radio"
+                name="cluster-image-mode"
+                checked={!generateAiImage}
+                onChange={() => setGenerateAiImage(false)}
+              />
+              Without AI image (upload manually later)
+            </label>
+            <button
+              type="button"
+              disabled={busy === "approve" || selectedClusters.size === 0}
+              onClick={() => void approveSelected()}
+              className="rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              Approve selected → queue
+            </button>
+          </div>
+
           <ul className="mt-3 space-y-2">
-            {clusters.map((c) => (
-              <li
-                key={c.id}
-                className="flex gap-3 rounded-lg border border-ocean-100 p-3 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedClusters.has(c.id)}
-                  onChange={() => {
-                    setSelectedClusters((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(c.id)) next.delete(c.id);
-                      else next.add(c.id);
-                      return next;
-                    });
-                  }}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-ocean-900">{c.primaryKeyword}</p>
-                  <p className="text-xs text-ocean-600">
-                    {c.contentType} · {c.intent} · score {c.opportunityScore} ·{" "}
-                    {c.status}
-                    {c.secondaryKeywords.length
-                      ? ` · +${c.secondaryKeywords.length} variants`
-                      : ""}
-                  </p>
-                  {c.conflictingUrls.length ? (
-                    <p className="text-xs text-amber-700">
-                      Conflicts: {c.conflictingUrls.join(", ")}
+            {clusters.map((c) => {
+              const conflicts = clusterConflictsList(c);
+              return (
+                <li
+                  key={c.id}
+                  className="flex gap-3 rounded-lg border border-ocean-100 p-3 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 accent-cyan-700"
+                    checked={selectedClusters.has(c.id)}
+                    onChange={() => {
+                      setSelectedClusters((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(c.id)) next.delete(c.id);
+                        else next.add(c.id);
+                        return next;
+                      });
+                    }}
+                    aria-label={`Select cluster ${c.primaryKeyword}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-ocean-900">{c.primaryKeyword}</p>
+                    <p className="text-xs text-ocean-600">
+                      {c.contentType} · {c.intent} · score {c.opportunityScore} ·{" "}
+                      {c.status}
+                      {c.secondaryKeywords.length
+                        ? ` · +${c.secondaryKeywords.length} variants`
+                        : ""}
                     </p>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+                    {conflicts.length ? (
+                      <ul className="mt-2 space-y-1.5">
+                        {conflicts.map((cf) => (
+                          <li
+                            key={`${c.id}-${cf.path}`}
+                            className={`rounded-md border px-2 py-1.5 text-xs ${conflictStyle(cf.reasonCode)}`}
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums ${similarityBadgeClass(cf.similarityPercent)}`}
+                              >
+                                {cf.similarityPercent}% similar
+                              </span>
+                              <span className="font-mono text-[11px]">{cf.path}</span>
+                              <a
+                                href={cf.path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-ocean-900 underline-offset-2 hover:underline"
+                              >
+                                Open
+                              </a>
+                            </div>
+                            <p className="mt-1 font-medium">{cf.reason}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

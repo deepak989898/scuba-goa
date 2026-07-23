@@ -134,11 +134,18 @@ export async function processGenerationJob(
 
     await saveGenerationJob({
       ...job,
-      status: settings.generateImages ? "generating-image" : "validating",
+      status:
+        job.generateAiImage !== false && settings.generateImages
+          ? "generating-image"
+          : "validating",
       leaseExpiresAt: new Date(Date.now() + LEASE_MS).toISOString(),
     });
 
-    const draft = await generateSeoBlogDraft({ keyword, seoMeta: meta });
+    const draft = await generateSeoBlogDraft({
+      keyword,
+      seoMeta: meta,
+      generateAiImage: job.generateAiImage !== false && settings.generateImages,
+    });
     draft.clusterId = job.clusterId;
     draft.jobId = job.id;
     draft.status = "pending_approval";

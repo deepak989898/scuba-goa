@@ -110,6 +110,22 @@ export interface SeoBlogKeyword {
   approvedBy?: string;
 }
 
+export type ClusterConflictReasonCode =
+  | "near_duplicate_topic"
+  | "high_keyword_overlap"
+  | "medium_keyword_overlap"
+  | "related_slug"
+  | "same_intent_covered";
+
+export type ClusterConflict = {
+  url: string;
+  /** Public path e.g. /blog/foo */
+  path: string;
+  similarityPercent: number;
+  reason: string;
+  reasonCode: ClusterConflictReasonCode;
+};
+
 export interface SeoKeywordCluster {
   id: string;
   researchJobId?: string;
@@ -127,7 +143,10 @@ export interface SeoKeywordCluster {
   suggestedSlug: string;
   opportunityScore: number;
   cannibalizationScore: number;
+  /** @deprecated prefer `conflicts` — kept for older docs */
   conflictingUrls: string[];
+  /** Detailed conflict rows for admin UI */
+  conflicts?: ClusterConflict[];
   status: "pending" | "approved" | "rejected" | "queued" | "generated";
   notes?: string;
   createdAt: string;
@@ -181,6 +200,8 @@ export interface AiBlogGenerationJob {
   lockedAt?: string | null;
   leaseExpiresAt?: string | null;
   promptVersion: string;
+  /** When false, draft is created without AI featured image (admin uploads later). */
+  generateAiImage?: boolean;
 }
 
 export interface SeoBlogMeta {
