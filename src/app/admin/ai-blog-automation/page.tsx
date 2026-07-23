@@ -389,7 +389,7 @@ export default function AiBlogAutomationPage() {
       if (
         !confirm(
           `Queue ${preview.estimatedArticles} article(s)?\n` +
-            `AI featured image: ${generateAiImage ? "YES (extra cost)" : "NO — upload manually later"}\n` +
+            `AI featured image: ${generateAiImage ? "YES (OpenAI cost)" : "NO — free stock (Pexels → Pixabay → Unsplash → WebP)"}\n` +
             `Estimated OpenAI cost: ~$${preview.estimatedCostUsd} (estimate only).\n` +
             `${preview.imageNote || ""}\n${preview.warning}`,
         )
@@ -407,7 +407,7 @@ export default function AiBlogAutomationPage() {
         }),
       });
       setOk(
-        `Queued ${data.jobsCreated} job(s). AI image: ${generateAiImage ? "on" : "off"}. Est. cost ~$${data.estimatedCostUsd}`,
+        `Queued ${data.jobsCreated} job(s). Images: ${generateAiImage ? "AI" : "free stock"}. Est. cost ~$${data.estimatedCostUsd}`,
       );
       setSelectedClusters(new Set());
       setTab("queue");
@@ -735,7 +735,7 @@ export default function AiBlogAutomationPage() {
         patch.autoApprovePublishWithoutImage === true
       ) {
         setOk(
-          `Automation ON (${auto?.mode === "with_ai_image" ? "with AI images" : "without images"}). Conflict keywords stay pending for manual review.`,
+          `Automation ON (${auto?.mode === "with_ai_image" ? "with AI images" : "with free stock images"}). Conflict keywords stay pending for manual review.`,
         );
         await load();
       } else {
@@ -771,9 +771,9 @@ export default function AiBlogAutomationPage() {
     if (mode === "without_image") {
       if (
         !confirm(
-          "Turn ON auto-approve & publish WITHOUT images?\n\n" +
+          "Turn ON auto-approve & publish WITH free stock images?\n\n" +
             "• Pending clusters without conflicts → queue → generate → publish\n" +
-            "• No AI featured image (upload manually later if needed)\n" +
+            "• Featured image: Pexels → Pixabay → Unsplash (saved as WebP on Firebase)\n" +
             "• Conflict keywords are SKIPPED for manual review",
         )
       ) {
@@ -986,8 +986,9 @@ export default function AiBlogAutomationPage() {
               </p>
               <p className="mt-1 max-w-3xl text-xs text-ocean-600">
                 When ON, pending clusters without conflicts are auto-queued, generated,
-                and published (respects daily caps). Conflict keywords stay pending for
-                you to approve or reject manually.
+                and published (respects daily caps). Stock-image mode uses Pexels →
+                Pixabay → Unsplash (WebP on Firebase). Conflict keywords stay pending
+                for you to approve or reject manually.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-ocean-900 shadow-sm">
@@ -1014,7 +1015,7 @@ export default function AiBlogAutomationPage() {
                       else void setAutoApproveMode("off");
                     }}
                   />
-                  Auto approve &amp; publish without images
+                  Auto approve &amp; publish with free stock images
                 </label>
                 {(settings.autoApprovePublishWithAiImage ||
                   settings.autoApprovePublishWithoutImage) && (
@@ -1123,7 +1124,7 @@ export default function AiBlogAutomationPage() {
                 checked={!generateAiImage}
                 onChange={() => setGenerateAiImage(false)}
               />
-              Without AI image (upload manually later)
+              Free stock image (Pexels → Pixabay → Unsplash)
             </label>
             <button
               type="button"
@@ -1597,7 +1598,7 @@ export default function AiBlogAutomationPage() {
                     else void setAutoApproveMode("off");
                   }}
                 />
-                Auto approve &amp; publish without images
+                Auto approve &amp; publish with free stock images (Pexels → Pixabay → Unsplash)
               </label>
             </div>
           </div>

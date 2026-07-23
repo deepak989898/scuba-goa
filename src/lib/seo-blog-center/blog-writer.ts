@@ -1,6 +1,7 @@
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import { generateFeaturedImageForArticle } from "@/lib/blog-automation/image-pipeline";
+import { attachStockFeaturedImage } from "@/lib/blog-automation/stock-featured-image";
 import { blogSlugBlocksNewPost } from "@/lib/blog-posts-server";
 import { getPostBySlug } from "@/data/blog-posts";
 import {
@@ -57,7 +58,7 @@ function injectInternalLinks(content: string, serviceSlug: string): string {
 export async function generateSeoBlogDraft(input: {
   keyword: SeoBlogKeyword;
   seoMeta?: SeoBlogMeta | null;
-  /** When false, skip AI/Pexels featured image (admin uploads later). */
+  /** When false, skip OpenAI image and use free stock (Pexels → Pixabay → Unsplash) WebP. */
   generateAiImage?: boolean;
 }): Promise<SeoBlogDraft> {
   const meta = input.seoMeta ?? (await generateSeoMetaForKeyword(input.keyword));
@@ -91,10 +92,11 @@ export async function generateSeoBlogDraft(input: {
   let imageMeta: SeoBlogDraft["imageMeta"] | undefined;
 
   const settings = await getSeoBlogSettings();
-  const wantImage =
+  const wantAiImage =
     input.generateAiImage !== false && settings.generateImages !== false;
-  if (wantImage) {
-    const articleId = `sbc_${slug}`;
+  const articleId = `sbc_${slug}`;
+
+  if (wantAiImage) {
     const img = await generateFeaturedImageForArticle({
       articleId,
       slug,
@@ -141,6 +143,49 @@ export async function generateSeoBlogDraft(input: {
       };
     } else if (img.error) {
       console.warn("[seo-blog-center] Image pipeline failed:", img.error);
+    }
+  } else {
+    // Free stock cascade: Pexels → Pixabay → Unsplash → WebP on Firebase
+    const stock = await attachStockFeaturedImage({
+      articleId,
+      slug,
+      title: draft.title,
+      primaryKeyword: input.keyword.keyword,
+      serviceSlug,
+      serviceName,
+      brandingEnabled: true,
+    });
+    if (stock.meta) {
+      featuredImageUrl = stock.meta.imageUrl;
+      ogImageUrl = stock.meta.ogImageUrl;
+      featuredImageAlt = stock.meta.imageAlt;
+      imageMeta = {
+        visualCategory: stock.meta.visualCategory,
+        compositionSignature: stock.meta.compositionSignature,
+        generatedPrompt: stock.meta.generatedPrompt,
+        generationModel: stock.meta.generationModel,
+        sha256: stock.meta.sha256,
+        perceptualHash: stock.meta.perceptualHash,
+        differenceHash: stock.meta.differenceHash,
+        promptHash: stock.meta.promptHash,
+        relevanceScore: stock.meta.relevanceScore,
+        uniquenessScore: stock.meta.uniquenessScore,
+        qualityScore: stock.meta.qualityScore,
+        safetyScore: stock.meta.safetyScore,
+        overallImageScore: stock.meta.overallImageScore,
+        validationNotes: stock.meta.validationNotes,
+        imageStatus: stock.meta.imageStatus,
+        imageTitle: stock.meta.imageTitle,
+        imageCaption: stock.meta.imageCaption,
+        width: stock.meta.width,
+        height: stock.meta.height,
+        mimeType: stock.meta.mimeType,
+        fileSize: stock.meta.fileSize,
+        source: stock.meta.source,
+        brandingApplied: stock.meta.brandingApplied,
+      };
+    } else if (stock.error) {
+      console.warn("[seo-blog-center] Stock image failed:", stock.error);
     }
   }
 

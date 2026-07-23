@@ -127,7 +127,7 @@ export type BlogImageMeta = {
   height: number;
   mimeType: string;
   fileSize: number;
-  source: "openai" | "pexels" | "upload" | "manual";
+  source: "openai" | "pexels" | "pixabay" | "unsplash" | "upload" | "manual";
   generatedPrompt: string;
   visualCategory: VisualCategory;
   compositionSignature: string;

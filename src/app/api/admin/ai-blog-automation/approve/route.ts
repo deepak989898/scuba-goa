@@ -63,7 +63,7 @@ export async function POST(req: Request) {
           : "Auto-publish is OFF — drafts will wait for review.",
       imageNote: generateAiImage
         ? "AI featured images will be generated (extra OpenAI image cost)."
-        : "No AI image — admin can upload image manually after draft/publish.",
+        : "Free stock featured images: Pexels → Pixabay → Unsplash, saved as WebP on Firebase (fast + SEO ALT).",
     });
   }
 
