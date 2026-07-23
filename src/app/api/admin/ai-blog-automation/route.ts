@@ -8,6 +8,8 @@ import {
   listKeywords,
   listLogs,
   updateSeoBlogSettings,
+  deleteGenerationJob,
+  addSeoBlogLog,
 } from "@/lib/seo-blog-center/store";
 import { isGoogleAdsConfigured } from "@/lib/seo-blog-center/providers/google-ads";
 import { processGenerationQueue } from "@/lib/seo-blog-center/generation-queue";
@@ -132,6 +134,29 @@ export async function PATCH(req: Request) {
   if (body.action === "resumeQueue") {
     const settings = await updateSeoBlogSettings({ pauseGenerationQueue: false });
     return NextResponse.json({ ok: true, settings });
+  }
+
+  if (body.action === "deleteJobs") {
+    const jobIds = Array.isArray(body.jobIds)
+      ? body.jobIds.map(String).filter(Boolean)
+      : [];
+    if (jobIds.length === 0) {
+      return NextResponse.json({ error: "Select at least one job" }, { status: 400 });
+    }
+    let deleted = 0;
+    for (const id of jobIds.slice(0, 100)) {
+      try {
+        await deleteGenerationJob(id);
+        deleted += 1;
+      } catch {
+        /* ignore missing */
+      }
+    }
+    await addSeoBlogLog({
+      type: "cluster_approved",
+      message: `Deleted ${deleted} generation queue job(s)`,
+    });
+    return NextResponse.json({ ok: true, deleted });
   }
 
   const settings = await updateSeoBlogSettings(body as never);

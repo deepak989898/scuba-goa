@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
   addSeoBlogLog,
+  deleteCluster,
+  deleteKeyword,
   getClusterById,
   getSeoBlogSettings,
   saveCluster,
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
   let body: {
     clusterIds?: string[];
     confirmCost?: boolean;
-    action?: "approve" | "reject" | "preview";
+    action?: "approve" | "reject" | "preview" | "delete";
     /** Default true — set false to skip AI featured image (manual upload later). */
     generateAiImage?: boolean;
   } = {};
@@ -97,10 +99,24 @@ export async function POST(req: Request) {
   const jobs: AiBlogGenerationJob[] = [];
   let approved = 0;
   let rejected = 0;
+  let deleted = 0;
 
   for (const id of clusterIds) {
     const cluster = await getClusterById(id);
     if (!cluster) continue;
+
+    if (action === "delete") {
+      for (const kid of cluster.keywordIds || []) {
+        try {
+          await deleteKeyword(kid);
+        } catch {
+          /* keyword may already be gone */
+        }
+      }
+      await deleteCluster(cluster.id);
+      deleted += 1;
+      continue;
+    }
 
     if (action === "reject") {
       await saveCluster({
@@ -108,6 +124,16 @@ export async function POST(req: Request) {
         status: "rejected",
         updatedAt: now,
       });
+      for (const kid of cluster.keywordIds || []) {
+        const kw = await getKeywordById(kid);
+        if (kw) {
+          await saveKeyword({
+            ...kw,
+            status: "rejected",
+            updatedAt: now,
+          });
+        }
+      }
       rejected += 1;
       continue;
     }
@@ -174,13 +200,16 @@ export async function POST(req: Request) {
     message:
       action === "reject"
         ? `Rejected ${rejected} clusters`
-        : `Approved ${approved} clusters → ${jobs.length} generation jobs (AI image: ${generateAiImage ? "on" : "off"}, est. $${estimatedCostUsd})`,
+        : action === "delete"
+          ? `Deleted ${deleted} clusters`
+          : `Approved ${approved} clusters → ${jobs.length} generation jobs (AI image: ${generateAiImage ? "on" : "off"}, est. $${estimatedCostUsd})`,
   });
 
   return NextResponse.json({
     ok: true,
     approved,
     rejected,
+    deleted,
     jobsCreated: jobs.length,
     estimatedCostUsd,
     costIsEstimate: true,

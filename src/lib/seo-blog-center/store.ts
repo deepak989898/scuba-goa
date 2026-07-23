@@ -233,6 +233,18 @@ export async function saveCluster(cluster: SeoKeywordCluster): Promise<void> {
     .set(stripUndefinedDeep(cluster), { merge: true });
 }
 
+export async function deleteCluster(id: string): Promise<void> {
+  const db = getAdminDb();
+  if (!db) throw new Error("Firebase Admin not configured");
+  await db.collection(COL.clusters).doc(id).delete();
+}
+
+export async function deleteKeyword(id: string): Promise<void> {
+  const db = getAdminDb();
+  if (!db) throw new Error("Firebase Admin not configured");
+  await db.collection(COL.keywords).doc(id).delete();
+}
+
 export async function saveGenerationJob(job: AiBlogGenerationJob): Promise<void> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
@@ -240,6 +252,12 @@ export async function saveGenerationJob(job: AiBlogGenerationJob): Promise<void>
     .collection(COL.jobs)
     .doc(job.id)
     .set(stripUndefinedDeep(job), { merge: true });
+}
+
+export async function deleteGenerationJob(id: string): Promise<void> {
+  const db = getAdminDb();
+  if (!db) throw new Error("Firebase Admin not configured");
+  await db.collection(COL.jobs).doc(id).delete();
 }
 
 export async function getKeywordById(id: string): Promise<SeoBlogKeyword | null> {

@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { getFirebaseAuth } from "@/lib/firebase";
+import type { BlogPostFirestore } from "@/lib/blog-firestore";
+import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import type {
   AiBlogGenerationJob,
   ClusterConflict,
@@ -12,15 +15,35 @@ import type {
   SeoKeywordCluster,
 } from "@/lib/seo-blog-center/types";
 import { enrichConflictsFromUrls } from "@/lib/seo-blog-center/conflict-display";
+import { BlogPostEditorPanel } from "@/app/admin/blog-automation/BlogPostEditorPanel";
 
 type Tab =
   | "dashboard"
   | "research"
   | "clusters"
   | "queue"
-  | "drafts"
   | "settings"
   | "logs";
+
+const QUEUE_PUBLISH_SLOTS = [
+  "06:00",
+  "07:00",
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00",
+  "20:00",
+  "21:00",
+  "22:00",
+];
 
 const FALLBACK_SERVICE_OPTIONS = [
   { slug: "scuba-diving", name: "Scuba Diving" },
@@ -57,6 +80,22 @@ function similarityBadgeClass(pct: number): string {
   if (pct >= 65) return "bg-orange-500 text-white";
   if (pct >= 50) return "bg-amber-500 text-white";
   return "bg-sky-600 text-white";
+}
+
+/** Format ISO timestamp as IST date + time with AM/PM, e.g. 23 Jul 2026, 07:30 PM */
+function formatIstDateTimeAmPm(iso?: string | null): string {
+  if (!iso?.trim()) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function clusterConflictsList(c: SeoKeywordCluster): ClusterConflict[] {
@@ -106,6 +145,19 @@ export default function AiBlogAutomationPage() {
   const [clusters, setClusters] = useState<SeoKeywordCluster[]>([]);
   const [jobs, setJobs] = useState<AiBlogGenerationJob[]>([]);
   const [drafts, setDrafts] = useState<SeoBlogDraft[]>([]);
+  const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
+  const [blogViewsBySlug, setBlogViewsBySlug] = useState<
+    Record<string, { views: number; visitors: number }>
+  >({});
+  const [blogPostsBySlug, setBlogPostsBySlug] = useState<
+    Record<string, BlogPostFirestore>
+  >({});
+  const [editingPost, setEditingPost] = useState<BlogPostFirestore | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+  const [aiImageProgress, setAiImageProgress] = useState<number | null>(null);
   const [logs, setLogs] = useState<
     { id: string; type: string; message: string; createdAt: string }[]
   >([]);
@@ -119,6 +171,9 @@ export default function AiBlogAutomationPage() {
   const [includeGsc, setIncludeGsc] = useState(true);
   const [includeLocal, setIncludeLocal] = useState(true);
   const [generateAiImage, setGenerateAiImage] = useState(true);
+  const [clusterFilter, setClusterFilter] = useState<
+    "all" | "conflicts" | "no_conflicts"
+  >("all");
   const [imageAudit, setImageAudit] = useState<{
     scanned?: number;
     exactUrlDuplicateGroups?: number;
@@ -139,7 +194,11 @@ export default function AiBlogAutomationPage() {
     setLoading(true);
     setErr(null);
     try {
-      const data = await adminFetch("/api/admin/ai-blog-automation");
+      const [data, traffic, postsRes] = await Promise.all([
+        adminFetch("/api/admin/ai-blog-automation"),
+        adminFetch("/api/admin/blog-traffic").catch(() => ({ bySlug: {} })),
+        adminFetch("/api/admin/blog-posts").catch(() => ({ posts: [] })),
+      ]);
       setStats(data.stats ?? {});
       setProviders(data.providers ?? {});
       setSettings(data.settings ?? null);
@@ -156,6 +215,18 @@ export default function AiBlogAutomationPage() {
       setJobs(data.jobs ?? []);
       setDrafts(data.drafts ?? []);
       setLogs(data.logs ?? []);
+      setBlogViewsBySlug(
+        (traffic.bySlug ?? {}) as Record<string, { views: number; visitors: number }>,
+      );
+      const bySlug: Record<string, BlogPostFirestore> = {};
+      for (const p of (postsRes.posts ?? []) as BlogPostFirestore[]) {
+        if (p?.slug) bySlug[p.slug] = p;
+      }
+      setBlogPostsBySlug(bySlug);
+      setEditingPost((prev) => {
+        if (!prev?.slug) return prev;
+        return bySlug[prev.slug] ?? prev;
+      });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -166,6 +237,15 @@ export default function AiBlogAutomationPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setZoomedImage(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [zoomedImage]);
 
   const keywordById = useMemo(() => {
     const map = new Map<string, SeoBlogKeyword>();
@@ -195,6 +275,15 @@ export default function AiBlogAutomationPage() {
       null
     );
   }
+
+  const filteredClusters = useMemo(() => {
+    return clusters.filter((c) => {
+      const hasConflict = clusterConflictsList(c).length > 0;
+      if (clusterFilter === "conflicts") return hasConflict;
+      if (clusterFilter === "no_conflicts") return !hasConflict;
+      return true;
+    });
+  }, [clusters, clusterFilter]);
 
   async function runResearch() {
     setBusy("research");
@@ -284,6 +373,64 @@ export default function AiBlogAutomationPage() {
     }
   }
 
+  async function rejectSelected() {
+    const ids = [...selectedClusters];
+    if (ids.length === 0) {
+      setErr("Select at least one cluster");
+      return;
+    }
+    if (!confirm(`Reject ${ids.length} selected cluster(s)? They stay in the list as rejected.`)) {
+      return;
+    }
+    setBusy("reject");
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/ai-blog-automation/approve", {
+        method: "POST",
+        body: JSON.stringify({ clusterIds: ids, action: "reject" }),
+      });
+      setOk(`Rejected ${data.rejected ?? ids.length} cluster(s)`);
+      setSelectedClusters(new Set());
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Reject failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteSelected() {
+    const ids = [...selectedClusters];
+    if (ids.length === 0) {
+      setErr("Select at least one cluster");
+      return;
+    }
+    if (
+      !confirm(
+        `Permanently delete ${ids.length} selected cluster(s) and linked keywords? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setBusy("delete");
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/ai-blog-automation/approve", {
+        method: "POST",
+        body: JSON.stringify({ clusterIds: ids, action: "delete" }),
+      });
+      setOk(`Deleted ${data.deleted ?? ids.length} cluster(s)`);
+      setSelectedClusters(new Set());
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function processQueueNow() {
     setBusy("queue");
     try {
@@ -295,6 +442,200 @@ export default function AiBlogAutomationPage() {
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Queue process failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function jobBlogSlug(j: AiBlogGenerationJob): string {
+    const draft = j.generatedDraftId
+      ? drafts.find((d) => d.id === j.generatedDraftId)
+      : undefined;
+    return (
+      j.generatedBlogSlug ||
+      draft?.publishedBlogSlug ||
+      draft?.slug ||
+      ""
+    );
+  }
+
+  function jobPublishedAt(j: AiBlogGenerationJob): string | null {
+    const draft = j.generatedDraftId
+      ? drafts.find((d) => d.id === j.generatedDraftId)
+      : undefined;
+    return (
+      draft?.publishedAt ||
+      (j.status === "published" ? j.completedAt || null : null) ||
+      j.completedAt ||
+      null
+    );
+  }
+
+  async function deleteQueueBlogs(jobIds: string[]) {
+    if (jobIds.length === 0) {
+      setErr("Select at least one job");
+      return;
+    }
+    const targets = jobs.filter((j) => jobIds.includes(j.id));
+    const slugs = [
+      ...new Set(targets.map((j) => jobBlogSlug(j)).filter(Boolean)),
+    ];
+    if (
+      !confirm(
+        slugs.length
+          ? `Delete ${slugs.length} blog(s) permanently?\n${slugs.map((s) => `/blog/${s}`).join("\n")}\n\nRelated queue jobs will also be removed.`
+          : `Remove ${jobIds.length} queue job(s)? (No published blog slug found for some items.)`,
+      )
+    ) {
+      return;
+    }
+    setBusy("queue-delete");
+    setErr(null);
+    setOk(null);
+    try {
+      if (slugs.length > 0) {
+        const data = await adminFetch("/api/admin/blog-posts/bulk", {
+          method: "POST",
+          body: JSON.stringify({ action: "delete", slugs }),
+        });
+        const okN = Array.isArray(data.ok) ? data.ok.length : slugs.length;
+        setOk(`Deleted ${okN} blog(s)`);
+      }
+      await adminFetch("/api/admin/ai-blog-automation", {
+        method: "PATCH",
+        body: JSON.stringify({ action: "deleteJobs", jobIds }),
+      });
+      setSelectedJobs(new Set());
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveEditedQueuePost(opts?: { publishNow?: boolean }) {
+    if (!editingPost) return;
+    setBusy(`save-${editingPost.slug}`);
+    setErr(null);
+    setOk(null);
+    try {
+      await adminFetch("/api/admin/blog-posts", {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...editingPost,
+          scheduledPublishAtIst: utcIsoToIstDatetimeLocalValue(
+            editingPost.scheduledPublishAt,
+          ),
+          publishNow: opts?.publishNow === true,
+        }),
+      });
+      setOk(
+        opts?.publishNow
+          ? `Published /blog/${editingPost.slug}`
+          : `Saved /blog/${editingPost.slug}`,
+      );
+      setEditingPost(null);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function uploadQueueBlogImage(file: File | null) {
+    if (!file || !editingPost) return;
+    setBusy(`img-${editingPost.slug}`);
+    setErr(null);
+    try {
+      const token = await adminToken();
+      const fd = new FormData();
+      fd.append("slug", editingPost.slug);
+      fd.append("file", file);
+      const res = await fetch("/api/admin/blog-image-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setEditingPost((e) =>
+        e
+          ? {
+              ...e,
+              featuredImageUrl: data.featuredImageUrl ?? e.featuredImageUrl,
+              ogImageUrl:
+                data.ogImageUrl ?? data.featuredImageUrl ?? e.ogImageUrl,
+            }
+          : e,
+      );
+      setOk(
+        "New image uploaded and saved to the live blog. Hard-refresh the public page if you still see the old photo.",
+      );
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Image upload failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function generateQueueBlogImageWithAi() {
+    if (!editingPost) return;
+    const title = editingPost.title.trim();
+    if (!title) {
+      setErr("Enter a blog title first, then generate the image.");
+      return;
+    }
+    setBusy(`ai-img-${editingPost.slug}`);
+    setErr(null);
+    setOk(null);
+    setAiImageProgress(3);
+
+    const started = Date.now();
+    const tick = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      const estimated = Math.min(
+        92,
+        Math.round(3 + 89 * (1 - Math.exp(-elapsed / 18000))),
+      );
+      setAiImageProgress((prev) =>
+        prev == null ? estimated : Math.max(prev, estimated),
+      );
+    }, 400);
+
+    try {
+      const data = await adminFetch("/api/admin/blog-image-generate", {
+        method: "POST",
+        body: JSON.stringify({ slug: editingPost.slug, title }),
+      });
+      window.clearInterval(tick);
+      setAiImageProgress(100);
+      setEditingPost((e) =>
+        e
+          ? {
+              ...e,
+              featuredImageUrl:
+                (data.featuredImageUrl as string) ?? e.featuredImageUrl,
+              ogImageUrl:
+                (data.ogImageUrl as string) ??
+                (data.featuredImageUrl as string) ??
+                e.ogImageUrl,
+              featuredImageAlt:
+                (data.featuredImageAlt as string) ?? e.featuredImageAlt,
+            }
+          : e,
+      );
+      setOk(
+        "AI image generated from the title, saved as WebP with top-left logo, and applied to the live blog.",
+      );
+      await load();
+      window.setTimeout(() => setAiImageProgress(null), 900);
+    } catch (e) {
+      window.clearInterval(tick);
+      setAiImageProgress(null);
+      setErr(e instanceof Error ? e.message : "AI image generation failed");
     } finally {
       setBusy(null);
     }
@@ -338,7 +679,6 @@ export default function AiBlogAutomationPage() {
     { id: "research", label: "New research" },
     { id: "clusters", label: "Clusters" },
     { id: "queue", label: "Generation queue" },
-    { id: "drafts", label: "Drafts" },
     { id: "settings", label: "Settings" },
     { id: "logs", label: "Logs" },
   ];
@@ -523,22 +863,48 @@ export default function AiBlogAutomationPage() {
       {tab === "clusters" ? (
         <section className="mt-4 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
           <div className="flex flex-wrap items-center gap-2 border-b border-ocean-100 p-3">
+            <div className="flex flex-wrap items-center gap-1 rounded-full border border-ocean-200 bg-white p-0.5 text-xs font-semibold">
+              {(
+                [
+                  ["all", "All"],
+                  ["conflicts", "Conflicts only"],
+                  ["no_conflicts", "Without conflict"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setClusterFilter(id);
+                    setSelectedClusters(new Set());
+                  }}
+                  className={`rounded-full px-3 py-1.5 ${
+                    clusterFilter === id
+                      ? "bg-ocean-800 text-white"
+                      : "text-ocean-800 hover:bg-ocean-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label className="flex items-center gap-2 rounded-full border border-ocean-200 bg-ocean-50 px-3 py-1.5 text-xs font-semibold text-ocean-900">
               <input
                 type="checkbox"
                 checked={
-                  clusters.length > 0 &&
-                  selectedClusters.size === clusters.length
+                  filteredClusters.length > 0 &&
+                  filteredClusters.every((c) => selectedClusters.has(c.id))
                 }
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedClusters(new Set(clusters.map((c) => c.id)));
+                    setSelectedClusters(new Set(filteredClusters.map((c) => c.id)));
                   } else {
                     setSelectedClusters(new Set());
                   }
                 }}
               />
-              Select all ({clusters.length})
+              Select all shown ({filteredClusters.length}
+              {clusterFilter !== "all" ? ` / ${clusters.length}` : ""})
             </label>
             <p className="text-sm font-semibold text-ocean-900">
               {selectedClusters.size} selected
@@ -549,12 +915,14 @@ export default function AiBlogAutomationPage() {
               onClick={() =>
                 setSelectedClusters(
                   new Set(
-                    clusters.filter((c) => c.status === "pending").map((c) => c.id),
+                    filteredClusters
+                      .filter((c) => c.status === "pending")
+                      .map((c) => c.id),
                   ),
                 )
               }
             >
-              Select all pending
+              Select pending shown
             </button>
             <button
               type="button"
@@ -602,6 +970,22 @@ export default function AiBlogAutomationPage() {
             >
               Approve selected → queue
             </button>
+            <button
+              type="button"
+              disabled={busy === "reject" || selectedClusters.size === 0}
+              onClick={() => void rejectSelected()}
+              className="rounded-full border border-amber-400 bg-amber-50 px-4 py-1.5 text-xs font-semibold text-amber-900 disabled:opacity-50"
+            >
+              {busy === "reject" ? "Rejecting…" : "Reject selected"}
+            </button>
+            <button
+              type="button"
+              disabled={busy === "delete" || selectedClusters.size === 0}
+              onClick={() => void deleteSelected()}
+              className="rounded-full border border-red-400 bg-red-50 px-4 py-1.5 text-xs font-semibold text-red-800 disabled:opacity-50"
+            >
+              {busy === "delete" ? "Deleting…" : "Delete selected"}
+            </button>
           </div>
 
           <div className="max-h-[32rem] overflow-auto">
@@ -620,7 +1004,14 @@ export default function AiBlogAutomationPage() {
                 </tr>
               </thead>
               <tbody>
-                {clusters.map((c) => {
+                {filteredClusters.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-4 text-center text-ocean-500">
+                      No clusters match this filter.
+                    </td>
+                  </tr>
+                ) : null}
+                {filteredClusters.map((c) => {
                   const kw = primaryKeywordForCluster(c);
                   const conflicts = clusterConflictsList(c);
                   return (
@@ -714,7 +1105,7 @@ export default function AiBlogAutomationPage() {
 
       {tab === "queue" ? (
         <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               disabled={busy === "queue"}
@@ -734,13 +1125,57 @@ export default function AiBlogAutomationPage() {
             >
               {settings?.pauseGenerationQueue ? "Resume queue" : "Pause queue"}
             </button>
+            <label className="flex items-center gap-2 rounded-full border border-ocean-200 bg-ocean-50 px-3 py-1.5 text-xs font-semibold">
+              <input
+                type="checkbox"
+                checked={
+                  jobs.length > 0 && selectedJobs.size === jobs.length
+                }
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedJobs(new Set(jobs.map((j) => j.id)));
+                  } else {
+                    setSelectedJobs(new Set());
+                  }
+                }}
+              />
+              Select all ({jobs.length})
+            </label>
+            <p className="text-xs font-semibold text-ocean-800">
+              {selectedJobs.size} selected
+            </p>
+            <button
+              type="button"
+              disabled={busy === "queue-delete" || selectedJobs.size === 0}
+              onClick={() => void deleteQueueBlogs([...selectedJobs])}
+              className="rounded-full border border-red-400 bg-red-50 px-4 py-1.5 text-xs font-semibold text-red-800 disabled:opacity-50"
+            >
+              {busy === "queue-delete"
+                ? "Deleting…"
+                : `Delete selected (${selectedJobs.size})`}
+            </button>
+            <button
+              type="button"
+              className="text-xs font-semibold text-ocean-700 underline"
+              onClick={() => void load()}
+            >
+              Refresh views
+            </button>
           </div>
-          <div className="mt-3 max-h-[24rem] overflow-auto">
+          <div
+            className={`mt-3 overflow-auto ${
+              editingPost ? "max-h-[min(85vh,56rem)]" : "max-h-[28rem]"
+            }`}
+          >
             <table className="min-w-full text-left text-xs">
-              <thead className="bg-ocean-50">
+              <thead className="sticky top-0 bg-ocean-50">
                 <tr>
+                  <th className="p-2 w-8" aria-label="Select" />
+                  <th className="p-2">Image</th>
                   <th className="p-2">Keyword</th>
                   <th className="p-2">Status</th>
+                  <th className="p-2">Published (IST)</th>
+                  <th className="p-2">Views</th>
                   <th className="p-2">Attempts</th>
                   <th className="p-2">Quality</th>
                   <th className="p-2">Error</th>
@@ -749,54 +1184,170 @@ export default function AiBlogAutomationPage() {
               </thead>
               <tbody>
                 {jobs.map((j) => {
-                  const draft = j.generatedDraftId
-                    ? drafts.find((d) => d.id === j.generatedDraftId)
-                    : undefined;
-                  const slug =
-                    j.generatedBlogSlug ||
-                    draft?.publishedBlogSlug ||
-                    draft?.slug ||
-                    "";
+                  const slug = jobBlogSlug(j);
                   const canOpen = Boolean(slug);
+                  const post = slug ? blogPostsBySlug[slug] : undefined;
+                  const imageSrc =
+                    post?.featuredImageUrl || post?.ogImageUrl || "";
+                  const views = slug
+                    ? blogViewsBySlug[slug]?.views ?? 0
+                    : null;
+                  const publishedLabel = formatIstDateTimeAmPm(
+                    post?.publishedAt || jobPublishedAt(j),
+                  );
+                  const isEditing = Boolean(
+                    editingPost && slug && editingPost.slug === slug,
+                  );
                   return (
-                    <tr key={j.id} className="border-t border-ocean-50">
-                      <td className="p-2">
-                        <p className="font-medium text-ocean-900">{j.primaryKeyword}</p>
-                        {slug ? (
-                          <p className="text-[10px] text-ocean-500">/blog/{slug}</p>
-                        ) : null}
-                      </td>
-                      <td className="p-2">{j.status}</td>
-                      <td className="p-2">
-                        {j.attempts}/{j.maximumAttempts}
-                      </td>
-                      <td className="p-2">{j.qualityScore ?? "—"}</td>
-                      <td className="max-w-[12rem] truncate p-2 text-red-700">
-                        {j.errorMessage || "—"}
-                      </td>
-                      <td className="p-2">
-                        {canOpen ? (
+                    <Fragment key={j.id}>
+                      <tr
+                        className={`border-t border-ocean-50 ${
+                          isEditing ? "bg-ocean-50/40" : ""
+                        }`}
+                      >
+                        <td className="p-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-cyan-700"
+                            checked={selectedJobs.has(j.id)}
+                            onChange={() => {
+                              setSelectedJobs((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(j.id)) next.delete(j.id);
+                                else next.add(j.id);
+                                return next;
+                              });
+                            }}
+                            aria-label={`Select job ${j.primaryKeyword}`}
+                          />
+                        </td>
+                        <td className="p-2 align-top">
+                          {imageSrc ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setZoomedImage({
+                                  src: imageSrc,
+                                  alt:
+                                    post?.featuredImageAlt ||
+                                    post?.title ||
+                                    j.primaryKeyword,
+                                })
+                              }
+                              className="group relative block h-14 w-20 overflow-hidden rounded-lg border border-ocean-200 bg-ocean-50 shadow-sm transition hover:scale-105 hover:border-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                              aria-label={`Zoom image for ${j.primaryKeyword}`}
+                              title="Click to zoom"
+                            >
+                              <CmsRemoteImage
+                                src={imageSrc}
+                                alt={
+                                  post?.featuredImageAlt ||
+                                  post?.title ||
+                                  j.primaryKeyword
+                                }
+                                fill
+                                className="object-cover transition group-hover:brightness-90"
+                                sizes="80px"
+                                loading="lazy"
+                              />
+                              <span
+                                aria-hidden
+                                className="absolute bottom-1 right-1 rounded bg-slate-950/75 px-1 text-[10px] text-white"
+                              >
+                                ⤢
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-ocean-400">—</span>
+                          )}
+                        </td>
+                        <td className="p-2">
+                          <p className="font-medium text-ocean-900">
+                            {j.primaryKeyword}
+                          </p>
+                          {slug ? (
+                            <p className="text-[10px] text-ocean-500">
+                              /blog/{slug}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="p-2">{j.status}</td>
+                        <td className="whitespace-nowrap p-2 tabular-nums text-ocean-800">
+                          {publishedLabel}
+                        </td>
+                        <td className="p-2 tabular-nums">
+                          {views == null ? "—" : views}
+                        </td>
+                        <td className="p-2">
+                          {j.attempts}/{j.maximumAttempts}
+                        </td>
+                        <td className="p-2">{j.qualityScore ?? "—"}</td>
+                        <td className="max-w-[10rem] truncate p-2 text-red-700">
+                          {j.errorMessage || "—"}
+                        </td>
+                        <td className="p-2">
                           <div className="flex flex-wrap gap-1.5">
-                            <a
-                              href={`/blog/${slug}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-full border border-ocean-200 bg-white px-2 py-0.5 text-[10px] font-bold text-ocean-800 hover:bg-ocean-50"
+                            {canOpen ? (
+                              <>
+                                <a
+                                  href={`/blog/${slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded-full border border-ocean-200 bg-white px-2 py-0.5 text-[10px] font-bold text-ocean-800 hover:bg-ocean-50"
+                                >
+                                  View
+                                </a>
+                                <button
+                                  type="button"
+                                  disabled={!post}
+                                  onClick={() => {
+                                    if (!post) {
+                                      setErr(
+                                        `Blog post not found for /blog/${slug}. Refresh and try again.`,
+                                      );
+                                      return;
+                                    }
+                                    setEditingPost(post);
+                                  }}
+                                  className="rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-ocean-900 disabled:opacity-50"
+                                >
+                                  {isEditing ? "Editing…" : "Edit"}
+                                </button>
+                              </>
+                            ) : null}
+                            <button
+                              type="button"
+                              disabled={busy === "queue-delete"}
+                              onClick={() => void deleteQueueBlogs([j.id])}
+                              className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-800 disabled:opacity-50"
                             >
-                              View
-                            </a>
-                            <Link
-                              href={`/admin/blog-automation?edit=${encodeURIComponent(slug)}`}
-                              className="rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-ocean-900"
-                            >
-                              Edit
-                            </Link>
+                              Delete
+                            </button>
                           </div>
-                        ) : (
-                          <span className="text-ocean-400">—</span>
-                        )}
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                      {isEditing && editingPost ? (
+                        <tr className="bg-ocean-50/50">
+                          <td colSpan={10} className="p-4">
+                            <BlogPostEditorPanel
+                              editing={editingPost}
+                              busy={busy}
+                              publishSlots={QUEUE_PUBLISH_SLOTS}
+                              aiImageProgress={aiImageProgress}
+                              onChangeEditing={setEditingPost}
+                              onSave={(opts) => void saveEditedQueuePost(opts)}
+                              onCancelEdit={() => setEditingPost(null)}
+                              onUploadImage={(file) =>
+                                void uploadQueueBlogImage(file)
+                              }
+                              onGenerateAiImage={() =>
+                                void generateQueueBlogImageWithAi()
+                              }
+                            />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -805,53 +1356,41 @@ export default function AiBlogAutomationPage() {
         </section>
       ) : null}
 
-      {tab === "drafts" ? (
-        <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-          <p className="text-sm text-ocean-700">
-            Drafts from the queue. Use <strong>View</strong> / <strong>Edit</strong> when a
-            blog slug exists (published or saved to Blog automation).
-          </p>
-          <ul className="mt-3 space-y-2">
-            {drafts.map((d) => {
-              const slug = d.publishedBlogSlug || d.slug;
-              return (
-                <li
-                  key={d.id}
-                  className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-ocean-100 px-3 py-2 text-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-ocean-900">{d.title}</p>
-                    <p className="text-xs text-ocean-600">
-                      /blog/{slug} · {d.status}
-                      {d.qualityScore != null ? ` · quality ${d.qualityScore}` : ""}
-                    </p>
-                    {d.qualityNotes?.length ? (
-                      <p className="text-[11px] text-amber-800">
-                        {d.qualityNotes.join(" · ")}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <a
-                      href={`/blog/${slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full border border-ocean-200 bg-white px-2.5 py-1 text-[11px] font-bold text-ocean-800 hover:bg-ocean-50"
-                    >
-                      View
-                    </a>
-                    <Link
-                      href={`/admin/blog-automation?edit=${encodeURIComponent(slug)}`}
-                      className="rounded-full bg-ocean-800 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-ocean-900"
-                    >
-                      Edit
-                    </Link>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+      {zoomedImage ? (
+        <div
+          className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Image preview: ${zoomedImage.alt}`}
+          onClick={() => setZoomedImage(null)}
+        >
+          <div
+            className="relative h-[min(82vh,850px)] w-full max-w-6xl overflow-hidden rounded-xl bg-black shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <CmsRemoteImage
+              src={zoomedImage.src}
+              alt={zoomedImage.alt}
+              fill
+              className="object-contain"
+              sizes="95vw"
+              priority
+            />
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2.5 bg-gradient-to-b from-black/80 to-transparent p-4 text-white">
+              <p className="max-w-3xl text-sm font-semibold sm:text-base">
+                {zoomedImage.alt}
+              </p>
+              <button
+                type="button"
+                onClick={() => setZoomedImage(null)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/95 text-xl font-bold text-slate-950 shadow-lg transition hover:bg-cyan-200"
+                aria-label="Close image preview"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {tab === "settings" && settings ? (
