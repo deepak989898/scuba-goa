@@ -39,7 +39,15 @@ const orch = readFileSync(
   join(root, "src/lib/seo-blog-center/orchestrate-research.ts"),
   "utf8",
 );
-assert.match(orch, /Math\.min\(100/);
+assert.match(orch, /Math\.min\(250/);
+
+const localSearch = readFileSync(
+  join(root, "src/lib/seo-blog-center/providers/local-search.ts"),
+  "utf8",
+);
+assert.match(localSearch, /near me/);
+assert.match(localSearch, /Grande Island|Baga|Calangute/);
+assert.match(localSearch, /how much far from my location|how far from my location/);
 
 const score = readFileSync(
   join(root, "src/lib/seo-blog-center/opportunity-score.ts"),
@@ -54,7 +62,7 @@ const cluster = readFileSync(
   "utf8",
 );
 assert.match(cluster, /jaccard|sim >= 0\.55/);
-assert.match(cluster, /Different intent/);
+assert.match(cluster, /different intents separate|cand\.intent !== primary\.intent/);
 
 const queue = readFileSync(
   join(root, "src/lib/seo-blog-center/generation-queue.ts"),

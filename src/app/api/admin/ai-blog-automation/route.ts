@@ -11,9 +11,26 @@ import {
 } from "@/lib/seo-blog-center/store";
 import { isGoogleAdsConfigured } from "@/lib/seo-blog-center/providers/google-ads";
 import { processGenerationQueue } from "@/lib/seo-blog-center/generation-queue";
+import { getAllServicesServer } from "@/lib/get-services-server";
+import { fallbackServices } from "@/data/services";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+function buildServiceOptions(
+  live: { slug: string; title: string }[],
+): { slug: string; name: string }[] {
+  const map = new Map<string, string>();
+  for (const s of fallbackServices) {
+    map.set(s.slug, s.title);
+  }
+  for (const s of live) {
+    if (s.slug) map.set(s.slug, s.title || s.slug);
+  }
+  return [...map.entries()]
+    .map(([slug, name]) => ({ slug, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 export async function GET(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -25,6 +42,10 @@ export async function GET(req: Request) {
   const view = url.searchParams.get("view") || "dashboard";
 
   const settings = await getSeoBlogSettings();
+  const allServices = await getAllServicesServer();
+  const services = buildServiceOptions(
+    allServices.map((s) => ({ slug: s.slug, title: s.title })),
+  );
 
   if (view === "keywords") {
     return NextResponse.json({ keywords: await listKeywords(undefined, 300) });
@@ -44,6 +65,7 @@ export async function GET(req: Request) {
   if (view === "settings") {
     return NextResponse.json({
       settings,
+      services,
       providers: {
         googleAds: isGoogleAdsConfigured(),
         gsc: Boolean(process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim()),
@@ -54,7 +76,7 @@ export async function GET(req: Request) {
 
   const [keywords, clusters, jobs, drafts, logs] = await Promise.all([
     listKeywords(undefined, 200),
-    listClusters(100),
+    listClusters(150),
     listGenerationJobs(undefined, 100),
     listDrafts(undefined, 80),
     listLogs(40),
@@ -62,6 +84,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     settings,
+    services,
     providers: {
       googleAds: isGoogleAdsConfigured(),
       gsc: Boolean(process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim()),
@@ -77,10 +100,10 @@ export async function GET(req: Request) {
       drafts: drafts.filter((d) => d.status !== "published").length,
       publishedDrafts: drafts.filter((d) => d.status === "published").length,
     },
-    keywords: keywords.slice(0, 50),
-    clusters: clusters.slice(0, 30),
-    jobs: jobs.slice(0, 30),
-    drafts: drafts.slice(0, 20),
+    keywords,
+    clusters,
+    jobs: jobs.slice(0, 50),
+    drafts: drafts.slice(0, 40),
     logs,
   });
 }

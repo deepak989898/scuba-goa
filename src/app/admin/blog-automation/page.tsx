@@ -124,8 +124,30 @@ export default function AdminBlogAutomationPage() {
       ]);
       setSettings(s.settings);
       setQueue(q.items ?? []);
-      setPosts(p.posts ?? []);
+      const loadedPosts = (p.posts ?? []) as BlogPostFirestore[];
+      setPosts(loadedPosts);
       await loadBlogTraffic();
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const editSlug = params.get("edit")?.trim();
+        if (editSlug) {
+          const match = loadedPosts.find((post) => post.slug === editSlug);
+          if (match) {
+            setEditing(match);
+            setOkMsg(`Editing /blog/${editSlug}`);
+          } else {
+            setErr(`Blog “${editSlug}” not found in Blog automation list.`);
+          }
+          params.delete("edit");
+          const qs = params.toString();
+          window.history.replaceState(
+            {},
+            "",
+            `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+          );
+        }
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {

@@ -37,7 +37,10 @@ function buildServiceSeeds(input: ResearchInput): RawKeywordIdea[] {
   }
   if (input.includeLocal && input.city) {
     variants.push(`${base} ${input.city}`);
+    variants.push(`${base} in ${input.city}`);
+    variants.push(`${base} near ${input.city}`);
   }
+  // Broader local patterns live in providers/local-search.ts when includeLocal is on.
 
   return [...new Set(variants.map((v) => v.replace(/\s+/g, " ").trim()))].map(
     (keyword) => ({

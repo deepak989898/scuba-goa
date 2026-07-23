@@ -35,7 +35,8 @@ export type KeywordSource =
   | "city_research"
   | "ai"
   | "google_ads"
-  | "service_seed";
+  | "service_seed"
+  | "local_seed";
 
 export type KeywordIntent =
   | "informational"
@@ -359,7 +360,7 @@ export const DEFAULT_SEO_BLOG_SETTINGS: SeoBlogCenterSettings = {
   autoPublish: false,
   approvalRequired: true,
   pauseGenerationQueue: false,
-  maxKeywordsPerResearch: 100,
+  maxKeywordsPerResearch: 250,
   maxBlogsGeneratedPerDay: 5,
   maxBlogsPublishedPerDay: 2,
   maxImagesPerDay: 5,

@@ -26,7 +26,11 @@ export function classifyIntent(keyword: string): KeywordIntent {
     return "faq";
   }
   if (/\b(book|booking|package|deal|offer)\b/.test(l)) return "transactional";
-  if (/\b(near me|baga|calangute|anjuna|panjim|palolem|north goa|south goa)\b/.test(l)) {
+  if (
+    /\b(near me|nearby|near my|from my location|how far|how much far|distance from|hotel pickup|baga|calangute|anjuna|vagator|candolim|panjim|panaji|palolem|colva|grande island|grand island|north goa|south goa|morjim|arambol|agonda)\b/.test(
+      l,
+    )
+  ) {
     return "local";
   }
   if (/\b(best|top|review)\b/.test(l)) return "commercial";
@@ -43,7 +47,13 @@ export function classifyContentType(intent: KeywordIntent, keyword: string): Con
   if (intent === "faq") return "faq_article";
   if (intent === "transactional") return "booking_guide";
   if (/\b(top \d+|best \d+)\b/.test(l)) return "best_of";
-  if (/\b(grande island|baga|calangute|location)\b/.test(l)) return "location_guide";
+  if (
+    /\b(grande island|grand island|baga|calangute|anjuna|vagator|palolem|colva|location|near me|north goa|south goa)\b/.test(
+      l,
+    )
+  ) {
+    return "location_guide";
+  }
   if (/\b(official|login|website)\b/.test(l)) return "optimize_service_page";
   return "complete_guide";
 }

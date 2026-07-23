@@ -24,7 +24,7 @@ export type ResearchResult = {
 export async function runKeywordResearch(
   input: ResearchInput,
 ): Promise<ResearchResult> {
-  const max = Math.min(100, Math.max(1, input.maxKeywords || 100));
+  const max = Math.min(250, Math.max(1, input.maxKeywords || 250));
   const researchJobId = `research_${Date.now().toString(36)}`;
   const exclude = new Set<string>();
 
@@ -71,6 +71,18 @@ export async function runKeywordResearch(
     error: gsc.error,
   });
   rawIdeas.push(...gsc.ideas);
+
+  const { fetchLocalSearchIdeas } = await import(
+    "@/lib/seo-blog-center/providers/local-search"
+  );
+  const local = await fetchLocalSearchIdeas(input);
+  providerReports.push({
+    name: local.provider,
+    configured: local.configured,
+    count: local.ideas.length,
+    error: local.error,
+  });
+  rawIdeas.push(...local.ideas);
 
   const seeds = await fetchSuggestAndSeedIdeas(input, exclude);
   providerReports.push({
