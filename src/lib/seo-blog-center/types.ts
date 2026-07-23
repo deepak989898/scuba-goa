@@ -301,6 +301,17 @@ export interface SeoBlogCenterSettings {
   autoApproveBlogs: boolean;
   autoPublish: boolean;
   approvalRequired: boolean;
+  /**
+   * Auto-approve pending clusters (no conflicts) → queue → generate → publish
+   * with AI featured images. Mutually exclusive with autoApprovePublishWithoutImage.
+   * Conflict clusters are left pending for manual review.
+   */
+  autoApprovePublishWithAiImage: boolean;
+  /**
+   * Same automation without AI images (admin can upload later).
+   * Mutually exclusive with autoApprovePublishWithAiImage.
+   */
+  autoApprovePublishWithoutImage: boolean;
   /** AI Blog Automation */
   pauseGenerationQueue: boolean;
   maxKeywordsPerResearch: number;
@@ -359,6 +370,8 @@ export const DEFAULT_SEO_BLOG_SETTINGS: SeoBlogCenterSettings = {
   autoApproveBlogs: false,
   autoPublish: false,
   approvalRequired: true,
+  autoApprovePublishWithAiImage: false,
+  autoApprovePublishWithoutImage: false,
   pauseGenerationQueue: false,
   maxKeywordsPerResearch: 250,
   maxBlogsGeneratedPerDay: 5,

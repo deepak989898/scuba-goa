@@ -1,32 +1,21 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
+  approveClustersToQueue,
+  estimateBatchCostUsd,
+} from "@/lib/seo-blog-center/auto-approve-publish";
+import {
   addSeoBlogLog,
   deleteCluster,
   deleteKeyword,
   getClusterById,
   getSeoBlogSettings,
   saveCluster,
-  saveGenerationJob,
   saveKeyword,
   getKeywordById,
 } from "@/lib/seo-blog-center/store";
-import {
-  PROMPT_VERSION,
-  type AiBlogGenerationJob,
-} from "@/lib/seo-blog-center/types";
-import { getServiceBySlugServer } from "@/lib/get-services-server";
 
 export const runtime = "nodejs";
-
-/** Rough estimate — labeled as estimate in UI. */
-function estimateBatchCostUsd(
-  clusterCount: number,
-  generateAiImage: boolean,
-): number {
-  const per = generateAiImage ? 0.12 : 0.08;
-  return Math.round(clusterCount * per * 100) / 100;
-}
 
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -96,29 +85,27 @@ export async function POST(req: Request) {
 
   const actorId = auth.uid || "admin";
   const now = new Date().toISOString();
-  const jobs: AiBlogGenerationJob[] = [];
-  let approved = 0;
   let rejected = 0;
   let deleted = 0;
 
-  for (const id of clusterIds) {
-    const cluster = await getClusterById(id);
-    if (!cluster) continue;
+  if (action === "delete" || action === "reject") {
+    for (const id of clusterIds) {
+      const cluster = await getClusterById(id);
+      if (!cluster) continue;
 
-    if (action === "delete") {
-      for (const kid of cluster.keywordIds || []) {
-        try {
-          await deleteKeyword(kid);
-        } catch {
-          /* keyword may already be gone */
+      if (action === "delete") {
+        for (const kid of cluster.keywordIds || []) {
+          try {
+            await deleteKeyword(kid);
+          } catch {
+            /* keyword may already be gone */
+          }
         }
+        await deleteCluster(cluster.id);
+        deleted += 1;
+        continue;
       }
-      await deleteCluster(cluster.id);
-      deleted += 1;
-      continue;
-    }
 
-    if (action === "reject") {
       await saveCluster({
         ...cluster,
         status: "rejected",
@@ -135,85 +122,47 @@ export async function POST(req: Request) {
         }
       }
       rejected += 1;
-      continue;
     }
 
-    if (cluster.contentType === "optimize_service_page") {
-      await saveCluster({
-        ...cluster,
-        status: "rejected",
-        notes: "Marked optimize existing service page — no article queued",
-        updatedAt: now,
-      });
-      continue;
-    }
-
-    const service = await getServiceBySlugServer(cluster.serviceSlug);
-    const job: AiBlogGenerationJob = {
-      id: `job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-      clusterId: cluster.id,
-      serviceSlug: cluster.serviceSlug,
-      serviceName: service?.title || cluster.serviceSlug,
-      primaryKeyword: cluster.primaryKeyword,
-      secondaryKeywords: cluster.secondaryKeywords,
-      questions: cluster.questionKeywords,
-      searchIntent: cluster.intent,
-      contentType: cluster.contentType,
-      language: cluster.language === "hi" ? "hi" : "en",
-      location: cluster.location,
-      status: "waiting",
-      priority: cluster.opportunityScore,
-      attempts: 0,
-      maximumAttempts: 3,
-      createdBy: actorId,
-      createdAt: now,
-      estimatedCostUsd: estimateBatchCostUsd(1, generateAiImage),
-      promptVersion: PROMPT_VERSION,
-      generateAiImage,
-    };
-    await saveGenerationJob(job);
-    jobs.push(job);
-    await saveCluster({
-      ...cluster,
-      status: "queued",
-      approvedAt: now,
-      approvedBy: actorId,
-      updatedAt: now,
+    await addSeoBlogLog({
+      type: "cluster_approved",
+      message:
+        action === "reject"
+          ? `Rejected ${rejected} clusters`
+          : `Deleted ${deleted} clusters`,
     });
-    for (const kid of cluster.keywordIds) {
-      const kw = await getKeywordById(kid);
-      if (kw) {
-        await saveKeyword({
-          ...kw,
-          status: "queued",
-          approvedAt: now,
-          approvedBy: actorId,
-          updatedAt: now,
-        });
-      }
-    }
-    approved += 1;
+
+    return NextResponse.json({
+      ok: true,
+      approved: 0,
+      rejected,
+      deleted,
+      jobsCreated: 0,
+      estimatedCostUsd: 0,
+      costIsEstimate: true,
+      generateAiImage,
+      jobIds: [],
+    });
   }
 
-  await addSeoBlogLog({
-    type: "cluster_approved",
-    message:
-      action === "reject"
-        ? `Rejected ${rejected} clusters`
-        : action === "delete"
-          ? `Deleted ${deleted} clusters`
-          : `Approved ${approved} clusters → ${jobs.length} generation jobs (AI image: ${generateAiImage ? "on" : "off"}, est. $${estimatedCostUsd})`,
+  // Manual approve: admin selected clusters explicitly (including conflicts if they want).
+  const result = await approveClustersToQueue({
+    clusterIds,
+    actorId,
+    generateAiImage,
+    skipConflicts: false,
+    requirePending: false,
   });
 
   return NextResponse.json({
     ok: true,
-    approved,
-    rejected,
-    deleted,
-    jobsCreated: jobs.length,
-    estimatedCostUsd,
+    approved: result.approved,
+    rejected: 0,
+    deleted: 0,
+    jobsCreated: result.jobsCreated,
+    estimatedCostUsd: result.estimatedCostUsd,
     costIsEstimate: true,
-    generateAiImage,
-    jobIds: jobs.map((j) => j.id),
+    generateAiImage: result.generateAiImage,
+    jobIds: result.jobIds,
   });
 }

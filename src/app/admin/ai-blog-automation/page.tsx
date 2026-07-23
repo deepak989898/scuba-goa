@@ -6,6 +6,10 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type { BlogPostFirestore } from "@/lib/blog-firestore";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
+import {
+  getContentTrafficForSlug,
+  type ContentTraffic,
+} from "@/lib/analytics-content-traffic";
 import type {
   AiBlogGenerationJob,
   ClusterConflict,
@@ -147,8 +151,10 @@ export default function AiBlogAutomationPage() {
   const [drafts, setDrafts] = useState<SeoBlogDraft[]>([]);
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
   const [blogViewsBySlug, setBlogViewsBySlug] = useState<
-    Record<string, { views: number; visitors: number }>
+    Record<string, ContentTraffic>
   >({});
+  const [viewsLoading, setViewsLoading] = useState(false);
+  const [viewsError, setViewsError] = useState<string | null>(null);
   const [blogPostsBySlug, setBlogPostsBySlug] = useState<
     Record<string, BlogPostFirestore>
   >({});
@@ -190,13 +196,57 @@ export default function AiBlogAutomationPage() {
     }>;
   } | null>(null);
 
+  const normalizeTrafficMap = useCallback(
+    (raw: Record<string, ContentTraffic> | undefined) => {
+      const out: Record<string, ContentTraffic> = {};
+      for (const [slug, t] of Object.entries(raw ?? {})) {
+        const key = slug.trim().toLowerCase();
+        if (!key) continue;
+        out[key] = {
+          views: Math.max(0, Math.round(Number(t?.views ?? 0))),
+          visitors: Math.max(0, Math.round(Number(t?.visitors ?? 0))),
+        };
+      }
+      return out;
+    },
+    [],
+  );
+
+  const loadBlogViews = useCallback(
+    async (opts?: { silent?: boolean; full?: boolean }) => {
+      if (!opts?.silent) setViewsLoading(true);
+      setViewsError(null);
+      try {
+        const qs = opts?.full ? "?mode=full" : "?mode=aggregated";
+        const traffic = await adminFetch(`/api/admin/blog-traffic${qs}`);
+        setBlogViewsBySlug(
+          normalizeTrafficMap(
+            (traffic.bySlug ?? {}) as Record<string, ContentTraffic>,
+          ),
+        );
+      } catch (e) {
+        setViewsError(
+          e instanceof Error ? e.message : "Could not load view counts",
+        );
+        if (!opts?.silent) {
+          // Keep previous counts on refresh failure; only clear on first load.
+          setBlogViewsBySlug((prev) =>
+            Object.keys(prev).length ? prev : {},
+          );
+        }
+      } finally {
+        if (!opts?.silent) setViewsLoading(false);
+      }
+    },
+    [normalizeTrafficMap],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
-      const [data, traffic, postsRes] = await Promise.all([
+      const [data, postsRes] = await Promise.all([
         adminFetch("/api/admin/ai-blog-automation"),
-        adminFetch("/api/admin/blog-traffic").catch(() => ({ bySlug: {} })),
         adminFetch("/api/admin/blog-posts").catch(() => ({ posts: [] })),
       ]);
       setStats(data.stats ?? {});
@@ -215,9 +265,6 @@ export default function AiBlogAutomationPage() {
       setJobs(data.jobs ?? []);
       setDrafts(data.drafts ?? []);
       setLogs(data.logs ?? []);
-      setBlogViewsBySlug(
-        (traffic.bySlug ?? {}) as Record<string, { views: number; visitors: number }>,
-      );
       const bySlug: Record<string, BlogPostFirestore> = {};
       for (const p of (postsRes.posts ?? []) as BlogPostFirestore[]) {
         if (p?.slug) bySlug[p.slug] = p;
@@ -227,12 +274,14 @@ export default function AiBlogAutomationPage() {
         if (!prev?.slug) return prev;
         return bySlug[prev.slug] ?? prev;
       });
+      // Load views separately so a slow traffic call never blanks the queue table.
+      void loadBlogViews();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadBlogViews]);
 
   useEffect(() => {
     void load();
@@ -666,12 +715,80 @@ export default function AiBlogAutomationPage() {
         body: JSON.stringify(patch),
       });
       setSettings(data.settings);
-      setOk("Settings saved");
+      const auto = data.autoApprove as
+        | {
+            mode?: string;
+            result?: {
+              jobsCreated?: number;
+              skippedConflicts?: number;
+            };
+          }
+        | null
+        | undefined;
+      if (auto?.result && (auto.result.jobsCreated ?? 0) > 0) {
+        setOk(
+          `Settings saved. Auto-queued ${auto.result.jobsCreated} cluster(s); skipped ${auto.result.skippedConflicts ?? 0} conflict(s) for manual review.`,
+        );
+        await load();
+      } else if (
+        patch.autoApprovePublishWithAiImage === true ||
+        patch.autoApprovePublishWithoutImage === true
+      ) {
+        setOk(
+          `Automation ON (${auto?.mode === "with_ai_image" ? "with AI images" : "without images"}). Conflict keywords stay pending for manual review.`,
+        );
+        await load();
+      } else {
+        setOk("Settings saved");
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
     } finally {
       setBusy(null);
     }
+  }
+
+  async function setAutoApproveMode(
+    mode: "off" | "with_ai_image" | "without_image",
+  ) {
+    if (mode === "with_ai_image") {
+      if (
+        !confirm(
+          "Turn ON auto-approve & publish WITH AI images?\n\n" +
+            "• Pending clusters without conflicts → queue → generate → publish\n" +
+            "• Conflict keywords are SKIPPED (you can approve/reject them later)\n" +
+            "• Uses OpenAI for content + featured images (daily caps still apply)",
+        )
+      ) {
+        return;
+      }
+      await saveSettings({
+        autoApprovePublishWithAiImage: true,
+        autoApprovePublishWithoutImage: false,
+      });
+      return;
+    }
+    if (mode === "without_image") {
+      if (
+        !confirm(
+          "Turn ON auto-approve & publish WITHOUT images?\n\n" +
+            "• Pending clusters without conflicts → queue → generate → publish\n" +
+            "• No AI featured image (upload manually later if needed)\n" +
+            "• Conflict keywords are SKIPPED for manual review",
+        )
+      ) {
+        return;
+      }
+      await saveSettings({
+        autoApprovePublishWithAiImage: false,
+        autoApprovePublishWithoutImage: true,
+      });
+      return;
+    }
+    await saveSettings({
+      autoApprovePublishWithAiImage: false,
+      autoApprovePublishWithoutImage: false,
+    });
   }
 
   const tabs: { id: Tab; label: string }[] = [
@@ -692,8 +809,8 @@ export default function AiBlogAutomationPage() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Research keywords (Google Ads when configured + GSC + seeds) → cluster →
-            approve → generate drafts → review → publish. Auto-publish stays off by
-            default.
+            approve → generate drafts → review → publish. Use Clusters automation
+            toggles to auto-approve (skips conflict keywords).
           </p>
         </div>
         <Link
@@ -862,6 +979,52 @@ export default function AiBlogAutomationPage() {
 
       {tab === "clusters" ? (
         <section className="mt-4 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
+          {settings ? (
+            <div className="border-b border-ocean-100 bg-gradient-to-r from-cyan-50/80 to-ocean-50/60 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
+                Automation
+              </p>
+              <p className="mt-1 max-w-3xl text-xs text-ocean-600">
+                When ON, pending clusters without conflicts are auto-queued, generated,
+                and published (respects daily caps). Conflict keywords stay pending for
+                you to approve or reject manually.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-ocean-900 shadow-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-emerald-700"
+                    checked={settings.autoApprovePublishWithAiImage === true}
+                    disabled={busy === "settings"}
+                    onChange={(e) => {
+                      if (e.target.checked) void setAutoApproveMode("with_ai_image");
+                      else void setAutoApproveMode("off");
+                    }}
+                  />
+                  Auto approve &amp; publish with AI images
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-ocean-200 bg-white px-3 py-2 text-xs font-semibold text-ocean-900 shadow-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-cyan-700"
+                    checked={settings.autoApprovePublishWithoutImage === true}
+                    disabled={busy === "settings"}
+                    onChange={(e) => {
+                      if (e.target.checked) void setAutoApproveMode("without_image");
+                      else void setAutoApproveMode("off");
+                    }}
+                  />
+                  Auto approve &amp; publish without images
+                </label>
+                {(settings.autoApprovePublishWithAiImage ||
+                  settings.autoApprovePublishWithoutImage) && (
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-900">
+                    Active · conflicts skipped
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2 border-b border-ocean-100 p-3">
             <div className="flex flex-wrap items-center gap-1 rounded-full border border-ocean-200 bg-white p-0.5 text-xs font-semibold">
               {(
@@ -1156,11 +1319,15 @@ export default function AiBlogAutomationPage() {
             </button>
             <button
               type="button"
-              className="text-xs font-semibold text-ocean-700 underline"
-              onClick={() => void load()}
+              disabled={viewsLoading}
+              className="text-xs font-semibold text-ocean-700 underline disabled:opacity-50"
+              onClick={() => void loadBlogViews({ full: true })}
             >
-              Refresh views
+              {viewsLoading ? "Refreshing views…" : "Refresh views"}
             </button>
+            {viewsError ? (
+              <p className="text-xs font-semibold text-red-700">{viewsError}</p>
+            ) : null}
           </div>
           <div
             className={`mt-3 overflow-auto ${
@@ -1189,9 +1356,12 @@ export default function AiBlogAutomationPage() {
                   const post = slug ? blogPostsBySlug[slug] : undefined;
                   const imageSrc =
                     post?.featuredImageUrl || post?.ogImageUrl || "";
-                  const views = slug
-                    ? blogViewsBySlug[slug]?.views ?? 0
-                    : null;
+                  const traffic = getContentTrafficForSlug(blogViewsBySlug, slug);
+                  const views = !slug
+                    ? null
+                    : viewsLoading && traffic == null
+                      ? null
+                      : (traffic?.views ?? 0);
                   const publishedLabel = formatIstDateTimeAmPm(
                     post?.publishedAt || jobPublishedAt(j),
                   );
@@ -1276,7 +1446,9 @@ export default function AiBlogAutomationPage() {
                           {publishedLabel}
                         </td>
                         <td className="p-2 tabular-nums">
-                          {views == null ? "—" : views}
+                          {views == null
+                            ? "…"
+                            : views.toLocaleString("en-IN")}
                         </td>
                         <td className="p-2">
                           {j.attempts}/{j.maximumAttempts}
@@ -1395,13 +1567,47 @@ export default function AiBlogAutomationPage() {
 
       {tab === "settings" && settings ? (
         <section className="mt-4 space-y-3 rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-cyan-200 bg-cyan-50/50 p-3">
+            <p className="text-sm font-semibold text-ocean-900">Cluster automation</p>
+            <p className="mt-1 text-xs text-ocean-600">
+              Auto-approve pending clusters without conflicts, generate, and publish.
+              Conflict keywords are never auto-approved — review them on the Clusters
+              tab.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.autoApprovePublishWithAiImage === true}
+                  disabled={busy === "settings"}
+                  onChange={(e) => {
+                    if (e.target.checked) void setAutoApproveMode("with_ai_image");
+                    else void setAutoApproveMode("off");
+                  }}
+                />
+                Auto approve &amp; publish with AI generated images
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.autoApprovePublishWithoutImage === true}
+                  disabled={busy === "settings"}
+                  onChange={(e) => {
+                    if (e.target.checked) void setAutoApproveMode("without_image");
+                    else void setAutoApproveMode("off");
+                  }}
+                />
+                Auto approve &amp; publish without images
+              </label>
+            </div>
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={settings.autoPublish}
               onChange={(e) => void saveSettings({ autoPublish: e.target.checked })}
             />
-            Auto-publish high-quality drafts (default OFF)
+            Auto-publish high-quality drafts (also turned on by automation above)
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -1409,7 +1615,7 @@ export default function AiBlogAutomationPage() {
               checked={settings.generateImages}
               onChange={(e) => void saveSettings({ generateImages: e.target.checked })}
             />
-            Generate AI featured images
+            Generate AI featured images (global)
           </label>
           <label className="block text-sm">
             Min quality score for auto-publish

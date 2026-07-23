@@ -13,6 +13,8 @@ import {
 } from "@/lib/seo-blog-center/store";
 import { isGoogleAdsConfigured } from "@/lib/seo-blog-center/providers/google-ads";
 import { processGenerationQueue } from "@/lib/seo-blog-center/generation-queue";
+import { runAutoApprovePublishAutomation } from "@/lib/seo-blog-center/auto-approve-publish";
+import type { SeoBlogCenterSettings } from "@/lib/seo-blog-center/types";
 import { getAllServicesServer } from "@/lib/get-services-server";
 import { fallbackServices } from "@/data/services";
 
@@ -159,6 +161,36 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, deleted });
   }
 
-  const settings = await updateSeoBlogSettings(body as never);
-  return NextResponse.json({ ok: true, settings });
+  if (body.action === "runAutoApprove") {
+    const auto = await runAutoApprovePublishAutomation(auth.uid || "admin-auto");
+    return NextResponse.json({ ok: true, ...auto });
+  }
+
+  const patch = { ...body } as Partial<SeoBlogCenterSettings> & {
+    action?: unknown;
+  };
+  delete patch.action;
+
+  // Mutual exclusivity + enable auto-publish when either automation toggle turns on.
+  if (patch.autoApprovePublishWithAiImage === true) {
+    patch.autoApprovePublishWithoutImage = false;
+    patch.autoPublish = true;
+    patch.generateImages = true;
+  } else if (patch.autoApprovePublishWithoutImage === true) {
+    patch.autoApprovePublishWithAiImage = false;
+    patch.autoPublish = true;
+  }
+
+  const settings = await updateSeoBlogSettings(patch);
+
+  let autoApprove: Awaited<ReturnType<typeof runAutoApprovePublishAutomation>> | null =
+    null;
+  if (
+    patch.autoApprovePublishWithAiImage === true ||
+    patch.autoApprovePublishWithoutImage === true
+  ) {
+    autoApprove = await runAutoApprovePublishAutomation(auth.uid || "admin-auto");
+  }
+
+  return NextResponse.json({ ok: true, settings, autoApprove });
 }

@@ -85,7 +85,7 @@ export default function AdminBlogAutomationPage() {
   const loadBlogTraffic = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setTrafficLoading(true);
     try {
-      const data = await adminFetch("/api/admin/blog-traffic");
+      const data = await adminFetch("/api/admin/blog-traffic?mode=aggregated");
       const bySlug = (data.bySlug ?? {}) as Record<string, BlogTraffic>;
       const index = (data.index ?? { views: 0, visitors: 0 }) as BlogTraffic;
       setBlogTrafficBySlug(bySlug);
@@ -105,6 +105,18 @@ export default function AdminBlogAutomationPage() {
     setTrafficRefreshing(true);
     try {
       await loadBlogTraffic({ silent: true });
+      // One recovery pass against raw pageViews if aggregated looks empty.
+      const data = await adminFetch("/api/admin/blog-traffic?mode=full").catch(
+        () => null,
+      );
+      if (data?.bySlug) {
+        setBlogTrafficBySlug(data.bySlug as Record<string, BlogTraffic>);
+        const index = (data.index ?? { views: 0, visitors: 0 }) as BlogTraffic;
+        setBlogIndexTraffic({
+          views: Math.max(0, Math.round(Number(index.views) || 0)),
+          visitors: Math.max(0, Math.round(Number(index.visitors) || 0)),
+        });
+      }
       setOkMsg("View counts updated.");
     } catch {
       setErr("Could not refresh view counts.");

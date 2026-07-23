@@ -24,25 +24,27 @@ export async function GET(req: Request) {
   }
 
   try {
-    const { bySlug, index, aggregatedDocs } = await loadContentTrafficWithBackfill(
-      db,
-      {
+    const { bySlug, index, aggregatedDocs, backfilled } =
+      await loadContentTrafficWithBackfill(db, {
         collection: "analyticsGuideTraffic",
         indexDocId: GUIDE_INDEX_KEY,
+        mode: "aggregated",
         backfill: {
           pathPrefix: "/guides",
           indexPath: "/guides",
           slugPattern: /^\/guides\/([a-z0-9-]+)$/,
         },
-      },
-    );
+      });
 
     return NextResponse.json({
       bySlug,
       index,
-      source: "analyticsGuideTraffic+pageViews",
+      source: backfilled
+        ? "analyticsGuideTraffic+pageViews"
+        : "analyticsGuideTraffic",
       trackingConfigured: true,
       aggregatedDocs,
+      backfilled,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load traffic";

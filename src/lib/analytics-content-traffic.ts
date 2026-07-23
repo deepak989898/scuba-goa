@@ -10,12 +10,14 @@ export function mergeContentTraffic(
   views: number,
   visitors: number,
 ) {
-  const cur = target[slug];
+  const key = slug.trim().toLowerCase();
+  if (!key) return;
+  const cur = target[key];
   if (!cur) {
-    target[slug] = { views, visitors };
+    target[key] = { views, visitors };
     return;
   }
-  target[slug] = {
+  target[key] = {
     views: Math.max(cur.views, views),
     visitors: Math.max(cur.visitors, visitors),
   };
@@ -27,6 +29,18 @@ export function normalizeAnalyticsPath(pathRaw: string): string {
   let p = trimmed.split("?")[0]?.split("#")[0] ?? trimmed;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
   return p;
+}
+
+/** Lookup traffic by slug with case-insensitive key matching. */
+export function getContentTrafficForSlug(
+  bySlug: Record<string, ContentTraffic>,
+  slug: string | null | undefined,
+): ContentTraffic | undefined {
+  const key = String(slug ?? "")
+    .trim()
+    .toLowerCase();
+  if (!key) return undefined;
+  return bySlug[key] ?? bySlug[slug!.trim()];
 }
 
 type BackfillConfig = {
@@ -54,6 +68,8 @@ export async function backfillContentTrafficFromPageViews(
   for (const doc of snap.docs) {
     const data = doc.data() as Record<string, unknown>;
     if (data.eventType !== "view") continue;
+    // Bots are stored for evidence but must not inflate public view counts.
+    if (data.isBot === true || data.visitorType === "bot") continue;
     const pathRaw = String(data.path ?? "").trim();
     if (!pathRaw.startsWith(config.pathPrefix)) continue;
 
@@ -68,7 +84,7 @@ export async function backfillContentTrafficFromPageViews(
 
     const m = config.slugPattern.exec(path);
     if (!m) continue;
-    const slug = m[1];
+    const slug = m[1].toLowerCase();
     if (!slugVisitors.has(slug)) slugVisitors.set(slug, new Set());
     slugVisitors.get(slug)!.add(sessionId);
     const row = bySlug[slug] ?? { views: 0, visitors: 0 };
@@ -94,11 +110,17 @@ export async function loadContentTrafficWithBackfill(
     collection: "analyticsBlogTraffic" | "analyticsGuideTraffic";
     indexDocId: string;
     backfill: BackfillConfig;
+    /**
+     * `aggregated` = fast path from analytics*Traffic only (recommended for admin tables).
+     * `full` = also scan recent pageViews when needed (slower; recovery / empty collections).
+     */
+    mode?: "aggregated" | "full";
   },
 ): Promise<{
   bySlug: Record<string, ContentTraffic>;
   index: ContentTraffic;
   aggregatedDocs: number;
+  backfilled: boolean;
 }> {
   const bySlug: Record<string, ContentTraffic> = {};
   let index: ContentTraffic = { views: 0, visitors: 0 };
@@ -113,18 +135,42 @@ export async function loadContentTrafficWithBackfill(
       index = traffic;
       continue;
     }
-    const slug = String(data.slug ?? doc.id).trim();
-    if (slug) bySlug[slug] = traffic;
+    const slug = String(data.slug ?? doc.id)
+      .trim()
+      .toLowerCase();
+    if (slug && slug !== options.indexDocId) {
+      mergeContentTraffic(bySlug, slug, views, visitors);
+    }
   }
 
-  const backfill = await backfillContentTrafficFromPageViews(db, options.backfill);
-  for (const [slug, t] of Object.entries(backfill.bySlug)) {
-    mergeContentTraffic(bySlug, slug, t.views, t.visitors);
-  }
-  index = {
-    views: Math.max(index.views, backfill.index.views),
-    visitors: Math.max(index.visitors, backfill.index.visitors),
-  };
+  const mode = options.mode ?? "full";
+  const aggregatedEmpty =
+    snap.size === 0 ||
+    (Object.keys(bySlug).length === 0 && index.views === 0);
+  const shouldBackfill = mode === "full" || aggregatedEmpty;
 
-  return { bySlug, index, aggregatedDocs: snap.size };
+  let backfilled = false;
+  if (shouldBackfill) {
+    try {
+      const backfill = await backfillContentTrafficFromPageViews(
+        db,
+        options.backfill,
+      );
+      backfilled = true;
+      for (const [slug, t] of Object.entries(backfill.bySlug)) {
+        mergeContentTraffic(bySlug, slug, t.views, t.visitors);
+      }
+      index = {
+        views: Math.max(index.views, backfill.index.views),
+        visitors: Math.max(index.visitors, backfill.index.visitors),
+      };
+    } catch (e) {
+      console.error(
+        `[analytics-content-traffic] pageViews backfill failed for ${options.collection}`,
+        e,
+      );
+    }
+  }
+
+  return { bySlug, index, aggregatedDocs: snap.size, backfilled };
 }

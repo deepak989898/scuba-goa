@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
+import { runAutoApprovePublishAutomation } from "@/lib/seo-blog-center/auto-approve-publish";
 import { runKeywordResearch } from "@/lib/seo-blog-center/orchestrate-research";
 import {
   addSeoBlogLog,
@@ -87,7 +88,17 @@ export async function POST(req: Request) {
       message: `Research ${result.researchJobId}: ${result.keywords.length} keywords, ${result.clusters.length} clusters`,
       resourceId: result.researchJobId,
     });
-    return NextResponse.json({ ok: true, ...result });
+
+    let autoApprove: Awaited<
+      ReturnType<typeof runAutoApprovePublishAutomation>
+    > | null = null;
+    try {
+      autoApprove = await runAutoApprovePublishAutomation(auth.uid || "admin-auto");
+    } catch {
+      /* automation optional after research */
+    }
+
+    return NextResponse.json({ ok: true, ...result, autoApprove });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Research failed";
     await addSeoBlogLog({ type: "error", message, error: message });
