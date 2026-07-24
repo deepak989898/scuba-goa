@@ -14,35 +14,59 @@ type DashCard = {
   accent?: boolean;
 };
 
-const BLOGS_SEO: DashCard[] = [
+const DAILY: DashCard[] = [
+  {
+    href: "/admin/command-center",
+    title: "Command Center",
+    description: "Daily brief, alerts, and links to all AI agents.",
+    accent: true,
+  },
+  {
+    href: "/admin/bookings",
+    title: "Bookings",
+    description: "Paid orders, bills, and customer emails.",
+    accent: true,
+  },
+];
+
+/** Keep these three together — same as sidebar “Blogs & guides”. */
+const BLOGS_GUIDES: DashCard[] = [
+  {
+    href: "/admin/ai-blog-automation",
+    title: "AI Blog Automation",
+    description: "Research keywords → clusters → generate drafts.",
+    accent: true,
+  },
   {
     href: "/admin/blog-automation",
-    title: "Blog automation",
-    description: "IST schedule, drafts, and Google Business posts.",
-  },
-  {
-    href: "/admin/seo-agent",
-    title: "SEO AI",
-    description: "Weekly Search Console report and ranking fixes.",
-  },
-  {
-    href: "/admin/seo-health",
-    title: "SEO health audit",
-    description: "Technical audit — sitemap, schema, canonical.",
+    title: "Blog posts & schedule",
+    description: "Edit live posts, IST schedule, Google Business.",
+    accent: true,
   },
   {
     href: "/admin/seo-pages",
     title: "SEO guide pages",
     description: "Landing pages at /guides/…",
+    accent: true,
+  },
+  {
+    href: "/admin/seo-agent",
+    title: "SEO AI report",
+    description: "Weekly Search Console rankings and meta fixes.",
+  },
+  {
+    href: "/admin/seo-health",
+    title: "SEO health",
+    description: "Technical audit — sitemap, schema, canonical.",
   },
 ];
 
-const WEBSITE_CONTENT: DashCard[] = [
+const WEBSITE: DashCard[] = [
   { href: "/admin/packages", title: "Packages", description: "Scuba, tours, and adventure SKUs." },
   { href: "/admin/services", title: "Services", description: "Home and /services cards." },
-  { href: "/admin/offers", title: "Offers & promos", description: "Checkout promo codes." },
-  { href: "/admin/hero", title: "Hero slider", description: "Homepage carousel images." },
-  { href: "/admin/gallery", title: "Gallery & reels", description: "Public gallery media." },
+  { href: "/admin/offers", title: "Offers", description: "Checkout promo codes." },
+  { href: "/admin/hero", title: "Hero slides", description: "Homepage carousel." },
+  { href: "/admin/gallery", title: "Gallery", description: "Photos and reels." },
 ];
 
 const CUSTOMERS: DashCard[] = [
@@ -54,37 +78,8 @@ const ANALYTICS: DashCard[] = [
   { href: "/admin/analytics", title: "Site analytics", description: "Visitors, pages, and traffic." },
   {
     href: "/admin/ai-analytics",
-    title: "AI analytics agent",
+    title: "AI analytics",
     description: "Daily GA4 + GSC digest.",
-  },
-];
-
-const AI_AGENTS: DashCard[] = [
-  {
-    href: "/admin/conversion-opt",
-    title: "Conversion AI",
-    description: "Funnel and CTA suggestions.",
-  },
-  {
-    href: "/admin/pricing-agent",
-    title: "AI Pricing",
-    description: "Weekly market price suggestions.",
-    accent: true,
-  },
-  {
-    href: "/admin/business-agent",
-    title: "Business ops agent",
-    description: "Safe automatic site updates.",
-  },
-  {
-    href: "/admin/recovery-agent",
-    title: "Recovery AI",
-    description: "Abandoned checkout WhatsApp recovery.",
-  },
-  {
-    href: "/admin/marketing-engine",
-    title: "Marketing AI",
-    description: "Social copy and competitor scan.",
   },
 ];
 
@@ -135,16 +130,26 @@ export default function AdminHomePage() {
   return (
     <div>
       <h1 className="font-display text-base font-bold text-ocean-900">Dashboard</h1>
+      <p className="mt-1 text-sm text-ocean-600">
+        Use the sidebar groups — blogs & guides stay together so you are not hunting menus.
+      </p>
 
-      <Section title="Blogs & SEO growth">
-        <CardGrid items={BLOGS_SEO} />
+      <Section title="1 · Check first">
+        <CardGrid items={DAILY} />
       </Section>
 
-      <Section title="Website content">
-        <CardGrid items={WEBSITE_CONTENT} />
+      <Section
+        title="2 · Blogs & guides"
+        description="AI create → live blog posts → SEO guides. Open these as one workflow."
+      >
+        <CardGrid items={BLOGS_GUIDES} />
       </Section>
 
-      <Section title="Customers & leads">
+      <Section title="Website">
+        <CardGrid items={WEBSITE} />
+      </Section>
+
+      <Section title="Customers">
         <CardGrid items={CUSTOMERS} />
       </Section>
 
@@ -152,12 +157,17 @@ export default function AdminHomePage() {
         <CardGrid items={ANALYTICS} />
       </Section>
 
-      <Section
-        title="AI agents"
-        description="Detail pages — Command Center links here after you read the daily brief."
-      >
-        <CardGrid items={AI_AGENTS} />
-      </Section>
+      <p className="mt-6 rounded-xl border border-ocean-100 bg-white p-3 text-sm text-ocean-700">
+        Other AI agents (pricing, recovery, marketing, conversion, business ops) open from{" "}
+        <Link
+          href="/admin/command-center"
+          className="font-semibold text-ocean-800 underline-offset-2 hover:underline"
+        >
+          Command Center
+        </Link>
+        {" "}
+        — they are not duplicated in the sidebar.
+      </p>
     </div>
   );
 }

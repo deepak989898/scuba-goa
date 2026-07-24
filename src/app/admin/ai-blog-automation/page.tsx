@@ -1,8 +1,8 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type { BlogPostFirestore } from "@/lib/blog-firestore";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
@@ -922,6 +922,7 @@ export default function AiBlogAutomationPage() {
 
   return (
     <div>
+      <AdminContentSeoNav />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="font-display text-lg font-bold text-ocean-900">
@@ -934,12 +935,6 @@ export default function AiBlogAutomationPage() {
             approve — Process is only for stuck waiting jobs.
           </p>
         </div>
-        <Link
-          href="/admin/blog-automation"
-          className="text-sm font-semibold text-ocean-700 hover:underline"
-        >
-          Live blogs / schedule →
-        </Link>
       </div>
 
       {err ? (

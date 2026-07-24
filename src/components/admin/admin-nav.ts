@@ -20,125 +20,115 @@ export type AdminNavSection = {
 };
 
 /**
- * Grouped admin sidebar — ordered by what needs attention first.
- * Section 1 = daily checklist; below = content, growth, analytics, AI.
+ * Grouped admin sidebar — fewer top-level items, related tools kept together.
+ * Blogs / AI blogs / SEO guides live in one section so admins are not hunting.
+ * Extra AI agent pages stay on Command Center (not duplicated here).
  */
 export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
     id: "daily",
     label: "1 · Check first",
-    hint: "Every morning — start here before anything else",
+    hint: "Start here each morning",
     priority: true,
     items: [
       {
         href: "/admin/command-center",
         label: "Command Center",
-        description: "Daily AI brief, alerts & pending approvals",
+        description: "Daily brief, alerts & all AI agents",
         highlight: true,
         badge: "daily",
       },
       {
         href: "/admin/bookings",
         label: "Bookings",
-        description: "New paid orders, bills & customer emails",
+        description: "Orders, bills & customer emails",
         highlight: true,
         badge: "action",
       },
+    ],
+  },
+  {
+    id: "blogs-guides",
+    label: "2 · Blogs & guides",
+    hint: "AI create → live blogs → SEO guides — check these together",
+    priority: true,
+    items: [
       {
         href: "/admin/ai-blog-automation",
         label: "AI Blog Automation",
-        description: "Keyword research → clusters → generate → review",
+        description: "Research → clusters → generate drafts",
         highlight: true,
         badge: "action",
       },
-    ],
-  },
-  {
-    id: "overview",
-    label: "Overview",
-    hint: "Map of everything in one place",
-    items: [
-      {
-        href: "/admin",
-        label: "Dashboard",
-        description: "Quick links grouped by topic",
-      },
-    ],
-  },
-  {
-    id: "blogs-seo",
-    label: "Blogs & SEO growth",
-    hint: "Traffic, rankings, and automatic content",
-    items: [
       {
         href: "/admin/blog-automation",
-        label: "Blog automation",
-        description: "IST schedule, drafts & Google Business",
-      },
-      {
-        href: "/admin/seo-agent",
-        label: "SEO AI",
-        description: "Weekly GSC report & meta fixes",
-      },
-      {
-        href: "/admin/seo-health",
-        label: "SEO health audit",
-        description: "Sitemap, schema, technical checks",
+        label: "Blog posts & schedule",
+        description: "Edit, publish, IST schedule, GMB",
+        highlight: true,
       },
       {
         href: "/admin/seo-pages",
         label: "SEO guide pages",
         description: "Landing pages at /guides/…",
+        highlight: true,
+      },
+      {
+        href: "/admin/seo-agent",
+        label: "SEO AI report",
+        description: "Weekly GSC rankings & meta fixes",
+      },
+      {
+        href: "/admin/seo-health",
+        label: "SEO health",
+        description: "Sitemap, schema, technical audit",
       },
     ],
   },
   {
-    id: "content",
-    label: "Website content",
-    hint: "Prices, homepage, and catalog",
+    id: "website",
+    label: "Website",
+    hint: "Catalog, homepage & media",
     items: [
-      { href: "/admin/packages", label: "Packages", description: "Scuba & tour SKUs" },
-      { href: "/admin/services", label: "Services", description: "Service cards & pricing" },
-      { href: "/admin/offers", label: "Offers & promos", description: "Checkout promo codes" },
-      { href: "/admin/hero", label: "Hero slides", description: "Homepage carousel" },
-      { href: "/admin/gallery", label: "Gallery", description: "Photos & reels" },
+      { href: "/admin/packages", label: "Packages" },
+      { href: "/admin/services", label: "Services" },
+      { href: "/admin/offers", label: "Offers" },
+      { href: "/admin/hero", label: "Hero slides" },
+      { href: "/admin/gallery", label: "Gallery" },
     ],
   },
   {
     id: "customers",
-    label: "Customers & leads",
+    label: "Customers",
     items: [
-      { href: "/admin/ratings", label: "Reviews", description: "Approve homepage ratings" },
-      { href: "/admin/marketing", label: "Marketing leads", description: "Lead capture & follow-up" },
+      { href: "/admin/ratings", label: "Reviews" },
+      { href: "/admin/marketing", label: "Marketing leads" },
     ],
   },
   {
     id: "analytics",
     label: "Analytics",
     items: [
-      { href: "/admin/analytics", label: "Site analytics", description: "Visitors, pages & clicks" },
+      {
+        href: "/admin/analytics",
+        label: "Site analytics",
+        description: "Visitors, pages & clicks",
+      },
       {
         href: "/admin/ai-analytics",
-        label: "AI analytics agent",
+        label: "AI analytics",
         description: "Daily GA4 + GSC digest",
       },
     ],
   },
   {
-    id: "ai-agents",
-    label: "AI agents",
-    hint: "Open Command Center first — these are detail pages",
+    id: "overview",
+    label: "More",
     items: [
-      { href: "/admin/conversion-opt", label: "Conversion AI", description: "Funnel & CTA ideas" },
       {
-        href: "/admin/pricing-agent",
-        label: "AI Pricing",
-        description: "Weekly market price suggestions",
-        badge: "action",
+        href: "/admin",
+        label: "Dashboard",
+        description: "All admin links in one page",
       },
-      { href: "/admin/business-agent", label: "Business ops agent", description: "Safe auto site updates" },
-      { href: "/admin/recovery-agent", label: "Recovery AI", description: "WhatsApp booking recovery" },
-      { href: "/admin/marketing-engine", label: "Marketing AI", description: "Social & competitor scan" },
     ],
   },
 ];
@@ -154,6 +144,8 @@ export function adminNavCurrentLabel(pathname: string): string {
       if (adminNavIsActive(pathname, item.href)) return item.label;
     }
   }
+  // Redirected / legacy paths still show a sensible title
+  if (pathname.startsWith("/admin/seo-blog-center")) return "AI Blog Automation";
   return "Admin";
 }
 

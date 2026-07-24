@@ -136,7 +136,9 @@ export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
         <div>
           <p className="font-display text-sm font-bold text-white">Book Scuba Goa</p>
-          <p className="text-[10px] text-slate-400">Admin — check “1 · Check first” daily</p>
+          <p className="text-[10px] text-slate-400">
+            Check first → then Blogs & guides together
+          </p>
         </div>
         <button
           type="button"

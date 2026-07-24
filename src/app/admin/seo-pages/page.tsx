@@ -13,6 +13,7 @@ import {
 import { getDb, getFirebaseAuth, getFirebaseStorageClient } from "@/lib/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
 import type { ServiceItem } from "@/data/services";
 import {
   encodePackageOption,
@@ -470,6 +471,7 @@ export default function AdminSeoPagesPage() {
 
   return (
     <div>
+      <AdminContentSeoNav />
       <h1 className="font-display text-base font-bold text-ocean-900">SEO guide pages</h1>
       <p className="mt-2 max-w-3xl text-sm text-ocean-700">
         Create public URLs at{" "}

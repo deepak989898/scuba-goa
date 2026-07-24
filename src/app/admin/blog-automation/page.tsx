@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
@@ -12,6 +11,7 @@ import { BlogDailySchedulePanel } from "@/app/admin/blog-automation/BlogDailySch
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
+import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
 
 type BlogTraffic = { views: number; visitors: number };
 
@@ -645,10 +645,11 @@ export default function AdminBlogAutomationPage() {
         </div>
       ) : null}
 
+      <AdminContentSeoNav />
       <div className="flex flex-wrap items-end justify-between gap-2.5">
         <div>
           <h1 className="font-display text-lg font-bold text-ocean-900">
-            Blog automation (SEO)
+            Blog posts & schedule
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Generates SEO blogs ahead of time as <strong>Scheduled</strong> (review & edit
@@ -660,12 +661,6 @@ export default function AdminBlogAutomationPage() {
             “Preferred hour”. Hard-refresh (Ctrl+Shift+R) after Vercel shows this commit live.
           </p>
         </div>
-        <Link
-          href="/admin/seo-pages"
-          className="text-sm font-semibold text-ocean-700 hover:text-ocean-900"
-        >
-          SEO guides →
-        </Link>
       </div>
 
       {err && (
