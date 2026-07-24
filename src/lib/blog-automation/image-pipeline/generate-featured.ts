@@ -102,29 +102,31 @@ export async function generateFeaturedImageForArticle(
         registry,
       });
 
-      // Hard reject only exact / near-exact duplicates.
-      // Soft "theme similarity" must NOT discard a paid OpenAI image.
       const hardDup = dup.isDuplicate;
-      if (hardDup && attempt < maxRetries) {
+      const softLow = dup.uniquenessScore < minUniqueness;
+
+      // Prefer a different composition before spending Storage upload.
+      // On the last attempt, keep the paid OpenAI image so it still displays.
+      if ((hardDup || softLow) && attempt < maxRetries) {
         lastError =
           dup.reason ||
-          `Image too similar to an existing blog photo (${dup.matchedArticleId || "another post"}). Retrying with a different composition…`;
-        continue;
-      }
-      if (hardDup && attempt >= maxRetries) {
-        lastError =
-          dup.reason ||
-          `Image still too similar to an existing blog after ${maxRetries} tries. OpenAI was billed for each attempt. Try again or upload manually.`;
+          (hardDup
+            ? `Image too similar to an existing blog photo (${dup.matchedArticleId || "another post"}). Retrying…`
+            : `Image uniqueness ${dup.uniquenessScore} below ${minUniqueness}; retrying with a different composition…`);
         continue;
       }
 
       const uploaded = await brandAndUploadBlogImageBuffer(raw, input.slug, {
         articleId: input.articleId,
         brandingEnabled,
+        // Keep both halves of comparison diptychs (attention crop can clip one side)
+        resizePosition:
+          brief.visualCategory === "destination_comparison"
+            ? "centre"
+            : "attention",
       });
 
       const uniquenessScore = dup.uniquenessScore;
-      const softLow = uniquenessScore < minUniqueness;
       const overall = Math.round(
         briefValidation.relevanceScore * 0.5 +
           briefValidation.qualityScore * 0.2 +
@@ -135,7 +137,8 @@ export async function generateFeaturedImageForArticle(
       const status =
         briefValidation.relevanceScore >= minRelevance &&
         uniquenessScore >= minUniqueness &&
-        overall >= minOverall
+        overall >= minOverall &&
+        !hardDup
           ? "generated"
           : "needs_manual_review";
 
@@ -167,6 +170,7 @@ export async function generateFeaturedImageForArticle(
         validationNotes: [
           ...briefValidation.validationNotes,
           ...(dup.reason ? [`dedupe:${dup.reason}`] : []),
+          hardDup ? "accepted_on_final_attempt_despite_hard_duplicate" : "",
           softLow ? "accepted_soft_uniqueness_below_ideal_threshold" : "",
           `attempt_${attempt}`,
         ].filter(Boolean),

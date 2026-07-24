@@ -22,6 +22,12 @@ const CATEGORY_SHOTS: Record<VisualCategory, ShotType[]> = {
     "scenic_overview",
     "underwater_reef",
   ],
+  destination_comparison: [
+    "comparison_diptych",
+    "split_level",
+    "underwater_reef",
+    "medium_action",
+  ],
   water_sports: ["beach_activity", "medium_action", "wide_environmental", "aerial_coastal"],
   parasailing: ["medium_action", "wide_environmental", "aerial_coastal"],
   jet_ski: ["medium_action", "beach_activity", "wide_environmental"],
@@ -59,6 +65,7 @@ const SAFE_SHOTS: ShotType[] = [
   "nightclub_interior",
   "sunset_cruise",
   "scenic_overview",
+  "comparison_diptych",
 ];
 
 function normalizeShots(list: ShotType[]): ShotType[] {
@@ -85,6 +92,7 @@ const COMPOSITIONS: CompositionLayout[] = [
   "depth_layers",
   "multi_subject",
   "environment_dominant",
+  "split_comparison",
 ];
 
 function stableIndex(seed: string, mod: number, salt: number): number {
@@ -118,6 +126,8 @@ function labelComp(c: CompositionLayout): string {
       return "Multi-subject balanced scene";
     case "environment_dominant":
       return "Scenic environment dominant with human activity secondary";
+    case "split_comparison":
+      return "Clear left/right or diagonal photographic split comparing two destinations or scenes";
     default:
       return c;
   }
@@ -144,6 +154,9 @@ export function pickCompositionVariant(
   if (classification.visualCategory === "nightlife") {
     angles = ["eye_level", "wide_establishing", "three_quarter", "over_shoulder"];
   }
+  if (classification.visualCategory === "destination_comparison") {
+    angles = ["eye_level", "wide_establishing", "three_quarter"];
+  }
   if (shotType === "aerial_coastal") {
     angles = ["aerial", "high_angle", "wide_establishing"];
   }
@@ -156,12 +169,26 @@ export function pickCompositionVariant(
       ...compositions.filter((c) => c !== classification.desiredComposition),
     ];
   }
+  if (classification.visualCategory === "destination_comparison") {
+    compositions = [
+      "split_comparison",
+      "multi_subject",
+      "diagonal_action",
+      "depth_layers",
+    ];
+  }
   const composition =
     compositions[stableIndex(uniquenessSeed, compositions.length, attempt + 23)]!;
 
   const timeOfDay = classification.timeOfDay;
+  // Include a hash of the main subject so similar categories still get unique signatures
+  const subjectToken = classification.mainSubject
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 24);
   const uniquenessSignature = [
     classification.visualCategory,
+    subjectToken,
     shotType,
     cameraAngle,
     composition,
@@ -225,14 +252,20 @@ export function buildImageBrief(input: {
       ? "calm professional adventure"
       : c.visualCategory === "nightlife"
         ? "premium evening energy"
-        : "authentic Goa travel",
+        : c.visualCategory === "destination_comparison"
+          ? "clear comparative storytelling"
+          : "authentic Goa travel",
     colourDirection: c.visualCategory === "nightlife"
       ? "deep blues, magentas, warm spotlights"
-      : "natural coastal blues, sand tones, realistic skin tones",
+      : c.visualCategory === "destination_comparison"
+        ? "balanced natural colour on both halves, distinct environments"
+        : "natural coastal blues, sand tones, realistic skin tones",
     mustInclude: [
       c.mainSubject,
       ...c.safetyEquipment.slice(0, 3),
-      "geographically believable Goa / Indian coastal context where relevant",
+      c.visualCategory === "destination_comparison"
+        ? "two clearly different destination halves in one frame"
+        : "geographically believable context matching the article title",
     ].filter(Boolean),
     mustAvoid: c.exclusions,
     uniquenessSignature: variant.uniquenessSignature,

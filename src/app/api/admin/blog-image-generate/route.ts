@@ -154,9 +154,13 @@ export async function POST(req: Request) {
       } catch (e) {
         console.error("[blog-image-generate] gallery sync:", e);
       }
-      revalidatePath(`/blog/${slug}`);
-      revalidatePath("/blog");
     }
+
+    // Always revalidate so paid OpenAI images show immediately (draft + live).
+    revalidatePath(`/blog/${slug}`);
+    revalidatePath("/blog");
+    revalidatePath("/admin/blog-automation");
+    revalidatePath("/admin/ai-blog-automation");
 
     return NextResponse.json({
       ok: true,

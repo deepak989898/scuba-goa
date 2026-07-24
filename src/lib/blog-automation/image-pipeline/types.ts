@@ -8,6 +8,7 @@ export type VisualCategory =
   | "scuba_beginner"
   | "scuba_pricing"
   | "scuba_location"
+  | "destination_comparison"
   | "water_sports"
   | "parasailing"
   | "jet_ski"
@@ -43,7 +44,8 @@ export type ShotType =
   | "beach_activity"
   | "nightclub_interior"
   | "sunset_cruise"
-  | "scenic_overview";
+  | "scenic_overview"
+  | "comparison_diptych";
 
 export type CameraAngle =
   | "eye_level"
@@ -62,7 +64,8 @@ export type CompositionLayout =
   | "diagonal_action"
   | "depth_layers"
   | "multi_subject"
-  | "environment_dominant";
+  | "environment_dominant"
+  | "split_comparison";
 
 export type TimeOfDay =
   | "clear_morning"

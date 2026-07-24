@@ -51,8 +51,23 @@ export function validateImageBriefRelevance(
   const waterSportsTitle = /water.?sport|parasail|jet.?ski|banana/.test(title);
   const scubaTitle = /scuba|diving|underwater/.test(title);
   const safetyTitle = /safety|beginner tip|buddy/.test(title);
+  const comparisonTitle = /\bvs\.?\b|versus|compare/.test(title);
 
-  if (nightlifeTitle) {
+  if (comparisonTitle && /goa|andaman|maldives|lakshadweep|thailand|bali/i.test(title)) {
+    if (brief.visualCategory === "destination_comparison") {
+      relevance += 18;
+    } else {
+      relevance -= 40;
+      notes.push("Comparison title not mapped to destination_comparison visuals");
+    }
+    if (
+      /briefing|beach scene with|generic/.test(promptBlob) &&
+      !/split|diptych|left|right|half/.test(promptBlob)
+    ) {
+      relevance -= 25;
+      notes.push("Comparison article still using a single non-split scene");
+    }
+  } else if (nightlifeTitle) {
     if (brief.visualCategory === "nightlife" || brief.visualCategory === "night_club") {
       relevance += 15;
     } else {
@@ -148,6 +163,13 @@ export function categorySuggestsWrongTopic(
   title: string,
 ): boolean {
   const t = title.toLowerCase();
+  if (
+    /\bvs\.?\b|versus/.test(t) &&
+    /goa|andaman|maldives/.test(t) &&
+    visualCategory !== "destination_comparison"
+  ) {
+    return true;
+  }
   if (/nightlife|night.?club|disco/.test(t) && visualCategory.startsWith("scuba_")) {
     return true;
   }

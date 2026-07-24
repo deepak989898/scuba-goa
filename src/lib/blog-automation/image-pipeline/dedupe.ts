@@ -99,7 +99,7 @@ export function checkImageDuplicate(input: {
         bestSim = sim;
         best = r;
       }
-      if (sim >= 92) {
+      if (sim >= 88) {
         return {
           isDuplicate: true,
           uniquenessScore: 100 - sim,
@@ -116,7 +116,7 @@ export function checkImageDuplicate(input: {
         bestSim = sim;
         best = r;
       }
-      if (sim >= 90) {
+      if (sim >= 86) {
         return {
           isDuplicate: true,
           uniquenessScore: 100 - sim,
@@ -141,8 +141,18 @@ export function checkImageDuplicate(input: {
   // Soft signal only — do not hard-fail on shared composition labels
   const compositionReuse = sameComp.length >= (input.compositionReuseLimit ?? 1);
 
+  // Same visual category lookalikes: treat ≥78% similarity as a soft uniqueness hit
+  const sameCategoryNear = others.some((r) => {
+    if (r.visualCategory !== input.visualCategory || !r.perceptualHash) {
+      return false;
+    }
+    const d = hammingHex(input.perceptualHash, r.perceptualHash);
+    const sim = similarityFromHamming(d, input.perceptualHash.length);
+    return sim >= 78;
+  });
+
   // Soft uniqueness: thematic AI photos often share 40–70% aHash similarity.
-  // Only near-duplicates (≥85% similar) should tank the score.
+  // Near-duplicates (≥85% similar) tank the score; same-category lookalikes also.
   let uniquenessScore: number;
   if (others.length === 0 || bestSim < 50) {
     uniquenessScore = 100;
@@ -152,7 +162,10 @@ export function checkImageDuplicate(input: {
     uniquenessScore = Math.max(0, 100 - bestSim);
   }
   if (compositionReuse) {
-    uniquenessScore = Math.min(uniquenessScore, 78);
+    uniquenessScore = Math.min(uniquenessScore, 72);
+  }
+  if (sameCategoryNear) {
+    uniquenessScore = Math.min(uniquenessScore, 74);
   }
 
   return {
@@ -160,9 +173,11 @@ export function checkImageDuplicate(input: {
     uniquenessScore,
     reason: compositionReuse
       ? "composition_signature_reuse_soft"
-      : bestSim >= 70
-        ? `near_theme_similarity_${bestSim}`
-        : undefined,
+      : sameCategoryNear
+        ? `same_category_near_duplicate_${bestSim}`
+        : bestSim >= 70
+          ? `near_theme_similarity_${bestSim}`
+          : undefined,
     matchedArticleId: best?.articleId,
     matchedUrl: best?.imageUrl,
   };

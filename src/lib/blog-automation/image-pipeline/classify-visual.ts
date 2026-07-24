@@ -3,21 +3,21 @@ import type {
   VisualCategory,
   VisualClassification,
 } from "./types";
+import {
+  SCUBA_SUBJECT_VARIANTS,
+  WATER_SPORTS_SUBJECT_VARIANTS,
+  NIGHTLIFE_SUBJECT_VARIANTS,
+  buildComparisonMainSubject,
+  parseDestinationComparison,
+  stablePick,
+} from "./title-scene";
 
-function haystack(input: {
+/** Title + keyword only — service slug must not force scuba onto nightlife / water-sports posts. */
+function titleHaystack(input: {
   title: string;
   primaryKeyword?: string;
-  serviceSlug?: string;
-  serviceName?: string;
-  contentExcerpt?: string;
 }): string {
-  return [
-    input.title,
-    input.primaryKeyword,
-    input.serviceSlug?.replace(/-/g, " "),
-    input.serviceName,
-    input.contentExcerpt?.slice(0, 800),
-  ]
+  return [input.title, input.primaryKeyword]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -34,8 +34,9 @@ const SCUBA_EXCLUSIONS_FOR_NON_SCUBA = [
 ];
 
 /**
- * Classify article into a visual category from title/keyword/service/body.
- * Never map everything to scuba just because the brand mentions Scuba Goa.
+ * Classify article into a visual category from title/keyword first.
+ * Never map nightlife / water-sports / destination comparisons to generic scuba
+ * just because the brand or serviceSlug mentions Scuba Goa.
  */
 export function classifyVisualCategory(input: {
   title: string;
@@ -44,8 +45,9 @@ export function classifyVisualCategory(input: {
   serviceName?: string;
   contentExcerpt?: string;
 }): VisualClassification {
-  const t = haystack(input);
+  const titleText = titleHaystack(input);
   const slug = (input.serviceSlug || "").toLowerCase();
+  const seed = `${input.title}||${input.primaryKeyword || ""}`;
 
   const pick = (
     visualCategory: VisualCategory,
@@ -54,7 +56,10 @@ export function classifyVisualCategory(input: {
       visualIntent: string;
     },
   ): VisualClassification => {
-    const isScubaVisual = visualCategory.startsWith("scuba_");
+    const isScubaVisual =
+      visualCategory.startsWith("scuba_") ||
+      (visualCategory === "destination_comparison" &&
+        /scuba|diving|diver|reef/i.test(partial.mainSubject));
     return {
       visualCategory,
       visualSubcategory: partial.visualSubcategory || visualCategory,
@@ -68,30 +73,68 @@ export function classifyVisualCategory(input: {
       safetyEquipment: partial.safetyEquipment || [],
       exclusions: [
         ...(partial.exclusions || []),
-        ...(isScubaVisual ? [] : SCUBA_EXCLUSIONS_FOR_NON_SCUBA),
+        ...(isScubaVisual && visualCategory !== "destination_comparison"
+          ? []
+          : visualCategory === "destination_comparison"
+            ? []
+            : SCUBA_EXCLUSIONS_FOR_NON_SCUBA),
         "large logo",
         "watermark",
         "embedded headline text",
+        "readable words or letters in the image",
+        "VS typography",
         "UI mockup",
       ],
       isScubaVisual,
     };
   };
 
-  // Nightlife / clubs first — brand must not force scuba visuals
+  // 1) Destination comparisons (Goa vs Andaman) — before beginner/scuba canned scenes
+  const comparison = parseDestinationComparison(input.title);
+  if (comparison) {
+    return pick("destination_comparison", {
+      visualSubcategory: `${comparison.left.id}_vs_${comparison.right.id}`,
+      visualIntent: `visual destination comparison: ${comparison.left.label} vs ${comparison.right.label}`,
+      mainSubject: buildComparisonMainSubject(comparison),
+      supportingSubjects: [
+        `${comparison.left.label} half of frame`,
+        `${comparison.right.label} half of frame`,
+        "clear photographic split",
+      ],
+      location: `${comparison.left.label} and ${comparison.right.label}`,
+      timeOfDay:
+        comparison.topicHint === "scuba" ? "underwater_rays" : "clear_morning",
+      desiredComposition: "split_comparison",
+      peopleCount: "divers or travellers on each side as needed",
+      safetyEquipment:
+        comparison.topicHint === "scuba"
+          ? ["BCD", "mask", "fins", "realistic dive gear"]
+          : [],
+      exclusions: [
+        "single undifferentiated beach briefing scene",
+        "generic stock scuba diver as only subject",
+        "both halves looking identical",
+        "text overlays",
+        "logo watermarks",
+        "nightclub",
+      ],
+    });
+  }
+
+  // 2) Nightlife — title-led; ignore scuba serviceSlug
   if (
-    /night.?club|nightclub|russian.?club|disco\b|nightlife|party night|clubbing/.test(
-      t,
+    /night.?club|nightclub|russian.?club|disco\b|nightlife|party night|clubbing|goa nightlife/.test(
+      titleText,
     ) ||
-    /night-club|disco|pubs/.test(slug)
+    (/night-club|disco|pubs|nightlife/.test(slug) &&
+      !/scuba|diving/.test(titleText))
   ) {
     return pick("nightlife", {
-      visualSubcategory: /club/.test(t) ? "night_club" : "nightlife",
+      visualSubcategory: /club/.test(titleText) ? "night_club" : "nightlife",
       visualIntent: "premium nightlife venue atmosphere",
-      mainSubject:
-        "Elegant Goa nightclub interior with DJ console, dance floor and premium lighting",
+      mainSubject: stablePick(seed, NIGHTLIFE_SUBJECT_VARIANTS, 1),
       supportingSubjects: ["adult guests socialising", "stage lights"],
-      location: "Goa nightlife venue interior",
+      location: "Goa nightlife venue",
       timeOfDay: "nightclub_lighting",
       desiredComposition: "environment_dominant",
       peopleCount: "several adults",
@@ -102,11 +145,12 @@ export function classifyVisualCategory(input: {
         "water-sports equipment",
         "underwater scene",
         "sexualized content",
+        "generic scuba diver",
       ],
     });
   }
 
-  if (/dinner.?cruise|sunset.?cruise|party.?boat/.test(t)) {
+  if (/dinner.?cruise|sunset.?cruise|party.?boat/.test(titleText)) {
     return pick("dinner_cruise", {
       visualIntent: "evening cruise dining experience",
       mainSubject: "Guests enjoying a dinner cruise on a lit boat at dusk",
@@ -116,7 +160,7 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/yacht|luxury.?boat/.test(t)) {
+  if (/yacht|luxury.?boat/.test(titleText)) {
     return pick("yacht", {
       visualIntent: "luxury yacht coastal experience",
       mainSubject: "Modern yacht anchored near a Goa coastline",
@@ -125,10 +169,11 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/dudhsagar|waterfall/.test(t) || slug.includes("dudhsagar")) {
+  if (/dudhsagar|waterfall/.test(titleText) || slug.includes("dudhsagar")) {
     return pick("dudhsagar", {
       visualIntent: "waterfall day trip scenery",
-      mainSubject: "Dudhsagar waterfall cascading through greenery with distant travellers",
+      mainSubject:
+        "Dudhsagar waterfall cascading through greenery with distant travellers",
       location: "Dudhsagar Falls, Goa–Karnataka border",
       timeOfDay: "soft_overcast",
       desiredComposition: "environment_dominant",
@@ -136,17 +181,18 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/bungee/.test(t) || slug.includes("bungee")) {
+  if (/bungee/.test(titleText) || slug.includes("bungee")) {
     return pick("bungee", {
       visualIntent: "controlled adventure jump",
-      mainSubject: "Person preparing for a bungee jump with harness and instructor",
+      mainSubject:
+        "Person preparing for a bungee jump with harness and instructor",
       safetyEquipment: ["harness", "helmet if required"],
       timeOfDay: "midday",
       desiredComposition: "diagonal_action",
     });
   }
 
-  if (/flyboard/.test(t) || slug.includes("flyboard")) {
+  if (/flyboard/.test(titleText) || slug.includes("flyboard")) {
     return pick("flyboarding", {
       visualIntent: "surface flyboard action",
       mainSubject: "Rider on a flyboard rising above turquoise coastal water",
@@ -156,7 +202,7 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/parasail/.test(t)) {
+  if (/parasail/.test(titleText)) {
     return pick("parasailing", {
       visualIntent: "beach parasailing action",
       mainSubject: "Parasail canopy lifting riders above a Goa beach",
@@ -166,7 +212,7 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/jet.?ski|jetski/.test(t)) {
+  if (/jet.?ski|jetski/.test(titleText)) {
     return pick("jet_ski", {
       visualIntent: "jet ski coastal action",
       mainSubject: "Jet ski cutting across clear coastal water near a Goa beach",
@@ -177,13 +223,12 @@ export function classifyVisualCategory(input: {
   }
 
   if (
-    /water.?sport|banana.?boat|speedboat|kayak/.test(t) ||
-    slug.includes("water-sport")
+    /water.?sport|banana.?boat|speedboat|kayak|top \d+ water/.test(titleText) ||
+    (slug.includes("water-sport") && !/scuba|diving/.test(titleText))
   ) {
     return pick("water_sports", {
       visualIntent: "mixed water sports beach energy",
-      mainSubject:
-        "Dynamic Goa beach scene with balanced parasailing, jet ski and banana boat activity",
+      mainSubject: stablePick(seed, WATER_SPORTS_SUBJECT_VARIANTS, 2),
       supportingSubjects: ["life jackets", "sunny shoreline"],
       safetyEquipment: ["life jackets"],
       timeOfDay: "midday",
@@ -192,18 +237,16 @@ export function classifyVisualCategory(input: {
         "underwater-only scuba scene",
         "generic stationary diver",
         "nightclub elements",
+        "identical scuba stock photo",
       ],
     });
   }
 
   if (
-    /north goa|anjuna|vagator|calangute|baga|fort aguada/.test(t) ||
+    /north goa|anjuna|vagator|calangute|baga|fort aguada/.test(titleText) ||
     slug.includes("north-goa")
   ) {
-    // Location articles that also mention scuba stay location-led if scuba is not dominant
-    if (/scuba|diving/.test(t) && /safety|beginner|tip/.test(t)) {
-      /* fall through */
-    } else if (!/scuba|diving|underwater/.test(t)) {
+    if (!/scuba|diving|underwater/.test(titleText)) {
       return pick("north_goa", {
         visualIntent: "North Goa sightseeing",
         mainSubject: "North Goa coastal viewpoint with beach and cliff scenery",
@@ -214,10 +257,10 @@ export function classifyVisualCategory(input: {
   }
 
   if (
-    /south goa|palolem|colva|benaulim|agonda/.test(t) ||
+    /south goa|palolem|colva|benaulim|agonda/.test(titleText) ||
     slug.includes("south-goa")
   ) {
-    if (!/scuba|diving|underwater/.test(t)) {
+    if (!/scuba|diving|underwater/.test(titleText)) {
       return pick("south_goa", {
         visualIntent: "South Goa sightseeing",
         mainSubject: "Quiet South Goa beach with palm-lined shoreline",
@@ -227,7 +270,7 @@ export function classifyVisualCategory(input: {
     }
   }
 
-  if (/family|kids|children|with kids/.test(t)) {
+  if (/family|kids|children|with kids/.test(titleText)) {
     return pick("family", {
       visualIntent: "family-friendly daytime Goa activity",
       mainSubject:
@@ -235,11 +278,15 @@ export function classifyVisualCategory(input: {
       peopleCount: "family with children",
       timeOfDay: "clear_morning",
       desiredComposition: "multi_subject",
-      exclusions: ["nightclub", "risky unsupported activity", "generic scuba diver hero"],
+      exclusions: [
+        "nightclub",
+        "risky unsupported activity",
+        "generic scuba diver hero",
+      ],
     });
   }
 
-  if (/couple|honeymoon|romantic/.test(t)) {
+  if (/couple|honeymoon|romantic/.test(titleText)) {
     return pick("couples", {
       visualIntent: "couples travel atmosphere",
       mainSubject: "Couple enjoying a scenic Goa sunset by the shoreline",
@@ -249,8 +296,8 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/island|grande island|st\.?\s*george/.test(t)) {
-    if (/scuba|diving/.test(t)) {
+  if (/island|grande island|st\.?\s*george/.test(titleText)) {
+    if (/scuba|diving/.test(titleText)) {
       return pick("scuba_location", {
         visualSubcategory: "island_dive",
         visualIntent: "island dive trip scenery",
@@ -275,9 +322,16 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  // Scuba-specific intents
-  if (/scuba|diving|underwater|snorkel/.test(t) || slug.includes("scuba")) {
-    if (/safety|safe|buddy check|regulator|beginner tip|risk/.test(t)) {
+  // Scuba-specific — title or explicit scuba slug (not nightlife/water-sports titles)
+  const titleIsScuba = /scuba|diving|underwater|snorkel/.test(titleText);
+  const slugIsScuba =
+    slug.includes("scuba") &&
+    !/nightlife|water.?sport|parasail|jet.?ski|dudhsagar|bungee|yacht|cruise/.test(
+      titleText,
+    );
+
+  if (titleIsScuba || slugIsScuba) {
+    if (/safety|safe|buddy check|regulator|beginner tip|risk/.test(titleText)) {
       return pick("scuba_safety", {
         visualIntent: "scuba safety training",
         mainSubject:
@@ -295,18 +349,26 @@ export function classifyVisualCategory(input: {
         ],
       });
     }
-    if (/beginner|first.?time|learn|try scuba|open water course/.test(t)) {
+    if (/beginner|first.?time|learn|try scuba|open water course/.test(titleText)) {
       return pick("scuba_beginner", {
         visualIntent: "beginner scuba introduction",
-        mainSubject:
-          "Friendly instructor briefing first-time divers beside a dive boat with gear laid out",
+        mainSubject: stablePick(
+          seed,
+          [
+            "Friendly instructor briefing first-time divers beside a dive boat with gear laid out",
+            "Beginner diver practising mask skills in shallow clear water with instructor nearby",
+            "First-time guests in wetsuits receiving a calm beach-entry briefing with tanks ready",
+            "Instructor demonstrating OK hand signal to beginners on a dive boat deck",
+          ] as const,
+          3,
+        ),
         timeOfDay: "clear_morning",
         desiredComposition: "depth_layers",
         safetyEquipment: ["BCD", "mask", "fins"],
         exclusions: ["nightclub", "unsafe solo deep dive"],
       });
     }
-    if (/price|cost|cheap|budget|package|how much/.test(t)) {
+    if (/price|cost|cheap|budget|package|how much/.test(titleText)) {
       return pick("scuba_pricing", {
         visualIntent: "equipment and booking context without price text",
         mainSubject:
@@ -316,7 +378,11 @@ export function classifyVisualCategory(input: {
         exclusions: ["generated price text", "fake discount stickers"],
       });
     }
-    if (/spot|site|location|where to|vagator|calangute|anjuna|palolem/.test(t)) {
+    if (
+      /spot|site|location|where to|vagator|calangute|anjuna|palolem/.test(
+        titleText,
+      )
+    ) {
       return pick("scuba_location", {
         visualIntent: "dive site / location guide",
         mainSubject:
@@ -327,26 +393,30 @@ export function classifyVisualCategory(input: {
       });
     }
     return pick("scuba_diving", {
-      visualIntent: "authentic scuba experience",
-      mainSubject:
-        "Two divers exploring a reef with natural light, correct gear and realistic proportions",
+      visualIntent: "authentic scuba experience matching the article title",
+      mainSubject: stablePick(seed, SCUBA_SUBJECT_VARIANTS, 4),
       timeOfDay: "underwater_rays",
       desiredComposition: "depth_layers",
       safetyEquipment: ["BCD", "regulator", "mask", "fins"],
-      exclusions: ["fantasy creatures", "unsafe diving behaviour"],
+      exclusions: [
+        "fantasy creatures",
+        "unsafe diving behaviour",
+        "identical lone diver stock pose reused across posts",
+      ],
     });
   }
 
-  if (/beach|shore|coast/.test(t)) {
+  if (/beach|shore|coast/.test(titleText)) {
     return pick("beach_guide", {
       visualIntent: "beach travel guide",
-      mainSubject: "Scenic Goa beach with clear water and natural coastal atmosphere",
+      mainSubject:
+        "Scenic Goa beach with clear water and natural coastal atmosphere",
       timeOfDay: "golden_hour",
       desiredComposition: "environment_dominant",
     });
   }
 
-  if (/book|booking|reserve|deposit/.test(t)) {
+  if (/book|booking|reserve|deposit/.test(titleText)) {
     return pick("booking_guide", {
       visualIntent: "friendly booking / trip planning atmosphere",
       mainSubject:
@@ -357,31 +427,38 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/price|cost|compare|vs\b/.test(t)) {
+  if (/price|cost|compare/.test(titleText)) {
     return pick("price_comparison", {
       visualIntent: "activity comparison without on-image prices",
-      mainSubject: "Side-by-side beach activity preparation without any readable price text",
+      mainSubject:
+        "Side-by-side beach activity preparation without any readable price text",
       timeOfDay: "soft_overcast",
       desiredComposition: "multi_subject",
     });
   }
 
-  if (/safety|tip|guide/.test(t) && !/scuba|diving/.test(t)) {
+  if (/safety|tip|guide/.test(titleText) && !/scuba|diving/.test(titleText)) {
     return pick("safety_guide", {
       visualIntent: "general travel safety",
-      mainSubject: "Guide briefing travellers on safe coastal activity with life jackets visible",
+      mainSubject:
+        "Guide briefing travellers on safe coastal activity with life jackets visible",
       safetyEquipment: ["life jackets"],
       timeOfDay: "clear_morning",
       desiredComposition: "centred",
     });
   }
 
+  // Fallback: use title words so we never default every post to the same scuba diver
+  const titleSnippet = input.title.replace(/\s+/g, " ").trim().slice(0, 80);
   return pick("general_travel", {
-    visualIntent: "Goa travel editorial",
-    mainSubject: "Authentic Goa coastal travel scene matching the article topic",
+    visualIntent: `editorial scene for: ${titleSnippet}`,
+    mainSubject: `Authentic Goa travel photograph that clearly illustrates the topic "${titleSnippet}" — not a generic scuba diver`,
     timeOfDay: "golden_hour",
     desiredComposition: "environment_dominant",
-    exclusions: ["generic stock scuba diver as default subject"],
+    exclusions: [
+      "generic stock scuba diver as default subject",
+      "underwater coral if the title is unrelated to diving",
+    ],
   });
 }
 

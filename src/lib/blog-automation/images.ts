@@ -62,15 +62,22 @@ async function buildTopLeftLogoBadge(imageWidth: number): Promise<Buffer> {
 /** Resize toward 16:9 WebP; optionally composite subtle top-left logo. */
 export async function applyBrandOverlay(
   photoBuffer: Buffer,
-  options?: { brandingEnabled?: boolean },
+  options?: {
+    brandingEnabled?: boolean;
+    resizePosition?: "attention" | "centre" | "center";
+  },
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const brandingEnabled = options?.brandingEnabled !== false;
+  const position =
+    options?.resizePosition === "centre" || options?.resizePosition === "center"
+      ? "centre"
+      : "attention";
 
   let pipeline = sharp(photoBuffer).rotate().resize({
     width: MAX_WIDTH,
     height: TARGET_HEIGHT,
     fit: "cover",
-    position: "attention",
+    position,
     withoutEnlargement: false,
   });
 
@@ -158,10 +165,17 @@ async function uploadWebpToStorage(
 export async function brandAndUploadBlogImageBuffer(
   imageBuffer: Buffer,
   slug: string,
-  options?: { articleId?: string; brandingEnabled?: boolean },
+  options?: {
+    articleId?: string;
+    brandingEnabled?: boolean;
+    resizePosition?: "attention" | "centre" | "center";
+  },
 ): Promise<UploadBlogImageResult> {
   const brandingEnabled = options?.brandingEnabled !== false;
-  const compressed = await applyBrandOverlay(imageBuffer, { brandingEnabled });
+  const compressed = await applyBrandOverlay(imageBuffer, {
+    brandingEnabled,
+    resizePosition: options?.resizePosition,
+  });
   const uploaded = await uploadWebpToStorage(compressed.buffer, {
     slug,
     articleId: options?.articleId || slug,
