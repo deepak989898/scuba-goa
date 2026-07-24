@@ -12,6 +12,7 @@ import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-is
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
+import { StaticCodeBlogsPanel } from "@/components/admin/StaticCodeBlogsPanel";
 
 type BlogTraffic = { views: number; visitors: number };
 
@@ -927,6 +928,26 @@ export default function AdminBlogAutomationPage() {
             </details>
           </AdminCollapseSection>
 
+          <StaticCodeBlogsPanel
+            adminFetch={adminFetch}
+            onEdit={(post) => {
+              setEditing(post);
+              window.setTimeout(() => {
+                document
+                  .querySelector("[data-blog-editor-panel]")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 150);
+            }}
+            busy={busy}
+            setBusy={setBusy}
+            setErr={setErr}
+            setOkMsg={setOkMsg}
+            onImported={async () => {
+              await refresh();
+            }}
+          />
+
+          <div data-blog-editor-panel>
           <BlogPostsTable
             posts={posts}
             sortedPosts={sortedPosts}
@@ -950,6 +971,7 @@ export default function AdminBlogAutomationPage() {
             onRefreshTraffic={() => void refreshTrafficOnly()}
             trafficRefreshing={trafficRefreshing}
           />
+          </div>
         </>
       )}
     </div>
