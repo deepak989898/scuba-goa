@@ -180,7 +180,7 @@ export default function AiBlogAutomationPage() {
   const [generateAiImage, setGenerateAiImage] = useState(true);
   const [clusterFilter, setClusterFilter] = useState<
     "all" | "conflicts" | "no_conflicts"
-  >("all");
+  >("no_conflicts");
   const [imageAudit, setImageAudit] = useState<{
     scanned?: number;
     exactUrlDuplicateGroups?: number;
@@ -214,23 +214,31 @@ export default function AiBlogAutomationPage() {
   );
 
   const loadBlogViews = useCallback(
-    async (opts?: { silent?: boolean; full?: boolean }) => {
+    async (opts?: { silent?: boolean; full?: boolean; slugs?: string[] }) => {
       if (!opts?.silent) setViewsLoading(true);
       setViewsError(null);
       try {
-        const qs = opts?.full ? "?mode=full" : "?mode=aggregated";
+        const slugList = (opts?.slugs ?? [])
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean)
+          .slice(0, 80);
+        const params = new URLSearchParams();
+        if (opts?.full && slugList.length === 0) params.set("mode", "full");
+        else params.set("mode", "aggregated");
+        if (slugList.length > 0) params.set("slugs", slugList.join(","));
+        const qs = params.toString() ? `?${params.toString()}` : "";
         const traffic = await adminFetch(`/api/admin/blog-traffic${qs}`);
-        setBlogViewsBySlug(
-          normalizeTrafficMap(
+        setBlogViewsBySlug((prev) => ({
+          ...prev,
+          ...normalizeTrafficMap(
             (traffic.bySlug ?? {}) as Record<string, ContentTraffic>,
           ),
-        );
+        }));
       } catch (e) {
         setViewsError(
           e instanceof Error ? e.message : "Could not load view counts",
         );
         if (!opts?.silent) {
-          // Keep previous counts on refresh failure; only clear on first load.
           setBlogViewsBySlug((prev) =>
             Object.keys(prev).length ? prev : {},
           );
@@ -275,8 +283,32 @@ export default function AiBlogAutomationPage() {
         if (!prev?.slug) return prev;
         return bySlug[prev.slug] ?? prev;
       });
-      // Load views separately so a slow traffic call never blanks the queue table.
-      void loadBlogViews();
+      // Seed views from denormalized blogPosts.viewCount immediately.
+      const fromPosts: Record<string, ContentTraffic> = {};
+      for (const p of Object.values(bySlug)) {
+        const v = Math.max(0, Math.round(Number(p.viewCount ?? 0)));
+        if (v > 0) fromPosts[p.slug.toLowerCase()] = { views: v, visitors: 1 };
+      }
+      if (Object.keys(fromPosts).length) {
+        setBlogViewsBySlug((prev) => ({ ...fromPosts, ...prev }));
+      }
+      const jobSlugs = (data.jobs ?? [])
+        .map((j: AiBlogGenerationJob) => {
+          const draft = (data.drafts as SeoBlogDraft[] | undefined)?.find(
+            (d) => d.id === j.generatedDraftId,
+          );
+          return (
+            j.generatedBlogSlug ||
+            draft?.publishedBlogSlug ||
+            draft?.slug ||
+            ""
+          );
+        })
+        .filter(Boolean);
+      void loadBlogViews({
+        silent: true,
+        slugs: [...new Set([...jobSlugs, ...Object.keys(bySlug)])],
+      });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -330,8 +362,8 @@ export default function AiBlogAutomationPage() {
     return clusters.filter((c) => {
       const hasConflict = clusterConflictsList(c).length > 0;
       if (clusterFilter === "conflicts") return hasConflict;
-      if (clusterFilter === "no_conflicts") return !hasConflict;
-      return true;
+      // Default / "all" / "no_conflicts": never show conflict keywords in the main list
+      return !hasConflict;
     });
   }, [clusters, clusterFilter]);
 
@@ -1101,9 +1133,8 @@ export default function AiBlogAutomationPage() {
             <div className="flex flex-wrap items-center gap-1 rounded-full border border-ocean-200 bg-white p-0.5 text-xs font-semibold">
               {(
                 [
-                  ["all", "All"],
-                  ["conflicts", "Conflicts only"],
                   ["no_conflicts", "Without conflict"],
+                  ["conflicts", "Conflicts only"],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -1139,7 +1170,10 @@ export default function AiBlogAutomationPage() {
                 }}
               />
               Select all shown ({filteredClusters.length}
-              {clusterFilter !== "all" ? ` / ${clusters.length}` : ""})
+              {clusterFilter === "conflicts"
+                ? ` conflicts`
+                : ` · ${clusters.filter((c) => clusterConflictsList(c).length === 0).length} ready`}
+              )
             </label>
             <p className="text-sm font-semibold text-ocean-900">
               {selectedClusters.size} selected
@@ -1393,7 +1427,12 @@ export default function AiBlogAutomationPage() {
               type="button"
               disabled={viewsLoading}
               className="text-xs font-semibold text-ocean-700 underline disabled:opacity-50"
-              onClick={() => void loadBlogViews({ full: true })}
+              onClick={() => {
+                const slugs = jobs
+                  .map((j) => jobBlogSlug(j))
+                  .filter(Boolean);
+                void loadBlogViews({ full: true, slugs });
+              }}
             >
               {viewsLoading ? "Refreshing views…" : "Refresh views"}
             </button>
@@ -1435,11 +1474,15 @@ export default function AiBlogAutomationPage() {
                     draft?.ogImageUrl ||
                     "";
                   const traffic = getContentTrafficForSlug(blogViewsBySlug, slug);
+                  const postViews = Math.max(
+                    0,
+                    Math.round(Number(post?.viewCount ?? 0)),
+                  );
                   const views = !slug
                     ? null
-                    : viewsLoading && traffic == null
+                    : viewsLoading && traffic == null && postViews === 0
                       ? null
-                      : (traffic?.views ?? 0);
+                      : Math.max(traffic?.views ?? 0, postViews);
                   const publishedLabel = formatIstDateTimeAmPm(
                     post?.publishedAt || draft?.publishedAt || jobPublishedAt(j),
                   );

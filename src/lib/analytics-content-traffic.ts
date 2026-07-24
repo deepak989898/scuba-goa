@@ -174,3 +174,73 @@ export async function loadContentTrafficWithBackfill(
 
   return { bySlug, index, aggregatedDocs: snap.size, backfilled };
 }
+
+/** Precise per-slug counts for admin tables (aggregated → pageViews → blogPosts.viewCount). */
+export async function countBlogViewsForSlugs(
+  db: NonNullable<ReturnType<typeof getAdminDb>>,
+  slugs: string[],
+): Promise<Record<string, ContentTraffic>> {
+  const unique = [
+    ...new Set(
+      slugs
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s)),
+    ),
+  ].slice(0, 80);
+  const out: Record<string, ContentTraffic> = {};
+  if (unique.length === 0) return out;
+
+  await Promise.all(
+    unique.map(async (slug) => {
+      const path = `/blog/${slug}`;
+      try {
+        const agg = await db.collection("analyticsBlogTraffic").doc(slug).get();
+        let views = 0;
+        let visitors = 0;
+        if (agg.exists) {
+          const data = agg.data() as Record<string, unknown>;
+          views = Math.max(0, Math.round(Number(data.views ?? 0)));
+          visitors = Math.max(0, Math.round(Number(data.visitors ?? 0)));
+        }
+
+        if (views === 0) {
+          const snap = await db
+            .collection("pageViews")
+            .where("path", "==", path)
+            .limit(500)
+            .get();
+          const sessions = new Set<string>();
+          for (const doc of snap.docs) {
+            const data = doc.data() as Record<string, unknown>;
+            if (data.eventType !== "view") continue;
+            if (data.isBot === true || data.visitorType === "bot") continue;
+            views += 1;
+            sessions.add(String(data.sessionId ?? "anon"));
+          }
+          visitors = Math.max(visitors, sessions.size);
+        }
+
+        const post = await db.collection("blogPosts").doc(slug).get();
+        const postViews = post.exists
+          ? Math.max(
+              0,
+              Math.round(
+                Number(
+                  (post.data() as Record<string, unknown>).viewCount ?? 0,
+                ),
+              ),
+            )
+          : 0;
+        views = Math.max(views, postViews);
+        if (visitors === 0 && views > 0) visitors = 1;
+
+        out[slug] = { views, visitors };
+      } catch (e) {
+        console.error(`[analytics-content-traffic] count for ${slug} failed`, e);
+        out[slug] = { views: 0, visitors: 0 };
+      }
+    }),
+  );
+
+  return out;
+}

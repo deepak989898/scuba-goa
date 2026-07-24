@@ -64,6 +64,9 @@ export type BlogPostFirestore = {
   pillar: boolean;
   createdAt: string;
   publishedAt?: string;
+  /** Incremented by /api/analytics/track on each public blog page view. */
+  viewCount?: number;
+  lastViewedAt?: string;
   /** IST calendar day for this slot (YYYY-MM-DD). */
   scheduleDateIst?: string;
   /** IST time slot label e.g. 06:00 */
@@ -175,6 +178,17 @@ export function parseBlogPostFromFirestore(
     createdAt: String(data.createdAt ?? new Date().toISOString()).trim(),
     publishedAt:
       data.publishedAt != null ? String(data.publishedAt).trim() : undefined,
+    viewCount:
+      data.viewCount != null
+        ? Math.max(0, Math.round(Number(data.viewCount) || 0))
+        : undefined,
+    lastViewedAt:
+      data.lastViewedAt != null
+        ? typeof (data.lastViewedAt as { toDate?: () => Date }).toDate ===
+          "function"
+          ? (data.lastViewedAt as { toDate: () => Date }).toDate().toISOString()
+          : String(data.lastViewedAt).trim()
+        : undefined,
     scheduleDateIst:
       data.scheduleDateIst != null
         ? String(data.scheduleDateIst).trim()

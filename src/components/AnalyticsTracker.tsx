@@ -11,7 +11,7 @@ const TRAFFIC_KEY = "bsg_analytics_traffic";
 /** Dedupe React Strict Mode double-invoke (same path within a few seconds). */
 const lastTrackAt = new Map<string, number>();
 const HEARTBEAT_MS = 180_000;
-const TRACK_TIMEOUT_MS = 5_000;
+const TRACK_TIMEOUT_MS = 12_000;
 const CLICK_THROTTLE_MS = 1_500;
 
 type EventType = "view" | "leave" | "heartbeat" | "click" | "scroll";

@@ -360,19 +360,13 @@ export async function POST(req: Request) {
     botSignals.push("navigator_webdriver");
   } else if (eventType === "leave" && suspicion.suspected) {
     visitorType = "suspected_bot";
-  } else if (
-    eventType === "view" &&
-    attribution.channel === "google_organic" &&
-    attribution.sourceConfidence !== "high"
-  ) {
-    visitorType = "suspected_bot";
-    botSignals.push("low_confidence_google");
   } else if (eventType === "click" || (maxScrollDepthPct != null && maxScrollDepthPct >= 10)) {
     visitorType = "human";
   } else if (eventType === "leave" && !suspicion.suspected && (durationMs ?? 0) >= 3000) {
     visitorType = "human";
   } else if (eventType === "view") {
-    visitorType = "unknown"; // provisional until engagement
+    // First paint views are provisional — still count for blog/guide traffic below.
+    visitorType = "unknown";
   }
 
   const sessionSnap = await sessionRef.get();
@@ -518,8 +512,10 @@ export async function POST(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
-  // Only count blog/guide uniqueness for non-suspected traffic
-  if (eventType === "view" && visitorType !== "suspected_bot") {
+  // Count blog/guide views for every non-confirmed-bot page view.
+  // Confirmed UA bots already returned earlier. Do not skip "unknown" /
+  // provisional first views — that was zeroing out admin view counts.
+  if (eventType === "view") {
     const guideKey = parseGuideTrafficKey(path);
     if (guideKey) {
       try {
@@ -546,6 +542,23 @@ export async function POST(req: Request) {
         );
       } catch (e) {
         console.error("analyticsBlogTraffic txn failed", e);
+      }
+      // Denormalized counter on the blog post (fast admin display fallback).
+      if (blogKey.slug) {
+        try {
+          await db
+            .collection("blogPosts")
+            .doc(blogKey.slug)
+            .set(
+              {
+                viewCount: FieldValue.increment(1),
+                lastViewedAt: FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+        } catch (e) {
+          console.error("blogPosts.viewCount increment failed", e);
+        }
       }
     }
 

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
-import { loadContentTrafficWithBackfill } from "@/lib/analytics-content-traffic";
+import {
+  countBlogViewsForSlugs,
+  loadContentTrafficWithBackfill,
+  mergeContentTraffic,
+} from "@/lib/analytics-content-traffic";
 import { getAdminDb } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
@@ -30,15 +34,22 @@ export async function GET(req: Request) {
       ? "full"
       : modeParam === "aggregated"
         ? "aggregated"
-        : // Fast default for admin tables; use ?mode=full to rescan pageViews.
-          "aggregated";
+        : "aggregated";
+  const slugsParam = url.searchParams.get("slugs")?.trim() ?? "";
+  const focusSlugs = slugsParam
+    ? slugsParam
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 80)
+    : [];
 
   try {
     const { bySlug, index, aggregatedDocs, backfilled } =
       await loadContentTrafficWithBackfill(db, {
         collection: "analyticsBlogTraffic",
         indexDocId: BLOG_INDEX_KEY,
-        mode,
+        mode: focusSlugs.length > 0 ? "aggregated" : mode,
         backfill: {
           pathPrefix: "/blog",
           indexPath: "/blog",
@@ -46,16 +57,28 @@ export async function GET(req: Request) {
         },
       });
 
+    if (focusSlugs.length > 0) {
+      const precise = await countBlogViewsForSlugs(db, focusSlugs);
+      for (const [slug, t] of Object.entries(precise)) {
+        mergeContentTraffic(bySlug, slug, t.views, t.visitors);
+      }
+    } else if (mode === "full") {
+      // already backfilled inside loader
+    }
+
     return NextResponse.json({
       bySlug,
       index,
-      source: backfilled
-        ? "analyticsBlogTraffic+pageViews"
-        : "analyticsBlogTraffic",
+      source:
+        focusSlugs.length > 0
+          ? "analyticsBlogTraffic+slugCounts"
+          : backfilled
+            ? "analyticsBlogTraffic+pageViews"
+            : "analyticsBlogTraffic",
       trackingConfigured: true,
       aggregatedDocs,
-      backfilled,
-      mode,
+      backfilled: backfilled || focusSlugs.length > 0,
+      mode: focusSlugs.length > 0 ? "slugs" : mode,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load traffic";
