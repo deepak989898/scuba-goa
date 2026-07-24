@@ -14,6 +14,11 @@ import { docToService, serviceToPayload } from "@/lib/service-firestore";
 import type { ServiceItem, SubServiceItem } from "@/data/services";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
+import {
+  AdminMediaUrlPreview,
+  AdminSingleImagePreview,
+} from "@/components/admin/AdminMediaUrlPreview";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 
 type SubServiceFormRow = {
   subId: string;
@@ -35,6 +40,23 @@ const emptySubRow = (): SubServiceFormRow => ({
   bookedToday: "",
 });
 
+/** Primary + gallery + post images for admin zoom slider (deduped, images only). */
+function serviceImageUrls(s: ServiceItem): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw: string | undefined) => {
+    const u = (raw ?? "").trim();
+    if (!u || seen.has(u)) return;
+    if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(u)) return;
+    seen.add(u);
+    out.push(u);
+  };
+  push(s.image);
+  for (const g of s.galleryUrls ?? []) push(g);
+  for (const p of s.serviceMedia?.posts ?? []) push(p);
+  return out;
+}
+
 export default function AdminServicesPage() {
   const db = getDb();
   const [list, setList] = useState<ServiceItem[]>([]);
@@ -50,6 +72,11 @@ export default function AdminServicesPage() {
   const [savingPriceSlug, setSavingPriceSlug] = useState<string | null>(null);
   const [bulkDeltaInr, setBulkDeltaInr] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [imageZoom, setImageZoom] = useState<{
+    title: string;
+    urls: string[];
+    index: number;
+  } | null>(null);
   const triedAutoSeed = useRef(false);
 
   const empty = {
@@ -107,6 +134,45 @@ export default function AdminServicesPage() {
       if (r.ok) await refresh();
     })();
   }, [db, loading, list.length, refresh]);
+
+  useEffect(() => {
+    if (!imageZoom) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setImageZoom(null);
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        setImageZoom((z) =>
+          z && z.urls.length > 1
+            ? {
+                ...z,
+                index: (z.index - 1 + z.urls.length) % z.urls.length,
+              }
+            : z,
+        );
+      }
+      if (e.key === "ArrowRight") {
+        setImageZoom((z) =>
+          z && z.urls.length > 1
+            ? { ...z, index: (z.index + 1) % z.urls.length }
+            : z,
+        );
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [imageZoom]);
+
+  function openServiceImages(s: ServiceItem, startIndex = 0) {
+    const urls = serviceImageUrls(s);
+    if (!urls.length) return;
+    setImageZoom({
+      title: s.title,
+      urls,
+      index: Math.min(Math.max(0, startIndex), urls.length - 1),
+    });
+  }
 
   function startEdit(s: ServiceItem) {
     setEditingSlug(s.slug);
@@ -516,32 +582,22 @@ export default function AdminServicesPage() {
               }
             />
           </label>
-          <label className="text-sm sm:col-span-2">
-            Image URL
-            <input
-              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
-              value={form.image}
-              onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
-              placeholder="https://… (direct link to .jpg / .webp etc.)"
-            />
-            <span className="mt-1 block text-xs text-ocean-700">
-              Use a full <code className="text-[10px]">https://</code> URL. Any host
-              works; for files in <code className="text-[10px]">/public</code> use a
-              path like <code className="text-[10px]">/your-file.jpg</code>.
-            </span>
-          </label>
-          <label className="text-sm sm:col-span-2">
-            Extra image URLs (detail slider)
-            <textarea
-              rows={3}
-              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2 font-sans text-sm"
+          <AdminSingleImagePreview
+            label="Image URL"
+            value={form.image}
+            onChange={(image) => setForm((f) => ({ ...f, image }))}
+            placeholder="https://… (direct link to .jpg / .webp etc.)"
+            hint="Preview updates as you paste a URL. Use a full https:// link or a /public path."
+          />
+          <div className="sm:col-span-2">
+            <AdminMediaUrlPreview
+              label="Extra images (detail slider)"
               value={form.galleryUrls}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, galleryUrls: e.target.value }))
-              }
-              placeholder="One URL per line or comma-separated. Shown after the main image with autoplay. Duplicates of the main URL are ignored."
+              onChange={(galleryUrls) => setForm((f) => ({ ...f, galleryUrls }))}
+              kind="image"
+              placeholder="One URL per line or comma-separated"
             />
-          </label>
+          </div>
           <label className="text-sm">
             Rating
             <input
@@ -624,42 +680,27 @@ export default function AdminServicesPage() {
                 Uploading {uploadingMediaType}...
               </p>
             ) : null}
-            <label className="mt-3 block text-sm">
-              Post image URLs
-              <textarea
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 font-sans text-sm"
-                value={form.mediaPosts}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, mediaPosts: e.target.value }))
-                }
-                placeholder="One URL per line (images)"
-              />
-            </label>
-            <label className="mt-3 block text-sm">
-              Reels URLs
-              <textarea
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 font-sans text-sm"
-                value={form.mediaReels}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, mediaReels: e.target.value }))
-                }
-                placeholder="One URL per line (short videos/reels)"
-              />
-            </label>
-            <label className="mt-3 block text-sm">
-              Videos URLs
-              <textarea
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-ocean-200 bg-white px-2 py-2 font-sans text-sm"
-                value={form.mediaVideos}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, mediaVideos: e.target.value }))
-                }
-                placeholder="One URL per line (long videos)"
-              />
-            </label>
+            <AdminMediaUrlPreview
+              label="Post images"
+              value={form.mediaPosts}
+              onChange={(mediaPosts) => setForm((f) => ({ ...f, mediaPosts }))}
+              kind="image"
+              placeholder="One image URL per line"
+            />
+            <AdminMediaUrlPreview
+              label="Reels"
+              value={form.mediaReels}
+              onChange={(mediaReels) => setForm((f) => ({ ...f, mediaReels }))}
+              kind="video"
+              placeholder="One reel video URL per line"
+            />
+            <AdminMediaUrlPreview
+              label="Videos"
+              value={form.mediaVideos}
+              onChange={(mediaVideos) => setForm((f) => ({ ...f, mediaVideos }))}
+              kind="video"
+              placeholder="One long video URL per line"
+            />
           </div>
           <div className="sm:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -931,6 +972,7 @@ export default function AdminServicesPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-ocean-100 bg-ocean-50 text-ocean-800">
               <tr>
+                <th className="p-3">Image</th>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Title</th>
                 <th className="p-3">Status</th>
@@ -939,13 +981,48 @@ export default function AdminServicesPage() {
               </tr>
             </thead>
             <tbody>
-              {list.map((s) => (
+              {list.map((s) => {
+                const imgs = serviceImageUrls(s);
+                const thumb = imgs[0];
+                return (
                 <tr
                   key={s.slug}
                   className={`border-b border-ocean-50 ${
                     s.active === false ? "bg-ocean-50/80 opacity-90" : ""
                   }`}
                 >
+                  <td className="p-2 align-middle">
+                    {thumb ? (
+                      <button
+                        type="button"
+                        onClick={() => openServiceImages(s, 0)}
+                        className="relative h-14 w-20 overflow-hidden rounded-lg border border-ocean-200 bg-ocean-100 shadow-sm transition hover:ring-2 hover:ring-cyan-400"
+                        title={
+                          imgs.length > 1
+                            ? `Zoom · ${imgs.length} images`
+                            : "Zoom image"
+                        }
+                        aria-label={`Zoom images for ${s.title}`}
+                      >
+                        <CmsRemoteImage
+                          src={thumb}
+                          alt={s.title}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                        {imgs.length > 1 ? (
+                          <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1 text-[9px] font-bold text-white">
+                            {imgs.length}
+                          </span>
+                        ) : null}
+                      </button>
+                    ) : (
+                      <span className="inline-flex h-14 w-20 items-center justify-center rounded-lg border border-dashed border-ocean-200 text-[10px] text-ocean-400">
+                        No image
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3 font-mono text-xs text-ocean-700">{s.slug}</td>
                   <td className="p-3 font-medium text-ocean-900">{s.title}</td>
                   <td className="p-3">
@@ -1012,11 +1089,116 @@ export default function AdminServicesPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
+
+      {imageZoom ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Images: ${imageZoom.title}`}
+          onClick={() => setImageZoom(null)}
+        >
+          <div
+            className="relative flex w-full max-w-4xl flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 text-white">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{imageZoom.title}</p>
+                <p className="text-xs text-white/70">
+                  {imageZoom.index + 1} / {imageZoom.urls.length} · ← → to slide ·
+                  Esc to close
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold hover:bg-white/25"
+                onClick={() => setImageZoom(null)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-black">
+              <CmsRemoteImage
+                src={imageZoom.urls[imageZoom.index]!}
+                alt={`${imageZoom.title} ${imageZoom.index + 1}`}
+                fill
+                className="object-contain"
+                sizes="90vw"
+                priority
+              />
+              {imageZoom.urls.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-lg font-bold text-white hover:bg-black/80"
+                    aria-label="Previous image"
+                    onClick={() =>
+                      setImageZoom((z) =>
+                        z
+                          ? {
+                              ...z,
+                              index:
+                                (z.index - 1 + z.urls.length) % z.urls.length,
+                            }
+                          : z,
+                      )
+                    }
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-lg font-bold text-white hover:bg-black/80"
+                    aria-label="Next image"
+                    onClick={() =>
+                      setImageZoom((z) =>
+                        z
+                          ? { ...z, index: (z.index + 1) % z.urls.length }
+                          : z,
+                      )
+                    }
+                  >
+                    ›
+                  </button>
+                </>
+              ) : null}
+            </div>
+            {imageZoom.urls.length > 1 ? (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {imageZoom.urls.map((url, i) => (
+                  <button
+                    key={`${i}-${url.slice(0, 40)}`}
+                    type="button"
+                    onClick={() =>
+                      setImageZoom((z) => (z ? { ...z, index: i } : z))
+                    }
+                    className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-lg border-2 ${
+                      i === imageZoom.index
+                        ? "border-cyan-400"
+                        : "border-white/30"
+                    }`}
+                  >
+                    <CmsRemoteImage
+                      src={url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="80px"
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

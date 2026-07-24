@@ -180,9 +180,10 @@ export function AiChatbot() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`fixed right-4 z-[55] flex h-12 items-center gap-2 rounded-full border border-ocean-200 bg-white px-4 text-sm font-semibold text-ocean-800 shadow-lg md:bottom-8 md:right-[5.5rem] ${helpFabBottom}`}
+        aria-label="Ask Packages"
+        className={`fixed right-4 z-[55] flex h-12 items-center gap-2 whitespace-nowrap rounded-full border border-ocean-200 bg-white px-3 text-xs font-semibold text-ocean-800 shadow-lg sm:px-4 sm:text-sm md:bottom-8 md:right-[5.5rem] ${helpFabBottom}`}
       >
-        Help
+        Ask Packages
       </button>
       {open ? (
           <div
