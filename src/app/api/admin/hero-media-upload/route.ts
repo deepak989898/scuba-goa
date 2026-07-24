@@ -4,11 +4,14 @@ import { getStorage } from "firebase-admin/storage";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { getAdminApp } from "@/lib/firebase-admin";
 import { compressHeroBannerImage } from "@/lib/heroImageCompress";
+import { isHeroOptimizedWebpUrl } from "@/lib/hero-webp";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const MAX_BYTES = 95 * 1024 * 1024;
 const MAX_IMAGE_INPUT_BYTES = 25 * 1024 * 1024;
+const MAX_REMOTE_IMAGE_BYTES = 25 * 1024 * 1024;
 
 function normalizeBucket(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
@@ -21,9 +24,45 @@ function normalizeBucket(raw: string | undefined): string | undefined {
   return v || undefined;
 }
 
-function firebaseDownloadUrl(bucketName: string, objectPath: string, token: string): string {
+function firebaseDownloadUrl(
+  bucketName: string,
+  objectPath: string,
+  token: string,
+): string {
   const enc = encodeURIComponent(objectPath);
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${enc}?alt=media&token=${token}`;
+}
+
+async function fetchRemoteImage(url: string): Promise<Buffer> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("Invalid image URL");
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("Image URL must be http(s)");
+  }
+
+  const res = await fetch(url, {
+    redirect: "follow",
+    headers: {
+      Accept: "image/*,*/*",
+      "User-Agent": "BookScubaGoaHeroOptimizer/1.0",
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Could not download image (HTTP ${res.status})`);
+  }
+  const len = Number(res.headers.get("content-length") || 0);
+  if (len > MAX_REMOTE_IMAGE_BYTES) {
+    throw new Error("Remote image is too large (max 25 MB)");
+  }
+  const ab = await res.arrayBuffer();
+  if (ab.byteLength > MAX_REMOTE_IMAGE_BYTES) {
+    throw new Error("Remote image is too large (max 25 MB)");
+  }
+  return Buffer.from(ab);
 }
 
 export async function POST(req: Request) {
@@ -65,12 +104,29 @@ export async function POST(req: Request) {
     );
   }
 
+  const sourceUrl = String(form.get("sourceUrl") ?? "").trim();
   const file = form.get("file");
-  if (!(file instanceof Blob) || file.size <= 0) {
-    return NextResponse.json({ error: "Missing file" }, { status: 400 });
+  const hasFile = file instanceof Blob && file.size > 0;
+  const isImage = kind === "poster" || kind === "thumbnail";
+
+  // Already our optimized WebP — return as-is (no re-upload).
+  if (isImage && sourceUrl && !hasFile && isHeroOptimizedWebpUrl(sourceUrl)) {
+    return NextResponse.json({
+      url: sourceUrl,
+      bytes: null,
+      contentType: "image/webp",
+      alreadyOptimized: true,
+    });
   }
 
-  if (file.size > MAX_BYTES) {
+  if (!hasFile && !(isImage && sourceUrl)) {
+    return NextResponse.json(
+      { error: isImage ? "Missing file or sourceUrl" : "Missing file" },
+      { status: 400 },
+    );
+  }
+
+  if (hasFile && file.size > MAX_BYTES) {
     return NextResponse.json(
       {
         error:
@@ -80,8 +136,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const isImage = kind === "poster" || kind === "thumbnail";
-  if (isImage && file.size > MAX_IMAGE_INPUT_BYTES) {
+  if (isImage && hasFile && file.size > MAX_IMAGE_INPUT_BYTES) {
     return NextResponse.json(
       {
         error:
@@ -100,33 +155,45 @@ export async function POST(req: Request) {
 
   /**
    * Hero banner images are re-encoded as web-optimized WebP (≤1200px wide,
-   * ≤200KB) before they reach Storage. This guarantees the homepage hero
-   * stays inside its performance budget no matter what a marketer drags in.
+   * ≤200KB) before they reach Storage.
    */
-  let buffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Buffer;
   let contentType =
-    file.type || (kind === "video" ? "video/mp4" : "image/jpeg");
+    (hasFile && file.type) || (kind === "video" ? "video/mp4" : "image/jpeg");
   let finalNameSuffix = "";
+  let originalBytes = 0;
+
   if (isImage) {
     try {
+      if (hasFile) {
+        buffer = Buffer.from(await file.arrayBuffer());
+        originalBytes = buffer.length;
+      } else {
+        buffer = await fetchRemoteImage(sourceUrl);
+        originalBytes = buffer.length;
+      }
       const converted = await compressHeroBannerImage(buffer);
       buffer = Buffer.from(converted.buffer);
       contentType = converted.contentType;
       finalNameSuffix = ".webp";
     } catch (e) {
       console.error("hero-media-upload compress failed", e);
+      const msg =
+        e instanceof Error ? e.message : "Could not process this image";
       return NextResponse.json(
         {
-          error:
-            "Could not process this image. Try a JPG/PNG/WebP under 25 MB.",
+          error: `${msg}. Try a JPG/PNG/WebP under 25 MB.`,
         },
         { status: 400 },
       );
     }
+  } else {
+    buffer = Buffer.from(await (file as Blob).arrayBuffer());
+    originalBytes = buffer.length;
   }
 
   const originalRaw =
-    file instanceof File && file.name.trim()
+    hasFile && file instanceof File && file.name.trim()
       ? file.name.replace(/[^\w.-]+/g, "_")
       : kind === "video"
         ? "upload.mp4"
@@ -156,5 +223,11 @@ export async function POST(req: Request) {
   }
 
   const url = firebaseDownloadUrl(bucketName, objectPath, token);
-  return NextResponse.json({ url, bytes: buffer.length, contentType });
+  return NextResponse.json({
+    url,
+    bytes: buffer.length,
+    originalBytes,
+    contentType,
+    alreadyOptimized: false,
+  });
 }

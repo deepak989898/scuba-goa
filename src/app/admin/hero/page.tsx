@@ -29,6 +29,8 @@ import {
   getPricedSubServicesWithIndex,
   getSubServiceCartKey,
 } from "@/lib/service-sub-helpers";
+import { isHeroOptimizedWebpUrl } from "@/lib/hero-webp";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 
 type Row = {
   id: string;
@@ -67,6 +69,7 @@ export default function AdminHeroPage() {
   } | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
+  const [optimizeBusy, setOptimizeBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!db) return;
@@ -195,30 +198,50 @@ export default function AdminHeroPage() {
   })();
 
   async function saveNew() {
-    const img = form.imageUrl.trim();
+    let img = form.imageUrl.trim();
     const vid = form.videoUrl.trim();
-    const thumb = form.videoThumbnailUrl.trim();
+    let thumb = form.videoThumbnailUrl.trim();
     if (!db || (!img && !vid)) return;
-    const bo = form.bookingOption.trim();
-    await addDoc(collection(db, "heroSlides"), {
-      imageUrl: img,
-      videoUrl: vid,
-      ...(vid && thumb ? { videoThumbnailUrl: thumb } : {}),
-      alt: form.alt.trim() || "Hero slide",
-      sortOrder: Number(form.sortOrder),
-      useAmbientMusic: form.useAmbientMusic,
-      ...(bo ? { bookingOption: bo } : {}),
-    });
-    setForm({
-      imageUrl: "",
-      videoUrl: "",
-      videoThumbnailUrl: "",
-      alt: "",
-      sortOrder: list.length,
-      useAmbientMusic: false,
-      bookingOption: "",
-    });
-    await refresh();
+    setUploadErr(null);
+    setUploadInfo(null);
+    setOptimizeBusy(true);
+    try {
+      if (img && !isHeroOptimizedWebpUrl(img)) {
+        const r = await optimizeImageSourceUrl(img, "poster");
+        img = r.url;
+      }
+      if (thumb && !isHeroOptimizedWebpUrl(thumb)) {
+        const r = await optimizeImageSourceUrl(thumb, "thumbnail");
+        thumb = r.url;
+      }
+      const bo = form.bookingOption.trim();
+      await addDoc(collection(db, "heroSlides"), {
+        imageUrl: img,
+        videoUrl: vid,
+        ...(vid && thumb ? { videoThumbnailUrl: thumb } : {}),
+        alt: form.alt.trim() || "Hero slide",
+        sortOrder: Number(form.sortOrder),
+        useAmbientMusic: form.useAmbientMusic,
+        ...(bo ? { bookingOption: bo } : {}),
+      });
+      setForm({
+        imageUrl: "",
+        videoUrl: "",
+        videoThumbnailUrl: "",
+        alt: "",
+        sortOrder: list.length,
+        useAmbientMusic: false,
+        bookingOption: "",
+      });
+      setUploadInfo("Slide saved — images stored as WebP for fast homepage load.");
+      await refresh();
+    } catch (e) {
+      setUploadErr(
+        e instanceof Error ? e.message : "Could not save slide with WebP images",
+      );
+    } finally {
+      setOptimizeBusy(false);
+    }
   }
 
   async function remove(id: string) {
@@ -304,6 +327,99 @@ export default function AdminHeroPage() {
     }
   }
 
+  /** Convert a remote/pasted image URL to hero WebP via server. */
+  async function optimizeImageSourceUrl(
+    sourceUrl: string,
+    kind: "poster" | "thumbnail",
+  ): Promise<{ url: string; alreadyOptimized: boolean; bytes: number | null }> {
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      throw new Error("Not signed in. Open /admin/login, then try again.");
+    }
+    await auth.currentUser.getIdToken(true);
+    const token = await auth.currentUser.getIdToken();
+    const fd = new FormData();
+    fd.append("kind", kind);
+    fd.append("sourceUrl", sourceUrl.trim());
+    const apiRes = await fetch("/api/admin/hero-media-upload", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
+    const data = (await apiRes.json().catch(() => ({}))) as {
+      url?: string;
+      bytes?: number | null;
+      alreadyOptimized?: boolean;
+      error?: string;
+    };
+    if (!apiRes.ok || !data.url) {
+      throw new Error(data.error || `Optimize failed (${apiRes.status})`);
+    }
+    return {
+      url: data.url,
+      alreadyOptimized: data.alreadyOptimized === true,
+      bytes: typeof data.bytes === "number" ? data.bytes : null,
+    };
+  }
+
+  async function ensureHeroImageWebp(
+    rawUrl: string,
+    kind: "poster" | "thumbnail",
+    rowId?: string,
+  ): Promise<string> {
+    const url = rawUrl.trim();
+    if (!url) return "";
+    if (isHeroOptimizedWebpUrl(url)) return url;
+    const result = await optimizeImageSourceUrl(url, kind);
+    await applyUploadUrl(result.url, kind, rowId);
+    return result.url;
+  }
+
+  async function convertAllHeroImagesToWebp() {
+    if (!db || list.length === 0) return;
+    setUploadErr(null);
+    setUploadInfo(null);
+    setOptimizeBusy(true);
+    let converted = 0;
+    let skipped = 0;
+    try {
+      for (const row of list) {
+        if (row.imageUrl.trim()) {
+          if (isHeroOptimizedWebpUrl(row.imageUrl)) {
+            skipped += 1;
+          } else {
+            await ensureHeroImageWebp(row.imageUrl, "poster", row.id);
+            converted += 1;
+          }
+        }
+        if (row.videoThumbnailUrl.trim()) {
+          if (isHeroOptimizedWebpUrl(row.videoThumbnailUrl)) {
+            skipped += 1;
+          } else {
+            await ensureHeroImageWebp(
+              row.videoThumbnailUrl,
+              "thumbnail",
+              row.id,
+            );
+            converted += 1;
+          }
+        }
+      }
+      setUploadInfo(
+        converted === 0
+          ? `All hero images already WebP (${skipped} checked).`
+          : `Converted ${converted} image(s) to WebP${skipped ? ` · ${skipped} already optimized` : ""}. Homepage will load faster.`,
+      );
+      await refresh();
+    } catch (e) {
+      setUploadErr(
+        e instanceof Error ? e.message : "Could not convert hero images to WebP",
+      );
+    } finally {
+      setOptimizeBusy(false);
+    }
+  }
+
   async function uploadHeroFile(
     file: File | null,
     kind: UploadKind,
@@ -355,7 +471,22 @@ export default function AdminHeroPage() {
       if (apiRes.status === 401 || apiRes.status === 403) {
         const err = await apiRes.json().catch(() => ({}));
         setUploadErr(
-          String((err as { error?: string }).error ?? "Not authorized for server upload."),
+          String(
+            (err as { error?: string }).error ??
+              "Not authorized for server upload.",
+          ),
+        );
+        return;
+      }
+
+      // Images must go through server WebP compress — never store raw JPG/PNG.
+      if (kind === "poster" || kind === "thumbnail") {
+        const err = await apiRes.json().catch(() => ({}));
+        setUploadErr(
+          String(
+            (err as { error?: string }).error ??
+              "Image upload failed. Server WebP conversion is required for hero images.",
+          ),
         );
         return;
       }
@@ -369,13 +500,7 @@ export default function AdminHeroPage() {
       }
 
       const safe = file.name.replace(/[^\w.-]+/g, "_");
-      const folder =
-        kind === "video"
-          ? "hero/videos"
-          : kind === "thumbnail"
-            ? "hero/thumbnails"
-            : "hero/posters";
-      const path = `${folder}/${Date.now()}_${safe}`;
+      const path = `hero/videos/${Date.now()}_${safe}`;
       const fileRef = ref(storage, path);
       await uploadBytes(fileRef, file, {
         contentType: file.type || undefined,
@@ -393,7 +518,7 @@ export default function AdminHeroPage() {
     }
   }
 
-  const anyUpload = uploadBusy !== null;
+  const anyUpload = uploadBusy !== null || optimizeBusy;
 
   if (!db) {
     return (
@@ -409,32 +534,48 @@ export default function AdminHeroPage() {
         Homepage hero slider
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
-        Slides rotate on the home hero. Add an image URL (default poster for videos), and
-        optionally a video. For videos you can set a separate{" "}
-        <strong>video thumbnail</strong> URL or upload — if empty, the image URL above is
-        used. You can upload a thumbnail anytime (even before adding the video URL). Edit
-        existing slides in the table below. YouTube / MP4 / WebM supported. Use{" "}
-        <strong>Book CTA</strong> so each slide opens <code className="text-xs">/booking</code>{" "}
-        with the matching package or service already in the cart.
+        Slides rotate on the home hero. All poster &amp; thumbnail images are stored as{" "}
+        <strong>WebP</strong> (max 1200 px, under ~200 KB) so the homepage loads fast.
+        YouTube / MP4 / WebM supported. Use <strong>Book CTA</strong> so each slide opens{" "}
+        <code className="text-xs">/booking</code> with the matching offer.
       </p>
 
-      <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-        <h2 className="font-semibold text-ocean-900">Add slide</h2>
-        <p className="mt-2 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-900">
-          Hero posters &amp; thumbnails are auto-converted on upload: WebP, max 1200 px wide,
-          target under 200 KB. Drop in a high-res JPG/PNG — the server handles the rest.
+      {uploadErr ? (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {uploadErr}
         </p>
-        {uploadErr ? (
-          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-            {uploadErr}
-          </p>
-        ) : null}
-        {uploadInfo ? (
-          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            {uploadInfo}
-          </p>
-        ) : null}
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      ) : null}
+      {uploadInfo ? (
+        <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {uploadInfo}
+        </p>
+      ) : null}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={optimizeBusy || list.length === 0}
+          onClick={() => void convertAllHeroImagesToWebp()}
+          className="rounded-full bg-cyan-700 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          {optimizeBusy
+            ? "Converting to WebP…"
+            : "Convert all hero images to WebP"}
+        </button>
+        <p className="text-xs text-ocean-600">
+          Use once for older JPG/PNG slides — new uploads are already WebP.
+        </p>
+      </div>
+
+      <AdminCollapseSection
+        title="Add slide"
+        hint="Collapsed — click to add a new hero slide (images auto-save as WebP)"
+      >
+        <p className="mb-3 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-900">
+          Upload JPG/PNG or paste any image URL — saved as WebP (≤1200 px, ~200 KB) on
+          Firebase for instant homepage load.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm sm:col-span-2">
             Image URL (poster / fallback)
             <input
@@ -443,13 +584,13 @@ export default function AdminHeroPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, imageUrl: e.target.value }))
               }
-              placeholder="https://… (recommended for video poster)"
+              placeholder="https://… (converted to WebP on save)"
             />
           </label>
           <div className="sm:col-span-2">
             <p className="text-sm font-medium text-ocean-900">Poster image upload</p>
             <p className="text-xs text-ocean-700">
-              Optional — fills the image URL field with a Firebase download link.
+              Optional — fills the image URL field with a Firebase WebP link.
             </p>
             <input
               type="file"
@@ -464,7 +605,7 @@ export default function AdminHeroPage() {
               }}
             />
             {uploadBusy?.kind === "poster" && !uploadBusy.rowId ? (
-              <p className="mt-1 text-xs text-ocean-700">Uploading…</p>
+              <p className="mt-1 text-xs text-ocean-700">Uploading &amp; converting to WebP…</p>
             ) : null}
           </div>
           <label className="text-sm sm:col-span-2">
@@ -606,12 +747,13 @@ export default function AdminHeroPage() {
         </div>
         <button
           type="button"
-          onClick={saveNew}
-          className="mt-4 rounded-full bg-ocean-800 px-5 py-2 text-sm font-semibold text-white"
+          onClick={() => void saveNew()}
+          disabled={anyUpload}
+          className="mt-4 rounded-full bg-ocean-800 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
-          Add slide
+          {optimizeBusy ? "Saving as WebP…" : "Add slide"}
         </button>
-      </div>
+      </AdminCollapseSection>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (
@@ -741,9 +883,43 @@ export default function AdminHeroPage() {
                             onBlur={(e) => {
                               const v = e.target.value.trim();
                               if (v === r.imageUrl.trim()) return;
-                              void patchHeroSlide(r.id, { imageUrl: v });
+                              void (async () => {
+                                setUploadErr(null);
+                                try {
+                                  if (!v) {
+                                    await patchHeroSlide(r.id, { imageUrl: "" });
+                                    return;
+                                  }
+                                  setOptimizeBusy(true);
+                                  const url = await ensureHeroImageWebp(
+                                    v,
+                                    "poster",
+                                    r.id,
+                                  );
+                                  if (url !== v) {
+                                    setUploadInfo(
+                                      "Poster converted to WebP for fast load.",
+                                    );
+                                  }
+                                } catch (err) {
+                                  setUploadErr(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Could not convert poster to WebP",
+                                  );
+                                } finally {
+                                  setOptimizeBusy(false);
+                                }
+                              })();
                             }}
                           />
+                          <p className="mt-0.5 text-[10px] text-ocean-500">
+                            {isHeroOptimizedWebpUrl(r.imageUrl)
+                              ? "WebP ✓ optimized"
+                              : r.imageUrl.trim()
+                                ? "Not WebP yet — blur field or use Convert all"
+                                : ""}
+                          </p>
                           <input
                             type="file"
                             accept="image/*"
@@ -761,7 +937,7 @@ export default function AdminHeroPage() {
                           {uploadBusy?.rowId === r.id &&
                           uploadBusy.kind === "poster" ? (
                             <p className="mt-0.5 text-[10px] text-ocean-700">
-                              Uploading…
+                              Uploading &amp; converting to WebP…
                             </p>
                           ) : null}
                         </label>
@@ -810,11 +986,45 @@ export default function AdminHeroPage() {
                             onBlur={(e) => {
                               const v = e.target.value.trim();
                               if (v === r.videoThumbnailUrl.trim()) return;
-                              void patchHeroSlide(r.id, {
-                                videoThumbnailUrl: v,
-                              });
+                              void (async () => {
+                                setUploadErr(null);
+                                try {
+                                  if (!v) {
+                                    await patchHeroSlide(r.id, {
+                                      videoThumbnailUrl: "",
+                                    });
+                                    return;
+                                  }
+                                  setOptimizeBusy(true);
+                                  const url = await ensureHeroImageWebp(
+                                    v,
+                                    "thumbnail",
+                                    r.id,
+                                  );
+                                  if (url !== v) {
+                                    setUploadInfo(
+                                      "Thumbnail converted to WebP for fast load.",
+                                    );
+                                  }
+                                } catch (err) {
+                                  setUploadErr(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Could not convert thumbnail to WebP",
+                                  );
+                                } finally {
+                                  setOptimizeBusy(false);
+                                }
+                              })();
                             }}
                           />
+                          <p className="mt-0.5 text-[10px] text-ocean-500">
+                            {isHeroOptimizedWebpUrl(r.videoThumbnailUrl)
+                              ? "WebP ✓ optimized"
+                              : r.videoThumbnailUrl.trim()
+                                ? "Not WebP yet — blur field or use Convert all"
+                                : ""}
+                          </p>
                           <input
                             type="file"
                             accept="image/*"
@@ -832,7 +1042,7 @@ export default function AdminHeroPage() {
                           {uploadBusy?.rowId === r.id &&
                           uploadBusy.kind === "thumbnail" ? (
                             <p className="mt-0.5 text-[10px] text-ocean-700">
-                              Uploading…
+                              Uploading &amp; converting to WebP…
                             </p>
                           ) : null}
                         </label>

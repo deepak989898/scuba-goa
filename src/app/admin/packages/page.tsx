@@ -12,6 +12,7 @@ import {
 import { getDb } from "@/lib/firebase";
 import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
 import type { PackageDoc } from "@/lib/types";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 
 export default function AdminPackagesPage() {
   const db = getDb();
@@ -166,11 +167,17 @@ export default function AdminPackagesPage() {
         homepage, combos) without deleting it.
       </p>
 
-      <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-        <h2 className="font-semibold text-ocean-900">
-          {editingId ? "Edit package" : "Add package"}
-        </h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <AdminCollapseSection
+        key={editingId ? `edit-${editingId}` : "add-package"}
+        title={editingId ? "Edit package" : "Add package"}
+        hint={
+          editingId
+            ? "Editing — update fields below, then save"
+            : "Collapsed — click to add a new package"
+        }
+        defaultOpen={Boolean(editingId)}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
             Name
             <input
@@ -338,7 +345,7 @@ export default function AdminPackagesPage() {
             </button>
           ) : null}
         </div>
-      </div>
+      </AdminCollapseSection>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
         {loading ? (

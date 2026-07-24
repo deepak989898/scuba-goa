@@ -13,6 +13,7 @@ import { getDb, getFirebaseAuth, getFirebaseStorageClient } from "@/lib/firebase
 import { docToService, serviceToPayload } from "@/lib/service-firestore";
 import type { ServiceItem, SubServiceItem } from "@/data/services";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 
 type SubServiceFormRow = {
   subId: string;
@@ -444,11 +445,17 @@ export default function AdminServicesPage() {
         (including its detail URL) without deleting the document.
       </p>
 
-      <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-        <h2 className="font-semibold text-ocean-900">
-          {editingSlug ? `Edit service (${editingSlug})` : "Add service"}
-        </h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <AdminCollapseSection
+        key={editingSlug ? `edit-${editingSlug}` : "add-service"}
+        title={editingSlug ? `Edit service (${editingSlug})` : "Add service"}
+        hint={
+          editingSlug
+            ? "Editing — update fields below, then save"
+            : "Collapsed — click to add a new service"
+        }
+        defaultOpen={Boolean(editingSlug)}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className={`text-sm ${editingSlug ? "opacity-60" : ""}`}>
             Slug (URL) — lowercase-with-hyphens
             <input
@@ -879,7 +886,7 @@ export default function AdminServicesPage() {
             </button>
           ) : null}
         </div>
-      </div>
+      </AdminCollapseSection>
 
       <div className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
         <h2 className="font-semibold text-ocean-900">Quick price (existing services)</h2>

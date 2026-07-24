@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 type Props = {
   title: string;
@@ -21,10 +21,13 @@ export function AdminCollapseSection({
   className = "",
   children,
 }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
     <details
       className={`group mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm open:border-cyan-300 open:ring-1 open:ring-cyan-100 ${className}`}
-      {...(defaultOpen ? { open: true } : {})}
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 marker:hidden transition hover:bg-ocean-50/80">
         <div className="min-w-0 flex-1">
