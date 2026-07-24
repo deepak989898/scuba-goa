@@ -65,9 +65,9 @@ export function BlogTableOfContents({ items }: Props) {
   );
 
   return (
-    <nav aria-label="Table of contents" className="mt-4">
-      <details className="rounded-xl border border-ocean-100 bg-sand open:shadow-sm lg:hidden">
-        <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-bold text-ocean-900 marker:hidden">
+    <nav aria-label="Table of contents" className="mt-2.5">
+      <details className="rounded-lg border border-ocean-100 bg-sand open:shadow-sm lg:hidden">
+        <summary className="cursor-pointer list-none px-2.5 py-2 text-sm font-bold text-ocean-900 marker:hidden">
           On this page
           <span className="float-right text-ocean-500" aria-hidden>
             ⌄

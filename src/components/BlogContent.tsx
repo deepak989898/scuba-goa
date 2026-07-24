@@ -78,7 +78,7 @@ function parseInline(text: string): ReactNode[] {
 }
 
 function Paragraph({ children }: { children: string }) {
-  return <p className="mt-4 leading-relaxed">{parseInline(children)}</p>;
+  return <p className="mt-3 leading-relaxed">{parseInline(children)}</p>;
 }
 
 function uniqueHeadingId(text: string, seen: Map<string, number>): string {
@@ -126,7 +126,7 @@ export function BlogContent({ content }: { content: string }) {
         <h2
           key={i}
           id={id}
-          className="mt-10 scroll-mt-28 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-1 pl-4 text-2xl font-bold text-ocean-900 first:mt-0"
+          className="mt-6 scroll-mt-24 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-0.5 pl-3 text-xl font-bold text-ocean-900 first:mt-0 sm:text-2xl"
         >
           {text}
         </h2>,
@@ -141,7 +141,7 @@ export function BlogContent({ content }: { content: string }) {
         <h3
           key={i}
           id={id}
-          className="mt-8 scroll-mt-28 text-xl font-bold text-cyan-800"
+          className="mt-5 scroll-mt-24 text-lg font-bold text-cyan-800 sm:text-xl"
         >
           {text}
         </h3>,

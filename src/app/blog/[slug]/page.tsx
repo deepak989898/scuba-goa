@@ -252,7 +252,7 @@ export default async function BlogPostPage({ params }: Props) {
   const toc = extractBlogToc(p.content);
 
   return (
-    <article className="bg-white py-5 sm:py-7">
+    <article className="bg-white py-3 sm:py-4">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -284,30 +284,36 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       )}
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-4 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start lg:gap-5 lg:px-8">
         <div className="min-w-0">
-          <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
+          <nav
+            className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ocean-700 sm:text-sm"
+            aria-label="Breadcrumb"
+          >
             <Link href="/" className="hover:text-ocean-800">
               Home
             </Link>
-            <span className="mx-2 text-ocean-400">/</span>
+            <span className="text-ocean-400">/</span>
             <Link href="/blog" className="hover:text-ocean-800">
               Blog
             </Link>
-            <span className="mx-2 text-ocean-400">/</span>
-            <span className="text-ocean-500">{p.title}</span>
+            <span className="text-ocean-400">/</span>
+            <span className="truncate text-ocean-500">{p.title}</span>
+            <span className="text-ocean-300" aria-hidden>
+              ·
+            </span>
+            <Link
+              href="/blog"
+              className="font-semibold text-ocean-700 hover:text-ocean-800"
+            >
+              ← All articles
+            </Link>
           </nav>
-          <Link
-            href="/blog"
-            className="mt-2 inline-block text-sm font-semibold text-ocean-700 hover:text-ocean-800"
-          >
-            ← All articles
-          </Link>
-          <div className="mt-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-            <h1 className="min-w-0 flex-1 font-display text-2xl font-extrabold leading-snug text-ocean-900 sm:text-3xl">
+          <div className="mt-1.5 flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
+            <h1 className="min-w-0 flex-1 font-display text-xl font-extrabold leading-snug text-ocean-900 sm:text-2xl lg:text-[1.75rem]">
               {p.title}
             </h1>
-            <p className="shrink-0 pt-1 text-sm text-ocean-500 sm:pt-1.5 sm:text-right">
+            <p className="shrink-0 pt-0.5 text-xs text-ocean-500 sm:pt-1 sm:text-sm sm:text-right">
               {p.date} · {p.readTime}
             </p>
           </div>
@@ -318,7 +324,7 @@ export default async function BlogPostPage({ params }: Props) {
           />
 
           {featuredImage ? (
-            <div className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-xl border border-ocean-100 bg-ocean-900">
+            <div className="relative mt-2 aspect-[16/9] max-h-[min(42vh,22rem)] w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-900 sm:max-h-[min(48vh,26rem)]">
               <CmsRemoteImage
                 src={featuredImage}
                 alt={featuredImageAlt}
@@ -331,13 +337,13 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           ) : null}
 
-          <p className="mt-3 border-l-4 border-amber-400 bg-amber-50/60 py-2 pl-3 text-base leading-relaxed text-ocean-800">
+          <p className="mt-2 border-l-4 border-amber-400 bg-amber-50/60 py-1.5 pl-2.5 text-sm leading-snug text-ocean-800 sm:text-base sm:leading-relaxed">
             {p.excerpt}
           </p>
 
           <BlogTableOfContents items={toc} />
 
-          <div className="prose prose-ocean mt-5 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
+          <div className="prose prose-ocean mt-3 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-3 prose-headings:mb-2 prose-headings:mt-6">
             <BlogContent content={p.content} />
           </div>
 

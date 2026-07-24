@@ -91,14 +91,14 @@ function IconClock({ className }: { className?: string }) {
 export default function ContactPage() {
   return (
     <div className="bg-gradient-to-b from-ocean-50 via-white to-sand/40">
-      {/* Compact hero band */}
-      <section className="relative overflow-hidden border-b border-ocean-100 bg-ocean-950">
+      {/* Compact hero band — dark ocean so white/cyan text stays readable */}
+      <section className="relative overflow-hidden border-b border-ocean-800 bg-ocean-950 text-white">
         <div
-          className="pointer-events-none absolute inset-0 opacity-40"
+          className="pointer-events-none absolute inset-0 opacity-50"
           aria-hidden
           style={{
             background:
-              "radial-gradient(ellipse 80% 60% at 20% 40%, rgba(34,211,238,0.25), transparent 55%), radial-gradient(ellipse 60% 50% at 90% 20%, rgba(14,165,233,0.2), transparent 50%)",
+              "radial-gradient(ellipse 80% 60% at 20% 40%, rgba(34,211,238,0.28), transparent 55%), radial-gradient(ellipse 60% 50% at 90% 20%, rgba(14,165,233,0.22), transparent 50%)",
           }}
         />
         <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
@@ -108,7 +108,7 @@ export default function ContactPage() {
           <h1 className="mt-1 max-w-2xl font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">
             Talk to a real dive team in Baga
           </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/85 sm:text-base">
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-cyan-50 sm:text-base">
             Fastest replies on WhatsApp—same desk that confirms pickup, slots, and
             clear prices for scuba and water sports in North Goa.
           </p>
@@ -124,13 +124,13 @@ export default function ContactPage() {
             </a>
             <Link
               href="/booking"
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-6 py-2.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-300"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-6 py-2.5 text-sm font-extrabold text-ocean-950 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-300"
             >
               Reserve Your Dive
             </Link>
             <a
               href={CONTACT_PHONE_HREF}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-white/40 bg-white/10 px-6 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-cyan-200/80 bg-white/15 px-6 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/25"
             >
               Call {CONTACT_PHONE_LABEL}
             </a>
