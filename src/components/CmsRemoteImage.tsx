@@ -6,6 +6,14 @@ type Props = {
   src: string;
   alt: string;
   fill?: boolean;
+  /** Used when `fill` is false (natural / full-image layout). */
+  width?: number;
+  height?: number;
+  /**
+   * Show the full image at its intrinsic aspect ratio (no crop box).
+   * Prefer for blog featured images / designed banners.
+   */
+  showFull?: boolean;
   className?: string;
   sizes?: string;
   priority?: boolean;
@@ -27,6 +35,9 @@ export function CmsRemoteImage({
   src,
   alt,
   fill,
+  width,
+  height,
+  showFull,
   className = "",
   sizes,
   priority,
@@ -41,22 +52,55 @@ export function CmsRemoteImage({
     return <div className={box} aria-hidden />;
   }
 
+  // Full intrinsic display — never crop designed banners / featured images.
+  if (showFull && !fill) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- need true intrinsic aspect ratio
+      <img
+        src={trimmed}
+        alt={alt}
+        className={`h-auto w-full ${className}`.trim()}
+        loading={priority ? "eager" : loading ?? "lazy"}
+        decoding="async"
+        fetchPriority={priority ? "high" : "low"}
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+    );
+  }
+
   const isLocalPublic = trimmed.startsWith("/");
   const useNext =
     isLocalPublic || isRemoteUrlOptimizableByNext(trimmed);
 
   if (useNext) {
+    if (fill) {
+      return (
+        <Image
+          src={trimmed}
+          alt={alt}
+          fill
+          className={className}
+          sizes={sizes ?? DEFAULT_SIZES}
+          priority={priority}
+          fetchPriority={priority ? "high" : undefined}
+          quality={quality}
+          loading={priority ? undefined : loading ?? "lazy"}
+        />
+      );
+    }
     return (
       <Image
         src={trimmed}
         alt={alt}
-        fill={fill}
+        width={width ?? 1600}
+        height={height ?? 900}
         className={className}
         sizes={sizes ?? DEFAULT_SIZES}
         priority={priority}
         fetchPriority={priority ? "high" : undefined}
         quality={quality}
         loading={priority ? undefined : loading ?? "lazy"}
+        style={{ width: "100%", height: "auto" }}
       />
     );
   }
@@ -66,7 +110,7 @@ export function CmsRemoteImage({
       <img
         src={trimmed}
         alt={alt}
-        className={`absolute inset-0 h-full w-full object-cover ${className}`.trim()}
+        className={`absolute inset-0 h-full w-full ${className}`.trim()}
         loading={priority ? "eager" : loading ?? "lazy"}
         decoding="async"
         fetchPriority={priority ? "high" : "low"}
@@ -79,6 +123,8 @@ export function CmsRemoteImage({
     <img
       src={trimmed}
       alt={alt}
+      width={width}
+      height={height}
       className={className}
       loading={priority ? "eager" : loading ?? "lazy"}
       decoding="async"

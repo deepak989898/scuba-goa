@@ -324,17 +324,15 @@ export default async function BlogPostPage({ params }: Props) {
           />
 
           {featuredImage ? (
-            <div className="relative mt-2 aspect-[16/9] max-h-[min(42vh,22rem)] w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-900 sm:max-h-[min(48vh,26rem)]">
+            <figure className="mt-2 w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-50">
               <CmsRemoteImage
                 src={featuredImage}
                 alt={featuredImageAlt}
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 900px"
+                showFull
+                className="block"
                 priority
-                quality={72}
               />
-            </div>
+            </figure>
           ) : null}
 
           <p className="mt-2 border-l-4 border-amber-400 bg-amber-50/60 py-1.5 pl-2.5 text-sm leading-snug text-ocean-800 sm:text-base sm:leading-relaxed">
