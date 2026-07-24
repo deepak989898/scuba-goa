@@ -8,6 +8,7 @@ import {
   normalizeBlogSlugInput,
   parseBlogPostFromFirestore,
   type BlogLanguage,
+  type BlogPostFirestore,
 } from "@/lib/blog-firestore";
 import {
   istDatetimeLocalValueToUtcIso,
@@ -66,15 +67,66 @@ export async function PATCH(req: Request) {
 
   const ref = db.collection("blogPosts").doc(slug);
   const existing = await ref.get();
-  if (!existing.exists) {
-    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  const now = new Date().toISOString();
+
+  // Allow creating from AI Blog Automation drafts that are not yet in blogPosts.
+  let current = existing.exists
+    ? parseBlogPostFromFirestore(
+        slug,
+        existing.data() as Record<string, unknown>,
+        { requirePublished: false },
+      )
+    : null;
+
+  if (!current) {
+    const title = String(body.title ?? "").trim();
+    const content = String(body.content ?? "").trim();
+    if (!title || !content) {
+      return NextResponse.json(
+        {
+          error:
+            "Post not found. Provide title and content to create it from a draft.",
+        },
+        { status: 404 },
+      );
+    }
+    current = {
+      slug,
+      title,
+      excerpt: String(body.excerpt ?? "").trim(),
+      metaTitle: String(body.metaTitle ?? title).trim(),
+      metaDescription: String(body.metaDescription ?? "").trim(),
+      keywords: Array.isArray(body.keywords)
+        ? body.keywords.map((k) => String(k).trim()).filter(Boolean)
+        : [],
+      content,
+      faqs: [],
+      date: String(body.date ?? now.slice(0, 10)).trim(),
+      updatedAt: now,
+      readTime: String(body.readTime ?? "5 min read").trim(),
+      featuredImageUrl: String(body.featuredImageUrl ?? "").trim(),
+      featuredImageAlt: String(body.featuredImageAlt ?? "").trim() || undefined,
+      ogImageUrl: String(body.ogImageUrl ?? body.featuredImageUrl ?? "").trim(),
+      language:
+        body.language === "en" || body.language === "hi" || body.language === "hinglish"
+          ? body.language
+          : "en",
+      published: false,
+      source: "auto",
+      serviceSlug: String(body.serviceSlug ?? "").trim(),
+      pillar: false,
+      createdAt: String(body.createdAt ?? now),
+      schemaMarkup:
+        body.schemaMarkup && typeof body.schemaMarkup === "object"
+          ? (body.schemaMarkup as Record<string, unknown>)
+          : undefined,
+      imageMeta:
+        body.imageMeta && typeof body.imageMeta === "object"
+          ? (body.imageMeta as BlogPostFirestore["imageMeta"])
+          : undefined,
+    };
   }
 
-  const current = parseBlogPostFromFirestore(
-    slug,
-    existing.data() as Record<string, unknown>,
-    { requirePublished: false },
-  );
   if (!current) {
     return NextResponse.json({ error: "Invalid post data" }, { status: 400 });
   }
@@ -145,7 +197,6 @@ export async function PATCH(req: Request) {
   const publishNow = body.publishNow === true;
   if (publishNow) published = true;
 
-  const now = new Date().toISOString();
   const wasPublished = current.published;
 
   const next = blogPostToFirestorePayload({
@@ -168,6 +219,10 @@ export async function PATCH(req: Request) {
       body.featuredImageUrl != null
         ? String(body.featuredImageUrl).trim()
         : current.featuredImageUrl,
+    featuredImageAlt:
+      body.featuredImageAlt != null
+        ? String(body.featuredImageAlt).trim()
+        : current.featuredImageAlt,
     ogImageUrl:
       body.ogImageUrl != null
         ? String(body.ogImageUrl).trim()
@@ -187,6 +242,8 @@ export async function PATCH(req: Request) {
     scheduleDateIst: scheduleDateIst || undefined,
     publishSlotIst: publishSlotIst || undefined,
     scheduledPublishAt: scheduledPublishAt || undefined,
+    imageMeta: current.imageMeta,
+    schemaMarkup: current.schemaMarkup,
     updatedAt: now,
   });
 

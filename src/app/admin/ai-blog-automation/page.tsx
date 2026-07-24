@@ -20,6 +20,7 @@ import type {
 } from "@/lib/seo-blog-center/types";
 import { enrichConflictsFromUrls } from "@/lib/seo-blog-center/conflict-display";
 import { BlogPostEditorPanel } from "@/app/admin/blog-automation/BlogPostEditorPanel";
+import { seoBlogDraftToFirestorePost } from "@/lib/seo-blog-center/draft-to-post";
 
 type Tab =
   | "dashboard"
@@ -508,6 +509,63 @@ export default function AiBlogAutomationPage() {
     );
   }
 
+  function jobDraft(j: AiBlogGenerationJob): SeoBlogDraft | undefined {
+    if (j.generatedDraftId) {
+      const byId = drafts.find((d) => d.id === j.generatedDraftId);
+      if (byId) return byId;
+    }
+    const byJob = drafts.find((d) => d.jobId === j.id);
+    if (byJob) return byJob;
+    const slug = j.generatedBlogSlug;
+    if (slug) {
+      return drafts.find(
+        (d) => d.slug === slug || d.publishedBlogSlug === slug,
+      );
+    }
+    return undefined;
+  }
+
+  /** Resolve editable post from blogPosts or SEO draft (draft-ready jobs). */
+  function resolveEditablePost(j: AiBlogGenerationJob): BlogPostFirestore | null {
+    const slug = jobBlogSlug(j);
+    if (slug && blogPostsBySlug[slug]) return blogPostsBySlug[slug]!;
+    const draft = jobDraft(j);
+    if (draft?.slug && draft.title && draft.content) {
+      return seoBlogDraftToFirestorePost(draft, false);
+    }
+    return null;
+  }
+
+  async function openQueueEditor(j: AiBlogGenerationJob) {
+    const post = resolveEditablePost(j);
+    if (!post) {
+      setErr(
+        "Draft content not found for this job. Wait until generation finishes, then Refresh.",
+      );
+      return;
+    }
+    setErr(null);
+    setBusy(`edit-${post.slug}`);
+    try {
+      // Materialize unpublished blogPosts doc so Save / image APIs work for drafts.
+      if (!blogPostsBySlug[post.slug]) {
+        await adminFetch("/api/admin/blog-posts", {
+          method: "PATCH",
+          body: JSON.stringify({
+            ...post,
+            publishNow: false,
+          }),
+        });
+        setBlogPostsBySlug((prev) => ({ ...prev, [post.slug]: post }));
+      }
+      setEditingPost(post);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not open editor");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   function jobPublishedAt(j: AiBlogGenerationJob): string | null {
     const draft = j.generatedDraftId
       ? drafts.find((d) => d.id === j.generatedDraftId)
@@ -579,6 +637,19 @@ export default function AiBlogAutomationPage() {
           publishNow: opts?.publishNow === true,
         }),
       });
+      if (opts?.publishNow) {
+        const relatedJob = jobs.find((j) => jobBlogSlug(j) === editingPost.slug);
+        if (relatedJob) {
+          await adminFetch("/api/admin/ai-blog-automation", {
+            method: "PATCH",
+            body: JSON.stringify({
+              action: "markJobPublished",
+              jobId: relatedJob.id,
+              slug: editingPost.slug,
+            }),
+          }).catch(() => null);
+        }
+      }
       setOk(
         opts?.publishNow
           ? `Published /blog/${editingPost.slug}`
@@ -1353,10 +1424,16 @@ export default function AiBlogAutomationPage() {
               <tbody>
                 {jobs.map((j) => {
                   const slug = jobBlogSlug(j);
-                  const canOpen = Boolean(slug);
-                  const post = slug ? blogPostsBySlug[slug] : undefined;
+                  const draft = jobDraft(j);
+                  const post = resolveEditablePost(j);
+                  const canOpen = Boolean(slug || post || draft);
+                  const canEdit = Boolean(post);
                   const imageSrc =
-                    post?.featuredImageUrl || post?.ogImageUrl || "";
+                    post?.featuredImageUrl ||
+                    post?.ogImageUrl ||
+                    draft?.featuredImageUrl ||
+                    draft?.ogImageUrl ||
+                    "";
                   const traffic = getContentTrafficForSlug(blogViewsBySlug, slug);
                   const views = !slug
                     ? null
@@ -1364,10 +1441,12 @@ export default function AiBlogAutomationPage() {
                       ? null
                       : (traffic?.views ?? 0);
                   const publishedLabel = formatIstDateTimeAmPm(
-                    post?.publishedAt || jobPublishedAt(j),
+                    post?.publishedAt || draft?.publishedAt || jobPublishedAt(j),
                   );
                   const isEditing = Boolean(
-                    editingPost && slug && editingPost.slug === slug,
+                    editingPost &&
+                      ((slug && editingPost.slug === slug) ||
+                        (post && editingPost.slug === post.slug)),
                   );
                   return (
                     <Fragment key={j.id}>
@@ -1401,7 +1480,9 @@ export default function AiBlogAutomationPage() {
                                   src: imageSrc,
                                   alt:
                                     post?.featuredImageAlt ||
+                                    draft?.featuredImageAlt ||
                                     post?.title ||
+                                    draft?.title ||
                                     j.primaryKeyword,
                                 })
                               }
@@ -1413,7 +1494,9 @@ export default function AiBlogAutomationPage() {
                                 src={imageSrc}
                                 alt={
                                   post?.featuredImageAlt ||
+                                  draft?.featuredImageAlt ||
                                   post?.title ||
+                                  draft?.title ||
                                   j.primaryKeyword
                                 }
                                 fill
@@ -1460,33 +1543,25 @@ export default function AiBlogAutomationPage() {
                         </td>
                         <td className="p-2">
                           <div className="flex flex-wrap gap-1.5">
-                            {canOpen ? (
-                              <>
-                                <a
-                                  href={`/blog/${slug}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="rounded-full border border-ocean-200 bg-white px-2 py-0.5 text-[10px] font-bold text-ocean-800 hover:bg-ocean-50"
-                                >
-                                  View
-                                </a>
-                                <button
-                                  type="button"
-                                  disabled={!post}
-                                  onClick={() => {
-                                    if (!post) {
-                                      setErr(
-                                        `Blog post not found for /blog/${slug}. Refresh and try again.`,
-                                      );
-                                      return;
-                                    }
-                                    setEditingPost(post);
-                                  }}
-                                  className="rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-ocean-900 disabled:opacity-50"
-                                >
-                                  {isEditing ? "Editing…" : "Edit"}
-                                </button>
-                              </>
+                            {canOpen && slug ? (
+                              <a
+                                href={`/blog/${slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-full border border-ocean-200 bg-white px-2 py-0.5 text-[10px] font-bold text-ocean-800 hover:bg-ocean-50"
+                              >
+                                View
+                              </a>
+                            ) : null}
+                            {canEdit ? (
+                              <button
+                                type="button"
+                                disabled={busy === `edit-${post!.slug}`}
+                                onClick={() => void openQueueEditor(j)}
+                                className="rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-ocean-900 disabled:opacity-50"
+                              >
+                                {isEditing ? "Editing…" : "Edit"}
+                              </button>
                             ) : null}
                             <button
                               type="button"

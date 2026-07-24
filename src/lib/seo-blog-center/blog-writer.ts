@@ -7,7 +7,6 @@ import { getPostBySlug } from "@/data/blog-posts";
 import {
   isValidBlogSlug,
   normalizeBlogSlugInput,
-  type BlogPostFirestore,
 } from "@/lib/blog-firestore";
 import { getServiceBySlugServer } from "@/lib/get-services-server";
 import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
@@ -15,6 +14,9 @@ import type { SeoBlogDraft, SeoBlogKeyword, SeoBlogMeta } from "@/lib/seo-blog-c
 import { generateSeoMetaForKeyword } from "@/lib/seo-blog-center/seo-meta";
 import { inferServiceSlug } from "@/lib/seo-blog-center/utils";
 import { getSeoBlogSettings } from "@/lib/seo-blog-center/store";
+import { seoBlogDraftToFirestorePost } from "@/lib/seo-blog-center/draft-to-post";
+
+export { seoBlogDraftToFirestorePost } from "@/lib/seo-blog-center/draft-to-post";
 
 function estimateReadTime(content: string): string {
   const words = content.split(/\s+/).filter(Boolean).length;
@@ -230,37 +232,5 @@ export async function generateSeoBlogDraft(input: {
     source: "seo-blog-center",
     imageMeta,
     createdAt: now,
-  };
-}
-
-export function seoBlogDraftToFirestorePost(
-  draft: SeoBlogDraft,
-  published: boolean,
-): BlogPostFirestore {
-  const now = new Date().toISOString();
-  return {
-    slug: draft.slug,
-    title: draft.title,
-    excerpt: draft.excerpt,
-    metaTitle: draft.metaTitle,
-    metaDescription: draft.metaDescription,
-    keywords: draft.keywords,
-    content: draft.content,
-    faqs: draft.faqs,
-    date: now.slice(0, 10),
-    updatedAt: now,
-    readTime: draft.readTime,
-    featuredImageUrl: draft.featuredImageUrl,
-    featuredImageAlt: draft.featuredImageAlt,
-    ogImageUrl: draft.ogImageUrl || draft.featuredImageUrl,
-    schemaMarkup: draft.schemaMarkup,
-    language: draft.language,
-    published,
-    source: "auto",
-    serviceSlug: draft.serviceSlug,
-    pillar: false,
-    createdAt: draft.createdAt,
-    publishedAt: published ? now : undefined,
-    imageMeta: draft.imageMeta,
   };
 }

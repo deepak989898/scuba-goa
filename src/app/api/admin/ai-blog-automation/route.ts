@@ -166,6 +166,56 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, ...auto });
   }
 
+  if (body.action === "markJobPublished") {
+    const jobId = String(body.jobId ?? "").trim();
+    const slug = String(body.slug ?? "").trim();
+    if (!jobId) {
+      return NextResponse.json({ error: "jobId required" }, { status: 400 });
+    }
+    const {
+      getGenerationJobById,
+      saveGenerationJob,
+      getDraftById,
+      saveDraft,
+      listDrafts,
+    } = await import("@/lib/seo-blog-center/store");
+    const job = await getGenerationJobById(jobId);
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+    const now = new Date().toISOString();
+    await saveGenerationJob({
+      ...job,
+      status: "published",
+      generatedBlogSlug: slug || job.generatedBlogSlug,
+      completedAt: job.completedAt || now,
+    });
+    let draft = job.generatedDraftId
+      ? await getDraftById(job.generatedDraftId)
+      : null;
+    if (!draft && slug) {
+      draft =
+        (await listDrafts(undefined, 100)).find(
+          (d) => d.slug === slug || d.publishedBlogSlug === slug,
+        ) ?? null;
+    }
+    if (draft) {
+      await saveDraft({
+        ...draft,
+        status: "published",
+        publishedAt: now,
+        publishedBlogSlug: slug || draft.slug,
+        updatedAt: now,
+      });
+    }
+    await addSeoBlogLog({
+      type: "blog_published",
+      message: `Manually published from queue: /blog/${slug || job.generatedBlogSlug || job.id}`,
+      resourceId: jobId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   const patch = { ...body } as Partial<SeoBlogCenterSettings> & {
     action?: unknown;
   };
