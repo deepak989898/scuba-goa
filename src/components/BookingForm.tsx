@@ -19,14 +19,13 @@ import {
   MIN_PAYMENT_PER_PERSON_INR,
 } from "@/lib/payment";
 import type { CartLine } from "@/lib/types";
+import { getOrCreateAnalyticsSessionId } from "@/lib/analytics-client-ids";
 
 declare global {
   interface Window {
     Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
   }
 }
-
-const LEAD_SID_KEY = "bsg_marketing_sid";
 
 async function resolveRazorpayKeyId(): Promise<string> {
   const buildKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -41,23 +40,6 @@ async function resolveRazorpayKeyId(): Promise<string> {
     );
   }
   return keyId;
-}
-
-function getLeadSessionId(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    let id = sessionStorage.getItem(LEAD_SID_KEY);
-    if (!id) {
-      id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `m_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      sessionStorage.setItem(LEAD_SID_KEY, id);
-    }
-    return id;
-  } catch {
-    return `m_${Date.now()}`;
-  }
 }
 
 function cartSummary(lines: CartLine[]): string {
@@ -507,7 +489,7 @@ export function BookingForm() {
       interestedItem: lines[0]?.name ?? "Booking intent",
       preferredDate: date || "",
       source: "booking_form",
-      sessionId: getLeadSessionId(),
+      sessionId: getOrCreateAnalyticsSessionId(),
     };
     const t = window.setTimeout(() => {
       void fetch("/api/marketing/lead", {

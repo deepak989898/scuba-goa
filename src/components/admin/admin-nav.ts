@@ -85,6 +85,22 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     ],
   },
   {
+    id: "analytics",
+    label: "Analytics",
+    items: [
+      {
+        href: "/admin/analytics",
+        label: "Site analytics",
+        description: "Visitors, pages & clicks",
+      },
+      {
+        href: "/admin/ai-analytics",
+        label: "AI analytics",
+        description: "Daily GA4 + GSC digest",
+      },
+    ],
+  },
+  {
     id: "website",
     label: "Website",
     hint: "Catalog, homepage & media",
@@ -104,37 +120,9 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       { href: "/admin/marketing", label: "Marketing leads" },
     ],
   },
-  {
-    id: "analytics",
-    label: "Analytics",
-    items: [
-      {
-        href: "/admin/analytics",
-        label: "Site analytics",
-        description: "Visitors, pages & clicks",
-      },
-      {
-        href: "/admin/ai-analytics",
-        label: "AI analytics",
-        description: "Daily GA4 + GSC digest",
-      },
-    ],
-  },
-  {
-    id: "overview",
-    label: "More",
-    items: [
-      {
-        href: "/admin",
-        label: "Dashboard",
-        description: "All admin links in one page",
-      },
-    ],
-  },
 ];
 
 export function adminNavIsActive(pathname: string, href: string): boolean {
-  if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

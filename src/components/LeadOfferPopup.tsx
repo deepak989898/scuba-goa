@@ -21,9 +21,9 @@ import {
   isHomePath,
   markVisitedNonHome,
 } from "@/lib/visit-session";
+import { getOrCreateAnalyticsSessionId } from "@/lib/analytics-client-ids";
 
 const STORAGE_KEY = "bsg_offer_popup_v1";
-const LEAD_SID_KEY = "bsg_marketing_sid";
 
 /**
  * Delay before the side teaser tab fades in on the homepage. Kept long enough
@@ -38,23 +38,6 @@ const TEASER_DELAY_MS = 10000;
  * so a fresh landing on `/` never gets interrupted.
  */
 const RETURNING_AUTO_OPEN_DELAY_MS = 12000;
-
-function getMarketingSessionId(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    let id = sessionStorage.getItem(LEAD_SID_KEY);
-    if (!id) {
-      id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `m_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      sessionStorage.setItem(LEAD_SID_KEY, id);
-    }
-    return id;
-  } catch {
-    return `m_${Date.now()}`;
-  }
-}
 
 function readPopupState(): "fresh" | "dismissed" | "submitted" {
   if (typeof window === "undefined") return "fresh";
@@ -216,7 +199,7 @@ export function LeadOfferPopup() {
           interestedItem: "₹200 OFF — WhatsApp offer (popup)",
           preferredDate: "",
           source: "offer_popup_200",
-          sessionId: getMarketingSessionId(),
+          sessionId: getOrCreateAnalyticsSessionId(),
         }),
       });
       const data = await res.json().catch(() => ({}));

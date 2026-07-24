@@ -12,7 +12,6 @@ import {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onSignOut: () => void;
 };
 
 const BADGE_LABEL: Record<NonNullable<AdminNavItem["badge"]>, string> = {
@@ -128,7 +127,7 @@ function NavSection({
   );
 }
 
-export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
+export function AdminNavDrawer({ open, onClose }: Props) {
   const pathname = usePathname();
 
   const drawer = (
@@ -160,28 +159,6 @@ export function AdminNavDrawer({ open, onClose, onSignOut }: Props) {
           />
         ))}
       </nav>
-
-      <div className="border-t border-white/10 p-3">
-        <Link
-          href="/"
-          onClick={onClose}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
-        >
-          <span aria-hidden>↗</span>
-          View live website
-        </Link>
-        <button
-          type="button"
-          onClick={() => {
-            onClose();
-            onSignOut();
-          }}
-          className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
-        >
-          <span aria-hidden>⎋</span>
-          Sign out
-        </button>
-      </div>
     </div>
   );
 

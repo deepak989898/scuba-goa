@@ -79,7 +79,6 @@ function AdminGate({ children }: { children: React.ReactNode }) {
       <AdminNavDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onSignOut={() => getFirebaseAuth()?.signOut()}
       />
 
       <div className="flex min-h-screen flex-col">
@@ -163,7 +162,7 @@ export function AdminLoginForm() {
         setErr("This account is not an admin.");
         return;
       }
-      router.replace("/admin");
+      router.replace("/admin/command-center");
     } catch {
       setErr("Invalid email or password.");
     } finally {

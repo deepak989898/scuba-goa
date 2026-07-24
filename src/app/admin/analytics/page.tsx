@@ -543,7 +543,8 @@ export default function AdminAnalyticsPage() {
     for (const [sid, sessionRows] of rowsBySession) {
       const firstTs = sessionRows
         .map((r) => toTimestamp(r.createdAt))
-        .find(Boolean);
+        .filter(Boolean)
+        .sort((a, b) => a!.toMillis() - b!.toMillis())[0];
       if (!firstTs) continue;
       const day = istCalendarDate(firstTs);
       const summary = buildVisitorSummary(
@@ -726,6 +727,21 @@ export default function AdminAnalyticsPage() {
               {analytics.todayBotsHidden > 0 && visitorFilter === "human" ? (
                 <p className="mt-1 text-xs text-ocean-600">
                   {analytics.todayBotsHidden} bot/suspected hidden
+                </p>
+              ) : null}
+              {analytics.todayHumans === 0 &&
+              analytics.todaySuspected + analytics.todayBots === 0 ? (
+                <p className="mt-1 text-[11px] leading-snug text-ocean-600">
+                  Tip: Marketing leads can appear before page views. After deploy,
+                  booking-form leads count as humans here. Also try the{" "}
+                  <button
+                    type="button"
+                    className="font-semibold underline"
+                    onClick={() => setVisitorFilter("all")}
+                  >
+                    All
+                  </button>{" "}
+                  tab.
                 </p>
               ) : null}
             </div>

@@ -4,10 +4,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { classifyTrafficSource } from "@/lib/analytics-traffic";
 import { classifyClick } from "@/lib/conversion-opt/click-category";
+import {
+  getOrCreateAnalyticsSessionId,
+  getOrCreateAnalyticsVisitorId,
+} from "@/lib/analytics-client-ids";
 
-const SESSION_KEY = "bsg_analytics_sid";
-const VISITOR_KEY = "bsg_analytics_vid";
 const TRAFFIC_KEY = "bsg_analytics_traffic";
+/** Prefer short path — `/api/analytics/track` is commonly blocked by ad blockers. */
+const TRACK_URL = "/api/t";
 /** Dedupe React Strict Mode double-invoke (same path within a few seconds). */
 const lastTrackAt = new Map<string, number>();
 const HEARTBEAT_MS = 180_000;
@@ -40,17 +44,7 @@ function newId(prefix: string): string {
 }
 
 function getVisitorId(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    let id = localStorage.getItem(VISITOR_KEY);
-    if (!id) {
-      id = newId("v");
-      localStorage.setItem(VISITOR_KEY, id);
-    }
-    return id;
-  } catch {
-    return newId("v");
-  }
+  return getOrCreateAnalyticsVisitorId();
 }
 
 function getTrafficPayload(landingPath: string): TrafficPayload {
@@ -177,7 +171,7 @@ function track(
   ) {
     const blob = new Blob([body], { type: "application/json" });
     try {
-      navigator.sendBeacon("/api/analytics/track", blob);
+      navigator.sendBeacon(TRACK_URL, blob);
     } catch {
       /* ignore */
     }
@@ -191,7 +185,7 @@ function track(
     window.setTimeout(() => controller.abort(), TRACK_TIMEOUT_MS);
   }
 
-  void fetch("/api/analytics/track", {
+  void fetch(TRACK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
@@ -201,17 +195,7 @@ function track(
 }
 
 function getSessionId(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    let id = sessionStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = newId("s");
-      sessionStorage.setItem(SESSION_KEY, id);
-    }
-    return id;
-  } catch {
-    return newId("s");
-  }
+  return getOrCreateAnalyticsSessionId();
 }
 
 export function AnalyticsTracker() {
