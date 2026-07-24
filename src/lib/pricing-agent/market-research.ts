@@ -7,6 +7,21 @@ type SerperOrganic = {
   snippet?: string;
 };
 
+export type MarketResearchResult = {
+  snapshots: CompetitorPriceSnapshot[];
+  serperConfigured: boolean;
+  /** Successful HTTP calls to Serper (credits should decrease). */
+  serperHttpOk: number;
+  /** Failed / non-OK Serper responses. */
+  serperHttpFail: number;
+};
+
+export function isSerperConfigured(): boolean {
+  return Boolean(
+    process.env.SERPER_API_KEY?.trim() || process.env.SERP_API_KEY?.trim(),
+  );
+}
+
 function extractPricesFromText(text: string): number[] {
   const out: number[] = [];
   const re =
@@ -36,15 +51,24 @@ export async function researchMarketPrices(opts: {
   target: PricingTarget;
   maxSources: number;
   suggestionId: string;
-}): Promise<CompetitorPriceSnapshot[]> {
+}): Promise<MarketResearchResult> {
   const key =
     process.env.SERPER_API_KEY?.trim() || process.env.SERP_API_KEY?.trim();
-  if (!key) return [];
+  if (!key) {
+    return {
+      snapshots: [],
+      serperConfigured: false,
+      serperHttpOk: 0,
+      serperHttpFail: 0,
+    };
+  }
 
   const queries = buildSearchQueries(opts.target);
   const snapshots: CompetitorPriceSnapshot[] = [];
   const seenUrls = new Set<string>();
   const now = new Date().toISOString();
+  let serperHttpOk = 0;
+  let serperHttpFail = 0;
 
   for (const q of queries) {
     if (snapshots.length >= opts.maxSources) break;
@@ -57,7 +81,11 @@ export async function researchMarketPrices(opts: {
         },
         body: JSON.stringify({ q, gl: "in", hl: "en", num: 8 }),
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        serperHttpFail += 1;
+        continue;
+      }
+      serperHttpOk += 1;
       const json = (await res.json().catch(() => ({}))) as {
         organic?: SerperOrganic[];
       };
@@ -74,7 +102,6 @@ export async function researchMarketPrices(opts: {
         const prices = extractPricesFromText(blob);
         if (!prices.length) continue;
 
-        // Prefer mid prices from snippet; skip obvious deposit-like mins when higher exists
         const price =
           prices.length > 1
             ? prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)]!
@@ -114,9 +141,14 @@ export async function researchMarketPrices(opts: {
         });
       }
     } catch {
-      // continue other queries
+      serperHttpFail += 1;
     }
   }
 
-  return snapshots;
+  return {
+    snapshots,
+    serperConfigured: true,
+    serperHttpOk,
+    serperHttpFail,
+  };
 }

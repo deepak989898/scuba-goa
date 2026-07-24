@@ -5,6 +5,7 @@ import {
   getPricingSettings,
 } from "@/lib/pricing-agent/settings";
 import { listRuns, listSuggestions } from "@/lib/pricing-agent/store";
+import { isSerperConfigured } from "@/lib/pricing-agent/market-research";
 
 export const runtime = "nodejs";
 
@@ -44,11 +45,15 @@ export async function GET(req: Request) {
       ? decreases.reduce((a, s) => a + s.differencePercent, 0) / decreases.length
       : 0;
 
+  const serperConfigured = isSerperConfigured();
+
   return NextResponse.json({
     settings: {
       ...settings,
       nextRunAt: settings.nextRunAt || computeNextTuesdayIstRunIso(),
     },
+    serperConfigured,
+    openaiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
     cards: {
       totalAnalyzed: suggestions.length,
       pending: pending.length,

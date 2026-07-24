@@ -1,6 +1,6 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { listActivePricingTargets } from "@/lib/pricing-agent/catalog";
-import { researchMarketPrices } from "@/lib/pricing-agent/market-research";
+import { researchMarketPrices, isSerperConfigured } from "@/lib/pricing-agent/market-research";
 import { recommendPriceWithAi } from "@/lib/pricing-agent/openai-recommend";
 import { applySafetyRules } from "@/lib/pricing-agent/safety";
 import {
@@ -67,6 +67,9 @@ export async function runPricingAgentPipeline(opts?: {
   error?: string;
   suggestionsCreated: number;
   pricesUpdated: number;
+  serperConfigured?: boolean;
+  serperHttpOk?: number;
+  serperHttpFail?: number;
 }> {
   const db = getAdminDb();
   if (!db) {
@@ -118,8 +121,16 @@ export async function runPricingAgentPipeline(opts?: {
   let skipped = 0;
   let suggestionsCreated = 0;
   let pricesUpdated = 0;
+  let serperConfigured = isSerperConfigured();
+  let serperHttpOk = 0;
+  let serperHttpFail = 0;
 
   try {
+    if (!serperConfigured) {
+      logs.push(
+        "WARNING: SERPER_API_KEY (or SERP_API_KEY) is NOT set on the server — market search skipped. Serper credits will not decrease.",
+      );
+    }
     if (settings.emergencyPause && !dryRun && runType === "weekly") {
       logs.push("Skipped: emergency pause enabled");
       await updatePricingRun(runId, {
@@ -144,11 +155,15 @@ export async function runPricingAgentPipeline(opts?: {
       try {
         const suggestionId = db.collection("pricingSuggestions").doc().id;
         const rules = await getPackagePricingRules(target.id);
-        const snapshots = await researchMarketPrices({
+        const research = await researchMarketPrices({
           target,
           maxSources: settings.maxSourcesPerTarget,
           suggestionId,
         });
+        serperConfigured = research.serperConfigured;
+        serperHttpOk += research.serperHttpOk;
+        serperHttpFail += research.serperHttpFail;
+        const snapshots = research.snapshots;
         await saveCompetitorSnapshots(snapshots);
 
         const ai = await recommendPriceWithAi({ target, snapshots });
@@ -293,7 +308,15 @@ export async function runPricingAgentPipeline(opts?: {
     }
 
     await releaseRunLock(leaseId, status);
-    return { ok: true, runId, suggestionsCreated, pricesUpdated };
+    return {
+      ok: true,
+      runId,
+      suggestionsCreated,
+      pricesUpdated,
+      serperConfigured,
+      serperHttpOk,
+      serperHttpFail,
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await updatePricingRun(runId, {

@@ -59,6 +59,8 @@ export default function AdminPricingAgentPage() {
   const [settings, setSettings] = useState<PricingSettings | null>(null);
   const [suggestions, setSuggestions] = useState<PricingSuggestion[]>([]);
   const [runs, setRuns] = useState<RunRow[]>([]);
+  const [serperConfigured, setSerperConfigured] = useState<boolean | null>(null);
+  const [openaiConfigured, setOpenaiConfigured] = useState<boolean | null>(null);
   const [filter, setFilter] = useState<string>("pending");
   const [selected, setSelected] = useState<PricingSuggestion | null>(null);
   const [customPrice, setCustomPrice] = useState("");
@@ -76,6 +78,12 @@ export default function AdminPricingAgentPage() {
       setSettings(data.settings);
       setSuggestions(data.suggestions ?? []);
       setRuns(data.runs ?? []);
+      setSerperConfigured(
+        typeof data.serperConfigured === "boolean" ? data.serperConfigured : null,
+      );
+      setOpenaiConfigured(
+        typeof data.openaiConfigured === "boolean" ? data.openaiConfigured : null,
+      );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -120,7 +128,14 @@ export default function AdminPricingAgentPage() {
         body: JSON.stringify({ dryRun }),
       });
       setOk(
-        `Run ${data.runId}: ${data.suggestionsCreated} suggestions, ${data.pricesUpdated} prices updated.`,
+        `Run ${data.runId}: ${data.suggestionsCreated} suggestions, ${data.pricesUpdated} prices updated.` +
+          (data.serperConfigured === false
+            ? " ⚠ SERPER_API_KEY missing on Vercel — Serper credits will stay unused. Add SERPER_API_KEY in Vercel → Environment Variables, then Redeploy."
+            : ` Serper calls OK: ${data.serperHttpOk ?? 0}` +
+              (data.serperHttpFail
+                ? `, failed: ${data.serperHttpFail}`
+                : "") +
+              "."),
       );
       await load();
     } catch (e) {
@@ -270,6 +285,30 @@ export default function AdminPricingAgentPage() {
       {ok ? (
         <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900">
           {ok}
+        </p>
+      ) : null}
+
+      {serperConfigured === false ? (
+        <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <strong>Serper API key not found on the live server.</strong> Creating a
+          key on serper.dev is not enough — add{" "}
+          <code className="rounded bg-white px-1">SERPER_API_KEY</code> in{" "}
+          <strong>Vercel → Project → Settings → Environment Variables</strong>{" "}
+          (Production), then <strong>Redeploy</strong>. Until then Serper credits
+          stay unused and every item will be Skipped.
+        </p>
+      ) : null}
+      {serperConfigured === true && openaiConfigured === false ? (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-2 text-sm text-amber-900">
+          Serper is configured. <code className="rounded bg-white px-1">OPENAI_API_KEY</code>{" "}
+          is missing — recommendations still run with basic rules, but AI reasons
+          may be limited.
+        </p>
+      ) : null}
+      {serperConfigured === true ? (
+        <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/60 px-4 py-2 text-xs text-emerald-900">
+          Serper key detected on server. After <strong>Run price analysis now</strong>,
+          check serper.dev → Dashboard — Credits / Total usage should increase.
         </p>
       ) : null}
 
