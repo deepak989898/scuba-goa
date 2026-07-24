@@ -421,9 +421,10 @@ export default function AiBlogAutomationPage() {
       });
       if (
         !confirm(
-          `Queue ${preview.estimatedArticles} article(s)?\n` +
+          `Queue & start generating ${preview.estimatedArticles} article(s)?\n` +
             `AI featured image: ${generateAiImage ? "YES (OpenAI cost)" : "NO — free stock (Pexels → Pixabay → Unsplash → WebP)"}\n` +
             `Estimated OpenAI cost: ~$${preview.estimatedCostUsd} (estimate only).\n` +
+            `Generation starts automatically after approve (up to 3 at once).\n` +
             `${preview.imageNote || ""}\n${preview.warning}`,
         )
       ) {
@@ -439,12 +440,28 @@ export default function AiBlogAutomationPage() {
           generateAiImage,
         }),
       });
-      setOk(
-        `Queued ${data.jobsCreated} job(s). Images: ${generateAiImage ? "AI" : "free stock"}. Est. cost ~$${data.estimatedCostUsd}`,
-      );
+      const processed = Number(data.processed ?? 0);
+      const paused = data.queuePaused === true;
+      if (paused) {
+        setOk(
+          `Queued ${data.jobsCreated} job(s), but queue is paused — resume queue or click Process jobs.`,
+        );
+      } else if (processed > 0) {
+        setOk(
+          `Queued ${data.jobsCreated} and started generating ${processed} blog(s) automatically (${generateAiImage ? "AI" : "free stock"} images). Est. ~$${data.estimatedCostUsd}`,
+        );
+      } else {
+        setOk(
+          `Queued ${data.jobsCreated} job(s). Images: ${generateAiImage ? "AI" : "free stock"}. Est. cost ~$${data.estimatedCostUsd}`,
+        );
+      }
       setSelectedClusters(new Set());
       setTab("queue");
       await load();
+      // Refresh again shortly so draft-ready / published status appears.
+      if (processed > 0) {
+        window.setTimeout(() => void load(), 2500);
+      }
     } catch (e) {
       if (!confirmCost && e instanceof Error && e.message.includes("Cost")) {
         /* handled above */
@@ -912,8 +929,9 @@ export default function AiBlogAutomationPage() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
             Research keywords (Google Ads when configured + GSC + seeds) → cluster →
-            approve → generate drafts → review → publish. Use Clusters automation
-            toggles to auto-approve (skips conflict keywords).
+            approve → generate drafts automatically → review → publish. Use Clusters
+            automation toggles to auto-approve (skips conflicts). Generation starts on
+            approve — Process is only for stuck waiting jobs.
           </p>
         </div>
         <Link
@@ -1237,7 +1255,9 @@ export default function AiBlogAutomationPage() {
               onClick={() => void approveSelected()}
               className="rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
-              Approve selected → queue
+              {busy === "approve"
+                ? "Approving & generating…"
+                : "Approve selected → generate"}
             </button>
             <button
               type="button"
@@ -1381,7 +1401,7 @@ export default function AiBlogAutomationPage() {
               onClick={() => void processQueueNow()}
               className="rounded-full bg-ocean-800 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
-              {busy === "queue" ? "Processing…" : "Process 2 jobs now"}
+              {busy === "queue" ? "Processing…" : "Process stuck jobs"}
             </button>
             <button
               type="button"

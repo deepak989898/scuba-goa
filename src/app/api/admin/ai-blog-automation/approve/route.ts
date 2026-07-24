@@ -4,6 +4,7 @@ import {
   approveClustersToQueue,
   estimateBatchCostUsd,
 } from "@/lib/seo-blog-center/auto-approve-publish";
+import { processGenerationQueue } from "@/lib/seo-blog-center/generation-queue";
 import {
   addSeoBlogLog,
   deleteCluster,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/seo-blog-center/store";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -154,6 +156,32 @@ export async function POST(req: Request) {
     requirePending: false,
   });
 
+  // Start generation immediately — admin should not need "Process 2 jobs now".
+  let processed = 0;
+  let processErrors: string[] = [];
+  let queuePaused = Boolean(settings.pauseGenerationQueue);
+  if (result.jobsCreated > 0 && !queuePaused) {
+    try {
+      const gen = await processGenerationQueue(
+        Math.min(Math.max(result.jobsCreated, 1), 3),
+      );
+      processed = gen.processed;
+      processErrors = gen.errors;
+      await addSeoBlogLog({
+        type: "pipeline_run",
+        message: `After approve: started generation for ${processed} job(s) (queued ${result.jobsCreated})`,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Generation start failed";
+      processErrors = [msg];
+      await addSeoBlogLog({
+        type: "error",
+        message: `After approve, generation failed to start: ${msg}`,
+        error: msg,
+      });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     approved: result.approved,
@@ -164,5 +192,9 @@ export async function POST(req: Request) {
     costIsEstimate: true,
     generateAiImage: result.generateAiImage,
     jobIds: result.jobIds,
+    processed,
+    processErrors,
+    queuePaused,
+    generationStarted: processed > 0,
   });
 }

@@ -163,11 +163,12 @@ export async function approveClustersToQueue(opts: {
 
 /**
  * When auto-approve automation is enabled: queue pending clusters without conflicts,
- * then cron generation + autoPublish handle the rest.
+ * start generation immediately (admin/cron need not click Process), then autoPublish handles rest.
  */
 export async function runAutoApprovePublishAutomation(actorId = "system-auto"): Promise<{
   mode: "off" | "with_ai_image" | "without_image";
   result: ApproveClustersResult | null;
+  processed?: number;
 }> {
   const settings = await getSeoBlogSettings();
   const withImage = settings.autoApprovePublishWithAiImage === true;
@@ -251,5 +252,20 @@ export async function runAutoApprovePublishAutomation(actorId = "system-auto"): 
   // Preserve accurate conflict skip count for logging/UI.
   result.skippedConflicts = Math.max(result.skippedConflicts, conflictCount);
 
-  return { mode, result };
+  let processed = 0;
+  if (result.jobsCreated > 0 && !settings.pauseGenerationQueue) {
+    try {
+      const { processGenerationQueue } = await import(
+        "@/lib/seo-blog-center/generation-queue"
+      );
+      const gen = await processGenerationQueue(
+        Math.min(Math.max(result.jobsCreated, 1), 3),
+      );
+      processed = gen.processed;
+    } catch (e) {
+      console.error("[auto-approve] generation start failed", e);
+    }
+  }
+
+  return { mode, result, processed };
 }

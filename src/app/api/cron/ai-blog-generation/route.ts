@@ -18,15 +18,18 @@ export async function POST(req: Request) {
 
   try {
     const auto = await runAutoApprovePublishAutomation("cron-auto");
+    // Auto-approve already starts generation; process any leftover waiting jobs.
     const result = await processGenerationQueue(2);
+    const autoProcessed = auto.processed ?? 0;
     await addSeoBlogLog({
       type: "pipeline_run",
-      message: `AI generation cron: auto-approve mode=${auto.mode} queued=${auto.result?.jobsCreated ?? 0} (skipped conflicts=${auto.result?.skippedConflicts ?? 0}); processed ${result.processed}`,
+      message: `AI generation cron: auto-approve mode=${auto.mode} queued=${auto.result?.jobsCreated ?? 0} (skipped conflicts=${auto.result?.skippedConflicts ?? 0}); auto-processed ${autoProcessed}; leftover processed ${result.processed}`,
     });
     return NextResponse.json({
       ok: true,
       autoApprove: {
         mode: auto.mode,
+        processed: autoProcessed,
         ...(auto.result ?? {}),
       },
       ...result,
