@@ -82,6 +82,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         label: "SEO health",
         description: "Sitemap, schema, technical audit",
       },
+      {
+        href: "/admin/gsc-agent",
+        label: "GSC Indexing Agent",
+        description: "Index status, sitemaps, approvals",
+        highlight: true,
+        badge: "action",
+      },
     ],
   },
   {

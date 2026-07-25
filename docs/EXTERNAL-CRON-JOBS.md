@@ -32,6 +32,8 @@ Actual run status is written to Firestore collection `cronRunStatus`.
 | SEO Blog Center | `https://bookscubagoa.com/api/cron/seo-blog-center-daily` | `45 6 * * *` | 12:15 daily |
 | AI blog generation queue | `https://bookscubagoa.com/api/cron/ai-blog-generation` | Every 30 minutes | Every 30 minutes |
 | AI Pricing (weekly) | `https://bookscubagoa.com/api/cron/pricing-agent-weekly` | `30 0 * * 2` | **Tuesday 06:00 IST** |
+| GSC Indexing Agent (daily) | `https://bookscubagoa.com/api/cron/gsc-indexing-agent` | `30 5 * * *` | 11:00 daily |
+| GSC Indexing Agent (weekly) | `https://bookscubagoa.com/api/cron/gsc-indexing-agent?job=weekly` | `0 7 * * 1` | 12:30 Monday |
 
 For the hourly recovery schedule, cron-job.org's custom schedule should run at
 minute `15` UTC. The IST minute becomes `45`.

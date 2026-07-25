@@ -114,6 +114,20 @@ export async function publishBlogPostNow(
     }
   }
 
+  // GSC Indexing Agent — inventory + audit + delayed URL Inspection (no Indexing API)
+  try {
+    const { onPublicUrlPublished } = await import("@/lib/gsc-indexing-agent");
+    await onPublicUrlPublished({
+      path: `/blog/${slug}`,
+      pageType: "blog",
+      contentId: slug,
+      publishedAt: now,
+      locale: post.language || "en",
+    });
+  } catch (e) {
+    console.error("[blog] GSC indexing agent publish hook:", e);
+  }
+
   return { ok: true };
 }
 

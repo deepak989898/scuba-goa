@@ -19,6 +19,11 @@ const LINKS = [
     label: "SEO guide pages",
     short: "Guides",
   },
+  {
+    href: "/admin/gsc-agent",
+    label: "GSC Indexing Agent",
+    short: "GSC",
+  },
 ] as const;
 
 /**
