@@ -12,6 +12,8 @@ export type PaymentConfirmClient = {
   invoiceDownloadUrl?: string;
   emailSent?: boolean;
   smsSent?: boolean;
+  /** Server queued email/SMS after verify (not finished yet). */
+  notificationsQueued?: boolean;
 };
 
 export function storePaymentConfirmation(data: PaymentConfirmClient): void {
@@ -34,6 +36,7 @@ export function persistPaymentConfirmationFromApi(out: {
   invoiceDownloadUrl?: unknown;
   emailSent?: unknown;
   smsSent?: unknown;
+  notificationsQueued?: unknown;
 }): void {
   const paymentId = typeof out.paymentId === "string" ? out.paymentId : "";
   const orderId = typeof out.orderId === "string" ? out.orderId : "";
@@ -60,5 +63,6 @@ export function persistPaymentConfirmationFromApi(out: {
         : undefined,
     emailSent: Boolean(out.emailSent),
     smsSent: Boolean(out.smsSent),
+    notificationsQueued: Boolean(out.notificationsQueued),
   });
 }

@@ -100,14 +100,18 @@ After a successful Razorpay verify, the server sends a confirmation email if con
 
 **GoDaddy DNS** (fixes Titan “set SPF records” warning): Email & Office → Set Mail Destination → TXT `@` = `v=spf1 include:secureserver.net -all`, plus MX records per GoDaddy help.
 
-**Alternative — Resend API** (only if `MAIL_SMTP_HOST` is not set):
+**Recommended for Vercel — Resend API** (more reliable than Titan SMTP from serverless):
 
 | Name | Purpose |
 |------|---------|
 | `RESEND_API_KEY` | API key from [Resend](https://resend.com/api-keys) |
 | `RESEND_FROM_EMAIL` | Verified sender, e.g. `support@bookscubagoa.com` |
 
-**Firebase:** No SMTP env vars. Firebase Auth is admin login only; outbound mail is sent from Vercel via Titan or Resend.
+If both Resend and `MAIL_SMTP_*` are set, the app **tries Resend first**, then Titan SMTP. Set `MAIL_PREFER_SMTP=1` to force Titan first.
+
+**Admin mail check:** `POST /api/admin/mail-test` (admin auth) sends a tiny test email.
+
+**Firebase:** No SMTP env vars. Firebase Auth is admin login only; outbound mail is sent from Vercel via Resend or Titan.
 
 ### SMS confirmation after payment (MSG91 or Twilio)
 

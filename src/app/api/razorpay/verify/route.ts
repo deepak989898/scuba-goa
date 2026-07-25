@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { FieldValue } from "firebase-admin/firestore";
 import { generateBillPdf } from "@/lib/billPdf";
@@ -240,42 +240,12 @@ export async function POST(req: Request) {
   };
 
   try {
-    await ref.set(payload);
-    const leadPhone = normalizePhone(booking.phone);
-    if (leadPhone) {
-      await db
-        .collection("marketingLeads")
-        .doc(leadPhone)
-        .set(
-          {
-            converted: true,
-            status: "booked",
-            bookingId: razorpay_payment_id,
-            convertedAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-    }
-    await db.collection("paymentEvents").add({
-      eventType: "payment_success",
-      amountPaise: paidPaise,
-      razorpayOrderId: razorpay_order_id,
-      path: "/booking",
-      createdAt: FieldValue.serverTimestamp(),
+    // Critical path: persist booking so invoice download works, then return fast.
+    await ref.set({
+      ...payload,
+      invoiceShareCreated: Boolean(shareToken),
+      notificationsPending: true,
     });
-    try {
-      await upsertRecoveryLead({
-        phone: leadPhone,
-        name: String(booking.customerName),
-        email: String(booking.email).trim(),
-        path: "/booking",
-        event: "payment_success",
-        amountPaise: paidPaise,
-      });
-    } catch {
-      /* non-blocking */
-    }
   } catch (e) {
     console.error("bookings write failed", e);
     return NextResponse.json(
@@ -290,136 +260,207 @@ export async function POST(req: Request) {
     );
   }
 
-  let pdfBytes: Uint8Array | undefined;
-  try {
-    pdfBytes = await generateBillPdf({
-      customerName: String(booking.customerName),
-      customerEmail: String(booking.email).trim(),
-      phone: String(booking.phone),
-      packageName: String(booking.packageName),
-      packageLines: buildPackageLinesForBill({
-        packageName: String(booking.packageName),
-        people: booking.people,
-        payUnits: booking.payUnits,
-        cartItems: booking.cartItems,
-      }),
-      pickupLocation: normalizePickupLocation(booking.pickupLocation),
-      date: String(booking.date),
-      people: Number(booking.people) || 0,
-      amountPaidInr: amountInr,
-      fullAmountInr: fullInr,
-      balanceInr,
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      isPartial: paymentMode === "partial",
-    });
-  } catch (err) {
-    console.error("PDF bill generation failed", err);
-  }
-
-  let emailSent = false;
-  let adminEmailSent = false;
-  try {
-    emailSent = await sendBookingConfirmationEmail({
-      to: String(booking.email).trim(),
-      customerName: String(booking.customerName),
-      packageName: String(booking.packageName),
-      date: String(booking.date),
-      people: Number(booking.people) || 0,
-      amountInr,
-      fullAmountInr: fullInr,
-      balanceInr,
-      paymentId: razorpay_payment_id,
-      pdfBytes,
-    });
-  } catch (err) {
-    console.error("booking confirmation email failed", err);
-  }
-
-  try {
-    adminEmailSent = await sendBookingAdminNotificationEmail({
-      customerName: String(booking.customerName),
-      customerEmail: String(booking.email).trim(),
-      phone: String(booking.phone),
-      packageName: String(booking.packageName),
-      date: String(booking.date),
-      people: Number(booking.people) || 0,
-      amountInr,
-      fullAmountInr: fullInr,
-      balanceInr,
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      paymentMode,
-      pickupLocation:
-        typeof booking.pickupLocation === "string"
-          ? booking.pickupLocation
-          : undefined,
-      cartItems: booking.cartItems,
-      pdfBytes,
-    });
-  } catch (err) {
-    console.error("admin booking notification email failed", err);
-  }
-
-  let smsSent = false;
-  if (invoiceDownloadUrl && isSmsConfigured()) {
-    try {
-      smsSent = await sendBookingConfirmationSms({
-        phone: String(booking.phone),
-        customerName: String(booking.customerName),
-        packageName: String(booking.packageName),
-        date: String(booking.date),
-        people: Number(booking.people) || 0,
-        paidInr: amountInr,
-        paymentId: razorpay_payment_id,
-        invoiceUrl: invoiceDownloadUrl,
-        balanceInr,
-      });
-    } catch (err) {
-      console.error("booking confirmation SMS failed", err);
-    }
-  } else if (!isSmsConfigured()) {
-    console.warn("SMS skipped:", describeSmsConfig());
-  }
-
-  try {
-    await ref.set(
-      {
-        emailSent,
-        adminEmailSent,
-        smsSent,
-        invoiceShareCreated: Boolean(shareToken),
-      },
-      { merge: true },
-    );
-  } catch {
-    /* non-blocking */
-  }
-
-  const emailWarning = emailSent
-    ? undefined
-    : "Payment is successful, but confirmation email was not sent. Check GoDaddy Titan SMTP (MAIL_SMTP_*) or Resend (RESEND_API_KEY) on Vercel.";
-
-  const adminEmailWarning =
-    !adminEmailSent && emailSent
-      ? "Business inbox notification failed (check BOOKING_ADMIN_NOTIFY_EMAIL and that support@bookscubagoa.com can receive mail)."
+  const leadPhone = normalizePhone(booking.phone);
+  const packageName = String(booking.packageName);
+  const customerName = String(booking.customerName);
+  const customerEmail = String(booking.email).trim();
+  const phone = String(booking.phone);
+  const date = String(booking.date);
+  const people = Number(booking.people) || 0;
+  const pickupLocation =
+    typeof booking.pickupLocation === "string"
+      ? booking.pickupLocation
       : undefined;
 
-  const smsWarning =
-    !smsSent && isSmsConfigured()
-      ? "SMS confirmation failed. Check MSG91 / Twilio credentials and DLT sender ID on Vercel."
-      : !isSmsConfigured()
-        ? "SMS not configured yet (add MSG91_AUTH_KEY or TWILIO_* on Vercel)."
-        : undefined;
+  const runNotifications = async (): Promise<{
+    emailSent: boolean;
+    adminEmailSent: boolean;
+    smsSent: boolean;
+  }> => {
+    try {
+      await Promise.all([
+        leadPhone
+          ? db
+              .collection("marketingLeads")
+              .doc(leadPhone)
+              .set(
+                {
+                  converted: true,
+                  status: "booked",
+                  bookingId: razorpay_payment_id,
+                  convertedAt: FieldValue.serverTimestamp(),
+                  updatedAt: FieldValue.serverTimestamp(),
+                },
+                { merge: true },
+              )
+          : Promise.resolve(),
+        db.collection("paymentEvents").add({
+          eventType: "payment_success",
+          amountPaise: paidPaise,
+          razorpayOrderId: razorpay_order_id,
+          path: "/booking",
+          createdAt: FieldValue.serverTimestamp(),
+        }),
+        upsertRecoveryLead({
+          phone: leadPhone,
+          name: customerName,
+          email: customerEmail,
+          path: "/booking",
+          event: "payment_success",
+          amountPaise: paidPaise,
+        }).catch(() => undefined),
+      ]);
+    } catch (err) {
+      console.error("post-booking side writes failed", err);
+    }
+
+    let pdfBytes: Uint8Array | undefined;
+    try {
+      pdfBytes = await Promise.race([
+        generateBillPdf({
+          customerName,
+          customerEmail,
+          phone,
+          packageName,
+          packageLines: buildPackageLinesForBill({
+            packageName,
+            people: booking.people,
+            payUnits: booking.payUnits,
+            cartItems: booking.cartItems,
+          }),
+          pickupLocation: normalizePickupLocation(booking.pickupLocation),
+          date,
+          people,
+          amountPaidInr: amountInr,
+          fullAmountInr: fullInr,
+          balanceInr,
+          paymentId: razorpay_payment_id,
+          orderId: razorpay_order_id,
+          isPartial: paymentMode === "partial",
+        }),
+        new Promise<undefined>((r) => setTimeout(() => r(undefined), 5_000)),
+      ]);
+    } catch (err) {
+      console.error("PDF bill generation failed", err);
+    }
+
+    let emailSent = false;
+    let adminEmailSent = false;
+    let smsSent = false;
+
+    // Customer + admin emails in parallel (Resend preferred in mail-transport).
+    const [customerMail, adminMail] = await Promise.all([
+      sendBookingConfirmationEmail({
+        to: customerEmail,
+        customerName,
+        packageName,
+        date,
+        people,
+        amountInr,
+        fullAmountInr: fullInr,
+        balanceInr,
+        paymentId: razorpay_payment_id,
+        pdfBytes,
+      }).catch((err) => {
+        console.error("booking confirmation email failed", err);
+        return false;
+      }),
+      sendBookingAdminNotificationEmail({
+        customerName,
+        customerEmail,
+        phone,
+        packageName,
+        date,
+        people,
+        amountInr,
+        fullAmountInr: fullInr,
+        balanceInr,
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        paymentMode,
+        pickupLocation,
+        cartItems: booking.cartItems,
+        pdfBytes,
+      }).catch((err) => {
+        console.error("admin booking notification email failed", err);
+        return false;
+      }),
+    ]);
+    emailSent = customerMail;
+    adminEmailSent = adminMail;
+
+    if (invoiceDownloadUrl && isSmsConfigured()) {
+      try {
+        smsSent = await sendBookingConfirmationSms({
+          phone,
+          customerName,
+          packageName,
+          date,
+          people,
+          paidInr: amountInr,
+          paymentId: razorpay_payment_id,
+          invoiceUrl: invoiceDownloadUrl,
+          balanceInr,
+        });
+      } catch (err) {
+        console.error("booking confirmation SMS failed", err);
+      }
+    } else if (!isSmsConfigured()) {
+      console.warn("SMS skipped:", describeSmsConfig());
+    }
+
+    try {
+      await ref.set(
+        {
+          emailSent,
+          adminEmailSent,
+          smsSent,
+          notificationsPending: false,
+          invoiceShareCreated: Boolean(shareToken),
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      console.error("booking notify flags update failed", err);
+    }
+
+    return { emailSent, adminEmailSent, smsSent };
+  };
+
+  const notifyPromise = runNotifications();
+
+  // Give Resend ~8s so most emails finish before redirect; never block on Titan SMTP forever.
+  const settled = await Promise.race([
+    notifyPromise.then((r) => ({ done: true as const, ...r })),
+    new Promise<{ done: false }>((r) => setTimeout(() => r({ done: false }), 8_000)),
+  ]);
+
+  if (!settled.done) {
+    after(async () => {
+      try {
+        await notifyPromise;
+      } catch (err) {
+        console.error("background booking notifications failed", err);
+      }
+    });
+    return NextResponse.json({
+      ok: true,
+      stored: true,
+      emailSent: false,
+      adminEmailSent: false,
+      smsSent: false,
+      notificationsQueued: true,
+      ...clientConfirm,
+    });
+  }
 
   return NextResponse.json({
     ok: true,
     stored: true,
-    emailSent,
-    adminEmailSent,
-    smsSent,
-    warning: emailWarning || smsWarning,
-    adminEmailWarning,
+    emailSent: settled.emailSent,
+    adminEmailSent: settled.adminEmailSent,
+    smsSent: settled.smsSent,
+    notificationsQueued: false,
     ...clientConfirm,
   });
 }

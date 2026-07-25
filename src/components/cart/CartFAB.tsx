@@ -171,7 +171,13 @@ export function CartFAB() {
               return;
             }
             persistPaymentConfirmationFromApi(out);
-            if (out.warning) {
+            if (
+              out.warning &&
+              !out.notificationsQueued &&
+              !/MAIL_SMTP|RESEND_API_KEY|Vercel|MSG91|TWILIO/i.test(
+                String(out.warning),
+              )
+            ) {
               try {
                 sessionStorage.setItem("paymentNotice", String(out.warning));
               } catch {
@@ -443,7 +449,7 @@ export function CartFAB() {
                       className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
                     >
                       {busy
-                        ? "Processing…"
+                        ? "Confirming payment…"
                         : `Pay ₹${(chargePaise / 100).toLocaleString("en-IN")}`}
                     </button>
                     <button

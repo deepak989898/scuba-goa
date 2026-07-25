@@ -434,7 +434,13 @@ export function BookingForm() {
               contentIds: lines.map((l) => String(l.refId ?? l.key)),
               contentName: summary.slice(0, 120),
             });
-            if (out.warning) {
+            if (
+              out.warning &&
+              !out.notificationsQueued &&
+              !/MAIL_SMTP|RESEND_API_KEY|Vercel|MSG91|TWILIO/i.test(
+                String(out.warning),
+              )
+            ) {
               try {
                 sessionStorage.setItem("paymentNotice", String(out.warning));
               } catch {
@@ -472,7 +478,7 @@ export function BookingForm() {
   }
 
   const payButtonLabel = busy
-    ? "Processing…"
+    ? "Confirming payment…"
     : hasCart
       ? `Pay ₹${(cartChargePaise / 100).toLocaleString("en-IN")} with Razorpay`
       : "Pay securely with Razorpay";

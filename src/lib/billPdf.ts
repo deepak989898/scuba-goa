@@ -222,7 +222,8 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   });
 
   // ── Header (navy wave band) ─────────────────────────────────────────────
-  const headerH = 148;
+  const headerH = 168;
+  const logoSize = 78;
   page.drawRectangle({
     x: 0,
     y: height - headerH,
@@ -247,27 +248,31 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     color: COLORS.pageBg,
   });
 
+  const logoTopPad = 14;
+  const logoY = height - logoTopPad - logoSize;
+  let brandTextX = margin;
   if (logo) {
-    drawImageFit(page, logo, margin, height - 58, 42, 42);
+    drawImageFit(page, logo, margin, logoY, logoSize, logoSize);
+    brandTextX = margin + logoSize + 12;
   }
 
   page.drawText(pdfSafeText(SITE_NAME, 40), {
-    x: margin + 50,
-    y: height - 38,
-    size: 15,
+    x: brandTextX,
+    y: logoY + logoSize - 28,
+    size: 18,
     font: fontBold,
     color: COLORS.white,
   });
   page.drawText("PAYMENT RECEIPT / BILL", {
-    x: margin,
-    y: height - 78,
-    size: 16,
+    x: brandTextX,
+    y: logoY + logoSize - 50,
+    size: 15,
     font: fontBold,
     color: COLORS.white,
   });
   page.drawText("Thank you for choosing Book Scuba Goa", {
-    x: margin,
-    y: height - 96,
+    x: brandTextX,
+    y: logoY + 8,
     size: 9,
     font,
     color: rgb(0.75, 0.88, 0.98),
@@ -275,9 +280,9 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   // Turtle hero circle
   if (turtle) {
-    const tSize = 78;
+    const tSize = 86;
     const tx = width - margin - tSize - 4;
-    const ty = height - 108;
+    const ty = height - logoTopPad - tSize;
     page.drawCircle({
       x: tx + tSize / 2,
       y: ty + tSize / 2,
@@ -298,8 +303,8 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const badgeColor = input.isPartial ? COLORS.orange : COLORS.green;
   const badgeW = 118;
   const badgeH = 22;
-  const badgeX = width - margin - badgeW - (turtle ? 90 : 0);
-  const badgeY = height - 48;
+  const badgeX = width - margin - badgeW - (turtle ? 98 : 0);
+  const badgeY = height - logoTopPad - 8 - badgeH;
   page.drawRectangle({
     x: badgeX,
     y: badgeY,

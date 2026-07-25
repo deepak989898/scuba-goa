@@ -25,7 +25,10 @@ export function PaymentSuccessBanner() {
     try {
       const n = sessionStorage.getItem("paymentNotice");
       if (n) {
-        setWarning(n);
+        // Never show raw SMTP/Resend env instructions to customers.
+        const technical =
+          /MAIL_SMTP|RESEND_API_KEY|Vercel|MSG91|TWILIO/i.test(n);
+        if (!technical) setWarning(n);
         sessionStorage.removeItem("paymentNotice");
       }
       const raw = sessionStorage.getItem(PAYMENT_CONFIRM_SESSION_KEY);
@@ -109,8 +112,9 @@ export function PaymentSuccessBanner() {
     `Hi, I just paid on your website. Payment ID: ${confirm?.paymentId ?? "—"}. Please confirm my slot on WhatsApp.`,
   );
 
-  const emailOk = confirm?.emailSent !== false;
-  const smsOk = confirm?.smsSent === true;
+  const queued = confirm?.notificationsQueued === true;
+  const emailOk = confirm?.emailSent === true || queued;
+  const smsOk = confirm?.smsSent === true || queued;
 
   return (
     <div
@@ -162,30 +166,36 @@ export function PaymentSuccessBanner() {
             Payment successful!
           </h2>
           <p className="mt-2 text-center text-sm text-white/95 sm:text-[15px]">
-            Your booking is confirmed. We&apos;ve sent your confirmation and
-            invoice to your email
-            {smsOk ? " and SMS" : ""}. Please check your inbox (and spam folder
-            if needed).
+            Your booking is confirmed.{" "}
+            {queued
+              ? "We are sending your confirmation and invoice to your email and SMS now — please check your inbox shortly."
+              : `We have sent your confirmation and invoice to your email${smsOk ? " and SMS" : ""}. Please check your inbox (and spam folder if needed).`}
           </p>
         </div>
 
         <div className="space-y-4 px-5 py-5">
           <div className="rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50 px-4 py-3 text-sm text-teal-950 ring-1 ring-teal-200/80">
             <p className="font-semibold text-teal-900">
-              Confirmation & invoice sent
+              {queued
+                ? "Confirmation & invoice on the way"
+                : "Confirmation & invoice sent"}
             </p>
             <ul className="mt-2 space-y-1.5 text-[13px] text-teal-900/90">
               <li>
                 Email:{" "}
-                {emailOk
-                  ? "Invoice PDF sent to your registered email"
-                  : "Email may be delayed — keep your payment ID handy"}
+                {queued
+                  ? "Invoice PDF is being sent to your registered email"
+                  : emailOk
+                    ? "Invoice PDF sent to your registered email"
+                    : "Email may be delayed — keep your payment ID handy"}
               </li>
               <li>
                 SMS:{" "}
-                {smsOk
-                  ? "Booking details + invoice link sent to your mobile"
-                  : "SMS link may be unavailable; use Download Invoice below"}
+                {queued
+                  ? "Booking details + invoice link are being sent to your mobile"
+                  : smsOk
+                    ? "Booking details + invoice link sent to your mobile"
+                    : "SMS link may be unavailable; use Download Invoice below"}
               </li>
             </ul>
           </div>
