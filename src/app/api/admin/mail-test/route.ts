@@ -5,7 +5,7 @@ import {
   describeMailConfig,
   isMailConfigured,
   resolveMailFromAddress,
-  sendMail,
+  sendMailDetailed,
 } from "@/lib/mail-transport";
 
 export const runtime = "nodejs";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   }
 
   const from = resolveMailFromAddress();
-  const sent = await sendMail({
+  const result = await sendMailDetailed({
     from,
     to,
     subject: `${SITE_NAME} — mail test`,
@@ -49,14 +49,16 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({
-    ok: sent,
+    ok: result.ok,
     configured: true,
-    transport: describeMailConfig(),
+    transport: result.transport,
+    config: describeMailConfig(),
     from,
     to,
-    error: sent
+    error: result.ok
       ? undefined
-      : "Send failed. Check Vercel logs. Prefer RESEND_API_KEY with verified domain bookscubagoa.com.",
+      : result.error ||
+        "Send failed. In Resend → Domains, verify bookscubagoa.com, then set RESEND_FROM_EMAIL=support@bookscubagoa.com",
   });
 }
 

@@ -6,7 +6,7 @@ import { generateBillPdf } from "@/lib/billPdf";
 import { buildPackageLinesForBill, normalizePickupLocation } from "@/lib/billPackageLines";
 import {
   sendBookingAdminNotificationEmail,
-  sendBookingConfirmationEmail,
+  sendBookingConfirmationEmailDetailed,
 } from "@/lib/email";
 import { createBookingBillShareToken } from "@/lib/bookingBillShareToken";
 import { getAdminDb } from "@/lib/firebase-admin";
@@ -272,11 +272,53 @@ export async function POST(req: Request) {
       ? booking.pickupLocation
       : undefined;
 
-  const runNotifications = async (): Promise<{
-    emailSent: boolean;
-    adminEmailSent: boolean;
-    smsSent: boolean;
-  }> => {
+  // 1) Customer email first (Resend + invoice link) — do not wait for PDF.
+  let emailSent = false;
+  let emailError: string | undefined;
+  try {
+    const mail = await sendBookingConfirmationEmailDetailed({
+      to: customerEmail,
+      customerName,
+      packageName,
+      date,
+      people,
+      amountInr,
+      fullAmountInr: fullInr,
+      balanceInr,
+      paymentId: razorpay_payment_id,
+      invoiceUrl: invoiceDownloadUrl,
+    });
+    emailSent = mail.ok;
+    if (!mail.ok) {
+      emailError = mail.error || `send failed via ${mail.transport}`;
+      console.error("booking confirmation email failed", {
+        to: customerEmail,
+        transport: mail.transport,
+        error: emailError,
+      });
+    }
+  } catch (err) {
+    emailError = err instanceof Error ? err.message : String(err);
+    console.error("booking confirmation email threw", err);
+  }
+
+  try {
+    await ref.set(
+      {
+        emailSent,
+        emailError: emailError ?? null,
+        emailTransport: process.env.RESEND_API_KEY?.trim() ? "resend" : "smtp",
+        notificationsPending: true,
+        invoiceShareCreated: Boolean(shareToken),
+      },
+      { merge: true },
+    );
+  } catch {
+    /* non-blocking */
+  }
+
+  // 2) PDF, admin email, SMS, CRM writes continue after the browser redirects.
+  after(async () => {
     try {
       await Promise.all([
         leadPhone
@@ -316,56 +358,61 @@ export async function POST(req: Request) {
 
     let pdfBytes: Uint8Array | undefined;
     try {
-      pdfBytes = await Promise.race([
-        generateBillPdf({
-          customerName,
-          customerEmail,
-          phone,
+      pdfBytes = await generateBillPdf({
+        customerName,
+        customerEmail,
+        phone,
+        packageName,
+        packageLines: buildPackageLinesForBill({
           packageName,
-          packageLines: buildPackageLinesForBill({
-            packageName,
-            people: booking.people,
-            payUnits: booking.payUnits,
-            cartItems: booking.cartItems,
-          }),
-          pickupLocation: normalizePickupLocation(booking.pickupLocation),
-          date,
-          people,
-          amountPaidInr: amountInr,
-          fullAmountInr: fullInr,
-          balanceInr,
-          paymentId: razorpay_payment_id,
-          orderId: razorpay_order_id,
-          isPartial: paymentMode === "partial",
+          people: booking.people,
+          payUnits: booking.payUnits,
+          cartItems: booking.cartItems,
         }),
-        new Promise<undefined>((r) => setTimeout(() => r(undefined), 5_000)),
-      ]);
+        pickupLocation: normalizePickupLocation(booking.pickupLocation),
+        date,
+        people,
+        amountPaidInr: amountInr,
+        fullAmountInr: fullInr,
+        balanceInr,
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        isPartial: paymentMode === "partial",
+      });
     } catch (err) {
       console.error("PDF bill generation failed", err);
     }
 
-    let emailSent = false;
-    let adminEmailSent = false;
-    let smsSent = false;
+    // If the fast email failed, retry once after PDF is ready (with link + attachment).
+    let emailSentFinal = emailSent;
+    let emailErrorFinal = emailError;
+    if (!emailSentFinal) {
+      try {
+        const retry = await sendBookingConfirmationEmailDetailed({
+          to: customerEmail,
+          customerName,
+          packageName,
+          date,
+          people,
+          amountInr,
+          fullAmountInr: fullInr,
+          balanceInr,
+          paymentId: razorpay_payment_id,
+          pdfBytes,
+          invoiceUrl: invoiceDownloadUrl,
+        });
+        emailSentFinal = retry.ok;
+        emailErrorFinal = retry.ok
+          ? undefined
+          : retry.error || `retry failed via ${retry.transport}`;
+      } catch (err) {
+        emailErrorFinal = err instanceof Error ? err.message : String(err);
+      }
+    }
 
-    // Customer + admin emails in parallel (Resend preferred in mail-transport).
-    const [customerMail, adminMail] = await Promise.all([
-      sendBookingConfirmationEmail({
-        to: customerEmail,
-        customerName,
-        packageName,
-        date,
-        people,
-        amountInr,
-        fullAmountInr: fullInr,
-        balanceInr,
-        paymentId: razorpay_payment_id,
-        pdfBytes,
-      }).catch((err) => {
-        console.error("booking confirmation email failed", err);
-        return false;
-      }),
-      sendBookingAdminNotificationEmail({
+    let adminEmailSent = false;
+    try {
+      adminEmailSent = await sendBookingAdminNotificationEmail({
         customerName,
         customerEmail,
         phone,
@@ -381,14 +428,12 @@ export async function POST(req: Request) {
         pickupLocation,
         cartItems: booking.cartItems,
         pdfBytes,
-      }).catch((err) => {
-        console.error("admin booking notification email failed", err);
-        return false;
-      }),
-    ]);
-    emailSent = customerMail;
-    adminEmailSent = adminMail;
+      });
+    } catch (err) {
+      console.error("admin booking notification email failed", err);
+    }
 
+    let smsSent = false;
     if (invoiceDownloadUrl && isSmsConfigured()) {
       try {
         smsSent = await sendBookingConfirmationSms({
@@ -412,7 +457,8 @@ export async function POST(req: Request) {
     try {
       await ref.set(
         {
-          emailSent,
+          emailSent: emailSentFinal,
+          emailError: emailErrorFinal ?? null,
           adminEmailSent,
           smsSent,
           notificationsPending: false,
@@ -423,44 +469,16 @@ export async function POST(req: Request) {
     } catch (err) {
       console.error("booking notify flags update failed", err);
     }
-
-    return { emailSent, adminEmailSent, smsSent };
-  };
-
-  const notifyPromise = runNotifications();
-
-  // Give Resend ~8s so most emails finish before redirect; never block on Titan SMTP forever.
-  const settled = await Promise.race([
-    notifyPromise.then((r) => ({ done: true as const, ...r })),
-    new Promise<{ done: false }>((r) => setTimeout(() => r({ done: false }), 8_000)),
-  ]);
-
-  if (!settled.done) {
-    after(async () => {
-      try {
-        await notifyPromise;
-      } catch (err) {
-        console.error("background booking notifications failed", err);
-      }
-    });
-    return NextResponse.json({
-      ok: true,
-      stored: true,
-      emailSent: false,
-      adminEmailSent: false,
-      smsSent: false,
-      notificationsQueued: true,
-      ...clientConfirm,
-    });
-  }
+  });
 
   return NextResponse.json({
     ok: true,
     stored: true,
-    emailSent: settled.emailSent,
-    adminEmailSent: settled.adminEmailSent,
-    smsSent: settled.smsSent,
-    notificationsQueued: false,
+    emailSent,
+    emailError: emailError ?? null,
+    adminEmailSent: false,
+    smsSent: false,
+    notificationsQueued: true,
     ...clientConfirm,
   });
 }

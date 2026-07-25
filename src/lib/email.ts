@@ -1,5 +1,10 @@
 import { CONTACT_EMAIL, SITE_NAME, SITE_URL } from "@/lib/constants";
-import { isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
+import {
+  isMailConfigured,
+  resolveMailFromAddress,
+  sendMailDetailed,
+  type SendMailResult,
+} from "@/lib/mail-transport";
 
 /** Always BCC this address on booking confirmations (per business request). */
 const DEFAULT_BOOKING_BCC = "vedrajsingh94@gmail.com";
@@ -33,19 +38,55 @@ export async function sendBookingConfirmationEmail(opts: {
   paymentId: string;
   /** PDF bytes attached as bill/receipt */
   pdfBytes?: Uint8Array;
+  /** Public invoice download link (used when PDF is not attached yet). */
+  invoiceUrl?: string;
 }): Promise<boolean> {
-  if (!isMailConfigured()) return false;
+  const result = await sendBookingConfirmationEmailDetailed(opts);
+  return result.ok;
+}
 
+export async function sendBookingConfirmationEmailDetailed(opts: {
+  to: string;
+  customerName: string;
+  packageName: string;
+  date: string;
+  people: number;
+  amountInr: number;
+  fullAmountInr: number;
+  balanceInr: number;
+  paymentId: string;
+  pdfBytes?: Uint8Array;
+  invoiceUrl?: string;
+}): Promise<SendMailResult> {
+  if (!isMailConfigured()) {
+    return {
+      ok: false,
+      transport: "none",
+      error: "Mail not configured on Vercel",
+    };
+  }
+
+  // Prefer Resend From when API key is present (domain must be verified in Resend).
   const from = resolveMailFromAddress(
-    process.env.MAIL_FROM ??
-      process.env.MAIL_SMTP_USER ??
-      process.env.RESEND_FROM_EMAIL ??
-      CONTACT_EMAIL
+    process.env.RESEND_API_KEY?.trim()
+      ? process.env.RESEND_FROM_EMAIL ??
+          process.env.MAIL_FROM ??
+          CONTACT_EMAIL
+      : process.env.MAIL_FROM ??
+          process.env.MAIL_SMTP_USER ??
+          process.env.RESEND_FROM_EMAIL ??
+          CONTACT_EMAIL,
   );
 
   const partialNote =
     opts.balanceInr > 0
       ? `<p><strong>Balance due:</strong> ₹${opts.balanceInr.toLocaleString("en-IN")} (full order ₹${opts.fullAmountInr.toLocaleString("en-IN")}).</p>`
+      : "";
+
+  const hasPdf = Boolean(opts.pdfBytes && opts.pdfBytes.length > 0);
+  const invoiceLink =
+    opts.invoiceUrl && opts.invoiceUrl.startsWith("http")
+      ? `<p style="margin:1.25rem 0;"><a href="${escapeHtml(opts.invoiceUrl)}" style="display:inline-block;background:#0d9488;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:700;">Download invoice (PDF)</a></p><p style="font-size:12px;color:#555;">Or open: ${escapeHtml(opts.invoiceUrl)}</p>`
       : "";
 
   const html = `
@@ -57,12 +98,13 @@ export async function sendBookingConfirmationEmail(opts: {
     Full order value: ₹${opts.fullAmountInr.toLocaleString("en-IN")}<br/>
     Payment reference: <code>${escapeHtml(opts.paymentId)}</code></p>
     ${partialNote}
-    <p>${opts.pdfBytes && opts.pdfBytes.length > 0 ? "Your bill is attached as a PDF. " : ""}We’ll confirm your slot shortly. Questions? Reply to this email or contact us at ${escapeHtml(CONTACT_EMAIL)}.</p>
+    ${invoiceLink}
+    <p>${hasPdf ? "Your bill is also attached as a PDF. " : ""}We will confirm your slot shortly. Questions? Reply to this email or contact us at ${escapeHtml(CONTACT_EMAIL)}.</p>
     <p style="margin-top:2rem;font-size:12px;color:#666;">${escapeHtml(SITE_URL)}</p>
   `;
 
   const attachments =
-    opts.pdfBytes && opts.pdfBytes.length > 0
+    hasPdf && opts.pdfBytes
       ? [
           {
             filename: `bill-${escapeFilename(opts.paymentId)}.pdf`,
@@ -71,7 +113,7 @@ export async function sendBookingConfirmationEmail(opts: {
         ]
       : undefined;
 
-  return sendMail({
+  return sendMailDetailed({
     from,
     to: opts.to,
     bcc: buildBccList(),
@@ -103,10 +145,14 @@ export async function sendBookingAdminNotificationEmail(opts: {
   if (!isMailConfigured() || !to) return false;
 
   const from = resolveMailFromAddress(
-    process.env.MAIL_FROM ??
-      process.env.MAIL_SMTP_USER ??
-      process.env.RESEND_FROM_EMAIL ??
-      CONTACT_EMAIL
+    process.env.RESEND_API_KEY?.trim()
+      ? process.env.RESEND_FROM_EMAIL ??
+          process.env.MAIL_FROM ??
+          CONTACT_EMAIL
+      : process.env.MAIL_FROM ??
+          process.env.MAIL_SMTP_USER ??
+          process.env.RESEND_FROM_EMAIL ??
+          CONTACT_EMAIL,
   );
 
   const partialNote =
@@ -156,13 +202,14 @@ export async function sendBookingAdminNotificationEmail(opts: {
         ]
       : undefined;
 
-  return sendMail({
+  const result = await sendMailDetailed({
     from,
     to,
     subject: `New booking — ${opts.customerName} — ₹${opts.amountInr.toLocaleString("en-IN")} paid`,
     html,
     attachments,
   });
+  return result.ok;
 }
 
 function formatCartItemsHtml(cart: unknown): string {

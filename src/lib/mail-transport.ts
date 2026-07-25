@@ -18,6 +18,12 @@ export type SendMailOptions = {
   attachments?: MailAttachment[];
 };
 
+export type SendMailResult = {
+  ok: boolean;
+  transport: "resend" | "smtp" | "none";
+  error?: string;
+};
+
 function trimEnv(name: string): string | undefined {
   const v = process.env[name]?.trim();
   return v || undefined;
@@ -31,10 +37,14 @@ export function isMailConfigured(): boolean {
 /** Human-readable reason when outbound mail is not configured (for cron logs). */
 export function describeMailConfig(): string {
   if (trimEnv("RESEND_API_KEY") && getSmtpConfig()) {
-    return preferSmtpFirst() ? "smtp+resend-fallback" : "resend+smtp-fallback";
+    return preferSmtpFirst()
+      ? "smtp+resend-fallback"
+      : smtpFallbackEnabled()
+        ? "resend+smtp-fallback"
+        : "resend (smtp present, fallback off)";
   }
-  if (getSmtpConfig()) return "smtp";
   if (trimEnv("RESEND_API_KEY")) return "resend";
+  if (getSmtpConfig()) return "smtp";
   return "missing MAIL_SMTP_HOST/USER/PASS or RESEND_API_KEY on Vercel";
 }
 
@@ -44,6 +54,11 @@ export function describeMailConfig(): string {
  */
 function preferSmtpFirst(): boolean {
   return trimEnv("MAIL_PREFER_SMTP") === "1";
+}
+
+/** SMTP after Resend failure is opt-in — default off so a bad SMTP password cannot hang checkout. */
+function smtpFallbackEnabled(): boolean {
+  return trimEnv("MAIL_SMTP_FALLBACK") === "1";
 }
 
 function getSmtpConfig():
@@ -65,8 +80,9 @@ function getSmtpConfig():
 export function resolveMailFromAddress(raw?: string): string {
   const trimmed =
     raw?.trim() ||
-    trimEnv("MAIL_FROM") ||
-    trimEnv("RESEND_FROM_EMAIL") ||
+    (trimEnv("RESEND_API_KEY")
+      ? trimEnv("RESEND_FROM_EMAIL") || trimEnv("MAIL_FROM")
+      : trimEnv("MAIL_FROM") || trimEnv("RESEND_FROM_EMAIL")) ||
     trimEnv("MAIL_SMTP_USER") ||
     "";
   if (!trimmed) return `${SITE_NAME} <onboarding@resend.dev>`;
@@ -86,15 +102,14 @@ function normalizeRecipients(value: string | string[] | undefined): string[] {
   return list.map((s) => s.trim()).filter((s) => s.includes("@"));
 }
 
-async function sendViaSmtp(opts: SendMailOptions): Promise<boolean> {
+async function sendViaSmtp(opts: SendMailOptions): Promise<SendMailResult> {
   const cfg = getSmtpConfig();
-  if (!cfg) return false;
+  if (!cfg) return { ok: false, transport: "smtp", error: "SMTP not configured" };
 
   const from = resolveMailFromAddress(opts.from);
   const to = normalizeRecipients(opts.to);
   if (!to.length) {
-    console.error("SMTP send skipped: no valid To address");
-    return false;
+    return { ok: false, transport: "smtp", error: "no valid To address" };
   }
 
   const transporter = nodemailer.createTransport({
@@ -102,9 +117,9 @@ async function sendViaSmtp(opts: SendMailOptions): Promise<boolean> {
     port: cfg.port,
     secure: cfg.port === 465,
     auth: { user: cfg.user, pass: cfg.pass },
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 12_000,
   });
 
   try {
@@ -120,31 +135,33 @@ async function sendViaSmtp(opts: SendMailOptions): Promise<boolean> {
         content: Buffer.from(a.content),
       })),
     });
-    return true;
+    return { ok: true, transport: "smtp" };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error("SMTP send failed", {
       host: cfg.host,
       port: cfg.port,
       user: cfg.user,
       from: extractEmailAddress(from),
       to,
-      err: err instanceof Error ? err.message : String(err),
+      err: message,
     });
-    return false;
+    return { ok: false, transport: "smtp", error: message };
   }
 }
 
-async function sendViaResend(opts: SendMailOptions): Promise<boolean> {
+async function sendViaResend(opts: SendMailOptions): Promise<SendMailResult> {
   const apiKey = trimEnv("RESEND_API_KEY");
-  if (!apiKey) return false;
+  if (!apiKey) {
+    return { ok: false, transport: "resend", error: "RESEND_API_KEY missing" };
+  }
 
   const from = resolveMailFromAddress(
     opts.from || trimEnv("RESEND_FROM_EMAIL") || trimEnv("MAIL_FROM"),
   );
   const to = normalizeRecipients(opts.to);
   if (!to.length) {
-    console.error("Resend send skipped: no valid To address");
-    return false;
+    return { ok: false, transport: "resend", error: "no valid To address" };
   }
 
   const body: Record<string, unknown> = {
@@ -183,48 +200,69 @@ async function sendViaResend(opts: SendMailOptions): Promise<boolean> {
         to,
         body: errText.slice(0, 800),
       });
-      return false;
+      return {
+        ok: false,
+        transport: "resend",
+        error: `HTTP ${res.status}: ${errText.slice(0, 400)}`,
+      };
     }
-    return true;
+    return { ok: true, transport: "resend" };
   } catch (err) {
-    console.error("Resend send error", {
-      from,
-      to,
-      err: err instanceof Error ? err.message : String(err),
-    });
-    return false;
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Resend send error", { from, to, err: message });
+    return { ok: false, transport: "resend", error: message };
   }
 }
 
 /**
  * Sends email via Resend (preferred on Vercel) and/or GoDaddy Titan SMTP.
- * If the primary transport fails, automatically tries the other when configured.
+ * When RESEND_API_KEY is set, SMTP is only used as fallback if MAIL_SMTP_FALLBACK=1
+ * (avoids long Titan timeouts after a Resend domain/auth failure).
  */
 export async function sendMail(opts: SendMailOptions): Promise<boolean> {
+  const result = await sendMailDetailed(opts);
+  return result.ok;
+}
+
+export async function sendMailDetailed(
+  opts: SendMailOptions,
+): Promise<SendMailResult> {
   const hasSmtp = Boolean(getSmtpConfig());
   const hasResend = Boolean(trimEnv("RESEND_API_KEY"));
 
   if (!hasSmtp && !hasResend) {
     console.error("sendMail: no mail transport configured", describeMailConfig());
-    return false;
+    return {
+      ok: false,
+      transport: "none",
+      error: describeMailConfig(),
+    };
   }
 
   if (preferSmtpFirst() && hasSmtp) {
-    if (await sendViaSmtp(opts)) return true;
+    const smtp = await sendViaSmtp(opts);
+    if (smtp.ok) return smtp;
     if (hasResend) {
       console.warn("SMTP failed — retrying with Resend");
       return sendViaResend(opts);
     }
-    return false;
+    return smtp;
   }
 
   if (hasResend) {
-    if (await sendViaResend(opts)) return true;
-    if (hasSmtp) {
-      console.warn("Resend failed — retrying with SMTP");
+    const resend = await sendViaResend(opts);
+    if (resend.ok) return resend;
+    if (hasSmtp && smtpFallbackEnabled()) {
+      console.warn("Resend failed — retrying with SMTP (MAIL_SMTP_FALLBACK=1)");
       return sendViaSmtp(opts);
     }
-    return false;
+    if (hasSmtp && !smtpFallbackEnabled()) {
+      console.warn(
+        "Resend failed; SMTP fallback skipped (set MAIL_SMTP_FALLBACK=1 to enable). Error:",
+        resend.error,
+      );
+    }
+    return resend;
   }
 
   return sendViaSmtp(opts);
