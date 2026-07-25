@@ -49,12 +49,14 @@ GOOGLE_SEARCH_CONSOLE_SITE_URL=https://bookscubagoa.com/
 # Optional: dedicated service account JSON (else uses FIREBASE_SERVICE_ACCOUNT_KEY)
 GOOGLE_ANALYTICS_SERVICE_ACCOUNT_JSON=
 
-# Daily report delivery
+# Daily report delivery (Telegram + email)
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+# Always also emails support@bookscubagoa.com; set this to override/add recipients (comma-separated OK)
 AI_ANALYTICS_REPORT_EMAIL=support@bookscubagoa.com
+# Resend (required for email after domain is Verified in Resend dashboard)
 RESEND_API_KEY=
-RESEND_FROM_EMAIL=
+RESEND_FROM_EMAIL=support@bookscubagoa.com
 
 # Optional WhatsApp Cloud API (Meta Business)
 META_WHATSAPP_TOKEN=

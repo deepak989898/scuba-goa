@@ -3,8 +3,34 @@ import {
   buildAdminEmailPlain,
 } from "@/lib/ai-analytics/email-report";
 import type { AiAnalyticsDailyDoc } from "@/lib/ai-analytics/types";
+import { CONTACT_EMAIL, SITE_NAME } from "@/lib/constants";
+import {
+  describeMailConfig,
+  isMailConfigured,
+  resolveMailFromAddress,
+  sendMailDetailed,
+} from "@/lib/mail-transport";
 
-import { describeMailConfig, isMailConfigured, resolveMailFromAddress, sendMail } from "@/lib/mail-transport";
+/** Always include support inbox; env can add extras (comma-separated). */
+function resolveDailyReportRecipients(): string[] {
+  const set = new Set<string>();
+  const push = (raw?: string) => {
+    if (!raw) return;
+    for (const part of raw.split(/[,;]/)) {
+      const e = part.trim().toLowerCase();
+      if (e.includes("@")) set.add(e);
+    }
+  };
+
+  push(process.env.AI_ANALYTICS_REPORT_EMAIL);
+  push(process.env.BOOKING_ADMIN_NOTIFY_EMAIL);
+  push(process.env.NEXT_PUBLIC_CONTACT_EMAIL);
+  push(CONTACT_EMAIL);
+  // Hard guarantee for this business inbox
+  push("support@bookscubagoa.com");
+
+  return [...set];
+}
 
 async function sendTelegram(text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -28,12 +54,9 @@ async function sendEmailReport(opts: {
   html: string;
   text: string;
 }): Promise<boolean> {
-  const to =
-    process.env.AI_ANALYTICS_REPORT_EMAIL?.trim() ||
-    process.env.BOOKING_ADMIN_NOTIFY_EMAIL?.trim() ||
-    process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
-  if (!to) {
-    console.error("[daily-report] email skipped: no AI_ANALYTICS_REPORT_EMAIL / BOOKING_ADMIN_NOTIFY_EMAIL");
+  const to = resolveDailyReportRecipients();
+  if (!to.length) {
+    console.error("[daily-report] email skipped: no recipients");
     return false;
   }
   if (!isMailConfigured()) {
@@ -41,17 +64,36 @@ async function sendEmailReport(opts: {
     return false;
   }
 
-  const ok = await sendMail({
-    from: resolveMailFromAddress(),
+  const from = resolveMailFromAddress(
+    process.env.RESEND_FROM_EMAIL?.trim() ||
+      process.env.MAIL_FROM?.trim() ||
+      "support@bookscubagoa.com",
+  );
+
+  const result = await sendMailDetailed({
+    from,
     to,
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
   });
-  if (!ok) {
-    console.error("[daily-report] email send failed", { to, transport: describeMailConfig() });
+
+  if (!result.ok) {
+    console.error("[daily-report] email send failed", {
+      to,
+      from,
+      transport: result.transport,
+      error: result.error,
+      config: describeMailConfig(),
+    });
+  } else {
+    console.info("[daily-report] email sent", {
+      to,
+      from,
+      transport: result.transport,
+    });
   }
-  return ok;
+  return result.ok;
 }
 
 async function sendWhatsAppCloud(text: string): Promise<boolean> {
@@ -100,7 +142,7 @@ export async function sendDailyReportNotifications(opts: {
   const [telegram, email, whatsapp] = await Promise.all([
     sendTelegram(telegramText),
     sendEmailReport({
-      subject: `📊 Daily report ${opts.snapshot.dateIst} — ${opts.headline?.slice(0, 60) || "Book Scuba Goa"}`,
+      subject: `Daily report ${opts.snapshot.dateIst} — ${SITE_NAME}`,
       html,
       text: emailText,
     }),
@@ -108,7 +150,9 @@ export async function sendDailyReportNotifications(opts: {
   ]);
 
   if (telegram && !email) {
-    console.warn("[daily-report] Telegram sent but email did not — check MAIL_SMTP_* on Vercel");
+    console.warn(
+      "[daily-report] Telegram sent but email did not — set RESEND_API_KEY + RESEND_FROM_EMAIL=support@bookscubagoa.com on Vercel (domain must be Verified in Resend).",
+    );
   }
 
   return { telegram, email, whatsapp };
