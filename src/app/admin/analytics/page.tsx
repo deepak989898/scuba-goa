@@ -82,6 +82,8 @@ type SessionDoc = {
   attributionReason?: string;
   analyticsVersion?: number;
   rawReferrer?: string;
+  interactionCount?: number;
+  maxScrollDepthPct?: number;
 };
 
 type PageStay = {
@@ -267,15 +269,29 @@ function buildVisitorSummary(
   });
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
-  const arrivedAtMs = toTimestamp(first?.createdAt)?.toMillis() ?? 0;
-  const leftAtMs = toTimestamp(last?.createdAt)?.toMillis() ?? 0;
+  const arrivedAtMs =
+    toTimestamp(first?.createdAt)?.toMillis() ??
+    toTimestamp(sess?.firstSeenAt)?.toMillis() ??
+    toTimestamp(sess?.lastSeenAt)?.toMillis() ??
+    0;
+  const leftAtMs =
+    toTimestamp(last?.createdAt)?.toMillis() ??
+    toTimestamp(sess?.lastSeenAt)?.toMillis() ??
+    arrivedAtMs;
   const totalDurationMs = sorted
     .filter((r) => r.eventType === "leave")
     .reduce((acc, r) => acc + (r.durationMs ?? 0), 0);
   const pages = buildPageStays(sorted);
   const geoSource = sess ?? first;
   const trafficSource = sess ?? sorted.find((r) => r.trafficChannel) ?? first;
-  const pageViews = sorted.filter((r) => r.eventType === "view").length;
+  const pageViewsFromEvents = sorted.filter((r) => r.eventType === "view").length;
+  // Session-only rows (events fell out of the sample) still count as ≥1 view.
+  const pageViews =
+    pageViewsFromEvents > 0
+      ? pageViewsFromEvents
+      : sess?.lastPath
+        ? 1
+        : 0;
   const isBot = resolveIsBot(
     sess?.isBot ?? first?.isBot,
     sess?.uaSnippet || first?.uaSnippet || "",
@@ -287,18 +303,22 @@ function buildVisitorSummary(
     deviceLabel: sess?.deviceLabel || first?.deviceLabel || "",
     trafficChannel: trafficSource?.trafficChannel ?? sess?.trafficChannel,
     sourceConfidence: sess?.sourceConfidence,
-    totalDurationMs,
+    totalDurationMs:
+      totalDurationMs ||
+      Math.max(0, leftAtMs - arrivedAtMs),
     pageViews,
+    interactionCount: sess?.interactionCount,
     analyticsVersion: sess?.analyticsVersion,
   });
 
   return {
     sessionId: sid,
-    arrivedAt: first?.createdAt ?? sess?.firstSeenAt,
+    arrivedAt: first?.createdAt ?? sess?.firstSeenAt ?? sess?.lastSeenAt,
     leftAt: last?.createdAt ?? sess?.lastSeenAt,
     arrivedAtMs,
     leftAtMs,
-    totalDurationMs,
+    totalDurationMs:
+      totalDurationMs || Math.max(0, leftAtMs - arrivedAtMs),
     pageViews,
     uniquePages: pages.length,
     pages,
@@ -442,6 +462,14 @@ export default function AdminAnalyticsPage() {
                 ? data.analyticsVersion
                 : undefined,
             rawReferrer: String(data.rawReferrer ?? "") || undefined,
+            interactionCount:
+              typeof data.interactionCount === "number"
+                ? data.interactionCount
+                : undefined,
+            maxScrollDepthPct:
+              typeof data.maxScrollDepthPct === "number"
+                ? data.maxScrollDepthPct
+                : undefined,
             ...pickGeoFields(data),
             ...pickTrafficFields(data),
           };
@@ -502,12 +530,15 @@ export default function AdminAnalyticsPage() {
           sourceConfidence: sess?.sourceConfidence,
           totalDurationMs,
           pageViews,
+          interactionCount: sess?.interactionCount,
           analyticsVersion: sess?.analyticsVersion,
         }),
       );
     }
     for (const s of sessions) {
       if (!sessionKind.has(s.sessionId)) {
+        const firstMs = toTimestamp(s.firstSeenAt)?.toMillis() ?? 0;
+        const lastMs = toTimestamp(s.lastSeenAt)?.toMillis() ?? 0;
         sessionKind.set(
           s.sessionId,
           resolveAdminVisitorKind({
@@ -517,6 +548,9 @@ export default function AdminAnalyticsPage() {
             deviceLabel: s.deviceLabel,
             trafficChannel: s.trafficChannel,
             sourceConfidence: s.sourceConfidence,
+            totalDurationMs: Math.max(0, lastMs - firstMs),
+            pageViews: s.lastPath ? 1 : 0,
+            interactionCount: s.interactionCount,
             analyticsVersion: s.analyticsVersion,
           }),
         );
@@ -539,6 +573,7 @@ export default function AdminAnalyticsPage() {
     );
 
     const visitorsByDay = new Map<string, VisitorSummary[]>();
+    const listedSessionIds = new Set<string>();
 
     for (const [sid, sessionRows] of rowsBySession) {
       const firstTs = sessionRows
@@ -556,6 +591,28 @@ export default function AdminAnalyticsPage() {
       const list = visitorsByDay.get(day) ?? [];
       list.push(summary);
       visitorsByDay.set(day, list);
+      listedSessionIds.add(sid);
+    }
+
+    // Include sessions whose pageViews fell out of the 5k event sample
+    // (otherwise GA4/Clarity humans can look "missing" on Today).
+    for (const s of sessions) {
+      if (!s.sessionId || listedSessionIds.has(s.sessionId)) continue;
+      const firstTs =
+        toTimestamp(s.firstSeenAt) || toTimestamp(s.lastSeenAt);
+      if (!firstTs) continue;
+      const day = istCalendarDate(firstTs);
+      const summary = buildVisitorSummary(
+        s.sessionId,
+        rowsBySession.get(s.sessionId) ?? [],
+        s,
+        onlineIdSet
+      );
+      if (!summary.arrivedAtMs) continue;
+      const list = visitorsByDay.get(day) ?? [];
+      list.push(summary);
+      visitorsByDay.set(day, list);
+      listedSessionIds.add(s.sessionId);
     }
 
     for (const [, list] of visitorsByDay) {
@@ -683,15 +740,17 @@ export default function AdminAnalyticsPage() {
         Analytics
       </h1>
       <p className="mt-2 text-sm text-ocean-700">
-        Confirmed humans by default. Suspected automation and bots are kept for
-        debugging — they are not deleted. All times are <strong>IST (India)</strong>.
+        Humans by default (includes provisional first-paint visits). Bots and
+        suspected automation stay under their own tabs. All times are{" "}
+        <strong>IST (India)</strong>. Counts can differ slightly from GA4 /
+        Clarity (different bot filters and sampling).
       </p>
 
       <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
         <strong>Analytics v2:</strong> Google Search is only counted with a verified
-        Google referrer (or organic UTM). Legacy records from before v2 may have
-        inaccurate source or bot classification — open the{" "}
-        <em>Suspected</em> tab to review zero-engagement / Linux scrapers.
+        Google referrer (or organic UTM). If Today looks empty vs Clarity/GA4,
+        switch to <em>All</em> once, then refresh after deploying the latest
+        tracker — older sessions may have been over-classified as bots.
       </div>
 
       {loadError ? (

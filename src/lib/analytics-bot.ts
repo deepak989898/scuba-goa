@@ -53,7 +53,8 @@ const BOT_RULES: { re: RegExp; name: string; category: BotCategory }[] = [
   { re: /twitterbot/i, name: "Twitterbot", category: "social_preview" },
   { re: /linkedinbot/i, name: "LinkedInBot", category: "social_preview" },
   { re: /pinterestbot/i, name: "Pinterestbot", category: "social_preview" },
-  { re: /whatsapp\//i, name: "WhatsApp", category: "social_preview" },
+  // Only link-preview crawlers — NOT WhatsApp/Telegram in-app browsers (real humans).
+  { re: /^whatsapp\//i, name: "WhatsAppPreview", category: "social_preview" },
   { re: /telegrambot/i, name: "TelegramBot", category: "social_preview" },
   { re: /discordbot/i, name: "Discordbot", category: "social_preview" },
   { re: /slackbot/i, name: "Slackbot", category: "social_preview" },
@@ -164,7 +165,8 @@ export function classifyEngagementSuspicion(input: {
   const interactions = input.interactionCount ?? 0;
   const label = (input.deviceLabel ?? "").toLowerCase();
 
-  if (input.purposePrefetch || input.secFetchDest === "empty") {
+  // Only real prefetch/preview — NOT sec-fetch-dest:empty (normal for fetch/XHR).
+  if (input.purposePrefetch) {
     signals.push("prefetch_or_empty_dest");
   }
   if (duration != null && duration < 1500) signals.push("sub_1_5s_duration");
@@ -180,22 +182,20 @@ export function classifyEngagementSuspicion(input: {
     signals.push("google_without_referrer_evidence");
   }
 
+  // Only treat as suspected when short + no engagement AND an automation-like signal.
+  // Plain quick bounces (real humans who leave immediately) stay "unknown"/human in admin.
   const strong =
     signals.includes("sub_1_5s_duration") &&
     signals.includes("no_engagement") &&
     (signals.includes("linux_chrome_desktop") ||
-      signals.includes("google_without_referrer_evidence"));
+      signals.includes("google_without_referrer_evidence") ||
+      signals.includes("prefetch_or_empty_dest"));
 
-  const medium =
-    signals.includes("sub_1_5s_duration") && signals.includes("no_engagement");
-
-  if (strong || medium) {
+  if (strong) {
     return {
       suspected: true,
       signals,
-      reason: strong
-        ? "Zero-engagement short visit with automation-like fingerprint"
-        : "Zero-engagement same-second style visit",
+      reason: "Zero-engagement short visit with automation-like fingerprint",
     };
   }
   return { suspected: false, signals, reason: "" };

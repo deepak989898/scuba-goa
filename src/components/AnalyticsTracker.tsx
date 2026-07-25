@@ -171,11 +171,10 @@ function track(
   ) {
     const blob = new Blob([body], { type: "application/json" });
     try {
-      navigator.sendBeacon(TRACK_URL, blob);
+      if (navigator.sendBeacon(TRACK_URL, blob)) return;
     } catch {
-      /* ignore */
+      /* fall through to fetch */
     }
-    return;
   }
 
   let signal: AbortSignal | undefined;
@@ -189,9 +188,26 @@ function track(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
-    keepalive: payload.eventType === "leave",
+    keepalive: payload.eventType === "leave" || payload.eventType === "view",
     signal,
-  }).catch(() => {});
+  }).catch(() => {
+    // Ad blockers / flaky mobile networks: last-chance beacon for views
+    if (
+      payload.eventType !== "view" ||
+      typeof navigator === "undefined" ||
+      typeof navigator.sendBeacon !== "function"
+    ) {
+      return;
+    }
+    try {
+      navigator.sendBeacon(
+        TRACK_URL,
+        new Blob([body], { type: "application/json" }),
+      );
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 function getSessionId(): string {
@@ -205,21 +221,14 @@ export function AnalyticsTracker() {
   const interactionCountRef = useRef(0);
 
   useEffect(() => {
-    if (!pathname.startsWith("/") || pathname.startsWith("/admin")) return;
+    if (!pathname.startsWith("/")) return;
 
     const key = pathname || "/";
     const now = Date.now();
-    const prevDedupe = lastTrackAt.get(key) ?? 0;
-    if (now - prevDedupe < 2500) return;
-    lastTrackAt.set(key, now);
-
     const sessionId = getSessionId();
     const visitorId = getVisitorId();
-    const pageLabel =
-      typeof document !== "undefined" ? document.title.trim() : "";
 
-    maxScrollRef.current = 0;
-
+    // Close the previous public page BEFORE resetting scroll/engagement.
     const prevVisit = visitRef.current;
     if (prevVisit && prevVisit.path !== key) {
       const durationMs = Math.max(0, now - prevVisit.enteredAtMs);
@@ -235,7 +244,23 @@ export function AnalyticsTracker() {
         maxScrollDepthPct: maxScrollRef.current,
         interactionCount: interactionCountRef.current,
       });
+      visitRef.current = null;
     }
+
+    // Admin routes: still send leave above, but never count admin as a visit.
+    if (pathname.startsWith("/admin")) {
+      maxScrollRef.current = 0;
+      return;
+    }
+
+    const prevDedupe = lastTrackAt.get(key) ?? 0;
+    if (now - prevDedupe < 2500) return;
+    lastTrackAt.set(key, now);
+
+    const pageLabel =
+      typeof document !== "undefined" ? document.title.trim() : "";
+
+    maxScrollRef.current = 0;
 
     visitRef.current = { path: key, enteredAtMs: now, pageLabel };
     const traffic = getTrafficPayload(key);

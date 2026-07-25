@@ -26,7 +26,7 @@ const TRAFFIC_STR_MAX = 256;
 const GUIDE_INDEX_KEY = "__guides_index__";
 const BLOG_INDEX_KEY = "__blog_index__";
 const RATE_WINDOW_MS = 60_000;
-const RATE_MAX_PER_IP = 40;
+const RATE_MAX_PER_IP = 120;
 
 type TrackEventType = "view" | "leave" | "heartbeat" | "click" | "scroll";
 
@@ -285,17 +285,33 @@ export async function POST(req: Request) {
 
   if (eventType === "heartbeat") {
     try {
-      await sessionRef.set(
-        {
-          sessionId: sessionId || "anon",
-          lastPath: path,
-          isActive: true,
-          lastEventType: "heartbeat",
-          lastSeenAt: FieldValue.serverTimestamp(),
-          analyticsVersion: ANALYTICS_DATA_VERSION,
-        },
-        { merge: true },
-      );
+      const hbInteraction = toFiniteNumber(body.interactionCount);
+      const hbScroll = toFiniteNumber(body.maxScrollDepthPct);
+      const hbPayload: Record<string, unknown> = {
+        sessionId: sessionId || "anon",
+        lastPath: path,
+        isActive: true,
+        lastEventType: "heartbeat",
+        lastSeenAt: FieldValue.serverTimestamp(),
+        analyticsVersion: ANALYTICS_DATA_VERSION,
+      };
+      if (hbInteraction != null) hbPayload.interactionCount = hbInteraction;
+      if (hbScroll != null) {
+        hbPayload.maxScrollDepthPct = Math.min(
+          100,
+          Math.max(0, Math.round(hbScroll)),
+        );
+      }
+      // Engaged heartbeats confirm a human without waiting for leave.
+      if (
+        (hbInteraction != null && hbInteraction > 0) ||
+        (hbScroll != null && hbScroll >= 10)
+      ) {
+        hbPayload.visitorType = "human";
+        hbPayload.isEngagedSession = true;
+        hbPayload.isBot = false;
+      }
+      await sessionRef.set(hbPayload, { merge: true });
     } catch (e) {
       console.error("heartbeat session update failed", e);
     }
@@ -360,9 +376,14 @@ export async function POST(req: Request) {
     botSignals.push("navigator_webdriver");
   } else if (eventType === "leave" && suspicion.suspected) {
     visitorType = "suspected_bot";
-  } else if (eventType === "click" || (maxScrollDepthPct != null && maxScrollDepthPct >= 10)) {
+  } else if (
+    eventType === "click" ||
+    (maxScrollDepthPct != null && maxScrollDepthPct >= 10) ||
+    (interactionCount != null && interactionCount > 0)
+  ) {
     visitorType = "human";
-  } else if (eventType === "leave" && !suspicion.suspected && (durationMs ?? 0) >= 3000) {
+  } else if (eventType === "leave" && !suspicion.suspected && (durationMs ?? 0) >= 1500) {
+    // Real dwell (even without scroll) — matches GA4/Clarity “active user” better.
     visitorType = "human";
   } else if (eventType === "view") {
     // First paint views are provisional — still count for blog/guide traffic below.
@@ -412,8 +433,8 @@ export async function POST(req: Request) {
     sessionPayload.botSignals = botSignals;
   } else {
     const prevType = String(existing.visitorType ?? "");
-    // Escalate to suspected, or confirm human; never downgrade human → suspected on later heartbeat clicks
-    if (visitorType === "human") {
+    // Escalate only — never downgrade human → unknown/suspected on later page views.
+    if (prevType === "human" || visitorType === "human") {
       sessionPayload.visitorType = "human";
       sessionPayload.isEngagedSession = true;
     } else if (visitorType === "suspected_bot" && prevType !== "human") {
@@ -421,6 +442,10 @@ export async function POST(req: Request) {
       sessionPayload.botReason = suspicion.reason || "Suspected automation";
       sessionPayload.botSignals = botSignals;
       sessionPayload.botConfidence = "medium";
+    } else if (prevType === "suspected_bot") {
+      sessionPayload.visitorType = "suspected_bot";
+    } else if (prevType) {
+      sessionPayload.visitorType = prevType;
     }
     if (typeof existing.isBot !== "boolean") {
       sessionPayload.isBot = false;
