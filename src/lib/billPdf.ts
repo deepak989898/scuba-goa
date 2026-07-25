@@ -693,7 +693,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   yTop = notesBottom - 10;
 
-  // ── Transaction bar + QR ────────────────────────────────────────────────
+  // ── Website QR bar (no payment/order IDs on the bill) ───────────────────
   const txBarH = 58;
   const txBarY = Math.max(78, yTop - txBarH);
   page.drawRectangle({
@@ -704,35 +704,19 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     color: COLORS.navy,
   });
 
-  page.drawText("Razorpay payment ID", {
-    x: margin + 12,
-    y: txBarY + 38,
-    size: 7,
-    font,
-    color: rgb(0.7, 0.82, 0.95),
-  });
-  page.drawText(pdfSafeText(input.paymentId, 36), {
-    x: margin + 12,
-    y: txBarY + 22,
-    size: 8.5,
+  page.drawText("Book Scuba Goa", {
+    x: margin + 14,
+    y: txBarY + 32,
+    size: 11,
     font: fontBold,
     color: COLORS.white,
-    maxWidth: 175,
   });
-  page.drawText("Razorpay order ID", {
-    x: margin + 200,
-    y: txBarY + 38,
-    size: 7,
-    font,
-    color: rgb(0.7, 0.82, 0.95),
-  });
-  page.drawText(pdfSafeText(input.orderId, 36), {
-    x: margin + 200,
-    y: txBarY + 22,
+  page.drawText(pdfSafeText(SITE_URL, 60), {
+    x: margin + 14,
+    y: txBarY + 16,
     size: 8.5,
-    font: fontBold,
-    color: COLORS.white,
-    maxWidth: 175,
+    font,
+    color: rgb(0.75, 0.88, 0.98),
   });
 
   const qrBytes = await tryLoadQrBytes();
@@ -813,13 +797,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     size: 12,
     font: fontOblique,
     color: COLORS.white,
-  });
-  page.drawText("<3", {
-    x: (width - thanksW) / 2 + thanksW + 6,
-    y: 28,
-    size: 10,
-    font,
-    color: rgb(1, 0.75, 0.8),
   });
 
   return doc.save();
