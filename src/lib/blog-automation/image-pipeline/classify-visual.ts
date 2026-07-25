@@ -5,6 +5,7 @@ import type {
 } from "./types";
 import {
   SCUBA_SUBJECT_VARIANTS,
+  SCUBA_PRICING_SUBJECT_VARIANTS,
   WATER_SPORTS_SUBJECT_VARIANTS,
   NIGHTLIFE_SUBJECT_VARIANTS,
   buildComparisonMainSubject,
@@ -331,6 +332,42 @@ export function classifyVisualCategory(input: {
     );
 
   if (titleIsScuba || slugIsScuba) {
+    // Price / cost / packages FIRST — must not fall through to generic beach gear scenes
+    if (
+      /price|pricing|cost|cheap|budget|package|how much|rate.?card|fee|₹|rs\.?/.test(
+        titleText,
+      )
+    ) {
+      return pick("scuba_pricing", {
+        visualSubcategory: /guide|202\d/.test(titleText)
+          ? "price_guide"
+          : "pricing",
+        visualIntent:
+          "scuba price guide / package planning — viewer must instantly sense cost comparison and booking choices",
+        mainSubject: stablePick(seed, SCUBA_PRICING_SUBJECT_VARIANTS, 5),
+        supportingSubjects: [
+          "dive shop or beach booking counter",
+          "package option cards or folders with unreadable text",
+          "subtle dive gear props (mask/fins) — not the hero subject",
+        ],
+        location: "Goa dive shop / beach booking desk",
+        timeOfDay: "soft_overcast",
+        desiredComposition: "subject_left",
+        peopleCount: "staff + 1-2 travellers",
+        safetyEquipment: ["mask", "fins as desk props"],
+        exclusions: [
+          "generated price text",
+          "currency symbols",
+          "rupee or dollar amounts",
+          "fake discount stickers",
+          "year numbers like 2026 drawn in the image",
+          "generic tanks lined up on sand as the only story",
+          "lifestyle beach chat with no booking/package cue",
+          "underwater reef exploration hero",
+          "nightclub",
+        ],
+      });
+    }
     if (/safety|safe|buddy check|regulator|beginner tip|risk/.test(titleText)) {
       return pick("scuba_safety", {
         visualIntent: "scuba safety training",
@@ -366,16 +403,6 @@ export function classifyVisualCategory(input: {
         desiredComposition: "depth_layers",
         safetyEquipment: ["BCD", "mask", "fins"],
         exclusions: ["nightclub", "unsafe solo deep dive"],
-      });
-    }
-    if (/price|cost|cheap|budget|package|how much/.test(titleText)) {
-      return pick("scuba_pricing", {
-        visualIntent: "equipment and booking context without price text",
-        mainSubject:
-          "Neatly arranged scuba equipment beside a dive boat with a calm briefing vibe",
-        timeOfDay: "soft_overcast",
-        desiredComposition: "centred",
-        exclusions: ["generated price text", "fake discount stickers"],
       });
     }
     if (

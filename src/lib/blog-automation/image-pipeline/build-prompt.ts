@@ -18,6 +18,21 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
       ].join(" ")
     : "";
 
+  const isPricing =
+    brief.visualCategory === "scuba_pricing" ||
+    brief.visualCategory === "price_comparison" ||
+    /price|pricing|cost|budget|package|how much/i.test(brief.articleTitle);
+
+  const pricingBlock = isPricing
+    ? [
+        "CRITICAL: This article is a PRICE GUIDE / COST / PACKAGES story.",
+        "A viewer must understand within one second that people are choosing or comparing dive packages — not just getting ready to dive.",
+        "Show a booking desk, package folders/option cards (blank or blurred text only), staff advising guests, or budget-vs-premium gear tiers side by side.",
+        "Do NOT make the hero image only tanks lined up on sand with people chatting — that fails to communicate pricing.",
+        "Do NOT draw any readable prices, ₹/$ amounts, years (2026), rate tables, or discount stickers.",
+      ].join(" ")
+    : "";
+
   return [
     `Create a realistic premium editorial travel photograph that a human would instantly associate with this exact article title: "${brief.articleTitle}".`,
     `Read and obey the title meaning first — do not invent a generic scuba stock scene if the title is about nightlife, water sports, islands, safety, pricing, or destination comparison.`,
@@ -26,6 +41,7 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
     `Visual category: ${brief.visualCategory} / ${brief.visualSubcategory}.`,
     `Visual intent: ${brief.visualIntent}.`,
     comparisonBlock,
+    pricingBlock,
     `Primary scene: ${brief.scene}.`,
     `Main subject (must dominate the frame): ${brief.mainSubject}.`,
     `Location context: ${brief.locationContext}.`,

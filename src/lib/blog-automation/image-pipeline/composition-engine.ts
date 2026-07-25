@@ -14,7 +14,12 @@ const CATEGORY_SHOTS: Record<VisualCategory, ShotType[]> = {
   scuba_diving: ["underwater_reef", "split_level", "medium_action", "boat_departure"],
   scuba_safety: ["training_scene", "close_equipment", "over_shoulder", "medium_action"],
   scuba_beginner: ["training_scene", "boat_departure", "over_shoulder", "beach_activity"],
-  scuba_pricing: ["close_equipment", "boat_departure", "training_scene", "wide_environmental"],
+  scuba_pricing: [
+    "over_shoulder",
+    "close_equipment",
+    "training_scene",
+    "wide_environmental",
+  ],
   scuba_location: [
     "aerial_coastal",
     "boat_departure",
@@ -265,7 +270,9 @@ export function buildImageBrief(input: {
       ...c.safetyEquipment.slice(0, 3),
       c.visualCategory === "destination_comparison"
         ? "two clearly different destination halves in one frame"
-        : "geographically believable context matching the article title",
+        : c.visualCategory === "scuba_pricing"
+          ? "clear booking/package-choice storytelling (desk, folders, or tier comparison) — not only tanks on sand"
+          : "geographically believable context matching the article title",
     ].filter(Boolean),
     mustAvoid: c.exclusions,
     uniquenessSignature: variant.uniquenessSignature,

@@ -53,6 +53,9 @@ export function validateImageBriefRelevance(
   const safetyTitle = /safety|beginner tip|buddy/.test(title);
   const comparisonTitle = /\bvs\.?\b|versus|compare/.test(title);
 
+  const pricingTitle =
+    /price|pricing|cost|cheap|budget|package|how much|fee/.test(title);
+
   if (comparisonTitle && /goa|andaman|maldives|lakshadweep|thailand|bali/i.test(title)) {
     if (brief.visualCategory === "destination_comparison") {
       relevance += 18;
@@ -66,6 +69,21 @@ export function validateImageBriefRelevance(
     ) {
       relevance -= 25;
       notes.push("Comparison article still using a single non-split scene");
+    }
+  } else if (pricingTitle && scubaTitle) {
+    if (brief.visualCategory === "scuba_pricing") {
+      relevance += 18;
+    } else {
+      relevance -= 35;
+      notes.push("Price-guide title not mapped to scuba_pricing visuals");
+    }
+    if (
+      /booking|package|desk|counter|folder|tier|brochure|option/.test(promptBlob)
+    ) {
+      relevance += 10;
+    } else if (/tank|beach|lined up|reef|underwater/.test(promptBlob)) {
+      relevance -= 30;
+      notes.push("Price guide still using generic dive lifestyle scene");
     }
   } else if (nightlifeTitle) {
     if (brief.visualCategory === "nightlife" || brief.visualCategory === "night_club") {

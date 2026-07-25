@@ -95,6 +95,19 @@ export const NIGHTLIFE_SUBJECT_VARIANTS = [
   "Outdoor night party deck near the beach with DJ console and soft purple-blue lighting",
 ] as const;
 
+/**
+ * Price-guide visuals must read as planning / packages / cost comparison —
+ * NOT a generic beach dive lifestyle shot. No readable currency or price numbers.
+ */
+export const SCUBA_PRICING_SUBJECT_VARIANTS = [
+  "Dive shop booking desk: staff showing a guest three distinct package option cards side-by-side while a dive boat waits outside — cards have blank/blurred text only",
+  "Over-shoulder view of travellers comparing two scuba package folders at a coastal booking counter, with fins and a mask on the desk as props",
+  "Instructor counting package tiers on fingers (1-2-3) while guests listen at a beach dive counter, clipboard closed so no prices are readable",
+  "Side-by-side gear layouts suggesting budget vs premium packages: left simpler rental set, right fuller kit — same beach dive shop backdrop, no price tags",
+  "Couple reviewing a dive trip brochure with a local advisor near a boat; advisor points at package columns on a blank rate sheet (unreadable text)",
+  "Reception-style dive counter with a small payment terminal turned away, package pamphlet stack, and guests choosing between options — no currency symbols visible",
+] as const;
+
 export function sceneForDestination(
   destId: string,
   topic: "scuba" | "travel" | "general",
