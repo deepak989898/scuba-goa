@@ -73,6 +73,12 @@ function parseBlogTrafficKey(path: string): { key: string; slug: string; path: s
   return { key: m[1], slug: m[1], path };
 }
 
+/** Safe Firestore map key for a URL path (no slashes/dots). */
+function pathStayKey(path: string): string {
+  const raw = path.trim() || "/";
+  return raw.replace(/[/.]/g, "_").replace(/_+/g, "_").slice(0, 180) || "_root";
+}
+
 async function incrementContentTraffic(
   db: NonNullable<ReturnType<typeof getAdminDb>>,
   keyInfo: { key: string; slug: string; path: string },
@@ -287,10 +293,12 @@ export async function POST(req: Request) {
     try {
       const hbInteraction = toFiniteNumber(body.interactionCount);
       const hbScroll = toFiniteNumber(body.maxScrollDepthPct);
+      const hbDuration = toFiniteNumber(body.durationMs);
+      const keepAlive = body.keepAliveSession !== false;
       const hbPayload: Record<string, unknown> = {
         sessionId: sessionId || "anon",
         lastPath: path,
-        isActive: true,
+        isActive: keepAlive,
         lastEventType: "heartbeat",
         lastSeenAt: FieldValue.serverTimestamp(),
         analyticsVersion: ANALYTICS_DATA_VERSION,
@@ -302,10 +310,18 @@ export async function POST(req: Request) {
           Math.max(0, Math.round(hbScroll)),
         );
       }
+      if (hbDuration != null && hbDuration >= 0) {
+        // Soft dwell snapshot while still on the page (for admin live view).
+        hbPayload.currentPageActiveMs = Math.min(
+          Math.round(hbDuration),
+          1000 * 60 * 60 * 6,
+        );
+      }
       // Engaged heartbeats confirm a human without waiting for leave.
       if (
         (hbInteraction != null && hbInteraction > 0) ||
-        (hbScroll != null && hbScroll >= 10)
+        (hbScroll != null && hbScroll >= 10) ||
+        (hbDuration != null && hbDuration >= 3000)
       ) {
         hbPayload.visitorType = "human";
         hbPayload.isEngagedSession = true;
@@ -464,6 +480,21 @@ export async function POST(req: Request) {
     sessionPayload.landingPath = attribution.landingUrl || path;
   }
 
+  // Denormalized page list so admin still shows pages if event sample is incomplete.
+  const stayKey = pathStayKey(path);
+  if (eventType === "view") {
+    sessionPayload.visitedPaths = FieldValue.arrayUnion(path);
+    sessionPayload.pageViewCount = FieldValue.increment(1);
+    sessionPayload[`pageLabels.${stayKey}`] = pageLabel || path;
+    sessionPayload[`pageViewCounts.${stayKey}`] = FieldValue.increment(1);
+  }
+  if (eventType === "leave" && durationMs != null && durationMs > 0) {
+    sessionPayload.engagedMs = FieldValue.increment(durationMs);
+    sessionPayload[`pageDurationsMs.${stayKey}`] = FieldValue.increment(durationMs);
+    sessionPayload.visitedPaths = FieldValue.arrayUnion(path);
+    sessionPayload.currentPageActiveMs = 0;
+  }
+
   const pageViewPayload: Record<string, unknown> = {
     path,
     sessionId,
@@ -523,18 +554,24 @@ export async function POST(req: Request) {
   }
 
   try {
-    const writes: Promise<unknown>[] = [sessionRef.set(sessionPayload, { merge: true })];
+    // Session first — admin can still show paths/times if the event write fails.
+    await sessionRef.set(sessionPayload, { merge: true });
+  } catch (e) {
+    console.error("analyticsSessions write failed", e);
+    return new NextResponse(null, { status: 204 });
+  }
+
+  try {
     if (eventIdRaw) {
-      writes.push(
-        db.collection("pageViews").doc(eventIdRaw).set(pageViewPayload, { merge: true }),
-      );
+      await db
+        .collection("pageViews")
+        .doc(eventIdRaw)
+        .set(pageViewPayload, { merge: true });
     } else {
-      writes.push(db.collection("pageViews").add(pageViewPayload));
+      await db.collection("pageViews").add(pageViewPayload);
     }
-    await Promise.all(writes);
   } catch (e) {
     console.error("pageViews write failed", e);
-    return new NextResponse(null, { status: 204 });
   }
 
   // Count blog/guide views for every non-confirmed-bot page view.

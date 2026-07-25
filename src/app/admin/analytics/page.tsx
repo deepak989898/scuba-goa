@@ -84,6 +84,13 @@ type SessionDoc = {
   rawReferrer?: string;
   interactionCount?: number;
   maxScrollDepthPct?: number;
+  visitedPaths?: string[];
+  pageViewCount?: number;
+  engagedMs?: number;
+  currentPageActiveMs?: number;
+  pageDurationsMs?: Record<string, number>;
+  pageViewCounts?: Record<string, number>;
+  pageLabels?: Record<string, string>;
 };
 
 type PageStay = {
@@ -232,7 +239,15 @@ function pickTrafficFields(data: Record<string, unknown>) {
   };
 }
 
-function buildPageStays(sessionRows: Row[]): PageStay[] {
+function pathStayKey(path: string): string {
+  const raw = path.trim() || "/";
+  return raw.replace(/[/.]/g, "_").replace(/_+/g, "_").slice(0, 180) || "_root";
+}
+
+function buildPageStays(
+  sessionRows: Row[],
+  sess?: SessionDoc,
+): PageStay[] {
   const map = new Map<string, PageStay>();
   for (const r of sessionRows) {
     if (!r.path) continue;
@@ -248,11 +263,48 @@ function buildPageStays(sessionRows: Row[]): PageStay[] {
         existing.label = shortenPageLabel(r.pageLabel) || r.path;
       }
     }
-    if (r.eventType === "leave" && r.durationMs) {
-      existing.durationMs += r.durationMs;
+    if (r.eventType === "leave" && (r.durationMs ?? 0) > 0) {
+      existing.durationMs += r.durationMs ?? 0;
     }
     map.set(r.path, existing);
   }
+
+  // Fill gaps from denormalized session fields (survives missing pageViews).
+  const paths = new Set<string>([
+    ...map.keys(),
+    ...(sess?.visitedPaths ?? []),
+    ...(sess?.lastPath ? [sess.lastPath] : []),
+  ]);
+  for (const path of paths) {
+    if (!path) continue;
+    const key = pathStayKey(path);
+    const fromSessDuration = sess?.pageDurationsMs?.[key] ?? 0;
+    const fromSessViews = sess?.pageViewCounts?.[key] ?? 0;
+    const fromSessLabel = sess?.pageLabels?.[key] ?? "";
+    const existing = map.get(path) ?? {
+      path,
+      label: shortenPageLabel(fromSessLabel) || path,
+      durationMs: 0,
+      views: 0,
+    };
+    if (fromSessViews > existing.views) existing.views = fromSessViews;
+    if (existing.views < 1) existing.views = 1;
+    if (fromSessDuration > existing.durationMs) {
+      existing.durationMs = fromSessDuration;
+    }
+    if (fromSessLabel) {
+      existing.label = shortenPageLabel(fromSessLabel) || existing.label;
+    }
+    // Live time on the current page (heartbeat snapshot).
+    if (
+      sess?.lastPath === path &&
+      (sess.currentPageActiveMs ?? 0) > existing.durationMs
+    ) {
+      existing.durationMs = sess.currentPageActiveMs ?? 0;
+    }
+    map.set(path, existing);
+  }
+
   return [...map.values()].sort((a, b) => b.durationMs - a.durationMs);
 }
 
@@ -278,20 +330,27 @@ function buildVisitorSummary(
     toTimestamp(last?.createdAt)?.toMillis() ??
     toTimestamp(sess?.lastSeenAt)?.toMillis() ??
     arrivedAtMs;
-  const totalDurationMs = sorted
+  const leaveDurationMs = sorted
     .filter((r) => r.eventType === "leave")
     .reduce((acc, r) => acc + (r.durationMs ?? 0), 0);
-  const pages = buildPageStays(sorted);
+  const pages = buildPageStays(sorted, sess);
   const geoSource = sess ?? first;
   const trafficSource = sess ?? sorted.find((r) => r.trafficChannel) ?? first;
   const pageViewsFromEvents = sorted.filter((r) => r.eventType === "view").length;
-  // Session-only rows (events fell out of the sample) still count as ≥1 view.
-  const pageViews =
-    pageViewsFromEvents > 0
-      ? pageViewsFromEvents
-      : sess?.lastPath
-        ? 1
-        : 0;
+  const pageViews = Math.max(
+    pageViewsFromEvents,
+    sess?.pageViewCount ?? 0,
+    pages.reduce((acc, p) => acc + p.views, 0),
+    sess?.lastPath || pages.length ? 1 : 0,
+  );
+  const totalDurationMs = Math.max(
+    leaveDurationMs,
+    sess?.engagedMs ?? 0,
+    pages.reduce((acc, p) => acc + p.durationMs, 0),
+    onlineIdSet.has(sid)
+      ? Math.max(0, Date.now() - arrivedAtMs)
+      : 0,
+  );
   const isBot = resolveIsBot(
     sess?.isBot ?? first?.isBot,
     sess?.uaSnippet || first?.uaSnippet || "",
@@ -304,8 +363,7 @@ function buildVisitorSummary(
     trafficChannel: trafficSource?.trafficChannel ?? sess?.trafficChannel,
     sourceConfidence: sess?.sourceConfidence,
     totalDurationMs:
-      totalDurationMs ||
-      Math.max(0, leftAtMs - arrivedAtMs),
+      totalDurationMs || Math.max(0, leftAtMs - arrivedAtMs),
     pageViews,
     interactionCount: sess?.interactionCount,
     analyticsVersion: sess?.analyticsVersion,
@@ -320,7 +378,7 @@ function buildVisitorSummary(
     totalDurationMs:
       totalDurationMs || Math.max(0, leftAtMs - arrivedAtMs),
     pageViews,
-    uniquePages: pages.length,
+    uniquePages: Math.max(pages.length, sess?.visitedPaths?.length ?? 0),
     pages,
     lastPath: last?.path ?? sess?.lastPath ?? "—",
     deviceCategory: (first?.deviceCategory ||
@@ -358,7 +416,8 @@ function buildVisitorSummary(
 
 const SAMPLE_LIMIT = 5000;
 const SESSION_LIMIT = 2000;
-const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+/** Heartbeat is ~25s — allow two missed beats before going offline. */
+const ONLINE_WINDOW_MS = 70_000;
 const MAX_DAYS = 30;
 
 export default function AdminAnalyticsPage() {
@@ -388,8 +447,9 @@ export default function AdminAnalyticsPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
-      setLoadError(null);
+
+    const load = async (isInitial: boolean) => {
+      if (isInitial) setLoadError(null);
       try {
         const viewsQuery = query(
           collection(db, "pageViews"),
@@ -470,6 +530,32 @@ export default function AdminAnalyticsPage() {
               typeof data.maxScrollDepthPct === "number"
                 ? data.maxScrollDepthPct
                 : undefined,
+            visitedPaths: Array.isArray(data.visitedPaths)
+              ? data.visitedPaths.map((p) => String(p)).filter(Boolean)
+              : undefined,
+            pageViewCount:
+              typeof data.pageViewCount === "number"
+                ? data.pageViewCount
+                : undefined,
+            engagedMs:
+              typeof data.engagedMs === "number" ? data.engagedMs : undefined,
+            currentPageActiveMs:
+              typeof data.currentPageActiveMs === "number"
+                ? data.currentPageActiveMs
+                : undefined,
+            pageDurationsMs:
+              data.pageDurationsMs &&
+              typeof data.pageDurationsMs === "object"
+                ? (data.pageDurationsMs as Record<string, number>)
+                : undefined,
+            pageViewCounts:
+              data.pageViewCounts && typeof data.pageViewCounts === "object"
+                ? (data.pageViewCounts as Record<string, number>)
+                : undefined,
+            pageLabels:
+              data.pageLabels && typeof data.pageLabels === "object"
+                ? (data.pageLabels as Record<string, string>)
+                : undefined,
             ...pickGeoFields(data),
             ...pickTrafficFields(data),
           };
@@ -482,15 +568,24 @@ export default function AdminAnalyticsPage() {
           e && typeof e === "object" && "code" in e
             ? `${String((e as { code?: string }).code)}: ${String((e as { message?: string }).message ?? e)}`
             : String(e);
-        setLoadError(msg);
-        setRows([]);
-        setSessions([]);
+        if (isInitial) {
+          setLoadError(msg);
+          setRows([]);
+          setSessions([]);
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && isInitial) setLoading(false);
       }
-    })();
+    };
+
+    void load(true);
+    // Keep Online + page times fresh while the admin tab is open.
+    const poll = window.setInterval(() => {
+      void load(false);
+    }, 20_000);
     return () => {
       cancelled = true;
+      window.clearInterval(poll);
     };
   }, [db]);
 
@@ -564,10 +659,11 @@ export default function AdminAnalyticsPage() {
           if (!ts) return false;
           const kind = sessionKind.get(s.sessionId) ?? "unknown";
           if (!matchesAdminVisitorKind(kind, visitorFilter)) return false;
-          return (
-            now - ts.toMillis() <= ONLINE_WINDOW_MS &&
-            s.lastEventType !== "leave"
-          );
+          const age = now - ts.toMillis();
+          if (age > ONLINE_WINDOW_MS) return false;
+          // Heartbeats keep Online even after a soft tab-hide; hard leave ends it.
+          if (s.lastEventType === "leave" && s.isActive === false) return false;
+          return true;
         })
         .map((s) => s.sessionId)
     );
@@ -772,7 +868,9 @@ export default function AdminAnalyticsPage() {
               <p className="mt-1 font-display text-base font-bold text-green-900">
                 {analytics.onlineCount}
               </p>
-              <p className="mt-1 text-xs text-green-800">Active in last 2 minutes</p>
+              <p className="mt-1 text-xs text-green-800">
+                Active in last ~70 seconds (heartbeat)
+              </p>
             </div>
             <div className="rounded-xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
@@ -1196,6 +1294,15 @@ export default function AdminAnalyticsPage() {
                                             Time on page:{" "}
                                             <span className="font-medium text-ocean-900">
                                               {formatDurationMs(p.durationMs)}
+                                            </span>
+                                            <span className="text-ocean-500">
+                                              {" "}
+                                              (
+                                              {Math.max(
+                                                0,
+                                                Math.round(p.durationMs / 1000),
+                                              )}
+                                              s)
                                             </span>
                                             {p.views > 1
                                               ? ` · opened ${p.views}×`

@@ -12,15 +12,23 @@ import {
 const TRAFFIC_KEY = "bsg_analytics_traffic";
 /** Prefer short path — `/api/analytics/track` is commonly blocked by ad blockers. */
 const TRACK_URL = "/api/t";
-/** Dedupe React Strict Mode double-invoke (same path within a few seconds). */
-const lastTrackAt = new Map<string, number>();
-const HEARTBEAT_MS = 180_000;
+/** Only collapse identical path views from React Strict Mode double-mount. */
+const VIEW_DEDUPE_MS = 400;
+/** Keep "Online" accurate in admin (was 3 minutes — too sparse). */
+const HEARTBEAT_MS = 25_000;
 const TRACK_TIMEOUT_MS = 12_000;
 const CLICK_THROTTLE_MS = 1_500;
 
 type EventType = "view" | "leave" | "heartbeat" | "click" | "scroll";
 
-type VisitState = { path: string; enteredAtMs: number; pageLabel: string };
+type VisitState = {
+  path: string;
+  enteredAtMs: number;
+  pageLabel: string;
+  /** Active time only (pauses while tab is hidden). */
+  activeAccumMs: number;
+  activeSegmentStartedAt: number | null;
+};
 
 type TrafficPayload = {
   trafficChannel: string;
@@ -115,7 +123,9 @@ function clientContextPayload() {
       viewportHeight: window.innerHeight,
       language: navigator.language?.slice(0, 48),
       timeZone: timeZone?.slice(0, 80),
-      webdriver: Boolean((navigator as Navigator & { webdriver?: boolean }).webdriver),
+      webdriver: Boolean(
+        (navigator as Navigator & { webdriver?: boolean }).webdriver,
+      ),
     };
   } catch {
     return {};
@@ -150,8 +160,9 @@ function track(
     leftAtMs?: number;
     durationMs?: number;
     interactionCount?: number;
+    keepAliveSession?: boolean;
   } & ReturnType<typeof clientContextPayload> &
-    Partial<TrafficPayload>
+    Partial<TrafficPayload>,
 ) {
   if (!isAnalyticsEnabled()) return;
 
@@ -164,16 +175,24 @@ function track(
     visitorId,
     analyticsVersion: 2,
   });
-  if (
+
+  const preferBeacon =
     payload.eventType === "leave" &&
     typeof navigator !== "undefined" &&
-    typeof navigator.sendBeacon === "function"
-  ) {
-    const blob = new Blob([body], { type: "application/json" });
+    typeof navigator.sendBeacon === "function";
+
+  if (preferBeacon) {
     try {
-      if (navigator.sendBeacon(TRACK_URL, blob)) return;
+      if (
+        navigator.sendBeacon(
+          TRACK_URL,
+          new Blob([body], { type: "application/json" }),
+        )
+      ) {
+        return;
+      }
     } catch {
-      /* fall through to fetch */
+      /* fall through */
     }
   }
 
@@ -188,12 +207,13 @@ function track(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
-    keepalive: payload.eventType === "leave" || payload.eventType === "view",
+    keepalive:
+      payload.eventType === "leave" ||
+      payload.eventType === "view" ||
+      payload.eventType === "heartbeat",
     signal,
   }).catch(() => {
-    // Ad blockers / flaky mobile networks: last-chance beacon for views
     if (
-      payload.eventType !== "view" ||
       typeof navigator === "undefined" ||
       typeof navigator.sendBeacon !== "function"
     ) {
@@ -214,11 +234,37 @@ function getSessionId(): string {
   return getOrCreateAnalyticsSessionId();
 }
 
+function pauseActiveTime(visit: VisitState, now: number): void {
+  if (visit.activeSegmentStartedAt == null) return;
+  visit.activeAccumMs += Math.max(0, now - visit.activeSegmentStartedAt);
+  visit.activeSegmentStartedAt = null;
+}
+
+function resumeActiveTime(visit: VisitState, now: number): void {
+  if (visit.activeSegmentStartedAt != null) return;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    return;
+  }
+  visit.activeSegmentStartedAt = now;
+}
+
+function activeDurationMs(visit: VisitState, now: number): number {
+  let ms = visit.activeAccumMs;
+  if (visit.activeSegmentStartedAt != null) {
+    ms += Math.max(0, now - visit.activeSegmentStartedAt);
+  }
+  return ms;
+}
+
+/** Module-level so Strict Mode remounts still dedupe the same path view. */
+const lastViewAt = new Map<string, number>();
+
 export function AnalyticsTracker() {
   const pathname = usePathname() ?? "/";
   const visitRef = useRef<VisitState | null>(null);
   const maxScrollRef = useRef(0);
   const interactionCountRef = useRef(0);
+  const leftPathsRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!pathname.startsWith("/")) return;
@@ -228,55 +274,82 @@ export function AnalyticsTracker() {
     const sessionId = getSessionId();
     const visitorId = getVisitorId();
 
-    // Close the previous public page BEFORE resetting scroll/engagement.
-    const prevVisit = visitRef.current;
-    if (prevVisit && prevVisit.path !== key) {
-      const durationMs = Math.max(0, now - prevVisit.enteredAtMs);
+    const sendLeave = (visit: VisitState) => {
+      const leaveKey = `${visit.path}:${visit.enteredAtMs}`;
+      if (leftPathsRef.current.has(leaveKey)) return;
+      leftPathsRef.current.add(leaveKey);
+      pauseActiveTime(visit, Date.now());
+      const leftNow = Date.now();
       track({
-        path: prevVisit.path,
+        path: visit.path,
         sessionId,
         visitorId,
         eventType: "leave",
-        pageLabel: prevVisit.pageLabel,
-        enteredAtMs: prevVisit.enteredAtMs,
-        leftAtMs: now,
-        durationMs,
+        pageLabel: visit.pageLabel,
+        enteredAtMs: visit.enteredAtMs,
+        leftAtMs: leftNow,
+        durationMs: Math.max(0, activeDurationMs(visit, leftNow)),
         maxScrollDepthPct: maxScrollRef.current,
         interactionCount: interactionCountRef.current,
+        keepAliveSession: false,
       });
+    };
+
+    // Close previous public page with real active time (before scroll reset).
+    const prevVisit = visitRef.current;
+    if (prevVisit && prevVisit.path !== key) {
+      sendLeave(prevVisit);
       visitRef.current = null;
     }
 
-    // Admin routes: still send leave above, but never count admin as a visit.
     if (pathname.startsWith("/admin")) {
       maxScrollRef.current = 0;
       return;
     }
 
-    const prevDedupe = lastTrackAt.get(key) ?? 0;
-    if (now - prevDedupe < 2500) return;
-    lastTrackAt.set(key, now);
-
     const pageLabel =
       typeof document !== "undefined" ? document.title.trim() : "";
 
-    maxScrollRef.current = 0;
+    // Always keep an active visit — even if we skip a duplicate view ping.
+    const isDuplicateView =
+      (lastViewAt.get(key) ?? 0) > 0 &&
+      now - (lastViewAt.get(key) ?? 0) < VIEW_DEDUPE_MS;
 
-    visitRef.current = { path: key, enteredAtMs: now, pageLabel };
-    const traffic = getTrafficPayload(key);
-    track({
-      path: key,
-      sessionId,
-      visitorId,
-      eventType: "view",
-      pageLabel,
-      ...traffic,
-    });
+    if (!visitRef.current || visitRef.current.path !== key) {
+      maxScrollRef.current = 0;
+      visitRef.current = {
+        path: key,
+        enteredAtMs: now,
+        pageLabel,
+        activeAccumMs: 0,
+        activeSegmentStartedAt:
+          typeof document !== "undefined" &&
+          document.visibilityState === "hidden"
+            ? null
+            : now,
+      };
+    }
+
+    if (!isDuplicateView) {
+      lastViewAt.set(key, now);
+      const traffic = getTrafficPayload(key);
+      track({
+        path: key,
+        sessionId,
+        visitorId,
+        eventType: "view",
+        pageLabel,
+        ...traffic,
+      });
+    }
 
     const hb = window.setInterval(() => {
       const v = visitRef.current;
       if (!v || v.path !== key) return;
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
         return;
       }
       track({
@@ -287,29 +360,52 @@ export function AnalyticsTracker() {
         pageLabel: v.pageLabel,
         interactionCount: interactionCountRef.current,
         maxScrollDepthPct: maxScrollRef.current,
+        durationMs: activeDurationMs(v, Date.now()),
+        keepAliveSession: true,
       });
     }, HEARTBEAT_MS);
 
-    const onHidden = () => {
-      if (!visitRef.current) return;
-      if (document.visibilityState !== "hidden") return;
-      const leftNow = Date.now();
+    const onVisibility = () => {
       const current = visitRef.current;
-      track({
-        path: current.path,
-        sessionId,
-        visitorId,
-        eventType: "leave",
-        pageLabel: current.pageLabel,
-        enteredAtMs: current.enteredAtMs,
-        leftAtMs: leftNow,
-        durationMs: Math.max(0, leftNow - current.enteredAtMs),
-        maxScrollDepthPct: maxScrollRef.current,
-        interactionCount: interactionCountRef.current,
-      });
+      if (!current || current.path !== key) return;
+      const t = Date.now();
+      if (document.visibilityState === "hidden") {
+        pauseActiveTime(current, t);
+        // Soft ping — keeps Online true; does NOT end the visit.
+        track({
+          path: current.path,
+          sessionId,
+          visitorId,
+          eventType: "heartbeat",
+          pageLabel: current.pageLabel,
+          interactionCount: interactionCountRef.current,
+          maxScrollDepthPct: maxScrollRef.current,
+          durationMs: activeDurationMs(current, t),
+          keepAliveSession: true,
+        });
+      } else {
+        resumeActiveTime(current, t);
+        track({
+          path: current.path,
+          sessionId,
+          visitorId,
+          eventType: "heartbeat",
+          pageLabel: current.pageLabel,
+          interactionCount: interactionCountRef.current,
+          maxScrollDepthPct: maxScrollRef.current,
+          keepAliveSession: true,
+        });
+      }
     };
 
-    document.addEventListener("visibilitychange", onHidden);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const onPageHide = () => {
+      const current = visitRef.current;
+      if (!current || current.path !== key) return;
+      sendLeave(current);
+    };
+    window.addEventListener("pagehide", onPageHide);
 
     const onScroll = () => {
       const doc = document.documentElement;
@@ -372,32 +468,13 @@ export function AnalyticsTracker() {
     return () => {
       window.clearInterval(hb);
       window.removeEventListener("scroll", onScroll);
-      document.removeEventListener("visibilitychange", onHidden);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("click", onDocumentClick);
+      // On SPA route change React cleans up before the next effect runs.
+      // Leave for the previous path is sent at the start of the next effect.
     };
   }, [pathname]);
-
-  useEffect(() => {
-    return () => {
-      const current = visitRef.current;
-      if (!current) return;
-      const sessionId = getSessionId();
-      const visitorId = getVisitorId();
-      const now = Date.now();
-      track({
-        path: current.path,
-        sessionId,
-        visitorId,
-        eventType: "leave",
-        pageLabel: current.pageLabel,
-        enteredAtMs: current.enteredAtMs,
-        leftAtMs: now,
-        durationMs: Math.max(0, now - current.enteredAtMs),
-        maxScrollDepthPct: maxScrollRef.current,
-        interactionCount: interactionCountRef.current,
-      });
-    };
-  }, []);
 
   return null;
 }

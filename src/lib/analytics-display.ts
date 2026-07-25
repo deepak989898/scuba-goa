@@ -19,8 +19,8 @@ function escapeRe(s: string): string {
 }
 
 export function formatDurationMs(ms: number | null): string {
-  if (!ms || ms <= 0) return "—";
-  const totalSec = Math.round(ms / 1000);
+  if (ms == null || ms < 0) return "—";
+  const totalSec = Math.max(0, Math.round(ms / 1000));
   const sec = totalSec % 60;
   const totalMin = Math.floor(totalSec / 60);
   const min = totalMin % 60;
