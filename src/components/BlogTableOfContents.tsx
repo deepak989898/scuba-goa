@@ -43,15 +43,15 @@ export function BlogTableOfContents({ items }: Props) {
   if (items.length < 3) return null;
 
   const list = (
-    <ol className="mt-2 space-y-1.5 text-sm">
+    <ol className="mt-1 space-y-0.5 text-xs sm:text-sm">
       {items.map((item) => (
         <li
           key={item.id}
-          className={item.level === 3 ? "ml-3 border-l border-ocean-100 pl-2" : ""}
+          className={item.level === 3 ? "ml-2 border-l border-ocean-100 pl-1.5" : ""}
         >
           <a
             href={`#${item.id}`}
-            className={`block rounded px-1 py-0.5 transition hover:bg-ocean-50 hover:text-ocean-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
+            className={`block rounded px-1 py-px transition hover:bg-ocean-50 hover:text-ocean-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
               activeId === item.id
                 ? "font-semibold text-cyan-800"
                 : "text-ocean-700"
@@ -65,18 +65,18 @@ export function BlogTableOfContents({ items }: Props) {
   );
 
   return (
-    <nav aria-label="Table of contents" className="mt-2.5">
-      <details className="rounded-lg border border-ocean-100 bg-sand open:shadow-sm lg:hidden">
-        <summary className="cursor-pointer list-none px-2.5 py-2 text-sm font-bold text-ocean-900 marker:hidden">
+    <nav aria-label="Table of contents" className="mt-1.5">
+      <details className="rounded-md border border-ocean-100 bg-sand open:shadow-sm lg:hidden">
+        <summary className="cursor-pointer list-none px-2 py-1.5 text-xs font-bold text-ocean-900 marker:hidden sm:text-sm">
           On this page
           <span className="float-right text-ocean-500" aria-hidden>
             ⌄
           </span>
         </summary>
-        <div className="border-t border-ocean-100 px-3 pb-3">{list}</div>
+        <div className="border-t border-ocean-100 px-2 pb-2">{list}</div>
       </details>
       <div className="hidden lg:block">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-cyan-700">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-cyan-700">
           On this page
         </p>
         {list}

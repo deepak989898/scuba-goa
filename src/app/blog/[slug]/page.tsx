@@ -252,7 +252,7 @@ export default async function BlogPostPage({ params }: Props) {
   const toc = extractBlogToc(p.content);
 
   return (
-    <article className="bg-white py-3 sm:py-4">
+    <article className="bg-white py-2 sm:py-3">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -284,10 +284,10 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       )}
-      <div className="mx-auto grid max-w-7xl gap-4 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start lg:gap-5 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start lg:gap-4 lg:px-6">
         <div className="min-w-0">
           <nav
-            className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ocean-700 sm:text-sm"
+            className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-xs text-ocean-700"
             aria-label="Breadcrumb"
           >
             <Link href="/" className="hover:text-ocean-800">
@@ -309,11 +309,11 @@ export default async function BlogPostPage({ params }: Props) {
               ← All articles
             </Link>
           </nav>
-          <div className="mt-1.5 flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
-            <h1 className="min-w-0 flex-1 font-display text-xl font-extrabold leading-snug text-ocean-900 sm:text-2xl lg:text-[1.75rem]">
+          <div className="mt-1 flex flex-wrap items-start justify-between gap-x-2 gap-y-0">
+            <h1 className="min-w-0 flex-1 font-display text-lg font-extrabold leading-snug text-ocean-900 sm:text-xl lg:text-2xl">
               {p.title}
             </h1>
-            <p className="shrink-0 pt-0.5 text-xs text-ocean-500 sm:pt-1 sm:text-sm sm:text-right">
+            <p className="shrink-0 pt-0.5 text-[11px] text-ocean-500 sm:text-xs sm:text-right">
               {p.date} · {p.readTime}
             </p>
           </div>
@@ -324,7 +324,7 @@ export default async function BlogPostPage({ params }: Props) {
           />
 
           {featuredImage ? (
-            <figure className="mt-2 w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-50">
+            <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100 bg-ocean-50">
               <CmsRemoteImage
                 src={featuredImage}
                 alt={featuredImageAlt}
@@ -335,13 +335,13 @@ export default async function BlogPostPage({ params }: Props) {
             </figure>
           ) : null}
 
-          <p className="mt-2 border-l-4 border-amber-400 bg-amber-50/60 py-1.5 pl-2.5 text-sm leading-snug text-ocean-800 sm:text-base sm:leading-relaxed">
+          <p className="mt-1.5 border-l-4 border-amber-400 bg-amber-50/60 py-1 pl-2 text-sm leading-snug text-ocean-800">
             {p.excerpt}
           </p>
 
           <BlogTableOfContents items={toc} />
 
-          <div className="prose prose-ocean mt-3 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-3 prose-headings:mb-2 prose-headings:mt-6">
+          <div className="prose prose-ocean mt-2 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">
             <BlogContent content={p.content} />
           </div>
 
@@ -351,38 +351,38 @@ export default async function BlogPostPage({ params }: Props) {
 
           {faqs.length > 0 && (
             <section
-              className="mt-8 border-t border-ocean-100 pt-8"
+              className="mt-5 border-t border-ocean-100 pt-4"
               aria-labelledby="faq-heading"
             >
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-cyan-700">
                 Helpful answers
               </p>
               <h2
                 id="faq-heading"
-                className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl"
+                className="mt-0.5 font-display text-lg font-bold text-ocean-900 sm:text-xl"
               >
                 Frequently asked questions
               </h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-ocean-700">
+              <p className="mt-1 text-sm leading-snug text-ocean-700">
                 Open any question for a quick answer before planning or booking.
               </p>
-              <div className="mt-4 space-y-2.5">
+              <div className="mt-2.5 space-y-1.5">
                 {faqs.map((f, index) => (
                   <details
                     key={f.question}
-                    className="group rounded-xl border border-ocean-100 bg-sand px-4 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-5"
+                    className="group rounded-lg border border-ocean-100 bg-sand px-3 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-4"
                     open={index === 0}
                   >
-                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-semibold text-ocean-900 marker:hidden">
+                    <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 py-2 text-sm font-semibold text-ocean-900 marker:hidden">
                       <span>{f.question}</span>
                       <span
                         aria-hidden
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-lg text-ocean-700 shadow-sm transition group-open:rotate-45"
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-base text-ocean-700 shadow-sm transition group-open:rotate-45"
                       >
                         +
                       </span>
                     </summary>
-                    <p className="border-t border-ocean-100 pb-4 pt-3 text-sm leading-6 text-ocean-800">
+                    <p className="border-t border-ocean-100 pb-2.5 pt-2 text-sm leading-snug text-ocean-800">
                       {f.answer}
                     </p>
                   </details>
@@ -393,22 +393,22 @@ export default async function BlogPostPage({ params }: Props) {
 
           {related.length > 0 && (
             <section
-              className="mt-8 border-t border-ocean-100 pt-8"
+              className="mt-5 border-t border-ocean-100 pt-4"
               aria-labelledby="related-articles-heading"
             >
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-amber-700">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-700">
                 Continue exploring
               </p>
               <h2
                 id="related-articles-heading"
-                className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl"
+                className="mt-0.5 font-display text-lg font-bold text-ocean-900 sm:text-xl"
               >
                 Related articles
               </h2>
-              <p className="mt-1.5 text-sm text-ocean-700">
+              <p className="mt-1 text-sm text-ocean-700">
                 Keep reading this topic cluster before booking.
               </p>
-              <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+              <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
                 {related.map((r) => {
                   const cardImage =
                     r.imageUrl ||
@@ -417,7 +417,7 @@ export default async function BlogPostPage({ params }: Props) {
                     <li key={r.slug} className="h-full">
                       <Link
                         href={`/blog/${r.slug}`}
-                        className="group flex h-full flex-col overflow-hidden rounded-xl border border-ocean-100 bg-sand shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                        className="group flex h-full flex-col overflow-hidden rounded-lg border border-ocean-100 bg-sand shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                       >
                         <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
                           <CmsRemoteImage
@@ -429,17 +429,17 @@ export default async function BlogPostPage({ params }: Props) {
                             loading="lazy"
                           />
                         </div>
-                        <div className="flex flex-1 flex-col p-3.5">
-                          <p className="text-[11px] font-medium text-cyan-700">
+                        <div className="flex flex-1 flex-col p-2.5">
+                          <p className="text-[10px] font-medium text-cyan-700">
                             {r.date} · {r.readTime}
                           </p>
-                          <h3 className="mt-1 font-display text-base font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-700 sm:text-lg">
+                          <h3 className="mt-0.5 font-display text-sm font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-700 sm:text-base">
                             {r.title}
                           </h3>
-                          <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-ocean-700">
+                          <p className="mt-1 line-clamp-2 text-xs leading-snug text-ocean-700 sm:text-sm">
                             {r.excerpt}
                           </p>
-                          <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-amber-700">
+                          <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 sm:text-sm">
                             Read article <span aria-hidden>→</span>
                           </span>
                         </div>
@@ -452,24 +452,24 @@ export default async function BlogPostPage({ params }: Props) {
           )}
 
           <section
-            className="mt-8 rounded-xl border border-ocean-100 bg-ocean-50/50 p-5 sm:p-6"
+            className="mt-5 rounded-lg border border-ocean-100 bg-ocean-50/50 p-3 sm:p-4"
             aria-labelledby="related-links-heading"
           >
             <h2
               id="related-links-heading"
-              className="font-display text-lg font-bold text-ocean-900 sm:text-xl"
+              className="font-display text-base font-bold text-ocean-900 sm:text-lg"
             >
               Book & explore more
             </h2>
-            <p className="mt-1.5 text-sm text-ocean-700">
+            <p className="mt-1 text-sm text-ocean-700">
               Continue planning on our main pages — live packages and clear reporting
               times.
             </p>
-            <ul className="mt-4 flex flex-wrap gap-2.5 text-sm font-semibold">
+            <ul className="mt-2.5 flex flex-wrap gap-2 text-sm font-semibold">
               <li>
                 <Link
                   href="/booking"
-                  className="inline-flex rounded-full bg-ocean-gradient px-5 py-2.5 text-white hover:opacity-95"
+                  className="inline-flex rounded-full bg-ocean-gradient px-4 py-2 text-white hover:opacity-95"
                 >
                   Book now — live rates
                 </Link>
@@ -477,7 +477,7 @@ export default async function BlogPostPage({ params }: Props) {
               <li>
                 <Link
                   href="/services/scuba-diving"
-                  className="inline-flex rounded-full border border-ocean-300 bg-white px-5 py-2.5 text-ocean-800 hover:border-ocean-400"
+                  className="inline-flex rounded-full border border-ocean-300 bg-white px-4 py-2 text-ocean-800 hover:border-ocean-400"
                 >
                   Scuba diving
                 </Link>
@@ -485,7 +485,7 @@ export default async function BlogPostPage({ params }: Props) {
               <li>
                 <Link
                   href="/services"
-                  className="inline-flex rounded-full border border-ocean-200 bg-white px-5 py-2.5 text-ocean-700 hover:border-ocean-400"
+                  className="inline-flex rounded-full border border-ocean-200 bg-white px-4 py-2 text-ocean-700 hover:border-ocean-400"
                 >
                   All services
                 </Link>
@@ -493,7 +493,7 @@ export default async function BlogPostPage({ params }: Props) {
               <li>
                 <Link
                   href="/contact"
-                  className="inline-flex rounded-full border border-ocean-200 bg-white px-5 py-2.5 text-ocean-700 hover:border-ocean-400"
+                  className="inline-flex rounded-full border border-ocean-200 bg-white px-4 py-2 text-ocean-700 hover:border-ocean-400"
                 >
                   Contact
                 </Link>
@@ -502,7 +502,7 @@ export default async function BlogPostPage({ params }: Props) {
           </section>
 
           {/* Mobile: related services below article */}
-          <div className="mt-8 border-t border-ocean-100 pt-8 lg:hidden">
+          <div className="mt-5 border-t border-ocean-100 pt-4 lg:hidden">
             <RelatedServicesSidebar
               services={relatedServices}
               showScarcity={false}
@@ -511,7 +511,7 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         </div>
 
-        <aside className="hidden min-w-0 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-8">
+        <aside className="hidden min-w-0 lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-4">
           <RelatedServicesSidebar
             services={relatedServices}
             showScarcity={false}

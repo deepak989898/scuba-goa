@@ -72,29 +72,29 @@ export default async function BlogIndexPage({ searchParams }: Props) {
   const faqLd = faqPageJsonLd(BOOK_SCUBA_FAQ.slice(0, 6));
 
   return (
-    <div className="bg-sand/30 py-5 sm:py-7">
+    <div className="bg-sand/30 py-3 sm:py-4">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-7 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-4 lg:px-6">
         <div className="min-w-0">
-          <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
+          <nav className="text-xs text-ocean-700 sm:text-sm" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-ocean-800">
               Home
             </Link>
-            <span className="mx-2 text-ocean-400">/</span>
+            <span className="mx-1.5 text-ocean-400">/</span>
             <span className="text-ocean-500">Blog</span>
           </nav>
-          <h1 className="mt-2 font-display text-2xl font-bold text-ocean-900 sm:text-3xl">
+          <h1 className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl">
             Scuba diving in Goa — guides & blog
           </h1>
-          <p className="mt-1.5 max-w-2xl text-sm text-ocean-700 sm:text-base">
+          <p className="mt-1 max-w-2xl text-sm leading-snug text-ocean-700">
             Start with pillar guides (best time, safety, island trip, 2026 prices), then
             explore planning articles — each links to live booking.
           </p>
 
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+          <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {pagePosts.map((p, index) => {
               const imageSrc =
                 p.imageUrl?.trim() ||
@@ -115,24 +115,24 @@ export default async function BlogIndexPage({ searchParams }: Props) {
                         loading="lazy"
                       />
                     </div>
-                    <div className="flex flex-1 flex-col p-3.5">
-                      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
-                        <h2 className="min-w-0 flex-1 font-display text-base font-semibold leading-snug text-ocean-900 transition group-hover:text-cyan-800 sm:text-lg">
+                    <div className="flex flex-1 flex-col p-2.5">
+                      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0">
+                        <h2 className="min-w-0 flex-1 font-display text-sm font-semibold leading-snug text-ocean-900 transition group-hover:text-cyan-800 sm:text-base">
                           {p.title}
                         </h2>
-                        <p className="shrink-0 text-[11px] font-medium text-ocean-500 sm:pt-0.5 sm:text-right">
+                        <p className="shrink-0 text-[10px] font-medium text-ocean-500 sm:text-right">
                           {p.date} · {p.readTime}
                         </p>
                       </div>
-                      <p className="mt-1.5 line-clamp-2 text-sm text-ocean-700">
+                      <p className="mt-1 line-clamp-2 text-xs text-ocean-700 sm:text-sm">
                         {p.excerpt}
                       </p>
                       {p.keywords.length > 0 ? (
-                        <p className="mt-2 line-clamp-1 text-[11px] text-ocean-500">
+                        <p className="mt-1 line-clamp-1 text-[10px] text-ocean-500">
                           {p.keywords.slice(0, 4).join(" · ")}
                         </p>
                       ) : null}
-                      <span className="mt-2.5 text-sm font-bold text-amber-700">
+                      <span className="mt-1.5 text-xs font-bold text-amber-700 sm:text-sm">
                         Read article →
                       </span>
                     </div>
@@ -153,29 +153,29 @@ export default async function BlogIndexPage({ searchParams }: Props) {
           />
 
           <section
-            className="mt-8 rounded-xl border border-ocean-100 bg-white p-5 sm:p-6"
+            className="mt-5 rounded-lg border border-ocean-100 bg-white p-3 sm:p-4"
             aria-labelledby="blog-book-heading"
           >
             <h2
               id="blog-book-heading"
-              className="font-display text-lg font-bold text-ocean-900 sm:text-xl"
+              className="font-display text-base font-bold text-ocean-900 sm:text-lg"
             >
               Ready to book?
             </h2>
-            <p className="mt-1.5 text-sm text-ocean-700">
+            <p className="mt-1 text-sm text-ocean-700">
               Compare packages and services, then pay a small advance online to lock your
               slot.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2.5">
+            <div className="mt-2.5 flex flex-wrap gap-2">
               <Link
                 href="/booking"
-                className="inline-flex rounded-full bg-ocean-gradient px-5 py-2.5 text-sm font-bold text-white hover:opacity-95"
+                className="inline-flex rounded-full bg-ocean-gradient px-4 py-2 text-sm font-bold text-white hover:opacity-95"
               >
                 Book now
               </Link>
               <Link
                 href="/guides"
-                className="inline-flex rounded-full border border-ocean-200 px-5 py-2.5 text-sm font-semibold text-ocean-800 hover:border-ocean-400"
+                className="inline-flex rounded-full border border-ocean-200 px-4 py-2 text-sm font-semibold text-ocean-800 hover:border-ocean-400"
               >
                 Travel guides
               </Link>
@@ -183,38 +183,38 @@ export default async function BlogIndexPage({ searchParams }: Props) {
           </section>
 
           <section
-            className="mt-8 border-t border-ocean-100 pt-8"
+            className="mt-5 border-t border-ocean-100 pt-4"
             aria-labelledby="blog-faq-heading"
           >
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-cyan-700">
               Helpful answers
             </p>
             <h2
               id="blog-faq-heading"
-              className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl"
+              className="mt-0.5 font-display text-lg font-bold text-ocean-900 sm:text-xl"
             >
               Frequently asked questions
             </h2>
-            <p className="mt-1.5 text-sm text-ocean-700">
+            <p className="mt-1 text-sm text-ocean-700">
               Quick answers before you plan or book scuba diving in Goa.
             </p>
-            <div className="mt-4 space-y-2.5">
+            <div className="mt-2.5 space-y-1.5">
               {BOOK_SCUBA_FAQ.slice(0, 6).map((faq, index) => (
                 <details
                   key={faq.question}
-                  className="group rounded-xl border border-ocean-100 bg-white px-4 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-5"
+                  className="group rounded-lg border border-ocean-100 bg-white px-3 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-4"
                   open={index === 0}
                 >
-                  <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-semibold text-ocean-900 marker:hidden">
+                  <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 py-2 text-sm font-semibold text-ocean-900 marker:hidden">
                     <span>{faq.question}</span>
                     <span
                       aria-hidden
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sand text-lg text-ocean-700 shadow-sm transition group-open:rotate-45"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sand text-base text-ocean-700 shadow-sm transition group-open:rotate-45"
                     >
                       +
                     </span>
                   </summary>
-                  <p className="border-t border-ocean-100 pb-4 pt-3 text-sm leading-6 text-ocean-800">
+                  <p className="border-t border-ocean-100 pb-2.5 pt-2 text-sm leading-snug text-ocean-800">
                     {faq.answer}
                   </p>
                 </details>
@@ -224,28 +224,28 @@ export default async function BlogIndexPage({ searchParams }: Props) {
         </div>
 
         <aside aria-labelledby="blog-guides-sidebar-title" className="min-w-0">
-          <div className="lg:sticky lg:top-20">
-            <div className="mb-3">
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
+          <div className="lg:sticky lg:top-16">
+            <div className="mb-2">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-cyan-700">
                 Explore more Goa
               </p>
               <h2
                 id="blog-guides-sidebar-title"
-                className="mt-0.5 font-display text-xl font-bold text-ocean-900"
+                className="mt-0.5 font-display text-lg font-bold text-ocean-900"
               >
                 Travel guides
               </h2>
-              <p className="mt-0.5 text-sm leading-relaxed text-ocean-700">
+              <p className="mt-0.5 text-xs leading-snug text-ocean-700 sm:text-sm">
                 Short planning pages before you book.
               </p>
             </div>
 
             {sidebarGuides.length === 0 ? (
-              <p className="rounded-xl border border-ocean-100 bg-white p-4 text-sm text-ocean-700">
+              <p className="rounded-lg border border-ocean-100 bg-white p-3 text-sm text-ocean-700">
                 Guides will appear here when published.
               </p>
             ) : (
-              <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
                 {sidebarGuides.map((g, index) => {
                   const imageSrc =
                     g.imageUrl?.trim() ||
@@ -254,7 +254,7 @@ export default async function BlogIndexPage({ searchParams }: Props) {
                     <li key={g.slug}>
                       <Link
                         href={`/guides/${g.slug}`}
-                        className="group flex flex-col overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                        className="group flex flex-col overflow-hidden rounded-lg border border-ocean-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
                       >
                         <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
                           <CmsRemoteImage
@@ -266,19 +266,19 @@ export default async function BlogIndexPage({ searchParams }: Props) {
                             loading="lazy"
                           />
                         </div>
-                        <div className="p-3">
-                          <p className="text-[11px] font-medium text-cyan-700">
+                        <div className="p-2.5">
+                          <p className="text-[10px] font-medium text-cyan-700">
                             Updated {g.updatedAt.slice(0, 10)}
                           </p>
-                          <h3 className="mt-1 font-display text-sm font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-800 sm:text-base">
+                          <h3 className="mt-0.5 font-display text-sm font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-800">
                             {g.headline}
                           </h3>
                           {g.metaDescription ? (
-                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ocean-700">
+                            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-ocean-700">
                               {g.metaDescription}
                             </p>
                           ) : null}
-                          <span className="mt-2 inline-flex text-sm font-bold text-amber-700">
+                          <span className="mt-1.5 inline-flex text-xs font-bold text-amber-700 sm:text-sm">
                             Read guide →
                           </span>
                         </div>
@@ -291,7 +291,7 @@ export default async function BlogIndexPage({ searchParams }: Props) {
 
             <Link
               href="/guides"
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border-2 border-ocean-700 px-5 py-2.5 text-sm font-bold text-ocean-800 transition hover:bg-ocean-50"
+              className="mt-2.5 inline-flex min-h-10 w-full items-center justify-center rounded-full border-2 border-ocean-700 px-4 py-2 text-sm font-bold text-ocean-800 transition hover:bg-ocean-50"
             >
               View all guides
             </Link>

@@ -78,7 +78,7 @@ function parseInline(text: string): ReactNode[] {
 }
 
 function Paragraph({ children }: { children: string }) {
-  return <p className="mt-3 leading-relaxed">{parseInline(children)}</p>;
+  return <p className="mt-2 leading-snug sm:leading-relaxed">{parseInline(children)}</p>;
 }
 
 function uniqueHeadingId(text: string, seen: Map<string, number>): string {
@@ -126,7 +126,7 @@ export function BlogContent({ content }: { content: string }) {
         <h2
           key={i}
           id={id}
-          className="mt-6 scroll-mt-24 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-0.5 pl-3 text-xl font-bold text-ocean-900 first:mt-0 sm:text-2xl"
+          className="mt-4 scroll-mt-20 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-0.5 pl-2.5 text-lg font-bold text-ocean-900 first:mt-0 sm:text-xl"
         >
           {text}
         </h2>,
@@ -141,7 +141,7 @@ export function BlogContent({ content }: { content: string }) {
         <h3
           key={i}
           id={id}
-          className="mt-5 scroll-mt-24 text-lg font-bold text-cyan-800 sm:text-xl"
+          className="mt-3 scroll-mt-20 text-base font-bold text-cyan-800 sm:text-lg"
         >
           {text}
         </h3>,
@@ -154,12 +154,12 @@ export function BlogContent({ content }: { content: string }) {
     if (table) {
       const [header, ...body] = table;
       out.push(
-        <div key={i} className="mt-5 overflow-x-auto rounded-xl border border-ocean-100">
+        <div key={i} className="mt-3 overflow-x-auto rounded-lg border border-ocean-100">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-ocean-50 text-ocean-900">
               <tr>
                 {header.map((cell, j) => (
-                  <th key={j} className="whitespace-nowrap px-3 py-2 font-semibold">
+                  <th key={j} className="whitespace-nowrap px-2.5 py-1.5 font-semibold">
                     {parseInline(cell)}
                   </th>
                 ))}
@@ -169,7 +169,7 @@ export function BlogContent({ content }: { content: string }) {
               {body.map((row, ri) => (
                 <tr key={ri} className="border-t border-ocean-100">
                   {row.map((cell, ci) => (
-                    <td key={ci} className="px-3 py-2 align-top text-ocean-800">
+                    <td key={ci} className="px-2.5 py-1.5 align-top text-ocean-800">
                       {parseInline(cell)}
                     </td>
                   ))}
@@ -187,11 +187,11 @@ export function BlogContent({ content }: { content: string }) {
     const isList = lines.every((l) => !l || l.startsWith("- "));
     if (isList && lines.some((l) => l.startsWith("- "))) {
       out.push(
-        <ul key={i} className="mt-4 list-disc space-y-2 pl-6 text-ocean-800">
+        <ul key={i} className="mt-2 list-disc space-y-1 pl-5 text-ocean-800">
           {lines
             .filter((l) => l.startsWith("- "))
             .map((l, j) => (
-              <li key={j} className="leading-relaxed">
+              <li key={j} className="leading-snug">
                 {parseInline(l.replace(/^-\s+/, ""))}
               </li>
             ))}

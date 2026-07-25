@@ -42,16 +42,16 @@ const points: { title: string; body: ReactNode }[] = [
 export function BlogWhyChooseSection() {
   return (
     <section
-      className="mt-8 rounded-xl border border-ocean-200 bg-gradient-to-br from-ocean-50 to-white p-5 sm:p-6"
+      className="mt-5 rounded-lg border border-ocean-200 bg-gradient-to-br from-ocean-50 to-white p-3 sm:p-4"
       aria-labelledby="why-choose-heading"
     >
       <h2
         id="why-choose-heading"
-        className="font-display text-xl font-bold text-ocean-900 sm:text-2xl"
+        className="font-display text-lg font-bold text-ocean-900 sm:text-xl"
       >
         Why travellers choose us over random beach touts
       </h2>
-      <p className="mt-3 text-sm leading-relaxed text-ocean-700 sm:text-base">
+      <p className="mt-1.5 text-sm leading-snug text-ocean-700">
         Goa has many operators. The difference is predictable scheduling, verified gear cycles,
         and support when weather shifts. Use this site to{" "}
         <Link href="/booking" className="font-semibold text-ocean-700 hover:text-ocean-800">
@@ -63,11 +63,11 @@ export function BlogWhyChooseSection() {
         </Link>{" "}
         including scuba, tours, and water sports.
       </p>
-      <ul className="mt-6 space-y-5">
+      <ul className="mt-3 space-y-2.5">
         {points.map((p) => (
           <li key={p.title}>
-            <p className="font-semibold text-ocean-900">{p.title}</p>
-            <div className="mt-1 text-sm leading-relaxed text-ocean-700 sm:text-base">
+            <p className="text-sm font-semibold text-ocean-900">{p.title}</p>
+            <div className="mt-0.5 text-sm leading-snug text-ocean-700">
               {p.body}
             </div>
           </li>
