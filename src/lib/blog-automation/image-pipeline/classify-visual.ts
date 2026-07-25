@@ -368,7 +368,15 @@ export function classifyVisualCategory(input: {
         ],
       });
     }
-    if (/safety|safe|buddy check|regulator|beginner tip|risk/.test(titleText)) {
+    // Broad guides that mention safety + sites/expectations → location overview, not gear close-up only
+    const isBroadDiveGuide =
+      /sites?|spots?|what to expect|complete guide|best scuba|where to dive/.test(
+        titleText,
+      );
+    if (
+      /safety|safe|buddy check|regulator|beginner tip|risk/.test(titleText) &&
+      !isBroadDiveGuide
+    ) {
       return pick("scuba_safety", {
         visualIntent: "scuba safety training",
         mainSubject:
@@ -383,6 +391,39 @@ export function classifyVisualCategory(input: {
           "panic or medical emergency",
           "reckless behaviour",
           "missing essential scuba gear",
+        ],
+      });
+    }
+    if (isBroadDiveGuide) {
+      return pick("scuba_location", {
+        visualSubcategory: "sites_safety_expect",
+        visualIntent:
+          "best dive sites overview with safety-ready guests — what a Goa scuba day looks like",
+        mainSubject: stablePick(
+          seed,
+          [
+            "Dive boat approaching a clear Goa dive site with guests in full safety gear listening to a short briefing on deck",
+            "Wide coastal dive-site view: boat, shoreline landmark, and divers preparing masks and BCDs before entry",
+            "Instructor pointing toward the water while suited guests ready fins on a boat at a known Goa dive area",
+            "Split feel of a dive day: calm boat at a scenic site in background, safety check of mask and BCD in foreground",
+          ] as const,
+          6,
+        ),
+        supportingSubjects: [
+          "recognisable coastal dive-site backdrop",
+          "safety gear correctly worn",
+          "calm what-to-expect briefing energy",
+        ],
+        location: "Goa dive sites / coastal waters",
+        timeOfDay: "clear_morning",
+        desiredComposition: "environment_dominant",
+        peopleCount: "instructor + small guest group",
+        safetyEquipment: ["BCD", "mask", "fins", "regulator"],
+        exclusions: [
+          "tight close-up of only equipment with no dive-site context",
+          "nightclub",
+          "generic lone diver stock pose with no location story",
+          "panic or emergency",
         ],
       });
     }
