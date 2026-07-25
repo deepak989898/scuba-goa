@@ -130,9 +130,10 @@ export function PwaRegister() {
 
   if (installed || !visible || !deferred) return null;
 
+  // Mobile / tablet only — hide Install prompt on desktop (md+).
   return (
     <div
-      className="fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom,0px))] z-[57] px-3 md:bottom-6 md:left-auto md:right-6 md:max-w-sm md:px-0"
+      className="fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom,0px))] z-[57] px-3 md:hidden"
       role="dialog"
       aria-label="Install Book Scuba Goa app"
     >
