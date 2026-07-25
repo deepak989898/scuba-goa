@@ -12,6 +12,36 @@ type Props = {
   children: ReactNode;
 };
 
+function CollapseChevron({ open }: { open: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-ocean-200 bg-ocean-50 text-ocean-800 shadow-sm transition duration-200 ${
+        open
+          ? "rotate-180 border-cyan-400 bg-cyan-100 text-cyan-900"
+          : "hover:border-ocean-300 hover:bg-white"
+      }`}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="block"
+      >
+        <path
+          d="M3.5 6L8 10.5L12.5 6"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
 /** Collapsible admin card — collapsed by default; click header to expand. */
 export function AdminCollapseSection({
   title,
@@ -25,11 +55,11 @@ export function AdminCollapseSection({
 
   return (
     <details
-      className={`group mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm open:border-cyan-300 open:ring-1 open:ring-cyan-100 ${className}`}
+      className={`mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm open:border-cyan-300 open:ring-1 open:ring-cyan-100 ${className}`}
       open={open}
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 marker:hidden transition hover:bg-ocean-50/80">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 marker:hidden transition hover:bg-ocean-50/80 [&::-webkit-details-marker]:hidden">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-bold text-ocean-900">{title}</p>
@@ -41,12 +71,7 @@ export function AdminCollapseSection({
             <p className="mt-0.5 text-xs text-ocean-500">Click to expand</p>
           )}
         </div>
-        <span
-          aria-hidden
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sand text-base font-bold text-ocean-800 shadow-sm transition group-open:rotate-180 group-open:bg-cyan-100"
-        >
-          ⌄
-        </span>
+        <CollapseChevron open={open} />
       </summary>
       <div className="border-t border-ocean-100 px-3 py-3">{children}</div>
     </details>
