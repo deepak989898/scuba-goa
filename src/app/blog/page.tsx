@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { ListPagination } from "@/components/ListPagination";
-import { blogPostsPillarFirst } from "@/data/blog-posts";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
+import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
-import { getPageSlice } from "@/lib/list-pagination";
+import { getPageSlice, LIST_PAGE_SIZE } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+
+/** Public /blog index: only 3 pages of highest-view posts. */
+const BLOG_LIST_MAX_PAGES = 3;
 
 export const revalidate = 3600;
 
@@ -57,17 +60,28 @@ const GUIDE_FALLBACKS = [
 
 export default async function BlogIndexPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const [merged, guides] = await Promise.all([
+  const [merged, guides, fsPosts] = await Promise.all([
     getAllBlogPostsMerged(),
     listPublishedSeoPagesServer(),
+    listPublishedBlogPostsServer(),
   ]);
-  const pillarSlugs = new Set(blogPostsPillarFirst().map((p) => p.slug));
-  const pillarFirst = [
-    ...merged.filter((p) => pillarSlugs.has(p.slug)),
-    ...merged.filter((p) => !pillarSlugs.has(p.slug)),
-  ];
-  const slice = getPageSlice(pillarFirst.length, sp.page);
-  const pagePosts = pillarFirst.slice(slice.start, slice.end);
+  const viewsBySlug = new Map<string, number>();
+  for (const p of fsPosts) {
+    viewsBySlug.set(
+      p.slug,
+      Math.max(0, Math.round(Number(p.viewCount ?? 0))),
+    );
+  }
+  // Highest views first; only top 3 pages are listed publicly.
+  const byViews = [...merged].sort((a, b) => {
+    const va = viewsBySlug.get(a.slug) ?? 0;
+    const vb = viewsBySlug.get(b.slug) ?? 0;
+    if (vb !== va) return vb - va;
+    return b.date.localeCompare(a.date) || a.title.localeCompare(b.title);
+  });
+  const capped = byViews.slice(0, LIST_PAGE_SIZE * BLOG_LIST_MAX_PAGES);
+  const slice = getPageSlice(capped.length, sp.page);
+  const pagePosts = capped.slice(slice.start, slice.end);
   const sidebarGuides = guides.slice(0, 5);
   const faqLd = faqPageJsonLd(BOOK_SCUBA_FAQ.slice(0, 6));
 
@@ -150,6 +164,8 @@ export default async function BlogIndexPage({ searchParams }: Props) {
             start={slice.start}
             end={slice.end}
             itemLabel="articles"
+            hideStatus
+            maxPages={BLOG_LIST_MAX_PAGES}
           />
 
           <section
