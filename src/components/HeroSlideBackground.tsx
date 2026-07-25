@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { HeroYoutubeSlide } from "@/components/HeroYoutubeSlide";
 import { useShouldRenderHeroVideo } from "@/hooks/useShouldRenderHeroVideo";
@@ -28,11 +28,16 @@ export function HeroSlideBackground({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
   const vUrl = slide.videoUrl?.trim() ?? "";
   const ytId = vUrl ? getYoutubeVideoId(vUrl) : null;
   const ambientSrc = getHeroFallbackMusicSrc();
   const videoPosterSrc = getHeroVideoPosterSrc(slide);
   const shouldRenderVideo = useShouldRenderHeroVideo();
+
+  useEffect(() => {
+    setVideoReady(false);
+  }, [slideKey, shouldRenderVideo]);
 
   useEffect(() => {
     if (!vUrl || ytId || !shouldRenderVideo) return;
@@ -113,18 +118,21 @@ export function HeroSlideBackground({
     shouldRenderVideo,
   ]);
 
+  // Always paint an optimized next/image poster first — this is the LCP element.
+  const poster = (
+    <CmsRemoteImage
+      src={videoPosterSrc || slide.src}
+      alt={slide.alt}
+      fill
+      priority
+      quality={65}
+      className="object-cover object-center"
+      sizes="100vw"
+    />
+  );
+
   if (!vUrl || !shouldRenderVideo) {
-    return (
-      <CmsRemoteImage
-        src={videoPosterSrc || slide.src}
-        alt={slide.alt}
-        fill
-        priority
-        quality={72}
-        className="object-cover object-center"
-        sizes="100vw"
-      />
-    );
+    return poster;
   }
 
   if (ytId) {
@@ -144,20 +152,17 @@ export function HeroSlideBackground({
 
   return (
     <>
+      {poster}
       {/*
-        iOS Safari and most Android browsers only honor autoplay when the
-        video element carries `autoplay muted playsinline` declaratively. The
-        effect above still drives audio behaviour when the user enables sound;
-        the declarative `muted` keeps the initial load mobile-autoplay-safe.
-
-        `preload="metadata"` (instead of "auto") avoids fetching the full clip
-        on every page load — the browser only pulls enough bytes to start
-        playback, and the poster image keeps the hero visible until then.
+        Video sits above the optimized poster only after it can paint a frame.
+        That keeps LCP on AVIF/WebP via next/image instead of a huge raw poster.
       */}
       <video
         ref={videoRef}
         key={slideKey}
-        className="absolute inset-0 h-full w-full object-cover object-center"
+        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ${
+          videoReady ? "opacity-100" : "opacity-0"
+        }`}
         poster={videoPosterSrc}
         src={vUrl}
         autoPlay
@@ -165,6 +170,8 @@ export function HeroSlideBackground({
         playsInline
         preload="metadata"
         loop={shouldLoopWhenSingleSlide}
+        onLoadedData={() => setVideoReady(true)}
+        onPlaying={() => setVideoReady(true)}
         onEnded={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
         onError={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
       />
@@ -173,7 +180,7 @@ export function HeroSlideBackground({
         className="pointer-events-none absolute h-0 w-0 opacity-0"
         aria-hidden
         playsInline
-        preload="auto"
+        preload="none"
       />
     </>
   );

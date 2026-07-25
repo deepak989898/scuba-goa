@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 import { getAllPermanentRedirects } from "./src/lib/blog-redirects";
 
 const nextConfig: NextConfig = {
+  // Tree-shake heavy packages so homepage bundles pull fewer unused modules.
+  experimental: {
+    optimizePackageImports: [
+      "firebase/app",
+      "firebase/auth",
+      "firebase/firestore",
+      "firebase/storage",
+    ],
+  },
   async redirects() {
     return getAllPermanentRedirects().map((r) => ({
       source: r.source,

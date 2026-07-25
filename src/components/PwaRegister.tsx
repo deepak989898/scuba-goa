@@ -55,8 +55,23 @@ export function PwaRegister() {
         });
     };
 
-    if (document.readyState === "complete") register();
-    else window.addEventListener("load", register, { once: true });
+    // After load + idle so SW work stays out of the LCP / TBT window.
+    const scheduleRegister = () => {
+      const w = window as Window & {
+        requestIdleCallback?: (
+          cb: () => void,
+          opts?: { timeout: number },
+        ) => number;
+      };
+      if (typeof w.requestIdleCallback === "function") {
+        w.requestIdleCallback(register, { timeout: 5000 });
+      } else {
+        window.setTimeout(register, 2000);
+      }
+    };
+
+    if (document.readyState === "complete") scheduleRegister();
+    else window.addEventListener("load", scheduleRegister, { once: true });
 
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||

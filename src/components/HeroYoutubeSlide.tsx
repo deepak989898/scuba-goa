@@ -239,10 +239,9 @@ export function HeroYoutubeSlide({
             alt={alt}
             fill
             priority
-            quality={72}
+            quality={65}
             className="object-cover object-center"
             sizes="100vw"
-            aria-hidden
           />
         </div>
       ) : null}
@@ -256,7 +255,7 @@ export function HeroYoutubeSlide({
           className="pointer-events-none absolute h-0 w-0 opacity-0"
           aria-hidden
           playsInline
-          preload="auto"
+          preload="none"
         />
       ) : null}
     </div>

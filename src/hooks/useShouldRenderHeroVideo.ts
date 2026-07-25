@@ -8,16 +8,10 @@ type Conn = {
 };
 
 /**
- * The hero <video> renders on every viewport, including phones — owners want
- * the cinematic loop to be visible everywhere. We still skip it when:
+ * Keep the hero on an optimized poster image for LCP, then enable video after
+ * the browser is idle (or the user interacts). Still skip Save-Data / 2g.
  *
- *  - `navigator.connection.saveData` is on (user opted into reduced data), or
- *  - `effectiveType` is `slow-2g` / `2g` (cell network is too weak to stream).
- *
- * `3g` is intentionally allowed so that typical Indian 4G/LTE phones — which
- * sometimes downgrade to 3g briefly — still get the video. We always return
- * `false` on the server so SSR markup is identical for everyone and there is
- * no hydration mismatch; the effect flips it on after mount.
+ * SSR always returns `false` so markup matches and there is no hydration flicker.
  */
 export function useShouldRenderHeroVideo(): boolean {
   const [render, setRender] = useState(false);
@@ -26,24 +20,75 @@ export function useShouldRenderHeroVideo(): boolean {
     if (typeof window === "undefined") return;
     const nav = navigator as Navigator & { connection?: Conn };
 
-    const evaluate = () => {
+    const tooSlow = () => {
       const conn = nav.connection;
-      const tooSlow =
+      return (
         conn?.saveData === true ||
         conn?.effectiveType === "slow-2g" ||
-        conn?.effectiveType === "2g";
-      setRender(!tooSlow);
+        conn?.effectiveType === "2g"
+      );
     };
 
-    evaluate();
+    if (tooSlow()) {
+      setRender(false);
+      return;
+    }
+
+    let cancelled = false;
+    let idleHandle: number | undefined;
+    let fallbackTimer: number | undefined;
+
+    const enable = () => {
+      if (cancelled || tooSlow()) return;
+      setRender(true);
+    };
+
+    const onInteract = () => enable();
+    const interactOpts: AddEventListenerOptions = { once: true, passive: true };
+    window.addEventListener("pointerdown", onInteract, interactOpts);
+    window.addEventListener("touchstart", onInteract, interactOpts);
+    window.addEventListener("keydown", onInteract, interactOpts);
+
+    // Prefer idle callback so Lighthouse / slow mobiles paint the poster first.
+    const ric = (
+      window as Window & {
+        requestIdleCallback?: (
+          cb: () => void,
+          opts?: { timeout: number },
+        ) => number;
+        cancelIdleCallback?: (id: number) => void;
+      }
+    ).requestIdleCallback;
+
+    if (typeof ric === "function") {
+      idleHandle = ric(enable, { timeout: 3500 });
+    } else {
+      fallbackTimer = window.setTimeout(enable, 2500);
+    }
 
     type ConnectionWithListener = Conn & {
       addEventListener?: (type: "change", listener: () => void) => void;
       removeEventListener?: (type: "change", listener: () => void) => void;
     };
     const conn = nav.connection as ConnectionWithListener | undefined;
-    conn?.addEventListener?.("change", evaluate);
-    return () => conn?.removeEventListener?.("change", evaluate);
+    const onConnChange = () => {
+      if (tooSlow()) setRender(false);
+    };
+    conn?.addEventListener?.("change", onConnChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pointerdown", onInteract);
+      window.removeEventListener("touchstart", onInteract);
+      window.removeEventListener("keydown", onInteract);
+      conn?.removeEventListener?.("change", onConnChange);
+      if (idleHandle != null) {
+        (
+          window as Window & { cancelIdleCallback?: (id: number) => void }
+        ).cancelIdleCallback?.(idleHandle);
+      }
+      if (fallbackTimer != null) window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
   return render;

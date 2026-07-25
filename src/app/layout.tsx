@@ -101,7 +101,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
-        <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://firebasestorage.googleapis.com"
+          crossOrigin=""
+        />
+        <link rel="dns-prefetch" href="https://storage.googleapis.com" />
       </head>
       <body className="site-3d min-h-screen touch-manipulation font-sans antialiased [-webkit-tap-highlight-color:transparent]">
         <SiteJsonLd />
