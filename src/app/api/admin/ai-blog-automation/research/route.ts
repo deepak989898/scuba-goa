@@ -10,6 +10,7 @@ import {
   saveKeyword,
 } from "@/lib/seo-blog-center/store";
 import type { ResearchInput } from "@/lib/seo-blog-center/providers/types";
+import { parseResearchCategories } from "@/lib/seo-blog-center/research-categories";
 import { getAllServicesServer } from "@/lib/get-services-server";
 
 export const runtime = "nodejs";
@@ -48,6 +49,10 @@ export async function POST(req: Request) {
     ) ||
     services[0];
 
+  const researchCategories = parseResearchCategories(
+    (body as { researchCategories?: unknown }).researchCategories,
+  );
+
   const input: ResearchInput = {
     serviceSlug: body.serviceSlug?.trim() || service?.slug || "scuba-diving",
     serviceName: body.serviceName?.trim() || service?.title || "Scuba diving",
@@ -76,6 +81,7 @@ export async function POST(req: Request) {
     includeSuggest: body.includeSuggest !== false && settings.includeGoogleSuggest,
     includeAds: body.includeAds !== false && settings.includeGoogleAds,
     excludeCovered: body.excludeCovered !== false,
+    researchCategories,
   };
 
   try {

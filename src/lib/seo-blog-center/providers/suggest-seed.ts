@@ -35,12 +35,22 @@ function buildServiceSeeds(input: ResearchInput): RawKeywordIdea[] {
   if (input.includeComparison) {
     variants.push(`best ${base} packages Goa`);
   }
+  if (input.includeInformational) {
+    variants.push(`${base} experience in Goa`);
+    variants.push(`what to expect ${base} Goa`);
+    variants.push(`${base} for beginners Goa`);
+  }
+  if (input.includeCommercial) {
+    variants.push(`book ${base} in Goa`);
+    variants.push(`best ${base} in Goa`);
+  }
   if (input.includeLocal && input.city) {
     variants.push(`${base} ${input.city}`);
     variants.push(`${base} in ${input.city}`);
     variants.push(`${base} near ${input.city}`);
   }
   // Broader local patterns live in providers/local-search.ts when includeLocal is on.
+  // Category 1–10 seeds live in research-categories.ts.
 
   return [...new Set(variants.map((v) => v.replace(/\s+/g, " ").trim()))].map(
     (keyword) => ({

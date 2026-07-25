@@ -8,6 +8,12 @@ import { fetchGoogleAdsKeywordIdeas } from "@/lib/seo-blog-center/providers/goog
 import { fetchGscKeywordIdeas } from "@/lib/seo-blog-center/providers/gsc";
 import { fetchSuggestAndSeedIdeas } from "@/lib/seo-blog-center/providers/suggest-seed";
 import type { ResearchInput } from "@/lib/seo-blog-center/providers/types";
+import {
+  ALL_RESEARCH_CATEGORY_IDS,
+  applyResearchCategoryFlags,
+  buildResearchCategoryIdeas,
+  matchesSelectedResearchCategories,
+} from "@/lib/seo-blog-center/research-categories";
 import type {
   SeoBlogKeyword,
   SeoKeywordCluster,
@@ -22,8 +28,15 @@ export type ResearchResult = {
 };
 
 export async function runKeywordResearch(
-  input: ResearchInput,
+  rawInput: ResearchInput,
 ): Promise<ResearchResult> {
+  const input = applyResearchCategoryFlags({
+    ...rawInput,
+    researchCategories:
+      rawInput.researchCategories?.length
+        ? rawInput.researchCategories
+        : [...ALL_RESEARCH_CATEGORY_IDS],
+  });
   const max = Math.min(250, Math.max(1, input.maxKeywords || 250));
   const researchJobId = `research_${Date.now().toString(36)}`;
   const exclude = new Set<string>();
@@ -93,6 +106,15 @@ export async function runKeywordResearch(
   });
   rawIdeas.push(...seeds.ideas);
 
+  const categoryIdeas = buildResearchCategoryIdeas(input);
+  providerReports.push({
+    name: "research_categories",
+    configured: true,
+    count: categoryIdeas.length,
+    error: undefined,
+  });
+  rawIdeas.push(...categoryIdeas);
+
   const classified = normalizeAndClassifyIdeas(rawIdeas).filter((k) => {
     if (input.minMonthlySearches > 0 && k.monthlySearches != null) {
       return k.monthlySearches >= input.minMonthlySearches;
@@ -123,6 +145,14 @@ export async function runKeywordResearch(
       if (!input.includeComparison && k.intent === "comparison") return false;
       if (!input.includePrice && k.intent === "price") return false;
       if (!input.includeSeasonal && k.intent === "seasonal") return false;
+      if (
+        !matchesSelectedResearchCategories(
+          k,
+          input.researchCategories ?? ALL_RESEARCH_CATEGORY_IDS,
+        )
+      ) {
+        return false;
+      }
       return true;
     })
     .sort((a, b) => b.opportunityScore - a.opportunityScore)

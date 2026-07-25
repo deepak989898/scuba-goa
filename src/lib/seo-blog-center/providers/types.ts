@@ -3,6 +3,7 @@ import type {
   KeywordSource,
   ContentType,
 } from "@/lib/seo-blog-center/types";
+import type { ResearchCategoryId } from "@/lib/seo-blog-center/research-categories";
 
 export type RawKeywordIdea = {
   keyword: string;
@@ -40,6 +41,8 @@ export type ResearchInput = {
   includeSuggest: boolean;
   includeAds: boolean;
   excludeCovered: boolean;
+  /** Category 1–10 checkboxes from New keyword research. */
+  researchCategories?: ResearchCategoryId[];
 };
 
 export type ProviderResult = {

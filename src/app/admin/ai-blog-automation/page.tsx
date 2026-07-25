@@ -18,6 +18,11 @@ import type {
   SeoBlogKeyword,
   SeoKeywordCluster,
 } from "@/lib/seo-blog-center/types";
+import {
+  ALL_RESEARCH_CATEGORY_IDS,
+  RESEARCH_CATEGORIES,
+  type ResearchCategoryId,
+} from "@/lib/seo-blog-center/research-categories";
 import { enrichConflictsFromUrls } from "@/lib/seo-blog-center/conflict-display";
 import { BlogPostEditorPanel } from "@/app/admin/blog-automation/BlogPostEditorPanel";
 import { seoBlogDraftToFirestorePost } from "@/lib/seo-blog-center/draft-to-post";
@@ -177,6 +182,9 @@ export default function AiBlogAutomationPage() {
   const [includeAds, setIncludeAds] = useState(true);
   const [includeGsc, setIncludeGsc] = useState(true);
   const [includeLocal, setIncludeLocal] = useState(true);
+  const [researchCategories, setResearchCategories] = useState<
+    Set<ResearchCategoryId>
+  >(() => new Set(ALL_RESEARCH_CATEGORY_IDS));
   const [generateAiImage, setGenerateAiImage] = useState(true);
   const [clusterFilter, setClusterFilter] = useState<
     "all" | "conflicts" | "no_conflicts"
@@ -383,6 +391,7 @@ export default function AiBlogAutomationPage() {
           includeAds,
           includeGsc,
           includeLocal,
+          researchCategories: [...researchCategories],
           country: "India",
           state: "Goa",
           language: "en",
@@ -1015,7 +1024,8 @@ export default function AiBlogAutomationPage() {
           </h2>
           <p className="mt-1 text-xs text-ocean-600">
             Max 250 opportunities. Local search adds beach/island/near-me variants.
-            Related variations become clusters — not one thin blog for every phrase.
+            Turn on SEO categories below so research covers booking, questions,
+            prices, packages, and nearby activities — not only one angle.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-sm text-ocean-800">
@@ -1082,9 +1092,83 @@ export default function AiBlogAutomationPage() {
               </label>
             </div>
           </div>
+
+          <div className="mt-4 rounded-xl border border-ocean-100 bg-sand/30 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-ocean-900">
+                  SEO keyword categories
+                </p>
+                <p className="mt-0.5 text-xs text-ocean-600">
+                  Selected categories seed extra keywords and keep matching
+                  opportunities for every page type.
+                </p>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <button
+                  type="button"
+                  className="rounded-full border border-ocean-200 bg-white px-3 py-1 font-semibold text-ocean-800 hover:bg-ocean-50"
+                  onClick={() =>
+                    setResearchCategories(new Set(ALL_RESEARCH_CATEGORY_IDS))
+                  }
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border border-ocean-200 bg-white px-3 py-1 font-semibold text-ocean-800 hover:bg-ocean-50"
+                  onClick={() => setResearchCategories(new Set())}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {RESEARCH_CATEGORIES.map((cat) => {
+                const checked = researchCategories.has(cat.id);
+                return (
+                  <label
+                    key={cat.id}
+                    className={`flex cursor-pointer items-start gap-2 rounded-lg border px-2.5 py-2 text-sm transition-colors ${
+                      checked
+                        ? "border-ocean-300 bg-white text-ocean-900"
+                        : "border-ocean-100 bg-white/60 text-ocean-700"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={checked}
+                      onChange={(e) => {
+                        setResearchCategories((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(cat.id);
+                          else next.delete(cat.id);
+                          return next;
+                        });
+                      }}
+                    />
+                    <span>
+                      <span className="font-medium">{cat.label}</span>
+                      <span className="mt-0.5 block text-[11px] text-ocean-600">
+                        {cat.description}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            {researchCategories.size === 0 ? (
+              <p className="mt-2 text-xs font-medium text-amber-800">
+                Select at least one category (or Select all) before running
+                research.
+              </p>
+            ) : null}
+          </div>
+
           <button
             type="button"
-            disabled={busy === "research"}
+            disabled={busy === "research" || researchCategories.size === 0}
             onClick={() => void runResearch()}
             className="mt-4 rounded-full bg-ocean-gradient px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >

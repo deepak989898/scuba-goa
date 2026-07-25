@@ -47,6 +47,10 @@ export function classifyContentType(intent: KeywordIntent, keyword: string): Con
   if (intent === "faq") return "faq_article";
   if (intent === "transactional") return "booking_guide";
   if (/\b(top \d+|best \d+)\b/.test(l)) return "best_of";
+  if (/\b(package|packages|combo|inclusions|exclusions)\b/.test(l)) {
+    return "package_guide";
+  }
+  if (/\b(what to expect|experience)\b/.test(l)) return "what_to_expect";
   if (
     /\b(grande island|grand island|baga|calangute|anjuna|vagator|palolem|colva|location|near me|north goa|south goa)\b/.test(
       l,
