@@ -17,7 +17,8 @@
     "images:audit": "node scripts/optimize-images.mjs --audit",
     "images:optimize": "node scripts/optimize-images.mjs",
     "images:optimize:dry-run": "node scripts/optimize-images.mjs --dry-run",
-    "generate:blog-watermark": "node scripts/generate-blog-watermark.mjs"
+    "generate:blog-watermark": "node scripts/generate-blog-watermark.mjs",
+    "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs"
   },
   "dependencies": {
     "firebase": "^11.6.0",

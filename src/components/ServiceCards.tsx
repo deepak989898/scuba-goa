@@ -14,7 +14,7 @@ export function ServiceCards() {
 
   if (loading) {
     return (
-      <section className="bg-white pt-4 pb-5 sm:pt-6 sm:pb-6" id="services">
+      <section className="relative z-0 bg-white pt-2 pb-5 sm:pt-6 sm:pb-6" id="services">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-3 sm:mb-4">
             <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
@@ -39,7 +39,7 @@ export function ServiceCards() {
   }
 
   return (
-    <section className="bg-white pt-4 pb-5 sm:pt-6 sm:pb-6" id="services">
+    <section className="relative z-0 bg-white pt-2 pb-5 sm:pt-6 sm:pb-6" id="services">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-3 sm:mb-4">
           <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">

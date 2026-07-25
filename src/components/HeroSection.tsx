@@ -230,9 +230,13 @@ export function HeroSection() {
   );
 
   return (
-    <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 max-sm:z-20 max-sm:min-h-[min(48dvh,380px)] sm:z-auto sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:pt-[4.75rem]">
-      {/* Clip slides to hero box only; section can overflow on mobile for straddle card */}
-      <div className="absolute inset-0 overflow-hidden">
+    <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:pt-[4.75rem]">
+      {/*
+        Mobile: hero media is height-limited; booking card sits in normal flow with
+        a negative top margin (straddle look) so it no longer covers service images.
+        Previously absolute + translate-y-[60%] + z-20 painted over the first cards.
+      */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden max-sm:h-[min(48dvh,380px)] sm:bottom-0 sm:h-auto">
         {current ? (
           <div key={slideKey} className="absolute inset-0">
             <HeroSlideBackground
@@ -247,27 +251,30 @@ export function HeroSection() {
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
 
-      {currentHasVideo && videoActuallyPlays ? (
-        <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
-          <HeroVideoSoundToggle
-            soundOn={heroSoundOn}
-            onToggle={() => setHeroSoundOn((v) => !v)}
-          />
-        </div>
-      ) : null}
+      {/* Holds hero height on all breakpoints; desktop card stays inside */}
+      <div className="relative max-sm:min-h-[min(48dvh,380px)] sm:min-h-[min(72vh,640px)]">
+        {currentHasVideo && videoActuallyPlays ? (
+          <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
+            <HeroVideoSoundToggle
+              soundOn={heroSoundOn}
+              onToggle={() => setHeroSoundOn((v) => !v)}
+            />
+          </div>
+        ) : null}
 
-      {/* Mobile: keep hero image clean — no text on photo (CTAs: sticky bar + form + trust strip) */}
-      <h1 className="sr-only">
-        Dive into Adventure — Book Your Scuba Experience in Goa with Book Scuba Goa.
-        {headlinePriceInr != null
-          ? ` Try-dive starting at ₹${headlinePriceInr.toLocaleString("en-IN")}.`
-          : ""}{" "}
-        Pay ₹{ADVANCE_BOOKING_INR} advance online with Razorpay; WhatsApp booking supported.
-      </h1>
-      {/* Mobile: ~40% of form on hero, ~60% below hero (above urgency strip); bottom-aligned then translateY(60% of card height) */}
-      <div className="pointer-events-none absolute inset-0 z-20 flex w-full items-end justify-center px-[14px] pb-0 sm:hidden">
-        <div className="pointer-events-auto relative z-30 w-full min-w-0 max-w-none">
-          <div className="w-full min-w-0 translate-y-[60%]">
+        <h1 className="sr-only">
+          Dive into Adventure — Book Your Scuba Experience in Goa with Book Scuba
+          Goa.
+          {headlinePriceInr != null
+            ? ` Try-dive starting at ₹${headlinePriceInr.toLocaleString("en-IN")}.`
+            : ""}{" "}
+          Pay ₹{ADVANCE_BOOKING_INR} advance online with Razorpay; WhatsApp booking
+          supported.
+        </h1>
+
+        {/* sm+: bottom-right in hero */}
+        <div className="pointer-events-none absolute inset-0 z-10 hidden items-end justify-end p-6 pb-8 sm:flex lg:px-8">
+          <div className="pointer-events-auto w-full max-w-sm md:max-w-md">
             <HeroConversionCard
               bookHref={bookingCard.bookHref}
               detailsHref={bookingCard.detailsHref}
@@ -283,21 +290,19 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* sm+: bottom-right in hero */}
-      <div className="pointer-events-none absolute inset-0 z-10 hidden items-end justify-end p-6 pb-8 sm:flex lg:px-8">
-        <div className="pointer-events-auto w-full max-w-sm md:max-w-md">
-          <HeroConversionCard
-            bookHref={bookingCard.bookHref}
-            detailsHref={bookingCard.detailsHref}
-            headlineTitle={bookingCard.headlineTitle}
-            headlinePriceInr={bookingCard.headlinePriceInr}
-            priceLoading={priceLoading}
-            slotsToday={bookingCard.slotsToday}
-            perksLine={bookingCard.perksLine}
-            waPreset={bookingCard.waPreset}
-            primaryCtaLabel={bookingCard.primaryCtaLabel}
-          />
-        </div>
+      {/* Mobile booking card: ~40% over hero via -mt, full height reserved in layout */}
+      <div className="relative z-10 -mt-[7.5rem] px-[14px] pb-4 sm:hidden">
+        <HeroConversionCard
+          bookHref={bookingCard.bookHref}
+          detailsHref={bookingCard.detailsHref}
+          headlineTitle={bookingCard.headlineTitle}
+          headlinePriceInr={bookingCard.headlinePriceInr}
+          priceLoading={priceLoading}
+          slotsToday={bookingCard.slotsToday}
+          perksLine={bookingCard.perksLine}
+          waPreset={bookingCard.waPreset}
+          primaryCtaLabel={bookingCard.primaryCtaLabel}
+        />
       </div>
     </section>
   );

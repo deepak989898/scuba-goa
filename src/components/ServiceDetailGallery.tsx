@@ -40,7 +40,7 @@ export function ServiceDetailGallery({ images, title }: Props) {
   );
 
   return (
-    <div className="relative aspect-[21/9] w-full max-h-[min(280px,38vh)] overflow-hidden rounded-xl max-sm:min-h-[calc(100vw_*_9_/21_+_28px)] max-sm:max-h-[min(320px,42vh)] sm:max-h-[280px]">
+    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-ocean-100 max-h-[min(520px,58vh)] min-h-[240px] sm:aspect-[16/9] sm:min-h-[320px] sm:max-h-[min(560px,62vh)] lg:min-h-[360px] lg:max-h-[580px]">
       {list.map((src, idx) => (
         <div
           key={`${idx}-${src.slice(0, 40)}`}
@@ -53,8 +53,8 @@ export function ServiceDetailGallery({ images, title }: Props) {
             src={src}
             alt={n > 1 ? `${title} — photo ${idx + 1} of ${n}` : title}
             fill
-            className="object-cover"
-            sizes="100vw"
+            className="object-cover object-center"
+            sizes="(max-width: 1024px) 100vw, min(880px, 70vw)"
             priority={idx === 0}
             loading={idx === 0 ? undefined : "lazy"}
           />
