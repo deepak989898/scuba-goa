@@ -39,9 +39,10 @@ export async function generateBlogImageBufferFromPrompt(
   if (!trimmed) throw new Error("Image prompt is required");
 
   const model = getConfiguredImageModel();
+  // Default "high" for gpt-image — clearer faces/hands. Override with OPENAI_IMAGE_QUALITY=medium to save cost.
   const quality =
     process.env.OPENAI_IMAGE_QUALITY?.trim() ||
-    (isGptImageModel(model) ? "medium" : "standard");
+    (isGptImageModel(model) ? "high" : "hd");
 
   const body: Record<string, unknown> = {
     model,

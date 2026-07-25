@@ -70,14 +70,14 @@ export function stablePick<T>(seed: string, items: readonly T[], salt = 0): T {
 
 /** Distinct scuba hero scenes so posts do not share one generic diver. */
 export const SCUBA_SUBJECT_VARIANTS = [
-  "Two certified divers exploring a shallow reef with natural sun rays and correct BCD gear",
-  "Dive boat on turquoise water with divers preparing tanks on deck near a tropical shoreline",
-  "Instructor guiding a first-time diver at a calm shore entry with mask and fins ready",
-  "Split-level view: half above boat deck, half underwater with a diver descending",
-  "Diver giving an OK hand signal beside a sea turtle in clear coastal water",
-  "Small group of divers floating near a rocky coastal reef with realistic visibility",
-  "Dive master leading two guests along a gentle underwater sand patch with soft light",
-  "Surface interval on a dive boat: divers resting with gear staged safely behind them",
+  "Two divers with sharp photoreal faces exploring a shallow reef with natural sun rays and correct BCD gear",
+  "Dive boat on turquoise water with one instructor and one guest preparing tanks — clear natural faces, correct hands",
+  "Instructor with a crisp realistic face guiding one first-time diver at a calm shore entry with mask and fins ready",
+  "Split-level view: half above boat deck, half underwater with one diver descending — face clear above water if visible",
+  "One diver with a natural sharp face giving an OK hand signal (correct five fingers) beside a sea turtle in clear coastal water",
+  "Two divers floating near a rocky coastal reef with realistic visibility and photoreal faces",
+  "Dive master leading one guest along a gentle underwater sand patch with soft light — faces readable through masks if shown",
+  "Surface interval on a dive boat: two people resting with gear staged safely — sharp natural faces, no crowd",
 ] as const;
 
 export const WATER_SPORTS_SUBJECT_VARIANTS = [
@@ -102,7 +102,7 @@ export const NIGHTLIFE_SUBJECT_VARIANTS = [
 export const SCUBA_PRICING_SUBJECT_VARIANTS = [
   "Dive shop booking desk: staff showing a guest three distinct package option cards side-by-side while a dive boat waits outside — cards have blank/blurred text only",
   "Over-shoulder view of travellers comparing two scuba package folders at a coastal booking counter, with fins and a mask on the desk as props",
-  "Instructor counting package tiers on fingers (1-2-3) while guests listen at a beach dive counter, clipboard closed so no prices are readable",
+  "Staff member with a clear realistic face explaining package choices to one guest at a beach dive counter, clipboard closed so no prices are readable — avoid finger-counting poses",
   "Side-by-side gear layouts suggesting budget vs premium packages: left simpler rental set, right fuller kit — same beach dive shop backdrop, no price tags",
   "Couple reviewing a dive trip brochure with a local advisor near a boat; advisor points at package columns on a blank rate sheet (unreadable text)",
   "Reception-style dive counter with a small payment terminal turned away, package pamphlet stack, and guests choosing between options — no currency symbols visible",

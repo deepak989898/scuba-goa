@@ -33,6 +33,16 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
       ].join(" ")
     : "";
 
+  const humanRealismBlock = [
+    "HUMAN REALISM (mandatory): every visible person must look like a real photographed human, not AI or CGI.",
+    "Faces must be sharp, clean, and naturally detailed — clear eyes, natural skin texture, believable pores and light, no plastic/waxy skin, no blurry or melted facial features.",
+    "Prefer at most 2 people with clearly visible faces; any extra people should be farther away, side/back view, or softly out of focus.",
+    "Frame people close enough that faces stay readable (not tiny distant blobs).",
+    "Hands and fingers must be anatomically correct (five fingers, natural joints) — no fused, melted, or extra fingers.",
+    "Correct eye alignment, natural teeth if smiling, consistent lighting on faces matching the environment.",
+    "Photorealistic travel-magazine quality, DSLR sharpness, shallow depth of field acceptable to keep faces crisp.",
+  ].join(" ");
+
   return [
     `Create a realistic premium editorial travel photograph that a human would instantly associate with this exact article title: "${brief.articleTitle}".`,
     `Read and obey the title meaning first — do not invent a generic scuba stock scene if the title is about nightlife, water sports, islands, safety, pricing, or destination comparison.`,
@@ -42,11 +52,12 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
     `Visual intent: ${brief.visualIntent}.`,
     comparisonBlock,
     pricingBlock,
+    humanRealismBlock,
     `Primary scene: ${brief.scene}.`,
     `Main subject (must dominate the frame): ${brief.mainSubject}.`,
     `Location context: ${brief.locationContext}.`,
     `Activity: ${brief.activity}.`,
-    `People: ${brief.people}.`,
+    `People (keep faces clear — max 2 sharp faces): ${brief.people}.`,
     `Required equipment / safety details: ${brief.requiredEquipment}.`,
     `Composition: ${composition}.`,
     `Camera: ${brief.shotType.replace(/_/g, " ")}, ${brief.cameraAngle.replace(/_/g, " ")}.`,
@@ -57,7 +68,7 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
     "Vary camera distance, subject pose, foreground props and background so this image does not look like a reused stock scuba diver.",
     "The scene must look authentic, natural, geographically believable and suitable for a professional travel website (bookscubagoa.com).",
     "Use realistic people, correct anatomy, accurate equipment and safe activity behaviour.",
-    `Do not include: ${mustAvoid}.`,
+    `Do not include: ${mustAvoid}; blurry or plastic faces; waxy CGI skin; melted or fused fingers; extra limbs; deformed eyes; mannequin-like people; AI artefacts on faces.`,
     "Landscape 16:9 composition, high visual clarity, no text, no headline, no watermark, no large logo,",
     "no distorted faces, no extra limbs, no duplicated people, no malformed equipment and no unrelated activity.",
     "Do not draw any brand logo or company name — branding is applied separately if needed.",
