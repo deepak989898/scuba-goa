@@ -3,22 +3,19 @@ import { SITE_NAME } from "@/lib/constants";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: "/",
     name: SITE_NAME,
-    short_name: "Book Scuba Goa",
+    short_name: "Scuba Goa",
     description:
       "Book scuba diving and water sports in Goa — live prices, Razorpay checkout, WhatsApp support.",
-    start_url: "/",
+    start_url: "/?utm_source=pwa",
     scope: "/",
     display: "standalone",
-    display_override: ["standalone", "browser"],
     orientation: "any",
     background_color: "#0c4a6e",
     theme_color: "#0c4a6e",
     lang: "en-IN",
     dir: "ltr",
     categories: ["travel", "lifestyle", "sports"],
-    prefer_related_applications: false,
     icons: [
       {
         src: "/icons/icon-192.png",
