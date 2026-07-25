@@ -43,12 +43,13 @@ export async function GET(req: Request) {
   }
 
   const filename = `bill-${paymentId.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 48)}.pdf`;
+  const asDownload = url.searchParams.get("download") === "1";
 
   return new NextResponse(new Uint8Array(pdf), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Disposition": `${asDownload ? "attachment" : "inline"}; filename="${filename}"`,
       "Cache-Control": "private, no-store",
     },
   });

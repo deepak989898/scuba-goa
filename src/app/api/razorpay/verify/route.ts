@@ -8,10 +8,17 @@ import {
   sendBookingAdminNotificationEmail,
   sendBookingConfirmationEmail,
 } from "@/lib/email";
+import { createBookingBillShareToken } from "@/lib/bookingBillShareToken";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { getPublicBaseUrl } from "@/lib/publicRequestOrigin";
 import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 import type { CartItemForPromo } from "@/lib/promo-pricing";
 import { isValidPayAmountPaise } from "@/lib/payment";
+import {
+  describeSmsConfig,
+  isSmsConfigured,
+  sendBookingConfirmationSms,
+} from "@/lib/sms";
 import { validatePromoForOrder } from "@/lib/validate-promo-for-order";
 
 type BookingBody = Record<string, unknown> & {
@@ -189,6 +196,12 @@ export async function POST(req: Request) {
   const fullInr = Math.round(fullAmountPaise / 100);
   const balanceInr = Math.round(balancePaise / 100);
 
+  const shareToken = createBookingBillShareToken(razorpay_payment_id);
+  const baseUrl = getPublicBaseUrl(req);
+  const invoiceDownloadUrl = shareToken
+    ? `${baseUrl}/api/booking-bill-share?token=${encodeURIComponent(shareToken)}&download=1`
+    : undefined;
+
   const clientConfirm = {
     paymentId: razorpay_payment_id,
     orderId: razorpay_order_id,
@@ -196,6 +209,8 @@ export async function POST(req: Request) {
     paidInr: amountInr,
     balanceInr,
     fullInr,
+    packageName: String(booking.packageName ?? ""),
+    invoiceDownloadUrl,
   };
 
   const db = getAdminDb();
@@ -346,6 +361,41 @@ export async function POST(req: Request) {
     console.error("admin booking notification email failed", err);
   }
 
+  let smsSent = false;
+  if (invoiceDownloadUrl && isSmsConfigured()) {
+    try {
+      smsSent = await sendBookingConfirmationSms({
+        phone: String(booking.phone),
+        customerName: String(booking.customerName),
+        packageName: String(booking.packageName),
+        date: String(booking.date),
+        people: Number(booking.people) || 0,
+        paidInr: amountInr,
+        paymentId: razorpay_payment_id,
+        invoiceUrl: invoiceDownloadUrl,
+        balanceInr,
+      });
+    } catch (err) {
+      console.error("booking confirmation SMS failed", err);
+    }
+  } else if (!isSmsConfigured()) {
+    console.warn("SMS skipped:", describeSmsConfig());
+  }
+
+  try {
+    await ref.set(
+      {
+        emailSent,
+        adminEmailSent,
+        smsSent,
+        invoiceShareCreated: Boolean(shareToken),
+      },
+      { merge: true },
+    );
+  } catch {
+    /* non-blocking */
+  }
+
   const emailWarning = emailSent
     ? undefined
     : "Payment is successful, but confirmation email was not sent. Check GoDaddy Titan SMTP (MAIL_SMTP_*) or Resend (RESEND_API_KEY) on Vercel.";
@@ -355,12 +405,20 @@ export async function POST(req: Request) {
       ? "Business inbox notification failed (check BOOKING_ADMIN_NOTIFY_EMAIL and that support@bookscubagoa.com can receive mail)."
       : undefined;
 
+  const smsWarning =
+    !smsSent && isSmsConfigured()
+      ? "SMS confirmation failed. Check MSG91 / Twilio credentials and DLT sender ID on Vercel."
+      : !isSmsConfigured()
+        ? "SMS not configured yet (add MSG91_AUTH_KEY or TWILIO_* on Vercel)."
+        : undefined;
+
   return NextResponse.json({
     ok: true,
     stored: true,
     emailSent,
     adminEmailSent,
-    warning: emailWarning,
+    smsSent,
+    warning: emailWarning || smsWarning,
     adminEmailWarning,
     ...clientConfirm,
   });

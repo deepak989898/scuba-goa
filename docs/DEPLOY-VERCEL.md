@@ -109,6 +109,30 @@ After a successful Razorpay verify, the server sends a confirmation email if con
 
 **Firebase:** No SMTP env vars. Firebase Auth is admin login only; outbound mail is sent from Vercel via Titan or Resend.
 
+### SMS confirmation after payment (MSG91 or Twilio)
+
+After a successful Razorpay verify, the server can send **one SMS** with booking details + invoice PDF link. Firebase Auth SMS is OTP-only — do **not** use it for booking messages.
+
+**Recommended for India — [MSG91](https://msg91.com)** (DLT-approved Sender ID required):
+
+| Name | Purpose |
+|------|---------|
+| `MSG91_AUTH_KEY` | Auth key from MSG91 dashboard |
+| `MSG91_SENDER_ID` | 6-char DLT sender (e.g. `BSGOA`) |
+| `MSG91_ROUTE` | Usually `4` (transactional) |
+
+**Alternative — [Twilio](https://www.twilio.com)** (if MSG91 is not set):
+
+| Name | Purpose |
+|------|---------|
+| `TWILIO_ACCOUNT_SID` | Account SID |
+| `TWILIO_AUTH_TOKEN` | Auth token |
+| `TWILIO_FROM_NUMBER` | Twilio phone / messaging sender |
+
+Also ensure `NEXT_PUBLIC_SITE_URL=https://bookscubagoa.com` so the invoice link in SMS is correct. Optional: `BOOKING_BILL_SHARE_SECRET` (falls back to `RAZORPAY_KEY_SECRET`).
+
+After payment, the home page shows a **manual-dismiss dialog** with **Download Invoice** (PDF).
+
 ### OpenAI (AI Help button — optional)
 
 | Name | Purpose |

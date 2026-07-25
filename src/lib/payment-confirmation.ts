@@ -1,4 +1,4 @@
-/** sessionStorage payload after Razorpay verify — shown on home success banner */
+/** sessionStorage payload after Razorpay verify — shown in payment success dialog */
 export const PAYMENT_CONFIRM_SESSION_KEY = "bsg_payment_confirm";
 
 export type PaymentConfirmClient = {
@@ -8,6 +8,10 @@ export type PaymentConfirmClient = {
   paidInr: number;
   balanceInr: number;
   fullInr: number;
+  packageName?: string;
+  invoiceDownloadUrl?: string;
+  emailSent?: boolean;
+  smsSent?: boolean;
 };
 
 export function storePaymentConfirmation(data: PaymentConfirmClient): void {
@@ -18,7 +22,7 @@ export function storePaymentConfirmation(data: PaymentConfirmClient): void {
   }
 }
 
-/** After /api/razorpay/verify success — drives the instant confirmation banner */
+/** After /api/razorpay/verify success — drives the payment success dialog */
 export function persistPaymentConfirmationFromApi(out: {
   paymentId?: unknown;
   orderId?: unknown;
@@ -26,6 +30,10 @@ export function persistPaymentConfirmationFromApi(out: {
   paidInr?: unknown;
   balanceInr?: unknown;
   fullInr?: unknown;
+  packageName?: unknown;
+  invoiceDownloadUrl?: unknown;
+  emailSent?: unknown;
+  smsSent?: unknown;
 }): void {
   const paymentId = typeof out.paymentId === "string" ? out.paymentId : "";
   const orderId = typeof out.orderId === "string" ? out.orderId : "";
@@ -44,5 +52,13 @@ export function persistPaymentConfirmationFromApi(out: {
     paidInr: Number(out.paidInr) || 0,
     balanceInr: Number(out.balanceInr) || 0,
     fullInr: Number(out.fullInr) || 0,
+    packageName:
+      typeof out.packageName === "string" ? out.packageName : undefined,
+    invoiceDownloadUrl:
+      typeof out.invoiceDownloadUrl === "string"
+        ? out.invoiceDownloadUrl
+        : undefined,
+    emailSent: Boolean(out.emailSent),
+    smsSent: Boolean(out.smsSent),
   });
 }
