@@ -48,12 +48,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
-      { url: "/icons/icon-192.png?v=6", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png?v=6", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon-192.png?v=7", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png?v=7", sizes: "512x512", type: "image/png" },
       { url: "/icon.png", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/apple-touch-icon.png?v=6", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-touch-icon.png?v=7", sizes: "180x180", type: "image/png" },
       { url: "/apple-icon.png", type: "image/png" },
     ],
     shortcut: ["/favicon.ico"],
@@ -99,7 +99,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=6" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=7" />
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
         <link
           rel="preconnect"

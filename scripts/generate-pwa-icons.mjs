@@ -144,14 +144,14 @@ async function emblemOnSky(size, file, fillRatio) {
     .toFile(file);
 }
 
-// Home-screen / apple — logo ~70% of tile; sky-blue ring around it
-await emblemOnSky(192, path.join(out, "icon-192.png"), 0.70);
-await emblemOnSky(512, path.join(out, "icon-512.png"), 0.70);
-await emblemOnSky(180, path.join(out, "apple-touch-icon.png"), 0.70);
-await emblemOnSky(512, path.join("public", "icon-512.png"), 0.70);
+// Home-screen / apple — logo ~72% of tile; sky-blue ring around it
+await emblemOnSky(192, path.join(out, "icon-192.png"), 0.72);
+await emblemOnSky(512, path.join(out, "icon-512.png"), 0.72);
+await emblemOnSky(180, path.join(out, "apple-touch-icon.png"), 0.72);
+await emblemOnSky(512, path.join("public", "icon-512.png"), 0.72);
 
-// Android maskable — logo ~68% so round mask shows clear sky rim + full mark
-await emblemOnSky(192, path.join(out, "maskable-192.png"), 0.68);
-await emblemOnSky(512, path.join(out, "maskable-512.png"), 0.68);
+// Android maskable — logo ~70% with clear sky rim + full mark
+await emblemOnSky(192, path.join(out, "maskable-192.png"), 0.70);
+await emblemOnSky(512, path.join(out, "maskable-512.png"), 0.70);
 
-console.log("PWA icons ready (logo ~68–70% + sky ring):", fs.readdirSync(out));
+console.log("PWA icons ready (logo ~70–72% + sky ring):", fs.readdirSync(out));

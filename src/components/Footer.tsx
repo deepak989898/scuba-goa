@@ -7,8 +7,6 @@ import {
   CONTACT_PHONE_LABEL,
   CONTACT_PHONE_SECOND_HREF,
   CONTACT_PHONE_SECOND_LABEL,
-  MISSED_CALL_DISPLAY_LABEL,
-  MISSED_CALL_TEL_HREF,
   OFFICE_ADDRESS_LINES,
   SITE_NAME,
   whatsappLink,
@@ -148,19 +146,6 @@ export function Footer() {
                 </a>
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-emerald-300" aria-hidden>
-                  ↗
-                </span>
-                <a
-                  href={whatsappLink()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-emerald-300 transition hover:text-emerald-200"
-                >
-                  Message on WhatsApp →
-                </a>
-              </li>
-              <li className="flex items-center gap-3">
                 <span className="text-sky-300" aria-hidden>
                   ☎
                 </span>
@@ -172,30 +157,18 @@ export function Footer() {
                   {CONTACT_PHONE_SECOND_LABEL}
                 </a>
               </li>
-              {MISSED_CALL_TEL_HREF !== CONTACT_PHONE_HREF ? (
-                <li className="flex items-center gap-3">
-                  <span className="text-amber-300" aria-hidden>
-                    ◌
-                  </span>
-                  <a
-                    href={MISSED_CALL_TEL_HREF}
-                    className="transition hover:text-amber-300"
-                  >
-                    <span className="text-slate-400">Missed-call line:</span>{" "}
-                    {MISSED_CALL_DISPLAY_LABEL}
-                  </a>
-                </li>
-              ) : null}
-              <li className="border-l-2 border-amber-400/70 pl-3 text-xs leading-relaxed text-slate-300">
-                <span className="font-semibold text-amber-300">Missed-call callback:</span>{" "}
-                ring once on{" "}
+              <li className="flex items-center gap-3">
+                <span className="text-emerald-300" aria-hidden>
+                  ↗
+                </span>
                 <a
-                  href={MISSED_CALL_TEL_HREF}
-                  className="font-medium text-white transition hover:text-amber-300"
+                  href={whatsappLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-emerald-300 transition hover:text-emerald-200"
                 >
-                  {MISSED_CALL_DISPLAY_LABEL}
-                </a>{" "}
-                — we WhatsApp you back from your caller ID.
+                  Message on WhatsApp →
+                </a>
               </li>
               <li className="flex items-center gap-3">
                 <span className="text-fuchsia-300" aria-hidden>
