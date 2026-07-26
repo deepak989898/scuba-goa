@@ -6,10 +6,12 @@ import { ServiceMediaTabs } from "@/components/ServiceMediaTabs";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { ServiceSubDetailActions } from "@/components/cart/ServiceSubDetailActions";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { serviceDetailImages } from "@/lib/service-images";
 import { getSubServiceFaqs } from "@/lib/service-faqs";
 import {
   assignSubServicePublicSlugs,
+  getSubServiceCartKey,
   isPricedSubService,
 } from "@/lib/service-sub-helpers";
 
@@ -260,24 +262,57 @@ export function ServiceSubLandingView({
                   Other {parent.title} options
                 </h2>
                 <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {siblings.map((sib) => (
-                    <li key={sib.path}>
-                      <Link
-                        href={sib.path}
-                        className="block rounded-xl border border-ocean-100 bg-sand/30 px-3 py-2.5 transition hover:border-ocean-300 hover:bg-white"
+                  {siblings.map((sib) => {
+                    const sibPriced = isPricedSubService(sib.sub);
+                    const sibPrice = sibPriced
+                      ? sib.sub.priceFrom!
+                      : parent.priceFrom;
+                    const sibCartKey = getSubServiceCartKey(sib.sub, sib.index);
+                    const sibTitle = `${parent.title} — ${sib.sub.title}`;
+                    return (
+                      <li
+                        key={sib.path}
+                        className="flex flex-col rounded-xl border border-ocean-100 bg-sand/30 px-3 py-2.5"
                       >
-                        <span className="font-semibold text-ocean-900">
-                          {sib.sub.title}
-                        </span>
-                        {isPricedSubService(sib.sub) &&
-                        sib.sub.priceFrom != null ? (
-                          <span className="mt-0.5 block text-sm font-bold tabular-nums text-ocean-800">
-                            From ₹{sib.sub.priceFrom.toLocaleString("en-IN")}
+                        <Link
+                          href={sib.path}
+                          className="hover:text-cyan-800 hover:underline"
+                        >
+                          <span className="font-semibold text-ocean-900">
+                            {sib.sub.title}
                           </span>
-                        ) : null}
-                      </Link>
-                    </li>
-                  ))}
+                          <span className="mt-0.5 block text-sm font-bold tabular-nums text-ocean-800">
+                            From ₹{sibPrice.toLocaleString("en-IN")}
+                          </span>
+                        </Link>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <AddToCartButton
+                            variant="service"
+                            slug={parent.slug}
+                            title={sibTitle}
+                            priceFrom={sibPrice}
+                            subKey={sibCartKey}
+                            image={parent.image}
+                            duration={parent.duration}
+                            includes={sib.sub.includes ?? parent.includes}
+                            rating={parent.rating}
+                            slotsLeft={sib.sub.slotsLeft ?? parent.slotsLeft}
+                            bookedToday={
+                              sib.sub.bookedToday ?? parent.bookedToday
+                            }
+                            size="sm"
+                            className="flex-1 justify-center"
+                          />
+                          <Link
+                            href={sib.path}
+                            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-ocean-300 bg-white px-3 py-2 text-sm font-bold text-ocean-900 transition hover:bg-ocean-50"
+                          >
+                            Details
+                          </Link>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ) : null}
