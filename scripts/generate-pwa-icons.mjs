@@ -96,31 +96,24 @@ async function extractEmblem() {
 /**
  * @param {number} size
  * @param {string} file
- * @param {number} fillRatio 1 = logo bbox = tile; ~1.28 makes the sun circle fill the Android round mask with a thin sky rim
+ * @param {number} fillRatio logo size vs tile (0.84–0.88 = full logo + thin sky ring on Android round icons)
  */
 async function emblemOnSky(size, file, fillRatio) {
   const emblemSrc = await extractEmblem();
-  const draw = Math.round(size * fillRatio);
+  // Keep under 1 so logo is never cropped — whole mark stays visible
+  const draw = Math.max(8, Math.round(size * Math.min(fillRatio, 0.98)));
 
-  let emblemPipeline = sharp(emblemSrc).resize(draw, draw, {
-    fit: "contain",
-    background: { r: 0, g: 0, b: 0, alpha: 0 },
-    withoutEnlargement: false,
-  });
+  const emblemSized = await sharp(emblemSrc)
+    .resize(draw, draw, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      withoutEnlargement: false,
+    })
+    .png()
+    .toBuffer();
 
-  if (draw > size) {
-    const offset = Math.round((draw - size) / 2);
-    emblemPipeline = emblemPipeline.extract({
-      left: offset,
-      top: offset,
-      width: size,
-      height: size,
-    });
-  }
-
-  const emblemSized = await emblemPipeline.png().toBuffer();
-  const left = draw > size ? 0 : Math.round((size - draw) / 2);
-  const top = draw > size ? 0 : Math.round((size - draw) / 2);
+  const left = Math.round((size - draw) / 2);
+  const top = Math.round((size - draw) / 2);
 
   const emblemBuf = await sharp({
     create: {
@@ -151,14 +144,14 @@ async function emblemOnSky(size, file, fillRatio) {
     .toFile(file);
 }
 
-// Home-screen / apple — logo nearly fills tile; thin sky rim in corners
-await emblemOnSky(192, path.join(out, "icon-192.png"), 1.32);
-await emblemOnSky(512, path.join(out, "icon-512.png"), 1.32);
-await emblemOnSky(180, path.join(out, "apple-touch-icon.png"), 1.32);
-await emblemOnSky(512, path.join("public", "icon-512.png"), 1.32);
+// Home-screen / apple — full logo centered; thin sky-blue ring (~12% padding)
+await emblemOnSky(192, path.join(out, "icon-192.png"), 0.76);
+await emblemOnSky(512, path.join(out, "icon-512.png"), 0.76);
+await emblemOnSky(180, path.join(out, "apple-touch-icon.png"), 0.76);
+await emblemOnSky(512, path.join("public", "icon-512.png"), 0.76);
 
-// Android maskable (what most phones use for the round icon)
-await emblemOnSky(192, path.join(out, "maskable-192.png"), 1.28);
-await emblemOnSky(512, path.join(out, "maskable-512.png"), 1.28);
+// Android maskable — same look on round home-screen icons
+await emblemOnSky(192, path.join(out, "maskable-192.png"), 0.74);
+await emblemOnSky(512, path.join(out, "maskable-512.png"), 0.74);
 
-console.log("PWA icons ready (fuller logo + sky rim):", fs.readdirSync(out));
+console.log("PWA icons ready (full logo + thin sky ring):", fs.readdirSync(out));
