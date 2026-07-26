@@ -717,7 +717,14 @@ export default function AdminServicesPage() {
             </div>
             <p className="mt-1 text-xs text-ocean-700">
               Optional variants on the detail page. Set a price (&gt; 0) to show Add to
-              cart. Optional cart id keeps a stable cart key if you reorder rows.
+              cart. Each sub-service gets its own SEO page from the{" "}
+              <strong>title</strong> (example: title{" "}
+              <code className="text-[11px]">Scuba diving in Grand Island</code> →{" "}
+              <code className="text-[11px]">
+                /services/scuba-diving-in-grand-island
+              </code>
+              ). <strong>Cart id</strong> stays the stable cart/booking key if you
+              reorder rows — it is not the public URL.
             </p>
             <ul className="mt-3 space-y-2.5">
               {subRows.map((row, idx) => (

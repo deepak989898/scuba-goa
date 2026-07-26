@@ -30,6 +30,8 @@ type PackageProps = {
 type Props = (ServiceProps | PackageProps) & {
   className?: string;
   size?: "sm" | "md";
+  /** Homepage mobile: show short "Cart" label under sm breakpoint */
+  compactMobileLabel?: boolean;
 };
 
 /** Shared look for cart CTAs on cards (AddToCartButton + ServiceCardAddToCart). */
@@ -45,6 +47,14 @@ export function AddToCartButton(props: Props) {
   const [flash, setFlash] = useState(false);
   const size = props.size ?? "md";
   const base = addToCartButtonClasses(size);
+  const idleLabel = props.compactMobileLabel ? (
+    <>
+      <span className="sm:hidden">Cart</span>
+      <span className="hidden sm:inline">Add to cart</span>
+    </>
+  ) : (
+    "Add to cart"
+  );
 
   function onClick(e: React.MouseEvent) {
     e.preventDefault();
@@ -83,7 +93,7 @@ export function AddToCartButton(props: Props) {
         flash ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-white" : ""
       }`}
     >
-      {flash ? "Added ✓" : "Add to cart"}
+      {flash ? "Added ✓" : idleLabel}
     </button>
   );
 }

@@ -1,4 +1,4 @@
-import type { ServiceItem } from "@/data/services";
+import type { ServiceItem, SubServiceItem } from "@/data/services";
 
 export type ServiceFaq = {
   question: string;
@@ -204,4 +204,53 @@ export function getServiceFaqs(service: ServiceItem): ServiceFaq[] {
         "Select an option and add it to your cart, or contact the team on WhatsApp. Check the date, guest details, inclusions and final price before payment.",
     },
   ];
+}
+
+/** Parent FAQs plus option-specific Q&As for sub-service landing pages. */
+export function getSubServiceFaqs(
+  parent: ServiceItem,
+  sub: SubServiceItem,
+): ServiceFaq[] {
+  const includes = (sub.includes?.length ? sub.includes : parent.includes).filter(
+    Boolean,
+  );
+  const includedText = includes.join(", ");
+  const price =
+    sub.priceFrom != null &&
+    Number.isFinite(sub.priceFrom) &&
+    sub.priceFrom > 0
+      ? sub.priceFrom
+      : parent.priceFrom;
+
+  const specific: ServiceFaq[] = [
+    {
+      question: `What is ${sub.title}?`,
+      answer: sub.description?.trim()
+        ? `${sub.description.trim().slice(0, 420)}${
+            sub.description.trim().length > 420 ? "…" : ""
+          }`
+        : `${sub.title} is a booking option under ${parent.title} in Goa. Check inclusions and the live price before you confirm.`,
+    },
+    {
+      question: `How much does ${sub.title} cost?`,
+      answer: `This option currently starts from ₹${price.toLocaleString("en-IN")}. The final amount depends on date, group size, availability and any add-ons.`,
+    },
+    {
+      question: `What is included in ${sub.title}?`,
+      answer: includedText
+        ? `Listed inclusions for this option: ${includedText}. Confirm the final package before payment.`
+        : `Inclusions follow the ${parent.title} package you select. Review the booking summary before payment.`,
+    },
+  ];
+
+  // Parent FAQs give topical depth; keep unique questions only.
+  const parentFaqs = getServiceFaqs(parent);
+  const seen = new Set(specific.map((f) => f.question.toLowerCase()));
+  for (const faq of parentFaqs) {
+    if (seen.has(faq.question.toLowerCase())) continue;
+    seen.add(faq.question.toLowerCase());
+    specific.push(faq);
+    if (specific.length >= 8) break;
+  }
+  return specific;
 }

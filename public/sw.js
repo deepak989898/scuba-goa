@@ -1,5 +1,5 @@
-/* Book Scuba Goa PWA — bsg-pwa-v2 */
-const CACHE = "bsg-pwa-v2";
+/* Book Scuba Goa PWA — bsg-pwa-v3 */
+const CACHE = "bsg-pwa-v3";
 const PRECACHE = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",

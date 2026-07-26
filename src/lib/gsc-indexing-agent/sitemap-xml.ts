@@ -3,6 +3,8 @@ import { fallbackServices } from "@/data/services";
 import { BLOG_PERMANENT_REDIRECTS } from "@/lib/blog-redirects";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
+import { getAllServicesServer } from "@/lib/get-services-server";
+import { listSubServicePaths } from "@/lib/service-sub-helpers";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { SITE_URL } from "@/lib/constants";
 
@@ -53,10 +55,34 @@ export async function buildSegmentEntries(
   }
 
   if (segment === "services") {
-    const entries: Entry[] = fallbackServices.map((s) => ({
-      loc: `${base}/services/${s.slug}`,
-      lastmod: "2026-04-03",
-    }));
+    let services = fallbackServices;
+    try {
+      const live = await getAllServicesServer();
+      if (live.length > 0) services = live;
+    } catch {
+      /* keep fallback */
+    }
+    const seen = new Set<string>();
+    const entries: Entry[] = [];
+    for (const s of services) {
+      if (!s.slug || s.active === false) continue;
+      const loc = `${base}/services/${s.slug}`;
+      if (seen.has(loc)) continue;
+      seen.add(loc);
+      entries.push({ loc, lastmod: "2026-04-03" });
+    }
+    for (const s of fallbackServices) {
+      const loc = `${base}/services/${s.slug}`;
+      if (seen.has(loc)) continue;
+      seen.add(loc);
+      entries.push({ loc, lastmod: "2026-04-03" });
+    }
+    for (const sub of listSubServicePaths(services)) {
+      entries.push({
+        loc: `${base}${sub.path}`,
+        lastmod: "2026-07-25",
+      });
+    }
     const packages = await getAllPackagesServer();
     for (const p of packages) {
       entries.push({ loc: `${base}/packages/${p.id}`, lastmod: "2026-06-12" });

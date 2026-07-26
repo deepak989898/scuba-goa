@@ -5,6 +5,8 @@ import { SITE_URL } from "@/lib/constants";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
+import { getAllServicesServer } from "@/lib/get-services-server";
+import { listSubServicePaths } from "@/lib/service-sub-helpers";
 import { BLOG_PERMANENT_REDIRECTS } from "@/lib/blog-redirects";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -47,12 +49,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       path === "/blog" || path === "/guides" ? "weekly" : "daily",
     priority: path === "" ? 1 : path === "/guides" ? 0.78 : 0.8,
   }));
-  for (const s of fallbackServices) {
+  let servicesForSitemap = fallbackServices;
+  try {
+    const live = await getAllServicesServer();
+    if (live.length > 0) servicesForSitemap = live;
+  } catch {
+    /* keep fallback */
+  }
+  const serviceSlugSet = new Set<string>();
+  for (const s of servicesForSitemap) {
+    if (!s.slug || s.active === false) continue;
+    serviceSlugSet.add(s.slug);
     entries.push({
       url: `${base}/services/${s.slug}`,
       lastModified: new Date("2026-04-03"),
       changeFrequency: "weekly",
       priority: 0.85,
+    });
+  }
+  // Ensure static fallback parents not in live list still appear.
+  for (const s of fallbackServices) {
+    if (serviceSlugSet.has(s.slug)) continue;
+    entries.push({
+      url: `${base}/services/${s.slug}`,
+      lastModified: new Date("2026-04-03"),
+      changeFrequency: "weekly",
+      priority: 0.85,
+    });
+  }
+  for (const sub of listSubServicePaths(servicesForSitemap)) {
+    entries.push({
+      url: `${base}${sub.path}`,
+      lastModified: new Date("2026-07-25"),
+      changeFrequency: "weekly",
+      priority: 0.82,
     });
   }
   const packages = await getAllPackagesServer();

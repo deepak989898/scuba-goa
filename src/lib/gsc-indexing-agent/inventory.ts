@@ -4,6 +4,8 @@ import { fallbackServices } from "@/data/services";
 import { BLOG_PERMANENT_REDIRECTS } from "@/lib/blog-redirects";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
+import { getAllServicesServer } from "@/lib/get-services-server";
+import { listSubServicePaths } from "@/lib/service-sub-helpers";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import {
   isExcludedPath,
@@ -123,13 +125,46 @@ export async function runUrlInventoryDiscovery(): Promise<{
     });
   }
 
-  for (const s of fallbackServices) {
+  let servicesForInventory = fallbackServices;
+  try {
+    const live = await getAllServicesServer();
+    if (live.length > 0) servicesForInventory = live;
+  } catch {
+    /* keep fallback */
+  }
+  const seenServicePaths = new Set<string>();
+  for (const s of servicesForInventory) {
+    if (!s.slug || s.active === false) continue;
+    const path = `/services/${s.slug}`;
+    if (seenServicePaths.has(path)) continue;
+    seenServicePaths.add(path);
     items.push({
-      path: `/services/${s.slug}`,
+      path,
       pageType: "service",
       contentId: s.slug,
       publishedAt: null,
       contentUpdatedAt: "2026-04-03",
+    });
+  }
+  for (const s of fallbackServices) {
+    const path = `/services/${s.slug}`;
+    if (seenServicePaths.has(path)) continue;
+    seenServicePaths.add(path);
+    items.push({
+      path,
+      pageType: "service",
+      contentId: s.slug,
+      publishedAt: null,
+      contentUpdatedAt: "2026-04-03",
+    });
+  }
+  for (const sub of listSubServicePaths(servicesForInventory)) {
+    items.push({
+      path: sub.path,
+      pageType: "service",
+      contentId: sub.subSlug,
+      publishedAt: null,
+      contentUpdatedAt: "2026-07-25",
     });
   }
 

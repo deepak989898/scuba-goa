@@ -1,6 +1,6 @@
-/** Optional add-on or variant shown on /services/[slug] */
+/** Optional add-on or variant — detail list + SEO page at /services/{title-slug} */
 export type SubServiceItem = {
-  /** Stable cart key; if omitted, index is used */
+  /** Stable cart/booking key; public URL uses slugified title instead */
   id?: string;
   title: string;
   description?: string;

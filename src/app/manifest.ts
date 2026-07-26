@@ -11,8 +11,9 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "any",
-    background_color: "#0c4a6e",
-    theme_color: "#0c4a6e",
+    // Matches generated PWA icon sky-blue tile (see scripts/generate-pwa-icons.mjs)
+    background_color: "#38bdf8",
+    theme_color: "#38bdf8",
     lang: "en-IN",
     dir: "ltr",
     categories: ["travel", "lifestyle", "sports"],

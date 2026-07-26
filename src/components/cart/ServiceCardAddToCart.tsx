@@ -23,11 +23,18 @@ type Props = {
   service: ServiceItem;
   size?: "sm" | "md";
   className?: string;
+  /** Homepage 2-col mobile: shorter label so Cart + Details stay one row */
+  compactMobileLabel?: boolean;
 };
 
 type MenuPos = { top: number; left: number; minWidth: number };
 
-export function ServiceCardAddToCart({ service: s, size = "md", className }: Props) {
+export function ServiceCardAddToCart({
+  service: s,
+  size = "md",
+  className,
+  compactMobileLabel = false,
+}: Props) {
   const { addService } = useCart();
   const [open, setOpen] = useState(false);
   const [flash, setFlash] = useState(false);
@@ -94,6 +101,15 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const idleLabel = compactMobileLabel ? (
+    <>
+      <span className="sm:hidden">Cart ▾</span>
+      <span className="hidden sm:inline">Add to cart ▾</span>
+    </>
+  ) : (
+    "Add to cart ▾"
+  );
+
   if (!hasDropdown) {
     return (
       <AddToCartButton
@@ -109,6 +125,7 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
         bookedToday={s.bookedToday}
         size={size}
         className={className}
+        compactMobileLabel={compactMobileLabel}
       />
     );
   }
@@ -178,7 +195,9 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
   ) : null;
 
   return (
-    <div className={`relative inline-block ${className ?? ""}`}>
+    <div
+      className={`relative ${className?.includes("w-full") ? "block" : "inline-block"} ${className ?? ""}`}
+    >
       <button
         ref={btnRef}
         type="button"
@@ -193,7 +212,7 @@ export function ServiceCardAddToCart({ service: s, size = "md", className }: Pro
           setOpen((o) => !o);
         }}
       >
-        {flash ? "Added ✓" : "Add to cart ▾"}
+        {flash ? "Added ✓" : idleLabel}
       </button>
       {menu && typeof document !== "undefined"
         ? createPortal(menu, document.body)
