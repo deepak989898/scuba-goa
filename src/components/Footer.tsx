@@ -64,54 +64,57 @@ export function Footer() {
               —book fast with WhatsApp or secure online pay.
             </p>
           </div>
-          <div className="lg:col-span-2">
-            <p className="text-sm font-bold uppercase tracking-[0.14em] text-cyan-300">
-              Quick links
-            </p>
-            <div className="mt-2 h-0.5 w-10 rounded-full bg-gradient-to-r from-cyan-400 to-sky-300" />
-            <ul className="mt-4 space-y-1 text-sm text-slate-200">
-              {quick.map((q) => (
-                <li key={q.href}>
-                  <Link
-                    href={q.href}
-                    className="group inline-flex min-h-8 items-center gap-2 transition hover:translate-x-1 hover:text-cyan-300"
-                  >
-                    <span
-                      className="text-cyan-500 transition group-hover:text-cyan-300"
-                      aria-hidden
+          {/* Mobile: Quick links | Legal side-by-side; md+ rejoin parent grid */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0 md:contents">
+            <div className="min-w-0 lg:col-span-2">
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-cyan-300">
+                Quick links
+              </p>
+              <div className="mt-2 h-0.5 w-10 rounded-full bg-gradient-to-r from-cyan-400 to-sky-300" />
+              <ul className="mt-4 space-y-1 text-sm text-slate-200">
+                {quick.map((q) => (
+                  <li key={q.href}>
+                    <Link
+                      href={q.href}
+                      className="group inline-flex min-h-8 items-center gap-2 transition hover:translate-x-1 hover:text-cyan-300"
                     >
-                      ›
-                    </span>
-                    {q.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+                      <span
+                        className="text-cyan-500 transition group-hover:text-cyan-300"
+                        aria-hidden
+                      >
+                        ›
+                      </span>
+                      {q.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          <div className="lg:col-span-2">
-            <p className="text-sm font-bold uppercase tracking-[0.14em] text-amber-300">
-              Legal
-            </p>
-            <div className="mt-2 h-0.5 w-10 rounded-full bg-gradient-to-r from-amber-400 to-yellow-200" />
-            <ul className="mt-4 space-y-1 text-sm text-slate-200">
-              {legal.map((q) => (
-                <li key={q.href}>
-                  <Link
-                    href={q.href}
-                    className="group inline-flex min-h-8 items-center gap-2 transition hover:translate-x-1 hover:text-amber-300"
-                  >
-                    <span
-                      className="text-amber-500 transition group-hover:text-amber-300"
-                      aria-hidden
+            <div className="min-w-0 lg:col-span-2">
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-amber-300">
+                Legal
+              </p>
+              <div className="mt-2 h-0.5 w-10 rounded-full bg-gradient-to-r from-amber-400 to-yellow-200" />
+              <ul className="mt-4 space-y-1 text-sm text-slate-200">
+                {legal.map((q) => (
+                  <li key={q.href}>
+                    <Link
+                      href={q.href}
+                      className="group inline-flex min-h-8 items-center gap-2 transition hover:translate-x-1 hover:text-amber-300"
                     >
-                      ›
-                    </span>
-                    {q.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                      <span
+                        className="text-amber-500 transition group-hover:text-amber-300"
+                        aria-hidden
+                      >
+                        ›
+                      </span>
+                      {q.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           <div className="lg:col-span-5 lg:pl-3">

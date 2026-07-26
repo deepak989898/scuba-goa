@@ -1,12 +1,6 @@
 import type { ServiceItem } from "@/data/services";
 import Link from "next/link";
-
-function detailParagraphs(text: string): string[] {
-  return text
-    .split(/\n\s*\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
+import { ServiceDetailProse } from "@/components/ServiceDetailProse";
 
 const SCUBA_FALLBACK_CONTENT = `Scuba diving in Goa is one of the easiest ways for beginners and families to experience the Arabian Sea underwater. You do not need to be an expert swimmer to try an introductory dive with a certified instructor.
 
@@ -35,18 +29,9 @@ export function ServiceDetailSections({ service: s }: { service: ServiceItem }) 
     );
   }
 
-  const paras = detailParagraphs(body);
-
   return (
     <div className="space-y-2.5">
-      {paras.map((p, i) => (
-        <p
-          key={i}
-          className="text-sm leading-relaxed text-ocean-800 sm:text-[15px] whitespace-pre-line"
-        >
-          {p}
-        </p>
-      ))}
+      <ServiceDetailProse text={body} className="space-y-2.5" />
 
       {s.slug === "scuba-diving" ? (
         <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 sm:p-3.5">

@@ -305,7 +305,7 @@ export function AiChatbot() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label="Ask Packages"
-        className={`fixed right-4 z-[55] flex h-12 items-center gap-2 whitespace-nowrap rounded-full border border-ocean-200 bg-white px-3 text-xs font-semibold text-ocean-800 shadow-lg sm:px-4 sm:text-sm md:bottom-8 md:right-[5.5rem] ${helpFabBottom}`}
+        className={`fixed right-4 z-[55] flex h-12 items-center gap-2 whitespace-nowrap rounded-full border border-orange-600 bg-orange-500 px-3 text-xs font-semibold text-white shadow-lg sm:px-4 sm:text-sm md:bottom-8 md:right-[5.5rem] md:border-ocean-200 md:bg-white md:text-ocean-800 ${helpFabBottom}`}
       >
         Ask Packages
       </button>

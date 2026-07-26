@@ -7,6 +7,7 @@ import { SocialShareButtons } from "@/components/SocialShareButtons";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { ServiceSubDetailActions } from "@/components/cart/ServiceSubDetailActions";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { ServiceDetailProse } from "@/components/ServiceDetailProse";
 import { serviceDetailImages } from "@/lib/service-images";
 import { getSubServiceFaqs } from "@/lib/service-faqs";
 import {
@@ -206,9 +207,10 @@ export function ServiceSubLandingView({
 
           <div className="pt-3 sm:pt-4">
             {sub.description?.trim() ? (
-              <div className="prose prose-ocean max-w-none text-sm leading-relaxed text-ocean-800 sm:text-base">
-                <p className="whitespace-pre-line">{sub.description.trim()}</p>
-              </div>
+              <ServiceDetailProse
+                text={sub.description}
+                className="space-y-2.5"
+              />
             ) : null}
 
             {parentExcerpt ? (
@@ -231,7 +233,7 @@ export function ServiceSubLandingView({
 
             {includes.length > 0 ? (
               <section className="mt-5">
-                <h2 className="font-display text-lg font-bold text-ocean-900">
+                <h2 className="font-display text-lg font-extrabold tracking-wide text-emerald-600">
                   What&apos;s included
                 </h2>
                 <ul className="mt-2 flex flex-wrap gap-1.5">
