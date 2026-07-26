@@ -11,33 +11,33 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "any",
-    // Matches generated PWA icon sky-blue tile (see scripts/generate-pwa-icons.mjs)
-    background_color: "#38bdf8",
-    theme_color: "#38bdf8",
+    // Matches generated PWA icon sky tile (see scripts/generate-pwa-icons.mjs)
+    background_color: "#0ea5e9",
+    theme_color: "#0ea5e9",
     lang: "en-IN",
     dir: "ltr",
     categories: ["travel", "lifestyle", "sports"],
     icons: [
       {
-        src: "/icons/icon-192.png",
+        src: "/icons/icon-192.png?v=4",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/icon-512.png?v=4",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/maskable-192.png",
+        src: "/icons/maskable-192.png?v=4",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icons/maskable-512.png",
+        src: "/icons/maskable-512.png?v=4",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

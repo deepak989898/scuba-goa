@@ -2,8 +2,9 @@
  * Regenerates public/icons/* from the brand logo.
  * Run: npm run generate:pwa-icons
  *
- * Wide wordmark → crop left circular emblem, trim, then scale large on sky-blue
- * so the home-screen icon fills the tile (not a tiny sunk-in mark).
+ * Android home screens mask icons to a circle. A small circular logo on a big
+ * sky tile looks “sunken”. We scale the emblem so the logo circle almost fills
+ * the mask, with only a thin attractive sky-blue rim.
  */
 import sharp from "sharp";
 import fs from "fs";
@@ -16,13 +17,30 @@ const srcLogo = "public/book-scuba-goa-logo-transparent.png";
 const srcLogoFallback = "public/book-scuba-goa-logo.png";
 const srcAppIcon = "src/app/icon.png";
 
-/** Tailwind sky-400 */
-const SKY = { r: 56, g: 189, b: 248, alpha: 1 };
+/** Soft sky (center) → deeper cyan (edge) — reads clearly as a blue tile */
+const SKY_CENTER = "#7dd3fc"; // sky-300
+const SKY_EDGE = "#0284c7"; // sky-600
+const SKY_FLAT = { r: 14, g: 165, b: 233, alpha: 1 }; // sky-500 fallback
 
 function resolveLogoPath() {
   if (fs.existsSync(srcLogo)) return srcLogo;
   if (fs.existsSync(srcLogoFallback)) return srcLogoFallback;
   return srcAppIcon;
+}
+
+async function skyBackground(size) {
+  const svg = `
+    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="sky" cx="50%" cy="42%" r="72%">
+          <stop offset="0%" stop-color="${SKY_CENTER}"/>
+          <stop offset="70%" stop-color="#38bdf8"/>
+          <stop offset="100%" stop-color="${SKY_EDGE}"/>
+        </radialGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#sky)"/>
+    </svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 /** Left circular mark + alpha bbox crop (tight). */
@@ -57,7 +75,6 @@ async function extractEmblem() {
     }
   }
 
-  // Fallback if empty
   if (maxX <= minX || maxY <= minY) {
     return sharp(logoPath)
       .extract({ left, top: 0, width: side, height: h })
@@ -79,16 +96,15 @@ async function extractEmblem() {
 /**
  * @param {number} size
  * @param {string} file
- * @param {number} fillRatio scale vs tile; >1 bleeds past edges so the sun circle fills the icon
+ * @param {number} fillRatio 1 = logo bbox = tile; ~1.28 makes the sun circle fill the Android round mask with a thin sky rim
  */
 async function emblemOnSky(size, file, fillRatio) {
   const emblemSrc = await extractEmblem();
   const draw = Math.round(size * fillRatio);
 
-  // cover = fill the square (palm may clip slightly; sun/diver stay dominant)
   let emblemPipeline = sharp(emblemSrc).resize(draw, draw, {
-    fit: "cover",
-    position: "centre",
+    fit: "contain",
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
     withoutEnlargement: false,
   });
 
@@ -118,29 +134,31 @@ async function emblemOnSky(size, file, fillRatio) {
     .png()
     .toBuffer();
 
-  // No dark outer shadow — that made the mark look recessed / sunk in
-  await sharp({
-    create: { width: size, height: size, channels: 4, background: SKY },
-  })
+  let bg;
+  try {
+    bg = await skyBackground(size);
+  } catch {
+    bg = await sharp({
+      create: { width: size, height: size, channels: 4, background: SKY_FLAT },
+    })
+      .png()
+      .toBuffer();
+  }
+
+  await sharp(bg)
     .composite([{ input: emblemBuf, left: 0, top: 0 }])
     .png()
     .toFile(file);
 }
 
-// Home-screen — sun circle fills the tile (corners of square stay sky blue)
-await emblemOnSky(192, path.join(out, "icon-192.png"), 1.22);
-await emblemOnSky(512, path.join(out, "icon-512.png"), 1.22);
-await emblemOnSky(180, path.join(out, "apple-touch-icon.png"), 1.22);
-await emblemOnSky(512, path.join("public", "icon-512.png"), 1.22);
+// Home-screen / apple — logo nearly fills tile; thin sky rim in corners
+await emblemOnSky(192, path.join(out, "icon-192.png"), 1.32);
+await emblemOnSky(512, path.join(out, "icon-512.png"), 1.32);
+await emblemOnSky(180, path.join(out, "apple-touch-icon.png"), 1.32);
+await emblemOnSky(512, path.join("public", "icon-512.png"), 1.32);
 
-// Android maskable — slightly smaller for adaptive safe zone
-await emblemOnSky(192, path.join(out, "maskable-192.png"), 1.0);
-await emblemOnSky(512, path.join(out, "maskable-512.png"), 1.0);
+// Android maskable (what most phones use for the round icon)
+await emblemOnSky(192, path.join(out, "maskable-192.png"), 1.28);
+await emblemOnSky(512, path.join(out, "maskable-512.png"), 1.28);
 
-// Clean debug artifacts if present
-for (const f of ["_debug-emblem.png", "_debug-fit.png", "_debug-large.png"]) {
-  const p = path.join(out, f);
-  if (fs.existsSync(p)) fs.unlinkSync(p);
-}
-
-console.log("PWA icons ready (sky blue + large emblem):", fs.readdirSync(out));
+console.log("PWA icons ready (fuller logo + sky rim):", fs.readdirSync(out));
