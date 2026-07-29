@@ -24,7 +24,22 @@ assert.match(
   /destination:\s*"\/blog\/top-5-scuba-diving-spots-in-goa"/,
   "clean slug destination missing",
 );
-assert.match(redirects, /\/sitemap\/xml/, "sitemap/xml redirect missing");
+assert.match(redirects, /\/services\/pubs/, "pubs 404 redirect missing");
+assert.match(redirects, /\/services\/disco/, "disco 404 redirect missing");
+
+const diving = read("src/data/blog/posts-diving.ts");
+assert.match(
+  diving,
+  /top5ScubaSpotsArticle/,
+  "top-5 clean slug must be published as static post",
+);
+
+const constants = read("src/lib/constants.ts");
+assert.match(
+  constants,
+  /www\.bookscubagoa\.com/,
+  "SITE_URL default must be www (matches Vercel primary host)",
+);
 
 const nextConfig = read("next.config.ts");
 assert.match(nextConfig, /getAllPermanentRedirects/, "next.config must use redirect map");

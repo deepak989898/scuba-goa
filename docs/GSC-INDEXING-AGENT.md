@@ -19,7 +19,7 @@ Production agent for **bookscubagoa.com** that monitors index coverage and ranki
 
 ```env
 # Existing (keep)
-GOOGLE_SEARCH_CONSOLE_SITE_URL=https://bookscubagoa.com/
+GOOGLE_SEARCH_CONSOLE_SITE_URL=https://www.bookscubagoa.com/
 GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON=...   # optional fallback for Analytics
 FIREBASE_SERVICE_ACCOUNT_KEY=...
 CRON_SECRET=...
@@ -28,17 +28,28 @@ OPENAI_API_KEY=...   # optional; not required for core monitor
 # New — GSC OAuth (can reuse Google Business OAuth client)
 GOOGLE_GSC_CLIENT_ID=
 GOOGLE_GSC_CLIENT_SECRET=
-GOOGLE_GSC_REDIRECT_URI=https://bookscubagoa.com/api/admin/gsc-agent/oauth-callback
+GOOGLE_GSC_REDIRECT_URI=https://www.bookscubagoa.com/api/admin/gsc-agent/oauth-callback
 GOOGLE_TOKEN_ENCRYPTION_KEY=               # min 16 chars; used to encrypt refresh tokens
 ```
 
 If `GOOGLE_GSC_*` is empty, the agent falls back to `GOOGLE_BUSINESS_CLIENT_ID` / `SECRET`.
 
+### Canonical host (critical for indexing)
+
+Production prefers **www** (`bookscubagoa.com` → 308 → `www.bookscubagoa.com`).
+
+Set both of these to the **www** URL so sitemap, robots, and canonicals do not redirect:
+
+- `NEXT_PUBLIC_SITE_URL=https://www.bookscubagoa.com`
+- `GOOGLE_SEARCH_CONSOLE_SITE_URL=https://www.bookscubagoa.com/`
+
+Prefer a **Domain** property in Search Console (`bookscubagoa.com`) covering apex + www, or use the www URL-prefix property consistently.
+
 ### OAuth redirect URL (Google Cloud Console)
 
 Add authorized redirect URI:
 
-`https://bookscubagoa.com/api/admin/gsc-agent/oauth-callback`
+`https://www.bookscubagoa.com/api/admin/gsc-agent/oauth-callback`
 
 Scopes requested:
 

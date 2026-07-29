@@ -1,6 +1,7 @@
 export const SITE_NAME = "Book Scuba Goa";
+/** Canonical public host — must match Vercel primary (www). Apex 308s to www. */
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.com";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bookscubagoa.com";
 
 /** Primary search phrases for on-page copy, metadata, and blog strategy */
 export const PRIMARY_SEO_KEYWORDS = [

@@ -1,12 +1,14 @@
 import { createHash } from "crypto";
 import { blogPosts } from "@/data/blog-posts";
-import { fallbackServices } from "@/data/services";
-import { BLOG_PERMANENT_REDIRECTS } from "@/lib/blog-redirects";
+import {
+  BLOG_PERMANENT_REDIRECTS,
+  SITE_PERMANENT_REDIRECTS,
+} from "@/lib/blog-redirects";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
-import { getAllServicesServer } from "@/lib/get-services-server";
 import { listSubServicePaths } from "@/lib/service-sub-helpers";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+import { getServicesForPublicSeo } from "@/lib/services-for-seo";
 import {
   isExcludedPath,
   normalizeSiteUrl,
@@ -98,7 +100,11 @@ export async function runUrlInventoryDiscovery(): Promise<{
   discovered: number;
   upserted: number;
 }> {
-  const redirected = new Set(BLOG_PERMANENT_REDIRECTS.map((r) => r.source));
+  const redirected = new Set(
+    [...BLOG_PERMANENT_REDIRECTS, ...SITE_PERMANENT_REDIRECTS].map(
+      (r) => r.source,
+    ),
+  );
   const items: Discovered[] = [];
 
   const staticPaths = [
@@ -125,30 +131,11 @@ export async function runUrlInventoryDiscovery(): Promise<{
     });
   }
 
-  let servicesForInventory = fallbackServices;
-  try {
-    const live = await getAllServicesServer();
-    if (live.length > 0) servicesForInventory = live;
-  } catch {
-    /* keep fallback */
-  }
+  const servicesForInventory = await getServicesForPublicSeo();
   const seenServicePaths = new Set<string>();
   for (const s of servicesForInventory) {
-    if (!s.slug || s.active === false) continue;
     const path = `/services/${s.slug}`;
-    if (seenServicePaths.has(path)) continue;
-    seenServicePaths.add(path);
-    items.push({
-      path,
-      pageType: "service",
-      contentId: s.slug,
-      publishedAt: null,
-      contentUpdatedAt: "2026-04-03",
-    });
-  }
-  for (const s of fallbackServices) {
-    const path = `/services/${s.slug}`;
-    if (seenServicePaths.has(path)) continue;
+    if (redirected.has(path) || seenServicePaths.has(path)) continue;
     seenServicePaths.add(path);
     items.push({
       path,
@@ -159,6 +146,7 @@ export async function runUrlInventoryDiscovery(): Promise<{
     });
   }
   for (const sub of listSubServicePaths(servicesForInventory)) {
+    if (redirected.has(sub.path)) continue;
     items.push({
       path: sub.path,
       pageType: "service",

@@ -15,7 +15,7 @@ export async function fetchSearchConsoleDailySnapshot(
 }> {
   const siteUrl =
     process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim() ||
-    `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.com").replace(/\/$/, "")}/`;
+    `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bookscubagoa.com").replace(/\/$/, "")}/`;
 
   const token = await getGoogleApiAccessToken(SCOPES, "search-console");
   const clientEmail = getGoogleServiceAccountEmail("search-console");

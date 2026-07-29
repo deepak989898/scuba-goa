@@ -1,4 +1,5 @@
 import type { BlogPost } from "./post-types";
+import { top5ScubaSpotsArticle } from "./top5-scuba-spots-firestore";
 
 export const divingPosts: BlogPost[] = [
   {
@@ -569,5 +570,19 @@ Pick professionalism over hype. Ask hard questions. Choose weather-smart schedul
           "Packages differ. Verify whether video is included, optional, or not offered, and confirm deliverables before you pay.",
       },
     ],
+  },
+  // Keeps /blog/top-5-scuba-diving-spots-in-goa as a live 200 (old -6 slug redirects here)
+  {
+    slug: top5ScubaSpotsArticle.slug,
+    title: top5ScubaSpotsArticle.title,
+    excerpt: top5ScubaSpotsArticle.excerpt,
+    date: "2026-04-09",
+    updatedAt: "2026-07-29",
+    readTime: top5ScubaSpotsArticle.readTime.replace(" read", ""),
+    metaTitle: top5ScubaSpotsArticle.metaTitle,
+    imageAlt: top5ScubaSpotsArticle.featuredImageAlt,
+    keywords: top5ScubaSpotsArticle.keywords,
+    faqs: top5ScubaSpotsArticle.faqs,
+    content: top5ScubaSpotsArticle.content,
   },
 ];

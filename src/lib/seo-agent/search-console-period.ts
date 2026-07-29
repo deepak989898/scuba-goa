@@ -18,7 +18,7 @@ type GscResponse = {
 function siteUrlFromEnv(): string {
   return (
     process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim() ||
-    `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://bookscubagoa.com").replace(/\/$/, "")}/`
+    `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bookscubagoa.com").replace(/\/$/, "")}/`
   );
 }
 

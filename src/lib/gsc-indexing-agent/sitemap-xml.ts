@@ -1,11 +1,13 @@
 import { blogPosts } from "@/data/blog-posts";
-import { fallbackServices } from "@/data/services";
-import { BLOG_PERMANENT_REDIRECTS } from "@/lib/blog-redirects";
+import {
+  BLOG_PERMANENT_REDIRECTS,
+  SITE_PERMANENT_REDIRECTS,
+} from "@/lib/blog-redirects";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
-import { getAllServicesServer } from "@/lib/get-services-server";
 import { listSubServicePaths } from "@/lib/service-sub-helpers";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+import { getServicesForPublicSeo } from "@/lib/services-for-seo";
 import { SITE_URL } from "@/lib/constants";
 
 type Entry = { loc: string; lastmod?: string };
@@ -34,7 +36,11 @@ export async function buildSegmentEntries(
   segment: "blog" | "services" | "static",
 ): Promise<Entry[]> {
   const base = SITE_URL.replace(/\/$/, "");
-  const redirected = new Set(BLOG_PERMANENT_REDIRECTS.map((r) => r.source));
+  const redirected = new Set(
+    [...BLOG_PERMANENT_REDIRECTS, ...SITE_PERMANENT_REDIRECTS].map(
+      (r) => r.source,
+    ),
+  );
 
   if (segment === "static") {
     const paths = [
@@ -51,33 +57,25 @@ export async function buildSegmentEntries(
       "/terms-and-conditions",
       "/refund-cancellation",
     ];
-    return paths.map((p) => ({ loc: `${base}${p === "/" ? "" : p}` || `${base}/` }));
+    return paths.map((p) => ({
+      loc: `${base}${p === "/" ? "" : p}` || `${base}/`,
+    }));
   }
 
   if (segment === "services") {
-    let services = fallbackServices;
-    try {
-      const live = await getAllServicesServer();
-      if (live.length > 0) services = live;
-    } catch {
-      /* keep fallback */
-    }
+    const services = await getServicesForPublicSeo();
     const seen = new Set<string>();
     const entries: Entry[] = [];
     for (const s of services) {
-      if (!s.slug || s.active === false) continue;
-      const loc = `${base}/services/${s.slug}`;
-      if (seen.has(loc)) continue;
-      seen.add(loc);
-      entries.push({ loc, lastmod: "2026-04-03" });
-    }
-    for (const s of fallbackServices) {
-      const loc = `${base}/services/${s.slug}`;
+      const path = `/services/${s.slug}`;
+      if (redirected.has(path)) continue;
+      const loc = `${base}${path}`;
       if (seen.has(loc)) continue;
       seen.add(loc);
       entries.push({ loc, lastmod: "2026-04-03" });
     }
     for (const sub of listSubServicePaths(services)) {
+      if (redirected.has(sub.path)) continue;
       entries.push({
         loc: `${base}${sub.path}`,
         lastmod: "2026-07-25",

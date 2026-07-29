@@ -24,6 +24,15 @@ export const SITE_PERMANENT_REDIRECTS: BlogRedirect[] = [
     source: "/sitemap/xml",
     destination: "/sitemap.xml",
   },
+  // Retired nightlife pages (404 in GSC) → live sibling
+  {
+    source: "/services/pubs",
+    destination: "/services/night-club",
+  },
+  {
+    source: "/services/disco",
+    destination: "/services/night-club",
+  },
 ];
 
 export function getAllPermanentRedirects(): BlogRedirect[] {

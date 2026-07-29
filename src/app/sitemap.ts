@@ -1,18 +1,22 @@
 import type { MetadataRoute } from "next";
 import { blogPosts } from "@/data/blog-posts";
-import { fallbackServices } from "@/data/services";
 import { SITE_URL } from "@/lib/constants";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
-import { getAllServicesServer } from "@/lib/get-services-server";
 import { listSubServicePaths } from "@/lib/service-sub-helpers";
-import { BLOG_PERMANENT_REDIRECTS } from "@/lib/blog-redirects";
+import {
+  BLOG_PERMANENT_REDIRECTS,
+  SITE_PERMANENT_REDIRECTS,
+} from "@/lib/blog-redirects";
+import { getServicesForPublicSeo } from "@/lib/services-for-seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
-  const redirectedBlogPaths = new Set(
-    BLOG_PERMANENT_REDIRECTS.map((r) => r.source),
+  const redirectedPaths = new Set(
+    [...BLOG_PERMANENT_REDIRECTS, ...SITE_PERMANENT_REDIRECTS].map(
+      (r) => r.source,
+    ),
   );
   const staticPaths = [
     "",
@@ -49,35 +53,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       path === "/blog" || path === "/guides" ? "weekly" : "daily",
     priority: path === "" ? 1 : path === "/guides" ? 0.78 : 0.8,
   }));
-  let servicesForSitemap = fallbackServices;
-  try {
-    const live = await getAllServicesServer();
-    if (live.length > 0) servicesForSitemap = live;
-  } catch {
-    /* keep fallback */
-  }
-  const serviceSlugSet = new Set<string>();
+
+  const servicesForSitemap = await getServicesForPublicSeo();
   for (const s of servicesForSitemap) {
-    if (!s.slug || s.active === false) continue;
-    serviceSlugSet.add(s.slug);
+    const path = `/services/${s.slug}`;
+    if (redirectedPaths.has(path)) continue;
     entries.push({
-      url: `${base}/services/${s.slug}`,
-      lastModified: new Date("2026-04-03"),
-      changeFrequency: "weekly",
-      priority: 0.85,
-    });
-  }
-  // Ensure static fallback parents not in live list still appear.
-  for (const s of fallbackServices) {
-    if (serviceSlugSet.has(s.slug)) continue;
-    entries.push({
-      url: `${base}/services/${s.slug}`,
+      url: `${base}${path}`,
       lastModified: new Date("2026-04-03"),
       changeFrequency: "weekly",
       priority: 0.85,
     });
   }
   for (const sub of listSubServicePaths(servicesForSitemap)) {
+    if (redirectedPaths.has(sub.path)) continue;
     entries.push({
       url: `${base}${sub.path}`,
       lastModified: new Date("2026-07-25"),
@@ -96,7 +85,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   const staticBlogSlugs = new Set(blogPosts.map((p) => p.slug));
   for (const p of blogPosts) {
-    if (redirectedBlogPaths.has(`/blog/${p.slug}`)) continue;
+    if (redirectedPaths.has(`/blog/${p.slug}`)) continue;
     const modified = p.updatedAt ?? p.date;
     entries.push({
       url: `${base}/blog/${p.slug}`,
@@ -108,7 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fsBlogs = await listPublishedBlogPostsServer();
   for (const p of fsBlogs) {
     if (staticBlogSlugs.has(p.slug)) continue;
-    if (redirectedBlogPaths.has(`/blog/${p.slug}`)) continue;
+    if (redirectedPaths.has(`/blog/${p.slug}`)) continue;
     entries.push({
       url: `${base}/blog/${p.slug}`,
       lastModified: new Date(p.updatedAt),
