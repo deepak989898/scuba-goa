@@ -22,6 +22,7 @@ import type { CartLine, PackageDoc } from "@/lib/types";
 import { getOrCreateAnalyticsSessionId } from "@/lib/analytics-client-ids";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import type { ServiceItem } from "@/data/services";
+import { BookingSidePanel } from "@/components/booking/BookingSidePanel";
 
 declare global {
   interface Window {
@@ -529,198 +530,403 @@ export function BookingForm() {
   }, [cartReady, lines, name, phone, date, leadSentAt, contactStepOpen]);
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="rounded-xl border border-ocean-100 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="font-display text-xl font-semibold text-ocean-900">
-          Book in 60 seconds
-        </h2>
-        <ol className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-ocean-800 sm:text-xs">
-          <li className="rounded-full bg-ocean-100 px-2.5 py-1">1. Cart</li>
-          <li className="rounded-full bg-ocean-100 px-2.5 py-1">2. Details</li>
-          <li className="rounded-full bg-cyan-100 px-2.5 py-1 text-ocean-900">
-            3. Pay (Razorpay) → instant confirm
-          </li>
-        </ol>
-        {loading ? (
-          <p className="mt-4 text-sm text-ocean-700">Loading packages…</p>
-        ) : (
-          <div
-            className={
-              hasCart
-                ? "mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_17.5rem] lg:items-start lg:gap-5"
-                : "mt-4 space-y-3"
-            }
-          >
-            <div className="min-w-0 space-y-3">
-            <label className="block cursor-pointer text-sm font-medium text-ocean-800">
-              <span className="mb-0.5 block">Package or service option</span>
-              <BookingPackagePicker
-                packagesByCategory={packagesByCategory}
-                services={services}
-                onSelect={onPickerChange}
-              />
-            </label>
-            <p className="text-xs text-ocean-700">
-              Pick an item above — it&apos;s added once. Use +/− for extra people or
-              the same activity again.
-            </p>
+    <div className="mx-auto max-w-7xl">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(17rem,0.85fr)] lg:items-start lg:gap-6">
+        <div className="rounded-2xl border border-ocean-100 bg-white p-4 shadow-md sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
+              Book in 60 seconds
+            </h2>
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700"
+              aria-hidden
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                <path d="M12 2a1 1 0 011 1v1.07A8 8 0 1120.93 11H22a1 1 0 110 2h-1.07A8 8 0 1112 4.07V3a1 1 0 011-1zm0 5a1 1 0 011 1v3.59l2.3 2.3a1 1 0 11-1.4 1.42l-2.6-2.6A1 1 0 0111 12V8a1 1 0 011-1z" />
+              </svg>
+              Fast checkout
+            </span>
+          </div>
 
-            <div className="rounded-xl border border-ocean-200 bg-ocean-50/40 p-3">
-              <p className="text-sm font-semibold text-ocean-900">Your cart</p>
-              <p className="text-[11px] text-ocean-600">Saved on this page and across the site.</p>
-              {!cartReady ? (
-                <p className="mt-2 text-xs text-ocean-700">Loading cart…</p>
-              ) : lines.length === 0 ? (
-                <p className="mt-2 text-sm text-ocean-700">
-                  No items yet. Pick a package or service from the dropdown above —
-                  it will appear here so you can change quantity or remove it.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-3">
-                  {lines.map((line) => {
-                    const imageUrl = resolveCartLineImage(
-                      line,
-                      packages,
-                      services,
-                    );
-                    return (
-                      <li
-                        key={line.key}
-                        className="flex flex-wrap items-center gap-3 rounded-lg border border-ocean-100 bg-white p-3 text-sm"
-                      >
-                        <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-ocean-100">
-                          {imageUrl ? (
-                            <CmsRemoteImage
-                              src={imageUrl}
-                              alt={line.name}
-                              fill
-                              className="object-cover"
-                              sizes="80px"
-                            />
-                          ) : (
-                            <div
-                              className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-ocean-400"
-                              aria-hidden
-                            >
-                              No photo
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-ocean-900">
-                            {line.name}
-                          </p>
-                          {line.duration ? (
-                            <p className="text-[11px] text-ocean-600">
-                              {line.duration}
-                            </p>
-                          ) : null}
-                          <p className="text-xs text-ocean-700">
-                            ₹{line.unitPrice.toLocaleString("en-IN")} each ·
-                            subtotal ₹
-                            {(line.unitPrice * line.quantity).toLocaleString(
-                              "en-IN",
+          <ol className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold sm:text-xs">
+            <li
+              className={`rounded-full px-3 py-1.5 ${
+                !contactStepOpen
+                  ? "bg-sky-500 text-white shadow-sm"
+                  : "bg-ocean-100 text-ocean-800"
+              }`}
+            >
+              1. Cart
+            </li>
+            <li
+              className={`rounded-full px-3 py-1.5 ${
+                contactStepOpen
+                  ? "bg-sky-500 text-white shadow-sm"
+                  : "bg-ocean-100 text-ocean-800"
+              }`}
+            >
+              2. Details
+            </li>
+            <li className="rounded-full bg-ocean-100 px-3 py-1.5 text-ocean-800">
+              3. Pay (Razorpay)
+            </li>
+            <li className="rounded-full bg-emerald-500 px-3 py-1.5 font-bold text-white shadow-sm">
+              → Instant confirm
+            </li>
+          </ol>
+
+          {loading ? (
+            <p className="mt-4 text-sm text-ocean-700">Loading packages…</p>
+          ) : (
+            <div className="mt-5 space-y-4">
+              <label className="block cursor-pointer text-sm font-medium text-ocean-800">
+                <span className="mb-0.5 block">Package or service option</span>
+                <BookingPackagePicker
+                  packagesByCategory={packagesByCategory}
+                  services={services}
+                  onSelect={onPickerChange}
+                />
+              </label>
+              <p className="text-xs text-ocean-700">
+                Pick an item above — it&apos;s added once. Use +/− for extra people
+                or the same activity again.
+              </p>
+
+              <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-3 sm:p-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white"
+                    aria-hidden
+                  >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                      <path d="M7 4h-2l-1 2H1v2h2l3.6 7.6L5.2 18c-.4.7.1 1.5.9 1.5H19v-2H7.4l1.1-2h8.7c.7 0 1.3-.4 1.6-1l3.2-5.8c.3-.6-.1-1.4-.8-1.4H6.2L5.3 4H7zm12 14a2 2 0 11-.001 3.999A2 2 0 0119 18zm-10 0a2 2 0 11-.001 3.999A2 2 0 019 18z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-ocean-900">Your cart</p>
+                    <p className="text-[11px] text-ocean-600">
+                      Saved on this page and across the site.
+                    </p>
+                  </div>
+                </div>
+                {!cartReady ? (
+                  <p className="mt-2 text-xs text-ocean-700">Loading cart…</p>
+                ) : lines.length === 0 ? (
+                  <p className="mt-3 text-sm text-ocean-700">
+                    No items yet. Pick a package or service from the dropdown above
+                    — it will appear here so you can change quantity or remove it.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {lines.map((line) => {
+                      const imageUrl = resolveCartLineImage(
+                        line,
+                        packages,
+                        services,
+                      );
+                      return (
+                        <li
+                          key={line.key}
+                          className="flex flex-wrap items-center gap-3 rounded-xl border border-ocean-100 bg-white p-3 text-sm shadow-sm"
+                        >
+                          <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-ocean-100">
+                            {imageUrl ? (
+                              <CmsRemoteImage
+                                src={imageUrl}
+                                alt={line.name}
+                                fill
+                                className="object-cover"
+                                sizes="80px"
+                              />
+                            ) : (
+                              <div
+                                className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-ocean-400"
+                                aria-hidden
+                              >
+                                No photo
+                              </div>
                             )}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="flex items-center gap-1 rounded-lg border border-ocean-200">
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-ocean-900">
+                              {line.name}
+                            </p>
+                            {line.duration ? (
+                              <p className="text-[11px] text-ocean-600">
+                                {line.duration}
+                              </p>
+                            ) : null}
+                            <p className="text-xs text-ocean-700">
+                              ₹{line.unitPrice.toLocaleString("en-IN")} each ·
+                              subtotal ₹
+                              {(line.unitPrice * line.quantity).toLocaleString(
+                                "en-IN",
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1 rounded-lg border border-sky-300 bg-white">
+                              <button
+                                type="button"
+                                className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
+                                aria-label="Decrease quantity"
+                                onClick={() =>
+                                  setQuantity(line.key, line.quantity - 1)
+                                }
+                              >
+                                −
+                              </button>
+                              <span className="w-6 text-center text-xs font-semibold">
+                                {line.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
+                                aria-label="Increase quantity"
+                                onClick={() =>
+                                  setQuantity(line.key, line.quantity + 1)
+                                }
+                              >
+                                +
+                              </button>
+                            </div>
                             <button
                               type="button"
-                              className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
-                              aria-label="Decrease quantity"
-                              onClick={() =>
-                                setQuantity(line.key, line.quantity - 1)
-                              }
+                              className="min-h-11 touch-manipulation rounded-full px-4 py-3 text-sm font-bold text-red-700 hover:bg-red-50"
+                              onClick={() => removeLine(line.key)}
                             >
-                              −
-                            </button>
-                            <span className="w-6 text-center text-xs font-semibold">
-                              {line.quantity}
-                            </span>
-                            <button
-                              type="button"
-                              className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
-                              aria-label="Increase quantity"
-                              onClick={() =>
-                                setQuantity(line.key, line.quantity + 1)
-                              }
-                            >
-                              +
+                              Remove
                             </button>
                           </div>
-                          <button
-                            type="button"
-                            className="min-h-11 touch-manipulation rounded-full px-4 py-3 text-sm font-bold text-red-700 hover:bg-red-50"
-                            onClick={() => removeLine(line.key)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              {hasCart && !contactStepOpen ? (
+                <div className="rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-white p-4 text-center shadow-sm lg:hidden">
+                  <p className="text-sm font-semibold text-ocean-900">
+                    {promoApplied ? (
+                      <>
+                        <span className="text-ocean-500 line-through">
+                          ₹{subtotalInr.toLocaleString("en-IN")}
+                        </span>{" "}
+                        → ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
+                      </>
+                    ) : (
+                      <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-ocean-700">
+                    Pay ₹{(cartMinPayPaise / 100).toLocaleString("en-IN")} now to
+                    lock (advance).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setContactStepOpen(true)}
+                    className="mt-4 w-full rounded-full bg-ocean-gradient py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110"
+                  >
+                    Continue — enter details &amp; pay
+                  </button>
+                </div>
+              ) : null}
+
+              {hasCart && contactStepOpen ? (
+                <>
+                  <label className="block text-sm font-medium text-ocean-800">
+                    Full name
+                    <input
+                      className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      autoComplete="name"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium text-ocean-800">
+                    Email
+                    <input
+                      type="email"
+                      className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium text-ocean-800">
+                    Phone (WhatsApp)
+                    <input
+                      className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      autoComplete="tel"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium text-ocean-800">
+                    Pickup location
+                    <input
+                      className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                      value={pickupLocation}
+                      onChange={(e) => setPickupLocation(e.target.value)}
+                      placeholder="Hotel name, area, or full address"
+                      autoComplete="street-address"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium text-ocean-800">
+                    Date
+                    <input
+                      type="date"
+                      className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                    />
+                  </label>
+
+                  {cartMinPayPaise < cartFullAmountPaise ? (
+                    <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4 lg:hidden">
+                      <div className="flex flex-wrap gap-3 text-sm">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="payModeBooking"
+                            checked={payMode === "min"}
+                            onChange={() => setPayMode("min")}
+                            className="text-ocean-700"
+                          />
+                          Pay minimum (₹
+                          {(cartMinPayPaise / 100).toLocaleString("en-IN")})
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="payModeBooking"
+                            checked={payMode === "full"}
+                            onChange={() => setPayMode("full")}
+                          />
+                          Pay full (₹
+                          {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
+                        </label>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {msg ? (
+                    <p className="text-sm text-ocean-700 lg:hidden" role="status">
+                      {msg}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={pay}
+                    disabled={busy}
+                    className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60 lg:hidden"
+                  >
+                    {payButtonLabel}
+                  </button>
+                </>
+              ) : null}
+
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <li className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-800 shadow-sm">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
+                    <path d="M16 11c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3zM8 11c1.7 0 3-1.3 3-3S9.7 5 8 5 5 6.3 5 8s1.3 3 3 3zm0 2c-2.7 0-8 1.3-8 4v2h10v-2c0-2.7-5.3-4-8-4zm8 0c-.3 0-.7 0-1 .1 1.2.8 2 2 2 3.9V19h8v-2c0-2.7-5.3-4-8-4z" />
+                  </svg>
+                  1000+ Happy Divers
+                </li>
+                <li className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-bold text-rose-800 shadow-sm">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
+                    <path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1112 6a2.5 2.5 0 010 5.5z" />
+                  </svg>
+                  Baga Beach, Goa
+                </li>
+                <li className="flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs font-bold text-sky-800 shadow-sm">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
+                    <path d="M12 1L3 5v6c0 5.6 3.8 10.7 9 12 5.2-1.3 9-6.4 9-12V5l-9-4zm-1 15l-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7z" />
+                  </svg>
+                  Safe &amp; Certified
+                </li>
+              </ul>
             </div>
+          )}
+        </div>
 
-            {hasCart && contactStepOpen ? (
-              <>
-                <label className="block text-sm font-medium text-ocean-800">
-                  Full name
-                  <input
-                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
-                  />
-                </label>
-                <label className="block text-sm font-medium text-ocean-800">
-                  Email
-                  <input
-                    type="email"
-                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                  />
-                </label>
-                <label className="block text-sm font-medium text-ocean-800">
-                  Phone (WhatsApp)
-                  <input
-                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    autoComplete="tel"
-                  />
-                </label>
-                <label className="block text-sm font-medium text-ocean-800">
-                  Pickup location
-                  <input
-                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                    value={pickupLocation}
-                    onChange={(e) => setPickupLocation(e.target.value)}
-                    placeholder="Hotel name, area, or full address"
-                    autoComplete="street-address"
-                  />
-                </label>
-                <label className="block text-sm font-medium text-ocean-800">
-                  Date
-                  <input
-                    type="date"
-                    className="mt-1 w-full rounded-xl border border-ocean-200 px-3 py-2.5"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
-                </label>
+        <div className="space-y-4">
+          <BookingSidePanel
+            services={services}
+            promo={{
+              promoDraft,
+              setPromoDraft,
+              promoBusy,
+              promoApplied,
+              onApply: () => void applyPromoCode(),
+              onClear: () => {
+                setPromoApplied(null);
+                setMsg(null);
+              },
+            }}
+          />
 
+          {hasCart ? (
+            !contactStepOpen ? (
+              <div className="hidden rounded-2xl border border-cyan-200 bg-cyan-50/90 p-4 text-center shadow-sm lg:block">
+                <p className="text-sm font-semibold text-ocean-900">
+                  {promoApplied ? (
+                    <>
+                      <span className="text-ocean-500 line-through">
+                        ₹{subtotalInr.toLocaleString("en-IN")}
+                      </span>{" "}
+                      → ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
+                    </>
+                  ) : (
+                    <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
+                  )}
+                </p>
+                <p className="mt-1 text-xs text-ocean-700">
+                  Pay ₹{(cartMinPayPaise / 100).toLocaleString("en-IN")} now to
+                  lock (advance) · balance on the day, unless you choose full pay
+                  in the next step.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setContactStepOpen(true)}
+                  className="mt-4 w-full rounded-full bg-ocean-gradient py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110"
+                >
+                  Continue — enter details &amp; pay
+                </button>
+              </div>
+            ) : (
+              <div className="hidden space-y-3 rounded-2xl border border-cyan-200 bg-cyan-50/90 p-4 shadow-sm lg:block">
+                <p className="text-lg font-bold text-ocean-900">
+                  {promoApplied ? (
+                    <>
+                      <span className="text-base font-semibold text-ocean-700 line-through">
+                        ₹{subtotalInr.toLocaleString("en-IN")}
+                      </span>{" "}
+                      <span className="text-ocean-900">
+                        ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
+                      </span>
+                      <span className="mt-1 block text-xs font-normal text-green-800">
+                        {promoApplied.title} ({promoApplied.discountPercent}% off)
+                      </span>
+                    </>
+                  ) : (
+                    <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
+                  )}
+                </p>
                 {cartMinPayPaise < cartFullAmountPaise ? (
-                  <div className="space-y-3 rounded-xl border border-ocean-100 bg-sand/60 p-4 lg:hidden">
-                    <div className="flex flex-wrap gap-3 text-sm">
+                  <>
+                    <p className="text-sm text-ocean-700">
+                      Minimum advance: ₹
+                      {(cartMinPayPaise / 100).toLocaleString("en-IN")} (₹
+                      {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
+                      {itemCount} {itemCount === 1 ? "unit" : "units"} in cart)
+                    </p>
+                    <div className="flex flex-col gap-2 text-sm">
                       <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
-                          name="payModeBooking"
+                          name="payModeBookingSidebar"
                           checked={payMode === "min"}
                           onChange={() => setPayMode("min")}
                           className="text-ocean-700"
@@ -731,7 +937,7 @@ export function BookingForm() {
                       <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
-                          name="payModeBooking"
+                          name="payModeBookingSidebar"
                           checked={payMode === "full"}
                           onChange={() => setPayMode("full")}
                         />
@@ -739,11 +945,16 @@ export function BookingForm() {
                         {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
                       </label>
                     </div>
-                  </div>
-                ) : null}
-
+                  </>
+                ) : (
+                  <p className="text-sm text-ocean-700">
+                    Cart total is below ₹
+                    {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × units;
+                    you’ll pay the full amount.
+                  </p>
+                )}
                 {msg ? (
-                  <p className="text-sm text-ocean-700 lg:hidden" role="status">
+                  <p className="text-sm text-ocean-700" role="status">
                     {msg}
                   </p>
                 ) : null}
@@ -751,179 +962,18 @@ export function BookingForm() {
                   type="button"
                   onClick={pay}
                   disabled={busy}
-                  className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60 lg:hidden"
+                  className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
                 >
                   {payButtonLabel}
                 </button>
-              </>
-            ) : null}
-            </div>
-
-            {hasCart ? (
-              <aside className="min-w-0 space-y-3 lg:sticky lg:top-20 lg:max-w-[17.5rem]">
-                <div className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-900">
-                    Promo code (optional)
-                  </p>
-                  <p className="mt-1 text-[11px] text-amber-950/80">
-                    See{" "}
-                    <a href="/offers" className="font-semibold underline">
-                      current offers
-                    </a>
-                    .
-                  </p>
-                  <div className="mt-2 flex flex-col gap-2">
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 text-sm text-ocean-900 placeholder:text-ocean-400"
-                      placeholder="e.g. COUPLE10"
-                      value={promoDraft}
-                      onChange={(e) => setPromoDraft(e.target.value)}
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        disabled={promoBusy || (!promoApplied && !promoDraft.trim())}
-                        onClick={() => void applyPromoCode()}
-                        className={
-                          promoApplied
-                            ? "min-h-10 flex-1 touch-manipulation rounded-full bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
-                            : "min-h-10 flex-1 touch-manipulation rounded-full bg-amber-700 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50"
-                        }
-                      >
-                        {promoBusy ? "…" : promoApplied ? "Applied" : "Apply"}
-                      </button>
-                      {promoApplied ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPromoApplied(null);
-                            setMsg(null);
-                          }}
-                          className="min-h-10 shrink-0 touch-manipulation rounded-full border border-amber-700/30 bg-white px-3 py-2 text-sm font-bold text-amber-950"
-                        >
-                          Remove
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  {promoApplied ? (
-                    <p className="mt-2 text-[11px] font-medium leading-snug text-green-900">
-                      {promoApplied.title} — {promoApplied.discountPercent}% off
-                    </p>
-                  ) : null}
-                </div>
-
-                {!contactStepOpen ? (
-                  <div className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 text-center shadow-sm">
-                    <p className="text-sm font-semibold text-ocean-900">
-                      {promoApplied ? (
-                        <>
-                          <span className="text-ocean-500 line-through">
-                            ₹{subtotalInr.toLocaleString("en-IN")}
-                          </span>{" "}
-                          → ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
-                        </>
-                      ) : (
-                        <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
-                      )}
-                    </p>
-                    <p className="mt-1 text-xs text-ocean-700">
-                      Pay ₹{(cartMinPayPaise / 100).toLocaleString("en-IN")} now to lock
-                      (advance) · balance on the day, unless you choose full pay in the next
-                      step.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setContactStepOpen(true)}
-                      className="mt-4 w-full rounded-full bg-ocean-gradient py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110"
-                    >
-                      Continue — enter details &amp; pay
-                    </button>
-                  </div>
-                ) : (
-                  <div className="hidden space-y-3 rounded-xl border border-cyan-200 bg-cyan-50/80 p-4 shadow-sm lg:block">
-                    <p className="text-lg font-bold text-ocean-900">
-                      {promoApplied ? (
-                        <>
-                          <span className="text-base font-semibold text-ocean-700 line-through">
-                            ₹{subtotalInr.toLocaleString("en-IN")}
-                          </span>{" "}
-                          <span className="text-ocean-900">
-                            ₹{(cartFullAmountPaise / 100).toLocaleString("en-IN")}
-                          </span>
-                          <span className="mt-1 block text-xs font-normal text-green-800">
-                            {promoApplied.title} ({promoApplied.discountPercent}% off)
-                          </span>
-                        </>
-                      ) : (
-                        <>Cart total: ₹{subtotalInr.toLocaleString("en-IN")}</>
-                      )}
-                    </p>
-                    {cartMinPayPaise < cartFullAmountPaise ? (
-                      <>
-                        <p className="text-sm text-ocean-700">
-                          Minimum advance: ₹
-                          {(cartMinPayPaise / 100).toLocaleString("en-IN")} (₹
-                          {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} ×{" "}
-                          {itemCount} {itemCount === 1 ? "unit" : "units"} in cart)
-                        </p>
-                        <div className="flex flex-col gap-2 text-sm">
-                          <label className="flex cursor-pointer items-center gap-2">
-                            <input
-                              type="radio"
-                              name="payModeBookingSidebar"
-                              checked={payMode === "min"}
-                              onChange={() => setPayMode("min")}
-                              className="text-ocean-700"
-                            />
-                            Pay minimum (₹
-                            {(cartMinPayPaise / 100).toLocaleString("en-IN")})
-                          </label>
-                          <label className="flex cursor-pointer items-center gap-2">
-                            <input
-                              type="radio"
-                              name="payModeBookingSidebar"
-                              checked={payMode === "full"}
-                              onChange={() => setPayMode("full")}
-                            />
-                            Pay full (₹
-                            {(cartFullAmountPaise / 100).toLocaleString("en-IN")})
-                          </label>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-sm text-ocean-700">
-                        Cart total is below ₹
-                        {MIN_PAYMENT_PER_PERSON_INR.toLocaleString("en-IN")} × units; you’ll
-                        pay the full amount.
-                      </p>
-                    )}
-                    {msg ? (
-                      <p className="text-sm text-ocean-700" role="status">
-                        {msg}
-                      </p>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={pay}
-                      disabled={busy}
-                      className="w-full rounded-full bg-ocean-gradient py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
-                    >
-                      {payButtonLabel}
-                    </button>
-                    <p className="text-center text-xs text-ocean-700">
-                      Razorpay (UPI / card / netbanking) → instant confirm on this site +
-                      email when configured.
-                    </p>
-                  </div>
-                )}
-              </aside>
-            ) : null}
-          </div>
-        )}
+                <p className="text-center text-xs text-ocean-700">
+                  Razorpay (UPI / card / netbanking) → instant confirm on this site
+                  + email when configured.
+                </p>
+              </div>
+            )
+          ) : null}
+        </div>
       </div>
     </div>
   );
