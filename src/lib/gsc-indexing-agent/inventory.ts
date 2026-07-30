@@ -92,6 +92,9 @@ function buildRecord(d: Discovered, existing?: SeoUrlRecord | null): SeoUrlRecor
     siteId: siteId(),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
+    ...(existing?.lastRankingImprove
+      ? { lastRankingImprove: existing.lastRankingImprove }
+      : {}),
   };
 }
 

@@ -14,6 +14,7 @@ Production agent for **bookscubagoa.com** that monitors index coverage and ranki
 
 - **`/admin/gsc-agent`** — Overview, URL inventory, issues, approvals, sitemaps, connection, settings, logs
 - Nav: **Blogs & guides → GSC Indexing Agent**
+- **URL inventory → Ranking opportunities:** for **blog** and **guide** rows only, **Generate** (OpenAI text improve, no images) auto-updates Firestore + shows estimated % uplift; **Edit** opens a manual content editor. Static pages have no Generate/Edit.
 
 ## Environment variables
 

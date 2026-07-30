@@ -19,6 +19,13 @@ export { onPublicUrlPublished } from "./publish-hook";
 export { runGscAgentJob } from "./pipeline";
 export { proposeContentImprovements } from "./content-quality";
 export {
+  loadEditablePage,
+  generateAndApplyRankingImprove,
+  saveManualRankingEdit,
+  estimateImprovementPct,
+  improvementGuidance,
+} from "./ranking-improve";
+export {
   getOverviewStats,
   listSeoUrls,
   listOpenIssues,

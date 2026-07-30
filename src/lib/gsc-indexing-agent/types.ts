@@ -106,6 +106,15 @@ export type SeoUrlRecord = {
   siteId: string;
   createdAt: string;
   updatedAt: string;
+  /** Last AI/manual ranking content improve (blog/guide). */
+  lastRankingImprove?: {
+    at: string;
+    estimatedPct: number;
+    targetBand: string;
+    checklist: string[];
+    summary: string;
+    rankingStatus: string;
+  };
 };
 
 export type SeoSettings = {

@@ -87,6 +87,41 @@ function indexBadgeClass(status: string): string {
   return "bg-amber-500 text-amber-950";
 }
 
+function improvePctClass(pct: number): string {
+  if (pct >= 28) return "bg-emerald-600 text-white";
+  if (pct >= 18) return "bg-amber-500 text-amber-950";
+  return "bg-cyan-700 text-white";
+}
+
+function isContentEditableType(pageType: string): boolean {
+  return pageType === "blog" || pageType === "guide";
+}
+
+type ImproveMeta = {
+  at: string;
+  estimatedPct: number;
+  targetBand: string;
+  checklist: string[];
+  summary: string;
+  rankingStatus: string;
+};
+
+type EditForm = {
+  urlId: string;
+  pageType: "blog" | "guide";
+  slug: string;
+  url: string;
+  rankingStatus: string;
+  title: string;
+  metaTitle: string;
+  metaDescription: string;
+  excerpt: string;
+  keywords: string;
+  content: string;
+  guidanceHeadline: string;
+  guidanceBullets: string[];
+};
+
 export default function GscIndexingAgentPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [urlFilter, setUrlFilter] = useState<UrlFilter>("all");
@@ -109,6 +144,12 @@ export default function GscIndexingAgentPage() {
   const [propertyUri, setPropertyUri] = useState("");
   const [agentMode, setAgentMode] = useState("approval_required");
   const [paused, setPaused] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [improveByUrl, setImproveByUrl] = useState<Record<string, ImproveMeta>>(
+    {},
+  );
 
   const load = useCallback(
     async (view: Tab = tab, filter: UrlFilter = urlFilter, severity = issueSeverity) => {
@@ -133,6 +174,14 @@ export default function GscIndexingAgentPage() {
           setOverview(data.overview ?? null);
           setConnection(data.connection ?? null);
           setUrls(data.urls ?? []);
+          const seeded: Record<string, ImproveMeta> = {};
+          for (const row of (data.urls ?? []) as Record<string, unknown>[]) {
+            const last = row.lastRankingImprove as ImproveMeta | undefined;
+            if (last && row.id) seeded[String(row.id)] = last;
+          }
+          if (Object.keys(seeded).length) {
+            setImproveByUrl((prev) => ({ ...seeded, ...prev }));
+          }
         } else if (view === "issues") {
           const qs = new URLSearchParams({ view: "issues" });
           if (severity) qs.set("severity", severity);
@@ -198,6 +247,151 @@ export default function GscIndexingAgentPage() {
       setErr(e instanceof Error ? e.message : "Run failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function generateImprove(urlId: string) {
+    setGeneratingId(urlId);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/improve", {
+        method: "POST",
+        body: JSON.stringify({ urlId }),
+      });
+      const improve = data.improve as ImproveMeta;
+      const page = data.page as {
+        urlId: string;
+        pageType: "blog" | "guide";
+        slug: string;
+        url: string;
+        rankingStatus: string;
+        fields: {
+          title: string;
+          metaTitle: string;
+          metaDescription: string;
+          excerpt: string;
+          keywords: string[];
+          content: string;
+          headline?: string;
+          bodyContent?: string;
+        };
+        guidance: { headline: string; bullets: string[] };
+      };
+      setImproveByUrl((prev) => ({ ...prev, [urlId]: improve }));
+      setOk(
+        `Content updated (no images). Est. ~${improve.estimatedPct}% toward ${improve.targetBand}.`,
+      );
+      if (editForm?.urlId === urlId) {
+        setEditForm({
+          urlId: page.urlId,
+          pageType: page.pageType,
+          slug: page.slug,
+          url: page.url,
+          rankingStatus: page.rankingStatus,
+          title: page.fields.headline || page.fields.title,
+          metaTitle: page.fields.metaTitle,
+          metaDescription: page.fields.metaDescription,
+          excerpt: page.fields.excerpt,
+          keywords: (page.fields.keywords || []).join(", "),
+          content: page.fields.bodyContent || page.fields.content,
+          guidanceHeadline: page.guidance.headline,
+          guidanceBullets: page.guidance.bullets,
+        });
+      }
+      await load("urls", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Generate failed");
+    } finally {
+      setGeneratingId(null);
+    }
+  }
+
+  async function openEdit(urlId: string) {
+    setErr(null);
+    setBusy(true);
+    try {
+      const data = await adminFetch(
+        `/api/admin/gsc-agent/improve?urlId=${encodeURIComponent(urlId)}`,
+      );
+      const page = data.page as {
+        urlId: string;
+        pageType: "blog" | "guide";
+        slug: string;
+        url: string;
+        rankingStatus: string;
+        fields: {
+          title: string;
+          metaTitle: string;
+          metaDescription: string;
+          excerpt: string;
+          keywords: string[];
+          content: string;
+          headline?: string;
+          bodyContent?: string;
+        };
+        guidance: { headline: string; bullets: string[] };
+        lastImprove: ImproveMeta | null;
+      };
+      if (page.lastImprove) {
+        setImproveByUrl((prev) => ({ ...prev, [urlId]: page.lastImprove! }));
+      }
+      setEditForm({
+        urlId: page.urlId,
+        pageType: page.pageType,
+        slug: page.slug,
+        url: page.url,
+        rankingStatus: page.rankingStatus,
+        title: page.fields.headline || page.fields.title,
+        metaTitle: page.fields.metaTitle,
+        metaDescription: page.fields.metaDescription,
+        excerpt: page.fields.excerpt,
+        keywords: (page.fields.keywords || []).join(", "),
+        content: page.fields.bodyContent || page.fields.content,
+        guidanceHeadline: page.guidance.headline,
+        guidanceBullets: page.guidance.bullets,
+      });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not load page for edit");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveEdit() {
+    if (!editForm) return;
+    setSavingEdit(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/improve", {
+        method: "PATCH",
+        body: JSON.stringify({
+          urlId: editForm.urlId,
+          title: editForm.title,
+          headline: editForm.title,
+          metaTitle: editForm.metaTitle,
+          metaDescription: editForm.metaDescription,
+          excerpt: editForm.excerpt,
+          keywords: editForm.keywords,
+          content: editForm.content,
+          bodyContent: editForm.content,
+        }),
+      });
+      const page = data.page as { lastImprove?: ImproveMeta | null };
+      if (page.lastImprove) {
+        setImproveByUrl((prev) => ({
+          ...prev,
+          [editForm.urlId]: page.lastImprove!,
+        }));
+      }
+      setOk(`Saved ${editForm.pageType} “${editForm.slug}”.`);
+      setEditForm(null);
+      await load("urls", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -406,8 +600,19 @@ export default function GscIndexingAgentPage() {
           </div>
           <p className="text-xs text-ocean-600">
             Showing <strong>{URL_FILTER_LABELS[urlFilter]}</strong> — {urls.length} URL
-            {urls.length === 1 ? "" : "s"}. Open a link to review/improve that page.
+            {urls.length === 1 ? "" : "s"}.{" "}
+            <strong>Generate / Edit</strong> only on blog &amp; guide rows (content only — no
+            images). Static pages stay read-only here.
           </p>
+          {urlFilter === "ranking_opportunity" ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              <p className="font-bold">POSITION 11–20 वाले blogs / guides</p>
+              <p className="mt-0.5">
+                Title refresh, internal links (services/booking), पुराना content अपडेट — Generate
+                से page update होता है; position page 1 (4–10) की तरफ जा सकती है (guarantee नहीं).
+              </p>
+            </div>
+          ) : null}
           <div className="overflow-x-auto rounded-xl border border-ocean-100 bg-white">
             <table className="min-w-full text-left text-xs">
               <thead className="bg-ocean-50 text-ocean-800">
@@ -419,37 +624,100 @@ export default function GscIndexingAgentPage() {
                   <th className="p-2">Imp</th>
                   <th className="p-2">Pos</th>
                   <th className="p-2">Ranking</th>
+                  <th className="p-2">SEO improve</th>
                 </tr>
               </thead>
               <tbody>
-                {urls.map((u) => (
-                  <tr key={String(u.id)} className="border-t border-ocean-50">
-                    <td className="max-w-[280px] truncate p-2">
-                      <a
-                        href={String(u.url)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-semibold text-cyan-800 hover:underline"
-                      >
-                        {String(u.url)}
-                      </a>
-                    </td>
-                    <td className="p-2">{String(u.pageType)}</td>
-                    <td className="p-2">
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${indexBadgeClass(String(u.indexStatus))}`}
-                      >
-                        {String(u.indexStatus)}
-                      </span>
-                    </td>
-                    <td className="p-2">{String(u.httpStatus ?? "—")}</td>
-                    <td className="p-2">{String(u.impressions ?? 0)}</td>
-                    <td className="p-2">
-                      {Number(u.averagePosition || 0).toFixed(1)}
-                    </td>
-                    <td className="p-2">{String(u.rankingStatus)}</td>
-                  </tr>
-                ))}
+                {urls.map((u) => {
+                  const id = String(u.id);
+                  const pageType = String(u.pageType);
+                  const ranking = String(u.rankingStatus);
+                  const editable = isContentEditableType(pageType);
+                  const improve =
+                    improveByUrl[id] ||
+                    (u.lastRankingImprove as ImproveMeta | undefined);
+                  const isGen = generatingId === id;
+                  return (
+                    <tr key={id} className="border-t border-ocean-50 align-top">
+                      <td className="max-w-[240px] truncate p-2">
+                        <a
+                          href={String(u.url)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-semibold text-cyan-800 hover:underline"
+                        >
+                          {String(u.url)}
+                        </a>
+                      </td>
+                      <td className="p-2">{pageType}</td>
+                      <td className="p-2">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${indexBadgeClass(String(u.indexStatus))}`}
+                        >
+                          {String(u.indexStatus)}
+                        </span>
+                      </td>
+                      <td className="p-2">{String(u.httpStatus ?? "—")}</td>
+                      <td className="p-2">{String(u.impressions ?? 0)}</td>
+                      <td className="p-2">
+                        {Number(u.averagePosition || 0).toFixed(1)}
+                      </td>
+                      <td className="p-2">
+                        <div>{ranking}</div>
+                        {ranking === "POSITION_11_TO_20" && editable ? (
+                          <p className="mt-1 max-w-[160px] text-[10px] leading-snug text-amber-800">
+                            Title refresh · links · पुराना content अपडेट → toward 4–10
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="p-2">
+                        {editable ? (
+                          <div className="flex min-w-[140px] flex-col gap-1.5">
+                            <div className="flex flex-wrap gap-1">
+                              <button
+                                type="button"
+                                disabled={busy || Boolean(generatingId)}
+                                onClick={() => void generateImprove(id)}
+                                className="rounded-md bg-emerald-700 px-2 py-1 text-[10px] font-bold text-white disabled:opacity-50"
+                              >
+                                {isGen ? "Generating…" : "Generate"}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy || Boolean(generatingId)}
+                                onClick={() => void openEdit(id)}
+                                className="rounded-md border border-ocean-300 bg-white px-2 py-1 text-[10px] font-bold text-ocean-900 disabled:opacity-50"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                            {improve ? (
+                              <div className="space-y-0.5">
+                                <span
+                                  className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${improvePctClass(improve.estimatedPct)}`}
+                                >
+                                  ~{improve.estimatedPct}% improve
+                                </span>
+                                <p className="text-[10px] leading-snug text-ocean-700">
+                                  Target: {improve.targetBand}
+                                </p>
+                                <p className="text-[10px] leading-snug text-ocean-600">
+                                  {improve.summary}
+                                </p>
+                              </div>
+                            ) : ranking === "POSITION_11_TO_20" ? (
+                              <p className="text-[10px] leading-snug text-amber-900">
+                                Generate → title + links + content update (no image)
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-ocean-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {urls.length === 0 ? (
@@ -839,6 +1107,153 @@ export default function GscIndexingAgentPage() {
         </Link>{" "}
         · Docs: <code>docs/GSC-INDEXING-AGENT.md</code>
       </p>
+
+      {editForm ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-10">
+          <div className="w-full max-w-3xl rounded-2xl border border-ocean-100 bg-white p-4 shadow-xl">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-ocean-950">
+                  Edit {editForm.pageType}: {editForm.slug}
+                </h2>
+                <a
+                  href={editForm.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-cyan-800 hover:underline"
+                >
+                  {editForm.url}
+                </a>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-ocean-200 px-3 py-1 text-xs font-bold"
+                onClick={() => setEditForm(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div
+              className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
+                editForm.rankingStatus === "POSITION_11_TO_20"
+                  ? "border-amber-200 bg-amber-50 text-amber-950"
+                  : "border-ocean-100 bg-ocean-50 text-ocean-900"
+              }`}
+            >
+              <p className="font-bold">{editForm.guidanceHeadline}</p>
+              <ul className="mt-1 list-inside list-disc space-y-0.5">
+                {editForm.guidanceBullets.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs sm:col-span-2">
+                <span className="font-bold">
+                  {editForm.pageType === "guide" ? "Headline" : "Title"}
+                </span>
+                <input
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
+                />
+              </label>
+              <label className="block text-xs">
+                <span className="font-bold">Meta title</span>
+                <input
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                  value={editForm.metaTitle}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, metaTitle: e.target.value })
+                  }
+                />
+              </label>
+              <label className="block text-xs">
+                <span className="font-bold">Excerpt</span>
+                <input
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                  value={editForm.excerpt}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, excerpt: e.target.value })
+                  }
+                />
+              </label>
+              <label className="block text-xs sm:col-span-2">
+                <span className="font-bold">Meta description</span>
+                <textarea
+                  rows={2}
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                  value={editForm.metaDescription}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      metaDescription: e.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="block text-xs sm:col-span-2">
+                <span className="font-bold">Keywords (comma-separated)</span>
+                <input
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                  value={editForm.keywords}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, keywords: e.target.value })
+                  }
+                />
+              </label>
+              <label className="block text-xs sm:col-span-2">
+                <span className="font-bold">Body content (markdown)</span>
+                <textarea
+                  rows={16}
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 font-mono text-xs leading-relaxed"
+                  value={editForm.content}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, content: e.target.value })
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() => void saveEdit()}
+                className="rounded-full bg-ocean-800 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {savingEdit ? "Saving…" : "Save changes"}
+              </button>
+              <button
+                type="button"
+                disabled={savingEdit || Boolean(generatingId)}
+                onClick={() => void generateImprove(editForm.urlId)}
+                className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {generatingId === editForm.urlId
+                  ? "Generating…"
+                  : "Generate with AI (content only)"}
+              </button>
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() => setEditForm(null)}
+                className="rounded-full border border-ocean-200 px-4 py-2 text-xs font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-ocean-500">
+              Images are never changed by Generate. After AI generate, reopen Edit to review
+              the new text, or refresh this modal after generate completes.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
