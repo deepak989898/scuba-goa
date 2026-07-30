@@ -25,6 +25,7 @@ import {
   trafficChannelStyles,
   type TrafficChannel,
 } from "@/lib/analytics-traffic";
+import { labelFromAttributionSource } from "@/lib/analytics-attribution";
 import {
   resolveAdminVisitorKind,
   matchesAdminVisitorKind,
@@ -57,6 +58,7 @@ type Row = {
   trafficChannel?: string;
   trafficLabel?: string;
   trafficDetail?: string;
+  source?: string;
 };
 
 type RecentEvent = {
@@ -92,6 +94,7 @@ type SessionDoc = {
   trafficChannel?: string;
   trafficLabel?: string;
   trafficDetail?: string;
+  source?: string;
   referrerHost?: string;
   utmSource?: string;
   utmMedium?: string;
@@ -176,6 +179,11 @@ function normalizeTrafficChannel(raw: string | undefined): TrafficChannel | "" {
   const allowed: TrafficChannel[] = [
     "facebook",
     "instagram",
+    "whatsapp",
+    "youtube",
+    "twitter",
+    "linkedin",
+    "tiktok",
     "google_ads",
     "google_organic",
     "bing",
@@ -271,6 +279,7 @@ function pickTrafficFields(data: Record<string, unknown>) {
     trafficChannel: String(data.trafficChannel ?? "").trim() || undefined,
     trafficLabel: String(data.trafficLabel ?? "").trim() || undefined,
     trafficDetail: String(data.trafficDetail ?? "").trim() || undefined,
+    source: String(data.source ?? "").trim() || undefined,
     referrerHost: String(data.referrerHost ?? "").trim() || undefined,
     utmSource: String(data.utmSource ?? "").trim() || undefined,
     utmMedium: String(data.utmMedium ?? "").trim() || undefined,
@@ -437,9 +446,14 @@ function buildVisitorSummary(
       trafficSource?.trafficChannel ?? sess?.trafficChannel
     ),
     trafficLabel:
-      trafficSource?.trafficLabel ??
-      sess?.trafficLabel ??
-      (sess?.trafficChannel ? "Unknown source" : "—"),
+      trafficSource?.trafficLabel ||
+      sess?.trafficLabel ||
+      labelFromAttributionSource(
+        String(sess?.source ?? trafficSource?.source ?? ""),
+      ) ||
+      (sess?.trafficChannel || trafficSource?.trafficChannel
+        ? "Unknown source"
+        : "—"),
     trafficDetail:
       trafficSource?.trafficDetail ?? sess?.trafficDetail ?? "",
     landingPath: sess?.landingPath ?? first?.path ?? "—",
@@ -1413,15 +1427,35 @@ export default function AdminAnalyticsPage() {
                                       <dt className="w-24 shrink-0 font-medium text-ocean-900">
                                         Came from
                                       </dt>
-                                      <dd>
-                                        {selectedVisitor.trafficLabel !== "—"
-                                          ? selectedVisitor.trafficLabel
-                                          : "Not recorded"}
-                                        {selectedVisitor.trafficDetail &&
-                                        selectedVisitor.trafficDetail !==
-                                          selectedVisitor.trafficLabel
-                                          ? ` (${selectedVisitor.trafficDetail})`
-                                          : ""}
+                                      <dd className="min-w-0">
+                                        {selectedVisitor.trafficLabel !== "—" ? (
+                                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                                            {selectedVisitor.trafficChannel ? (
+                                              <span
+                                                className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${trafficChannelStyles(selectedVisitor.trafficChannel)}`}
+                                              >
+                                                {selectedVisitor.trafficLabel}
+                                              </span>
+                                            ) : (
+                                              <span className="font-medium text-ocean-900">
+                                                {selectedVisitor.trafficLabel}
+                                              </span>
+                                            )}
+                                            {selectedVisitor.trafficDetail &&
+                                            selectedVisitor.trafficDetail !==
+                                              selectedVisitor.trafficLabel ? (
+                                              <span className="text-ocean-600">
+                                                · {selectedVisitor.trafficDetail}
+                                              </span>
+                                            ) : null}
+                                          </span>
+                                        ) : (
+                                          <span className="text-ocean-500">
+                                            Not recorded yet (new visits after
+                                            deploy show Direct / Search /
+                                            Facebook / Instagram / etc.)
+                                          </span>
+                                        )}
                                       </dd>
                                     </div>
                                     {selectedVisitor.landingPath &&

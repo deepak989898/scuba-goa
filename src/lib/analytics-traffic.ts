@@ -3,19 +3,11 @@
  */
 import {
   classifyAttribution,
+  type AttributionChannel,
   type AttributionResult,
 } from "@/lib/analytics-attribution";
 
-export type TrafficChannel =
-  | "facebook"
-  | "instagram"
-  | "google_ads"
-  | "google_organic"
-  | "bing"
-  | "direct"
-  | "email"
-  | "referral"
-  | "other";
+export type TrafficChannel = AttributionChannel;
 
 export type TrafficInfo = {
   channel: TrafficChannel;
@@ -74,6 +66,16 @@ export function trafficChannelStyles(channel: TrafficChannel | ""): string {
       return "bg-blue-100 text-blue-900";
     case "instagram":
       return "bg-pink-100 text-pink-900";
+    case "whatsapp":
+      return "bg-emerald-100 text-emerald-900";
+    case "youtube":
+      return "bg-red-100 text-red-900";
+    case "twitter":
+      return "bg-sky-100 text-sky-900";
+    case "linkedin":
+      return "bg-indigo-100 text-indigo-900";
+    case "tiktok":
+      return "bg-zinc-200 text-zinc-900";
     case "google_ads":
       return "bg-amber-100 text-amber-900";
     case "google_organic":

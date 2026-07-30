@@ -2,14 +2,16 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { classifyTrafficSource } from "@/lib/analytics-traffic";
 import { classifyClick } from "@/lib/conversion-opt/click-category";
 import {
   getOrCreateAnalyticsSessionId,
   getOrCreateAnalyticsVisitorId,
 } from "@/lib/analytics-client-ids";
+import {
+  getOrCaptureAnalyticsTraffic,
+  type AnalyticsTrafficPayload,
+} from "@/lib/analytics-first-touch";
 
-const TRAFFIC_KEY = "bsg_analytics_traffic";
 /** Prefer short path — `/api/analytics/track` is commonly blocked by ad blockers. */
 const TRACK_URL = "/api/t";
 /** Only collapse identical path views from React Strict Mode double-mount. */
@@ -30,19 +32,7 @@ type VisitState = {
   activeSegmentStartedAt: number | null;
 };
 
-type TrafficPayload = {
-  trafficChannel: string;
-  trafficLabel: string;
-  trafficDetail: string;
-  referrerHost: string;
-  utmSource: string;
-  utmMedium: string;
-  utmCampaign: string;
-  landingPath: string;
-  rawReferrer: string;
-  gclid: string;
-  fbclid: string;
-};
+type TrafficPayload = AnalyticsTrafficPayload;
 
 function newId(prefix: string): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -56,60 +46,7 @@ function getVisitorId(): string {
 }
 
 function getTrafficPayload(landingPath: string): TrafficPayload {
-  if (typeof window === "undefined") {
-    return {
-      trafficChannel: "",
-      trafficLabel: "",
-      trafficDetail: "",
-      referrerHost: "",
-      utmSource: "",
-      utmMedium: "",
-      utmCampaign: "",
-      landingPath,
-      rawReferrer: "",
-      gclid: "",
-      fbclid: "",
-    };
-  }
-  try {
-    const cached = sessionStorage.getItem(TRAFFIC_KEY);
-    if (cached) return JSON.parse(cached) as TrafficPayload;
-  } catch {
-    /* ignore */
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const rawReferrer = typeof document !== "undefined" ? document.referrer : "";
-  const info = classifyTrafficSource({
-    referrer: rawReferrer,
-    utmSource: params.get("utm_source") ?? undefined,
-    utmMedium: params.get("utm_medium") ?? undefined,
-    utmCampaign: params.get("utm_campaign") ?? undefined,
-    gclid: params.get("gclid") ?? undefined,
-    fbclid: params.get("fbclid") ?? undefined,
-    landingPath,
-  });
-
-  const payload: TrafficPayload = {
-    trafficChannel: info.channel,
-    trafficLabel: info.label,
-    trafficDetail: info.detail,
-    referrerHost: info.referrerHost,
-    utmSource: info.utmSource,
-    utmMedium: info.utmMedium,
-    utmCampaign: info.utmCampaign,
-    landingPath: info.landingPath,
-    rawReferrer: rawReferrer.slice(0, 500),
-    gclid: (params.get("gclid") ?? "").slice(0, 128),
-    fbclid: (params.get("fbclid") ?? "").slice(0, 128),
-  };
-
-  try {
-    sessionStorage.setItem(TRAFFIC_KEY, JSON.stringify(payload));
-  } catch {
-    /* ignore */
-  }
-  return payload;
+  return getOrCaptureAnalyticsTraffic(landingPath);
 }
 
 function clientContextPayload() {
@@ -274,6 +211,8 @@ export function AnalyticsTracker() {
     const sessionId = getSessionId();
     const visitorId = getVisitorId();
 
+    const traffic = getTrafficPayload(key);
+
     const sendLeave = (visit: VisitState) => {
       const leaveKey = `${visit.path}:${visit.enteredAtMs}`;
       if (leftPathsRef.current.has(leaveKey)) return;
@@ -292,6 +231,7 @@ export function AnalyticsTracker() {
         maxScrollDepthPct: maxScrollRef.current,
         interactionCount: interactionCountRef.current,
         keepAliveSession: false,
+        ...traffic,
       });
     };
 
@@ -332,7 +272,6 @@ export function AnalyticsTracker() {
 
     if (!isDuplicateView) {
       lastViewAt.set(key, now);
-      const traffic = getTrafficPayload(key);
       track({
         path: key,
         sessionId,
@@ -362,6 +301,7 @@ export function AnalyticsTracker() {
         maxScrollDepthPct: maxScrollRef.current,
         durationMs: activeDurationMs(v, Date.now()),
         keepAliveSession: true,
+        ...traffic,
       });
     }, HEARTBEAT_MS);
 
@@ -382,6 +322,7 @@ export function AnalyticsTracker() {
           maxScrollDepthPct: maxScrollRef.current,
           durationMs: activeDurationMs(current, t),
           keepAliveSession: true,
+          ...traffic,
         });
       } else {
         resumeActiveTime(current, t);
@@ -394,6 +335,7 @@ export function AnalyticsTracker() {
           interactionCount: interactionCountRef.current,
           maxScrollDepthPct: maxScrollRef.current,
           keepAliveSession: true,
+          ...traffic,
         });
       }
     };
@@ -460,6 +402,7 @@ export function AnalyticsTracker() {
         clickHref,
         clickCategory: classifyClick(clickHref, clickLabel, clickable),
         interactionCount: interactionCountRef.current,
+        ...traffic,
       });
     };
 

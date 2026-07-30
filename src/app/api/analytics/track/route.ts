@@ -289,6 +289,9 @@ export async function POST(req: Request) {
 
   const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
 
+  const sliceStr = (raw: unknown, max: number) =>
+    typeof raw === "string" ? raw.trim().slice(0, max) || undefined : undefined;
+
   if (eventType === "heartbeat") {
     try {
       const hbInteraction = toFiniteNumber(body.interactionCount);
@@ -327,7 +330,7 @@ export async function POST(req: Request) {
         hbPayload.isEngagedSession = true;
         hbPayload.isBot = false;
       }
-      // Backfill geo on heartbeat if session still has no location
+      // Backfill geo + traffic source if session still missing them
       try {
         const existing = await sessionRef.get();
         const ex = existing.data() as Record<string, unknown> | undefined;
@@ -339,8 +342,38 @@ export async function POST(req: Request) {
           const geo = await resolveRequestGeo(req.headers, ip);
           Object.assign(hbPayload, geo);
         }
+        if (!ex?.trafficChannel) {
+          const attribution = classifyAttribution({
+            rawReferrer: sliceStr(body.rawReferrer, 500),
+            utmSource: sliceStr(body.utmSource, TRAFFIC_STR_MAX),
+            utmMedium: sliceStr(body.utmMedium, TRAFFIC_STR_MAX),
+            utmCampaign: sliceStr(body.utmCampaign, TRAFFIC_STR_MAX),
+            gclid: sliceStr(body.gclid, 128),
+            fbclid: sliceStr(body.fbclid, 128),
+            landingPath: sliceStr(body.landingPath, PATH_MAX) || path,
+          });
+          hbPayload.trafficChannel = attribution.channel;
+          hbPayload.trafficLabel = attribution.label;
+          hbPayload.trafficDetail = attribution.detail;
+          hbPayload.source = attribution.source;
+          hbPayload.medium = attribution.medium;
+          hbPayload.sourceConfidence = attribution.sourceConfidence;
+          hbPayload.attributionReason = attribution.attributionReason;
+          if (attribution.referrerHost) {
+            hbPayload.referrerHost = attribution.referrerHost;
+          }
+          if (attribution.utmSource) hbPayload.utmSource = attribution.utmSource;
+          if (attribution.utmMedium) hbPayload.utmMedium = attribution.utmMedium;
+          if (attribution.utmCampaign) {
+            hbPayload.utmCampaign = attribution.utmCampaign;
+          }
+          if (attribution.rawReferrer) {
+            hbPayload.rawReferrer = attribution.rawReferrer;
+          }
+          hbPayload.landingPath = attribution.landingUrl || path;
+        }
       } catch {
-        /* ignore geo backfill errors */
+        /* ignore geo/traffic backfill errors */
       }
       await sessionRef.set(hbPayload, { merge: true });
     } catch (e) {
@@ -349,8 +382,6 @@ export async function POST(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
-  const sliceStr = (raw: unknown, max: number) =>
-    typeof raw === "string" ? raw.trim().slice(0, max) || undefined : undefined;
 
   const pageLabel = sliceStr(body.pageLabel, PAGE_LABEL_MAX) ?? "";
   const clickLabel = sliceStr(body.clickLabel, 140) ?? "";
@@ -506,7 +537,8 @@ export async function POST(req: Request) {
     }
   }
 
-  const hasTraffic = Boolean(existing.trafficChannel || existing.source);
+  // Only trafficChannel counts — `source` alone used to skip labels forever.
+  const hasTraffic = Boolean(existing.trafficChannel);
   if (!hasTraffic) {
     sessionPayload.trafficChannel = attribution.channel;
     sessionPayload.trafficLabel = attribution.label;
