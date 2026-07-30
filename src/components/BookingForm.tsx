@@ -18,8 +18,10 @@ import {
   computeMinPayPaise,
   MIN_PAYMENT_PER_PERSON_INR,
 } from "@/lib/payment";
-import type { CartLine } from "@/lib/types";
+import type { CartLine, PackageDoc } from "@/lib/types";
 import { getOrCreateAnalyticsSessionId } from "@/lib/analytics-client-ids";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import type { ServiceItem } from "@/data/services";
 
 declare global {
   interface Window {
@@ -47,6 +49,24 @@ function cartSummary(lines: CartLine[]): string {
     .map((l) => `${l.name} ×${l.quantity}`)
     .join(", ")
     .slice(0, 200);
+}
+
+/** Prefer stored cart image; fall back to live package/service catalog. */
+function resolveCartLineImage(
+  line: CartLine,
+  packages: PackageDoc[],
+  services: ServiceItem[],
+): string | undefined {
+  const stored = line.image?.trim();
+  if (stored) return stored;
+  if (line.kind === "package") {
+    return (
+      packages.find((p) => p.id === line.refId)?.imageUrl?.trim() || undefined
+    );
+  }
+  const slug = line.refId.split("#")[0]?.trim() || "";
+  if (!slug) return undefined;
+  return services.find((s) => s.slug === slug)?.image?.trim() || undefined;
 }
 
 export function BookingForm() {
@@ -557,54 +577,89 @@ export function BookingForm() {
                 </p>
               ) : (
                 <ul className="mt-3 space-y-3">
-                  {lines.map((line) => (
-                    <li
-                      key={line.key}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ocean-100 bg-white p-3 text-sm"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-ocean-900">{line.name}</p>
-                        <p className="text-xs text-ocean-700">
-                          ₹{line.unitPrice.toLocaleString("en-IN")} each · subtotal{" "}
-                          ₹{(line.unitPrice * line.quantity).toLocaleString("en-IN")}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex items-center gap-1 rounded-lg border border-ocean-200">
+                  {lines.map((line) => {
+                    const imageUrl = resolveCartLineImage(
+                      line,
+                      packages,
+                      services,
+                    );
+                    return (
+                      <li
+                        key={line.key}
+                        className="flex flex-wrap items-center gap-3 rounded-lg border border-ocean-100 bg-white p-3 text-sm"
+                      >
+                        <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-ocean-100">
+                          {imageUrl ? (
+                            <CmsRemoteImage
+                              src={imageUrl}
+                              alt={line.name}
+                              fill
+                              className="object-cover"
+                              sizes="80px"
+                            />
+                          ) : (
+                            <div
+                              className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-ocean-400"
+                              aria-hidden
+                            >
+                              No photo
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-ocean-900">
+                            {line.name}
+                          </p>
+                          {line.duration ? (
+                            <p className="text-[11px] text-ocean-600">
+                              {line.duration}
+                            </p>
+                          ) : null}
+                          <p className="text-xs text-ocean-700">
+                            ₹{line.unitPrice.toLocaleString("en-IN")} each ·
+                            subtotal ₹
+                            {(line.unitPrice * line.quantity).toLocaleString(
+                              "en-IN",
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-1 rounded-lg border border-ocean-200">
+                            <button
+                              type="button"
+                              className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
+                              aria-label="Decrease quantity"
+                              onClick={() =>
+                                setQuantity(line.key, line.quantity - 1)
+                              }
+                            >
+                              −
+                            </button>
+                            <span className="w-6 text-center text-xs font-semibold">
+                              {line.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
+                              aria-label="Increase quantity"
+                              onClick={() =>
+                                setQuantity(line.key, line.quantity + 1)
+                              }
+                            >
+                              +
+                            </button>
+                          </div>
                           <button
                             type="button"
-                          className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
-                            aria-label="Decrease quantity"
-                            onClick={() =>
-                              setQuantity(line.key, line.quantity - 1)
-                            }
+                            className="min-h-11 touch-manipulation rounded-full px-4 py-3 text-sm font-bold text-red-700 hover:bg-red-50"
+                            onClick={() => removeLine(line.key)}
                           >
-                            −
-                          </button>
-                          <span className="w-6 text-center text-xs font-semibold">
-                            {line.quantity}
-                          </span>
-                          <button
-                            type="button"
-                          className="h-11 w-11 touch-manipulation text-base font-bold text-ocean-800"
-                            aria-label="Increase quantity"
-                            onClick={() =>
-                              setQuantity(line.key, line.quantity + 1)
-                            }
-                          >
-                            +
+                            Remove
                           </button>
                         </div>
-                        <button
-                          type="button"
-                          className="min-h-11 touch-manipulation rounded-full px-4 py-3 text-sm font-bold text-red-700 hover:bg-red-50"
-                          onClick={() => removeLine(line.key)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
