@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { blogPosts } from "@/data/blog-posts";
 import { BlogContent } from "@/components/BlogContent";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
@@ -22,6 +22,7 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { relatedServicesForContent } from "@/lib/related-services-for-content";
 import { extractBlogToc } from "@/lib/blog-seo/headings";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
+import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -224,7 +225,11 @@ function breadcrumbJsonLd(p: { title: string; slug: string }) {
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const p = await getBlogPostBySlugMerged(slug);
-  if (!p) notFound();
+  if (!p) {
+    const dest = findBlogRedirectDestination(`/blog/${slug}`);
+    if (dest) permanentRedirect(dest);
+    notFound();
+  }
   const [fs, related, catalog] = await Promise.all([
     getPublishedBlogPostBySlug(slug),
     getRelatedBlogPostsMerged(slug, 6),

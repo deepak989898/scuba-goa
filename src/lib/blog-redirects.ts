@@ -16,6 +16,11 @@ export const BLOG_PERMANENT_REDIRECTS: BlogRedirect[] = [
     source: "/blog/top-5-scuba-diving-spots-in-goa-6",
     destination: "/blog/top-5-scuba-diving-spots-in-goa",
   },
+  // GSC Not found (404) — Jul 2026: old AI slug removed / renamed
+  {
+    source: "/blog/exploring-goas-underwater-life-a-scuba-divers-guide",
+    destination: "/blog/what-to-expect-during-your-scuba-diving-experience",
+  },
 ];
 
 /** Extra non-blog permanent redirects used by next.config. */
@@ -32,6 +37,11 @@ export const SITE_PERMANENT_REDIRECTS: BlogRedirect[] = [
   {
     source: "/services/disco",
     destination: "/services/night-club",
+  },
+  // GSC Not found (404) — bare numeric junk URL crawled Jul 2026
+  {
+    source: "/5",
+    destination: "/booking",
   },
 ];
 

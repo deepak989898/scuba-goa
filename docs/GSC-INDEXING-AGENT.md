@@ -10,6 +10,15 @@ Production agent for **bookscubagoa.com** that monitors index coverage and ranki
 - Never automate Search Console UI “Request indexing” (no Puppeteer/Playwright).
 - Never promise guaranteed indexing or ranking.
 
+### GSC “Not found (404)” fixes
+
+Permanent redirects live in `src/lib/blog-redirects.ts` (wired via `next.config.ts`):
+
+- `/blog/exploring-goas-underwater-life-a-scuba-divers-guide` → `/blog/what-to-expect-during-your-scuba-diving-experience`
+- `/5` → `/booking`
+
+After deploy, validate with URL Inspection; GSC coverage charts update slowly.
+
 ## Admin UI
 
 - **`/admin/gsc-agent`** — Overview, URL inventory, issues, approvals, sitemaps, connection, settings, logs
