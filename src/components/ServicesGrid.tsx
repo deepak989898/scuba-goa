@@ -41,8 +41,9 @@ export function ServicesGrid() {
             >
               <span className="sr-only">{s.title}</span>
             </Link>
-            <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
-              <div className="pointer-events-none overflow-hidden rounded-t-xl">
+            {/* pointer-events-none so clicks reach the full-card Link; re-enable only on cart / details / slider arrows */}
+            <div className="pointer-events-none relative z-[1] flex min-h-0 flex-1 flex-col">
+              <div className="overflow-hidden rounded-t-xl">
                 {multi ? (
                   <ServiceCardImageSlider
                     images={cardImgs}
@@ -53,7 +54,7 @@ export function ServicesGrid() {
                     passthroughClicks
                   />
                 ) : (
-                  <div className="relative aspect-[16/10] overflow-hidden pointer-events-none [&_*]:pointer-events-none">
+                  <div className="relative aspect-[16/10] overflow-hidden">
                     <CmsRemoteImage
                       src={s.image}
                       alt={s.title}
@@ -63,14 +64,14 @@ export function ServicesGrid() {
                       loading="lazy"
                     />
                     {s.limitedSlots ? (
-                      <span className="pointer-events-none absolute right-2.5 top-2.5 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white">
+                      <span className="absolute right-2.5 top-2.5 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white">
                         Limited Slots
                       </span>
                     ) : null}
                   </div>
                 )}
               </div>
-              <div className="pointer-events-none flex min-h-0 flex-1 flex-col p-3 sm:p-3.5 [&_*]:pointer-events-none [&_a]:pointer-events-auto">
+              <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-3.5 [&_a]:pointer-events-auto">
                 <h2 className="line-clamp-2 min-h-[2.5rem] font-display text-lg font-semibold leading-snug text-ocean-900 sm:text-xl">
                   {s.title}
                 </h2>
@@ -87,10 +88,12 @@ export function ServicesGrid() {
                 </div>
               </div>
               <div className="relative z-[2] mt-auto flex flex-wrap gap-1.5 px-3 pb-3 sm:px-3.5 sm:pb-3.5">
-                <ServiceCardAddToCart service={s} size="sm" />
+                <span className="pointer-events-auto">
+                  <ServiceCardAddToCart service={s} size="sm" />
+                </span>
                 <Link
                   href={`/services/${s.slug}`}
-                  className="inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-extrabold text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300"
+                  className="pointer-events-auto inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-extrabold text-slate-950 shadow-md shadow-cyan-900/35 transition hover:bg-cyan-400 active:bg-cyan-300"
                 >
                   View details
                 </Link>
