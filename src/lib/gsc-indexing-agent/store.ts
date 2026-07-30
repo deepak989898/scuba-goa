@@ -43,6 +43,15 @@ export async function getSeoUrl(id: string): Promise<SeoUrlRecord | null> {
 export async function listSeoUrls(options?: {
   limit?: number;
   indexStatus?: string;
+  /** Preset filters used by Overview cards */
+  filter?:
+    | "indexed"
+    | "not_indexed"
+    | "unknown"
+    | "awaiting_inspection"
+    | "ranking_opportunity"
+    | "declining"
+    | "all";
   pageType?: string;
   severityIssue?: boolean;
 }): Promise<SeoUrlRecord[]> {
@@ -62,8 +71,66 @@ export async function listSeoUrls(options?: {
   if (options?.pageType) {
     rows = rows.filter((r) => r.pageType === options.pageType);
   }
+  const filter = options?.filter;
+  if (filter && filter !== "all") {
+    rows = rows.filter((u) => matchesUrlFilter(u, filter));
+  }
   rows.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   return rows;
+}
+
+const NOT_INDEXED_STATUSES = new Set([
+  "NOT_ON_GOOGLE",
+  "DISCOVERED_NOT_INDEXED",
+  "CRAWLED_NOT_INDEXED",
+  "BLOCKED_BY_ROBOTS",
+  "BLOCKED_BY_NOINDEX",
+  "SOFT_404",
+  "NOT_FOUND",
+  "SERVER_ERROR",
+  "REDIRECT_ERROR",
+  "DUPLICATE_GOOGLE_CANONICAL",
+  "ALTERNATE_WITH_CANONICAL",
+]);
+
+const UNKNOWN_STATUSES = new Set(["UNKNOWN", "PENDING_INSPECTION", "API_ERROR"]);
+
+const RANKING_OPPORTUNITY = new Set([
+  "POSITION_4_TO_10",
+  "POSITION_11_TO_20",
+  "LOW_CTR",
+  "IMPRESSIONS_NO_CLICKS",
+]);
+
+export function matchesUrlFilter(
+  u: SeoUrlRecord,
+  filter:
+    | "indexed"
+    | "not_indexed"
+    | "unknown"
+    | "awaiting_inspection"
+    | "ranking_opportunity"
+    | "declining",
+): boolean {
+  switch (filter) {
+    case "indexed":
+      return u.indexStatus === "INDEXED";
+    case "not_indexed":
+      return NOT_INDEXED_STATUSES.has(u.indexStatus);
+    case "unknown":
+      return UNKNOWN_STATUSES.has(u.indexStatus);
+    case "awaiting_inspection":
+      return (
+        u.indexStatus === "PENDING_INSPECTION" ||
+        (!u.lastInspectionAt && u.eligibleForIndexing)
+      );
+    case "ranking_opportunity":
+      return RANKING_OPPORTUNITY.has(u.rankingStatus);
+    case "declining":
+      return ["DECLINING", "LOST_TRAFFIC"].includes(u.rankingStatus);
+    default:
+      return true;
+  }
 }
 
 export async function saveIssue(issue: SeoIssue): Promise<void> {
@@ -166,17 +233,9 @@ export async function getOverviewStats(): Promise<OverviewStats> {
 
   const indexed = urls.filter((u) => u.indexStatus === "INDEXED").length;
   const notIndexed = urls.filter((u) =>
-    [
-      "NOT_ON_GOOGLE",
-      "DISCOVERED_NOT_INDEXED",
-      "CRAWLED_NOT_INDEXED",
-      "BLOCKED_BY_ROBOTS",
-      "BLOCKED_BY_NOINDEX",
-    ].includes(u.indexStatus),
+    NOT_INDEXED_STATUSES.has(u.indexStatus),
   ).length;
-  const unknown = urls.filter((u) =>
-    ["UNKNOWN", "PENDING_INSPECTION", "API_ERROR"].includes(u.indexStatus),
-  ).length;
+  const unknown = urls.filter((u) => UNKNOWN_STATUSES.has(u.indexStatus)).length;
 
   return {
     totalUrls: urls.length,
@@ -184,19 +243,13 @@ export async function getOverviewStats(): Promise<OverviewStats> {
     notIndexed,
     unknown,
     criticalIssues: issues.filter((i) => i.severity === "CRITICAL").length,
-    awaitingInspection: urls.filter(
-      (u) =>
-        u.indexStatus === "PENDING_INSPECTION" ||
-        (!u.lastInspectionAt && u.eligibleForIndexing),
+    awaitingInspection: urls.filter((u) =>
+      matchesUrlFilter(u, "awaiting_inspection"),
     ).length,
     rankingOpportunities: urls.filter((u) =>
-      ["POSITION_4_TO_10", "POSITION_11_TO_20", "LOW_CTR", "IMPRESSIONS_NO_CLICKS"].includes(
-        u.rankingStatus,
-      ),
+      matchesUrlFilter(u, "ranking_opportunity"),
     ).length,
-    declining: urls.filter((u) =>
-      ["DECLINING", "LOST_TRAFFIC"].includes(u.rankingStatus),
-    ).length,
+    declining: urls.filter((u) => matchesUrlFilter(u, "declining")).length,
     pendingApprovals: approvals.length,
     sitemapErrors: sitemaps.filter((s) => Boolean(s.lastError)).length,
     agentMode: settings.agentMode,

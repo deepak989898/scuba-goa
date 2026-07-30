@@ -21,6 +21,15 @@ type Overview = {
   propertyUri: string;
 };
 
+type UrlFilter =
+  | "all"
+  | "indexed"
+  | "not_indexed"
+  | "unknown"
+  | "awaiting_inspection"
+  | "ranking_opportunity"
+  | "declining";
+
 async function adminFetch(path: string, init?: RequestInit) {
   const auth = getFirebaseAuth();
   if (!auth?.currentUser) throw new Error("Sign in at /admin/login first.");
@@ -48,8 +57,40 @@ type Tab =
   | "settings"
   | "logs";
 
+const URL_FILTER_LABELS: Record<UrlFilter, string> = {
+  all: "All URLs",
+  indexed: "Indexed",
+  not_indexed: "Not indexed",
+  unknown: "Unknown / pending",
+  awaiting_inspection: "Awaiting inspection",
+  ranking_opportunity: "Ranking opportunities",
+  declining: "Declining",
+};
+
+function indexBadgeClass(status: string): string {
+  if (status === "INDEXED") return "bg-emerald-600 text-white";
+  if (
+    [
+      "NOT_ON_GOOGLE",
+      "DISCOVERED_NOT_INDEXED",
+      "CRAWLED_NOT_INDEXED",
+      "NOT_FOUND",
+      "REDIRECT_ERROR",
+      "SOFT_404",
+    ].includes(status)
+  ) {
+    return "bg-slate-600 text-white";
+  }
+  if (["BLOCKED_BY_ROBOTS", "BLOCKED_BY_NOINDEX", "SERVER_ERROR"].includes(status)) {
+    return "bg-red-600 text-white";
+  }
+  return "bg-amber-500 text-amber-950";
+}
+
 export default function GscIndexingAgentPage() {
   const [tab, setTab] = useState<Tab>("overview");
+  const [urlFilter, setUrlFilter] = useState<UrlFilter>("all");
+  const [issueSeverity, setIssueSeverity] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -69,49 +110,78 @@ export default function GscIndexingAgentPage() {
   const [agentMode, setAgentMode] = useState("approval_required");
   const [paused, setPaused] = useState(false);
 
-  const load = useCallback(async (view: Tab = tab) => {
-    setLoading(true);
-    setErr(null);
-    try {
-      if (view === "connection") {
-        const data = await adminFetch("/api/admin/gsc-agent/connection");
-        setConnection(data.connection);
-        setSites(data.sites ?? []);
-        setPropertyUri(String(data.connection?.propertyUri || ""));
-      } else if (view === "settings") {
-        const data = await adminFetch("/api/admin/gsc-agent/settings");
-        setSettings(data.settings);
-        setAgentMode(String(data.settings?.agentMode || "approval_required"));
-        setPaused(Boolean(data.settings?.paused));
-      } else {
-        const data = await adminFetch(
-          `/api/admin/gsc-agent/dashboard?view=${view === "overview" ? "overview" : view}`,
-        );
-        setOverview(data.overview ?? null);
-        setConnection(data.connection ?? null);
-        if (data.settings) setSettings(data.settings);
-        if (data.urls) setUrls(data.urls);
-        if (data.issues) setIssues(data.issues);
-        if (data.approvals) setApprovals(data.approvals);
-        if (data.sitemaps) setSitemaps(data.sitemaps);
-        if (data.actions) setActions(data.actions);
+  const load = useCallback(
+    async (view: Tab = tab, filter: UrlFilter = urlFilter, severity = issueSeverity) => {
+      setLoading(true);
+      setErr(null);
+      try {
+        if (view === "connection") {
+          const data = await adminFetch("/api/admin/gsc-agent/connection");
+          setConnection(data.connection);
+          setSites(data.sites ?? []);
+          setPropertyUri(String(data.connection?.propertyUri || ""));
+        } else if (view === "settings") {
+          const data = await adminFetch("/api/admin/gsc-agent/settings");
+          setSettings(data.settings);
+          setAgentMode(String(data.settings?.agentMode || "approval_required"));
+          setPaused(Boolean(data.settings?.paused));
+        } else if (view === "urls") {
+          const qs = new URLSearchParams({ view: "urls", filter });
+          const data = await adminFetch(
+            `/api/admin/gsc-agent/dashboard?${qs.toString()}`,
+          );
+          setOverview(data.overview ?? null);
+          setConnection(data.connection ?? null);
+          setUrls(data.urls ?? []);
+        } else if (view === "issues") {
+          const qs = new URLSearchParams({ view: "issues" });
+          if (severity) qs.set("severity", severity);
+          const data = await adminFetch(
+            `/api/admin/gsc-agent/dashboard?${qs.toString()}`,
+          );
+          setOverview(data.overview ?? null);
+          setIssues(data.issues ?? []);
+        } else {
+          const data = await adminFetch(
+            `/api/admin/gsc-agent/dashboard?view=${view === "overview" ? "overview" : view}`,
+          );
+          setOverview(data.overview ?? null);
+          setConnection(data.connection ?? null);
+          if (data.settings) setSettings(data.settings);
+          if (data.urls) setUrls(data.urls);
+          if (data.issues) setIssues(data.issues);
+          if (data.approvals) setApprovals(data.approvals);
+          if (data.sitemaps) setSitemaps(data.sitemaps);
+          if (data.actions) setActions(data.actions);
+        }
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Load failed");
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [tab]);
+    },
+    [tab, urlFilter, issueSeverity],
+  );
 
   useEffect(() => {
-    void load(tab);
-  }, [tab, load]);
+    void load(tab, urlFilter, issueSeverity);
+  }, [tab, urlFilter, issueSeverity, load]);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.get("gsc") === "connected") setOk("Google Search Console connected.");
     if (q.get("gsc") === "error") setErr(q.get("msg") || "OAuth error");
   }, []);
+
+  function openUrlFilter(filter: UrlFilter) {
+    setUrlFilter(filter);
+    setTab("urls");
+  }
+
+  function openCriticalIssues() {
+    setIssueSeverity("CRITICAL");
+    setTab("issues");
+  }
 
   async function runJob(job: string) {
     setBusy(true);
@@ -123,7 +193,7 @@ export default function GscIndexingAgentPage() {
         body: JSON.stringify({ job }),
       });
       setOk(`${job} finished: ${JSON.stringify(data.detail || data).slice(0, 180)}`);
-      await load(tab);
+      await load(tab, urlFilter, issueSeverity);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Run failed");
     } finally {
@@ -141,6 +211,73 @@ export default function GscIndexingAgentPage() {
     { id: "settings", label: "Agent settings" },
     { id: "logs", label: "Activity logs" },
   ];
+
+  const metricCards: {
+    label: string;
+    value: number;
+    color: string;
+    onClick?: () => void;
+    hint: string;
+  }[] = overview
+    ? [
+        {
+          label: "Canonical URLs",
+          value: overview.totalUrls,
+          color: "border-ocean-200 hover:border-ocean-400",
+          onClick: () => openUrlFilter("all"),
+          hint: "Click → all URLs",
+        },
+        {
+          label: "Indexed",
+          value: overview.indexed,
+          color: "border-emerald-300 bg-emerald-50/50 hover:border-emerald-500",
+          onClick: () => openUrlFilter("indexed"),
+          hint: "Click → indexed pages",
+        },
+        {
+          label: "Not indexed",
+          value: overview.notIndexed,
+          color: "border-slate-300 bg-slate-50 hover:border-slate-500",
+          onClick: () => openUrlFilter("not_indexed"),
+          hint: "Click → not indexed pages",
+        },
+        {
+          label: "Unknown / pending",
+          value: overview.unknown,
+          color: "border-amber-300 bg-amber-50/40 hover:border-amber-500",
+          onClick: () => openUrlFilter("unknown"),
+          hint: "Click → unknown status",
+        },
+        {
+          label: "Critical issues",
+          value: overview.criticalIssues,
+          color: "border-red-300 bg-red-50/40 hover:border-red-500",
+          onClick: openCriticalIssues,
+          hint: "Click → critical issues",
+        },
+        {
+          label: "Awaiting inspection",
+          value: overview.awaitingInspection,
+          color: "border-cyan-300 bg-cyan-50/40 hover:border-cyan-500",
+          onClick: () => openUrlFilter("awaiting_inspection"),
+          hint: "Click → queue list",
+        },
+        {
+          label: "Ranking opportunities",
+          value: overview.rankingOpportunities,
+          color: "border-violet-300 bg-violet-50/40 hover:border-violet-500",
+          onClick: () => openUrlFilter("ranking_opportunity"),
+          hint: "Click → improve these",
+        },
+        {
+          label: "Pending approvals",
+          value: overview.pendingApprovals,
+          color: "border-orange-300 bg-orange-50/40 hover:border-orange-500",
+          onClick: () => setTab("approvals"),
+          hint: "Click → approval queue",
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-4">
@@ -193,30 +330,27 @@ export default function GscIndexingAgentPage() {
 
       {tab === "overview" && overview ? (
         <div className="space-y-4">
+          <p className="text-xs text-ocean-600">
+            Tip: click any metric card to open the matching page list. GSC may show ~18
+            Indexed overall; this agent fills counts after{" "}
+            <strong>Sync analytics</strong> + <strong>Inspect queue</strong> (quota-limited).
+          </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {(
-              [
-                ["Canonical URLs", overview.totalUrls],
-                ["Indexed", overview.indexed],
-                ["Not indexed", overview.notIndexed],
-                ["Unknown / pending", overview.unknown],
-                ["Critical issues", overview.criticalIssues],
-                ["Awaiting inspection", overview.awaitingInspection],
-                ["Ranking opportunities", overview.rankingOpportunities],
-                ["Pending approvals", overview.pendingApprovals],
-              ] as const
-            ).map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm"
+            {metricCards.map((card) => (
+              <button
+                key={card.label}
+                type="button"
+                onClick={card.onClick}
+                className={`rounded-xl border bg-white p-3 text-left shadow-sm transition ${card.color}`}
               >
                 <p className="text-[10px] font-bold uppercase tracking-wide text-ocean-500">
-                  {label}
+                  {card.label}
                 </p>
                 <p className="mt-1 font-display text-2xl font-bold text-ocean-900">
-                  {value}
+                  {card.value}
                 </p>
-              </div>
+                <p className="mt-1 text-[10px] font-medium text-cyan-800">{card.hint}</p>
+              </button>
             ))}
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-sm text-ocean-800">
@@ -252,70 +386,148 @@ export default function GscIndexingAgentPage() {
       ) : null}
 
       {tab === "urls" ? (
-        <div className="overflow-x-auto rounded-xl border border-ocean-100 bg-white">
-          <table className="min-w-full text-left text-xs">
-            <thead className="bg-ocean-50 text-ocean-800">
-              <tr>
-                <th className="p-2">URL</th>
-                <th className="p-2">Type</th>
-                <th className="p-2">Index</th>
-                <th className="p-2">HTTP</th>
-                <th className="p-2">Imp</th>
-                <th className="p-2">Pos</th>
-                <th className="p-2">Ranking</th>
-              </tr>
-            </thead>
-            <tbody>
-              {urls.map((u) => (
-                <tr key={String(u.id)} className="border-t border-ocean-50">
-                  <td className="max-w-[280px] truncate p-2">
-                    <a
-                      href={String(u.url)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-cyan-800 hover:underline"
-                    >
-                      {String(u.url)}
-                    </a>
-                  </td>
-                  <td className="p-2">{String(u.pageType)}</td>
-                  <td className="p-2">{String(u.indexStatus)}</td>
-                  <td className="p-2">{String(u.httpStatus ?? "—")}</td>
-                  <td className="p-2">{String(u.impressions ?? 0)}</td>
-                  <td className="p-2">
-                    {Number(u.averagePosition || 0).toFixed(1)}
-                  </td>
-                  <td className="p-2">{String(u.rankingStatus)}</td>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-ocean-700">Filter:</span>
+            {(Object.keys(URL_FILTER_LABELS) as UrlFilter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setUrlFilter(f)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                  urlFilter === f
+                    ? "bg-ocean-800 text-white"
+                    : "border border-ocean-200 bg-white text-ocean-800"
+                }`}
+              >
+                {URL_FILTER_LABELS[f]}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-ocean-600">
+            Showing <strong>{URL_FILTER_LABELS[urlFilter]}</strong> — {urls.length} URL
+            {urls.length === 1 ? "" : "s"}. Open a link to review/improve that page.
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-ocean-100 bg-white">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-ocean-50 text-ocean-800">
+                <tr>
+                  <th className="p-2">URL</th>
+                  <th className="p-2">Type</th>
+                  <th className="p-2">Index</th>
+                  <th className="p-2">HTTP</th>
+                  <th className="p-2">Imp</th>
+                  <th className="p-2">Pos</th>
+                  <th className="p-2">Ranking</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {urls.length === 0 ? (
-            <p className="p-4 text-sm text-ocean-600">
-              No URLs yet. Click <strong>Discover URLs</strong> on Overview.
-            </p>
-          ) : null}
+              </thead>
+              <tbody>
+                {urls.map((u) => (
+                  <tr key={String(u.id)} className="border-t border-ocean-50">
+                    <td className="max-w-[280px] truncate p-2">
+                      <a
+                        href={String(u.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold text-cyan-800 hover:underline"
+                      >
+                        {String(u.url)}
+                      </a>
+                    </td>
+                    <td className="p-2">{String(u.pageType)}</td>
+                    <td className="p-2">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${indexBadgeClass(String(u.indexStatus))}`}
+                      >
+                        {String(u.indexStatus)}
+                      </span>
+                    </td>
+                    <td className="p-2">{String(u.httpStatus ?? "—")}</td>
+                    <td className="p-2">{String(u.impressions ?? 0)}</td>
+                    <td className="p-2">
+                      {Number(u.averagePosition || 0).toFixed(1)}
+                    </td>
+                    <td className="p-2">{String(u.rankingStatus)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {urls.length === 0 ? (
+              <p className="p-4 text-sm text-ocean-600">
+                No URLs in this filter. Try <strong>Discover URLs</strong>, then{" "}
+                <strong>Sync analytics</strong> / <strong>Inspect queue</strong> on Overview.
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       {tab === "issues" ? (
-        <ul className="space-y-2">
-          {issues.map((i) => (
-            <li
-              key={String(i.id)}
-              className="rounded-lg border border-ocean-100 bg-white p-3 text-sm"
-            >
-              <p className="font-bold text-ocean-900">
-                [{String(i.severity)}] {String(i.title)}
-              </p>
-              <p className="text-xs text-ocean-600">{String(i.url)}</p>
-              <p className="mt-1 text-ocean-800">{String(i.detail)}</p>
-            </li>
-          ))}
-          {issues.length === 0 ? (
-            <p className="text-sm text-ocean-600">No open issues.</p>
-          ) : null}
-        </ul>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["", "All"],
+                ["CRITICAL", "Critical"],
+                ["HIGH", "High"],
+                ["MEDIUM", "Medium"],
+                ["LOW", "Low"],
+              ] as const
+            ).map(([sev, label]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setIssueSeverity(sev)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                  issueSeverity === sev
+                    ? "bg-red-800 text-white"
+                    : "border border-ocean-200 bg-white text-ocean-800"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <ul className="space-y-2">
+            {issues.map((i) => (
+              <li
+                key={String(i.id)}
+                className="rounded-lg border border-ocean-100 bg-white p-3 text-sm"
+              >
+                <p className="font-bold text-ocean-900">
+                  <span
+                    className={
+                      String(i.severity) === "CRITICAL"
+                        ? "text-red-700"
+                        : String(i.severity) === "HIGH"
+                          ? "text-orange-700"
+                          : "text-ocean-700"
+                    }
+                  >
+                    [{String(i.severity)}]
+                  </span>{" "}
+                  {String(i.title)}
+                </p>
+                {i.url ? (
+                  <a
+                    href={String(i.url)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-cyan-800 hover:underline"
+                  >
+                    {String(i.url)}
+                  </a>
+                ) : (
+                  <p className="text-xs text-ocean-600">—</p>
+                )}
+                <p className="mt-1 text-ocean-800">{String(i.detail)}</p>
+              </li>
+            ))}
+            {issues.length === 0 ? (
+              <p className="text-sm text-ocean-600">No open issues in this filter.</p>
+            ) : null}
+          </ul>
+        </div>
       ) : null}
 
       {tab === "approvals" ? (
@@ -522,6 +734,11 @@ export default function GscIndexingAgentPage() {
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-[11px] text-ocean-600">
+              Prefer the same property as GSC UI (ideally{" "}
+              <code>https://www.bookscubagoa.com/</code> or Domain property). Apex↔www
+              redirects create “Page with redirect / Redirect error” in GSC.
+            </p>
             <button
               type="button"
               disabled={busy || !propertyUri}

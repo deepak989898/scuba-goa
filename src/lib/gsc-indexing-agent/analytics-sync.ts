@@ -7,6 +7,19 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { stripUndefinedDeep } from "@/lib/firestore-json";
 import { SEO_ANALYTICS_DAILY } from "./store";
 
+/** Don't override a recent inspection that clearly says not indexed. */
+const NOT_INDEXED_FROM_INSPECTION = new Set([
+  "NOT_ON_GOOGLE",
+  "DISCOVERED_NOT_INDEXED",
+  "CRAWLED_NOT_INDEXED",
+  "BLOCKED_BY_ROBOTS",
+  "BLOCKED_BY_NOINDEX",
+  "SOFT_404",
+  "NOT_FOUND",
+  "SERVER_ERROR",
+  "REDIRECT_ERROR",
+]);
+
 function istDateOffset(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
@@ -84,6 +97,23 @@ export async function syncSearchAnalytics(): Promise<{
       ctr: row.ctr,
       averagePosition: row.position,
       rankingStatus,
+      // Search Analytics impressions/clicks ⇒ Google has the URL in search index.
+      // Don't overwrite a fresh URL Inspection that says not indexed.
+      indexStatus: (() => {
+        const hasSearchPresence = row.impressions > 0 || row.clicks > 0;
+        if (!hasSearchPresence) return base.indexStatus;
+        const inspectedRecently =
+          Boolean(base.lastInspectionAt) &&
+          Date.now() - new Date(base.lastInspectionAt!).getTime() <
+            14 * 24 * 60 * 60 * 1000;
+        if (
+          inspectedRecently &&
+          NOT_INDEXED_FROM_INSPECTION.has(base.indexStatus)
+        ) {
+          return base.indexStatus;
+        }
+        return "INDEXED";
+      })(),
       updatedAt: now,
       lastActionAt: now,
     });

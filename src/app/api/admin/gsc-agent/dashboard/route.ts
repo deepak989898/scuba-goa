@@ -47,17 +47,42 @@ export async function GET(req: Request) {
   }
 
   if (view === "urls") {
+    const allowed = new Set([
+      "indexed",
+      "not_indexed",
+      "unknown",
+      "awaiting_inspection",
+      "ranking_opportunity",
+      "declining",
+      "all",
+    ]);
+    const filterRaw = url.searchParams.get("filter") || "all";
+    const filter = (allowed.has(filterRaw) ? filterRaw : "all") as
+      | "indexed"
+      | "not_indexed"
+      | "unknown"
+      | "awaiting_inspection"
+      | "ranking_opportunity"
+      | "declining"
+      | "all";
     const urls = await listSeoUrls({
       limit: 500,
+      filter,
       indexStatus: url.searchParams.get("indexStatus") || undefined,
       pageType: url.searchParams.get("pageType") || undefined,
     });
-    return NextResponse.json({ urls, overview, connection });
+    return NextResponse.json({ urls, overview, connection, filter });
   }
 
   if (view === "issues") {
-    const issues = await listOpenIssues(300);
-    return NextResponse.json({ issues, overview });
+    const severity = url.searchParams.get("severity") || undefined;
+    let issues = await listOpenIssues(300);
+    if (severity) {
+      issues = issues.filter(
+        (i) => String(i.severity).toUpperCase() === severity.toUpperCase(),
+      );
+    }
+    return NextResponse.json({ issues, overview, severity: severity ?? null });
   }
 
   if (view === "approvals") {
