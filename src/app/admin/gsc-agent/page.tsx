@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { getFirebaseAuth } from "@/lib/firebase";
+import type { BlogPostFirestore } from "@/lib/blog-firestore";
+import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
+import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
+import { BlogPostEditorPanel } from "@/app/admin/blog-automation/BlogPostEditorPanel";
+import { GuideEditorPanel } from "@/app/admin/gsc-agent/GuideEditorPanel";
 
 type Overview = {
   totalUrls: number;
@@ -97,6 +102,26 @@ function isContentEditableType(pageType: string): boolean {
   return pageType === "blog" || pageType === "guide";
 }
 
+const PUBLISH_SLOTS = [
+  "06:00",
+  "07:00",
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00",
+  "20:00",
+  "21:00",
+  "22:00",
+];
+
 type ImproveMeta = {
   at: string;
   estimatedPct: number;
@@ -106,18 +131,10 @@ type ImproveMeta = {
   rankingStatus: string;
 };
 
-type EditForm = {
+type EditingSession = {
   urlId: string;
   pageType: "blog" | "guide";
-  slug: string;
-  url: string;
   rankingStatus: string;
-  title: string;
-  metaTitle: string;
-  metaDescription: string;
-  excerpt: string;
-  keywords: string;
-  content: string;
   guidanceHeadline: string;
   guidanceBullets: string[];
 };
@@ -145,8 +162,13 @@ export default function GscIndexingAgentPage() {
   const [agentMode, setAgentMode] = useState("approval_required");
   const [paused, setPaused] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editBusy, setEditBusy] = useState<string | null>(null);
+  const [aiImageProgress, setAiImageProgress] = useState<number | null>(null);
+  const [editingSession, setEditingSession] = useState<EditingSession | null>(
+    null,
+  );
+  const [editingBlog, setEditingBlog] = useState<BlogPostFirestore | null>(null);
+  const [editingGuide, setEditingGuide] = useState<SeoPageFirestore | null>(null);
   const [improveByUrl, setImproveByUrl] = useState<Record<string, ImproveMeta>>(
     {},
   );
@@ -250,6 +272,14 @@ export default function GscIndexingAgentPage() {
     }
   }
 
+  function closeEditor() {
+    setEditingSession(null);
+    setEditingBlog(null);
+    setEditingGuide(null);
+    setAiImageProgress(null);
+    setEditBusy(null);
+  }
+
   async function generateImprove(urlId: string) {
     setGeneratingId(urlId);
     setErr(null);
@@ -261,43 +291,30 @@ export default function GscIndexingAgentPage() {
       });
       const improve = data.improve as ImproveMeta;
       const page = data.page as {
-        urlId: string;
         pageType: "blog" | "guide";
-        slug: string;
-        url: string;
         rankingStatus: string;
-        fields: {
-          title: string;
-          metaTitle: string;
-          metaDescription: string;
-          excerpt: string;
-          keywords: string[];
-          content: string;
-          headline?: string;
-          bodyContent?: string;
-        };
+        blogPost: BlogPostFirestore | null;
+        guidePage: SeoPageFirestore | null;
         guidance: { headline: string; bullets: string[] };
       };
       setImproveByUrl((prev) => ({ ...prev, [urlId]: improve }));
       setOk(
-        `Content updated (no images). Est. ~${improve.estimatedPct}% toward ${improve.targetBand}.`,
+        `Content updated (text only). Est. ~${improve.estimatedPct}% toward ${improve.targetBand}.`,
       );
-      if (editForm?.urlId === urlId) {
-        setEditForm({
-          urlId: page.urlId,
+      if (editingSession?.urlId === urlId) {
+        setEditingSession({
+          urlId,
           pageType: page.pageType,
-          slug: page.slug,
-          url: page.url,
           rankingStatus: page.rankingStatus,
-          title: page.fields.headline || page.fields.title,
-          metaTitle: page.fields.metaTitle,
-          metaDescription: page.fields.metaDescription,
-          excerpt: page.fields.excerpt,
-          keywords: (page.fields.keywords || []).join(", "),
-          content: page.fields.bodyContent || page.fields.content,
           guidanceHeadline: page.guidance.headline,
           guidanceBullets: page.guidance.bullets,
         });
+        if (page.pageType === "blog" && page.blogPost) {
+          setEditingBlog(page.blogPost);
+        }
+        if (page.pageType === "guide" && page.guidePage) {
+          setEditingGuide(page.guidePage);
+        }
       }
       await load("urls", urlFilter, issueSeverity);
     } catch (e) {
@@ -309,7 +326,7 @@ export default function GscIndexingAgentPage() {
 
   async function openEdit(urlId: string) {
     setErr(null);
-    setBusy(true);
+    setEditBusy(`edit-${urlId}`);
     try {
       const data = await adminFetch(
         `/api/admin/gsc-agent/improve?urlId=${encodeURIComponent(urlId)}`,
@@ -317,81 +334,229 @@ export default function GscIndexingAgentPage() {
       const page = data.page as {
         urlId: string;
         pageType: "blog" | "guide";
-        slug: string;
-        url: string;
         rankingStatus: string;
-        fields: {
-          title: string;
-          metaTitle: string;
-          metaDescription: string;
-          excerpt: string;
-          keywords: string[];
-          content: string;
-          headline?: string;
-          bodyContent?: string;
-        };
+        blogPost: BlogPostFirestore | null;
+        guidePage: SeoPageFirestore | null;
         guidance: { headline: string; bullets: string[] };
         lastImprove: ImproveMeta | null;
       };
       if (page.lastImprove) {
         setImproveByUrl((prev) => ({ ...prev, [urlId]: page.lastImprove! }));
       }
-      setEditForm({
+      setEditingSession({
         urlId: page.urlId,
         pageType: page.pageType,
-        slug: page.slug,
-        url: page.url,
         rankingStatus: page.rankingStatus,
-        title: page.fields.headline || page.fields.title,
-        metaTitle: page.fields.metaTitle,
-        metaDescription: page.fields.metaDescription,
-        excerpt: page.fields.excerpt,
-        keywords: (page.fields.keywords || []).join(", "),
-        content: page.fields.bodyContent || page.fields.content,
         guidanceHeadline: page.guidance.headline,
         guidanceBullets: page.guidance.bullets,
       });
+      setEditingBlog(page.pageType === "blog" ? page.blogPost : null);
+      setEditingGuide(page.pageType === "guide" ? page.guidePage : null);
+      if (page.pageType === "blog" && !page.blogPost) {
+        throw new Error("Blog post not found");
+      }
+      if (page.pageType === "guide" && !page.guidePage) {
+        throw new Error("Guide page not found");
+      }
     } catch (e) {
+      closeEditor();
       setErr(e instanceof Error ? e.message : "Could not load page for edit");
     } finally {
-      setBusy(false);
+      setEditBusy(null);
     }
   }
 
-  async function saveEdit() {
-    if (!editForm) return;
-    setSavingEdit(true);
+  async function saveEditedBlog(opts?: { publishNow?: boolean }) {
+    if (!editingBlog || !editingSession) return;
+    setEditBusy(`save-${editingBlog.slug}`);
     setErr(null);
     setOk(null);
     try {
-      const data = await adminFetch("/api/admin/gsc-agent/improve", {
+      await adminFetch("/api/admin/blog-posts", {
         method: "PATCH",
         body: JSON.stringify({
-          urlId: editForm.urlId,
-          title: editForm.title,
-          headline: editForm.title,
-          metaTitle: editForm.metaTitle,
-          metaDescription: editForm.metaDescription,
-          excerpt: editForm.excerpt,
-          keywords: editForm.keywords,
-          content: editForm.content,
-          bodyContent: editForm.content,
+          ...editingBlog,
+          scheduledPublishAtIst: utcIsoToIstDatetimeLocalValue(
+            editingBlog.scheduledPublishAt,
+          ),
+          publishNow: opts?.publishNow === true,
         }),
       });
-      const page = data.page as { lastImprove?: ImproveMeta | null };
-      if (page.lastImprove) {
-        setImproveByUrl((prev) => ({
-          ...prev,
-          [editForm.urlId]: page.lastImprove!,
-        }));
-      }
-      setOk(`Saved ${editForm.pageType} “${editForm.slug}”.`);
-      setEditForm(null);
+      setOk(
+        opts?.publishNow
+          ? `Published /blog/${editingBlog.slug}`
+          : `Saved /blog/${editingBlog.slug}`,
+      );
+      closeEditor();
       await load("urls", urlFilter, issueSeverity);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
     } finally {
-      setSavingEdit(false);
+      setEditBusy(null);
+    }
+  }
+
+  async function saveEditedGuide() {
+    if (!editingGuide || !editingSession) return;
+    setEditBusy(`save-${editingGuide.slug}`);
+    setErr(null);
+    setOk(null);
+    try {
+      await adminFetch("/api/admin/gsc-agent/improve", {
+        method: "PATCH",
+        body: JSON.stringify({
+          urlId: editingSession.urlId,
+          title: editingGuide.headline,
+          headline: editingGuide.headline,
+          metaTitle: editingGuide.metaTitle,
+          metaDescription: editingGuide.metaDescription,
+          keywords: editingGuide.keywords,
+          content: editingGuide.bodyContent,
+          bodyContent: editingGuide.bodyContent,
+          ogImageUrl: editingGuide.ogImageUrl,
+          heroImageUrl: editingGuide.heroImageUrl,
+          bookingOption: editingGuide.bookingOption,
+          published: editingGuide.published,
+        }),
+      });
+      setOk(`Saved /guides/${editingGuide.slug}`);
+      closeEditor();
+      await load("urls", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setEditBusy(null);
+    }
+  }
+
+  async function uploadBlogImage(file: File | null) {
+    if (!file || !editingBlog) return;
+    setEditBusy(`img-${editingBlog.slug}`);
+    setErr(null);
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) throw new Error("Sign in required");
+      const token = await auth.currentUser.getIdToken();
+      const fd = new FormData();
+      fd.append("slug", editingBlog.slug);
+      fd.append("file", file);
+      const res = await fetch("/api/admin/blog-image-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setEditingBlog((e) =>
+        e
+          ? {
+              ...e,
+              featuredImageUrl: data.featuredImageUrl ?? e.featuredImageUrl,
+              ogImageUrl:
+                data.ogImageUrl ?? data.featuredImageUrl ?? e.ogImageUrl,
+            }
+          : e,
+      );
+      setOk("Featured image uploaded and saved to the live blog.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Image upload failed");
+    } finally {
+      setEditBusy(null);
+    }
+  }
+
+  async function generateBlogAiImage() {
+    if (!editingBlog) return;
+    const title = editingBlog.title.trim();
+    if (!title) {
+      setErr("Enter a blog title first, then generate the image.");
+      return;
+    }
+    setEditBusy(`ai-img-${editingBlog.slug}`);
+    setErr(null);
+    setOk(null);
+    setAiImageProgress(3);
+    const started = Date.now();
+    const tick = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      const estimated = Math.min(
+        92,
+        Math.round(3 + 89 * (1 - Math.exp(-elapsed / 18000))),
+      );
+      setAiImageProgress((prev) =>
+        prev == null ? estimated : Math.max(prev, estimated),
+      );
+    }, 400);
+    try {
+      const data = await adminFetch("/api/admin/blog-image-generate", {
+        method: "POST",
+        body: JSON.stringify({ slug: editingBlog.slug, title }),
+      });
+      window.clearInterval(tick);
+      setAiImageProgress(100);
+      setEditingBlog((e) =>
+        e
+          ? {
+              ...e,
+              featuredImageUrl:
+                (data.featuredImageUrl as string) ?? e.featuredImageUrl,
+              ogImageUrl:
+                (data.ogImageUrl as string) ??
+                (data.featuredImageUrl as string) ??
+                e.ogImageUrl,
+              featuredImageAlt:
+                (data.featuredImageAlt as string) ?? e.featuredImageAlt,
+            }
+          : e,
+      );
+      setOk("AI image generated and applied to the live blog.");
+      window.setTimeout(() => setAiImageProgress(null), 900);
+    } catch (e) {
+      window.clearInterval(tick);
+      setAiImageProgress(null);
+      setErr(e instanceof Error ? e.message : "AI image generation failed");
+    } finally {
+      setEditBusy(null);
+    }
+  }
+
+  async function uploadGuideImage(file: File | null, kind: "og" | "hero") {
+    if (!file || !editingGuide) return;
+    setEditBusy(`img-${kind}-${editingGuide.slug}`);
+    setErr(null);
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) throw new Error("Sign in required");
+      const token = await auth.currentUser.getIdToken();
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("slug", editingGuide.slug);
+      fd.append("kind", kind);
+      const res = await fetch("/api/admin/seo-image-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      const url = String(data.url ?? "");
+      if (!url) throw new Error("Upload returned no URL");
+      setEditingGuide((g) =>
+        g
+          ? kind === "og"
+            ? { ...g, ogImageUrl: url }
+            : { ...g, heroImageUrl: url }
+          : g,
+      );
+      setOk(
+        kind === "og"
+          ? "OG image uploaded — click Save changes to persist."
+          : "Hero image uploaded — click Save changes to persist.",
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Image upload failed");
+    } finally {
+      setEditBusy(null);
     }
   }
 
@@ -601,8 +766,9 @@ export default function GscIndexingAgentPage() {
           <p className="text-xs text-ocean-600">
             Showing <strong>{URL_FILTER_LABELS[urlFilter]}</strong> — {urls.length} URL
             {urls.length === 1 ? "" : "s"}.{" "}
-            <strong>Generate / Edit</strong> only on blog &amp; guide rows (content only — no
-            images). Static pages stay read-only here.
+            <strong>Generate</strong> = AI text improve (no images).{" "}
+            <strong>Edit</strong> = full editor like AI Blog Automation (all fields + images).
+            Blog/guide only.
           </p>
           {urlFilter === "ranking_opportunity" ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
@@ -637,85 +803,172 @@ export default function GscIndexingAgentPage() {
                     improveByUrl[id] ||
                     (u.lastRankingImprove as ImproveMeta | undefined);
                   const isGen = generatingId === id;
+                  const isEditing = editingSession?.urlId === id;
                   return (
-                    <tr key={id} className="border-t border-ocean-50 align-top">
-                      <td className="max-w-[240px] truncate p-2">
-                        <a
-                          href={String(u.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-semibold text-cyan-800 hover:underline"
-                        >
-                          {String(u.url)}
-                        </a>
-                      </td>
-                      <td className="p-2">{pageType}</td>
-                      <td className="p-2">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${indexBadgeClass(String(u.indexStatus))}`}
-                        >
-                          {String(u.indexStatus)}
-                        </span>
-                      </td>
-                      <td className="p-2">{String(u.httpStatus ?? "—")}</td>
-                      <td className="p-2">{String(u.impressions ?? 0)}</td>
-                      <td className="p-2">
-                        {Number(u.averagePosition || 0).toFixed(1)}
-                      </td>
-                      <td className="p-2">
-                        <div>{ranking}</div>
-                        {ranking === "POSITION_11_TO_20" && editable ? (
-                          <p className="mt-1 max-w-[160px] text-[10px] leading-snug text-amber-800">
-                            Title refresh · links · पुराना content अपडेट → toward 4–10
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="p-2">
-                        {editable ? (
-                          <div className="flex min-w-[140px] flex-col gap-1.5">
-                            <div className="flex flex-wrap gap-1">
-                              <button
-                                type="button"
-                                disabled={busy || Boolean(generatingId)}
-                                onClick={() => void generateImprove(id)}
-                                className="rounded-md bg-emerald-700 px-2 py-1 text-[10px] font-bold text-white disabled:opacity-50"
-                              >
-                                {isGen ? "Generating…" : "Generate"}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busy || Boolean(generatingId)}
-                                onClick={() => void openEdit(id)}
-                                className="rounded-md border border-ocean-300 bg-white px-2 py-1 text-[10px] font-bold text-ocean-900 disabled:opacity-50"
-                              >
-                                Edit
-                              </button>
-                            </div>
-                            {improve ? (
-                              <div className="space-y-0.5">
-                                <span
-                                  className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${improvePctClass(improve.estimatedPct)}`}
+                    <Fragment key={id}>
+                      <tr
+                        className={`border-t border-ocean-50 align-top ${
+                          isEditing ? "bg-ocean-50/40" : ""
+                        }`}
+                      >
+                        <td className="max-w-[240px] truncate p-2">
+                          <a
+                            href={String(u.url)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-cyan-800 hover:underline"
+                          >
+                            {String(u.url)}
+                          </a>
+                        </td>
+                        <td className="p-2">{pageType}</td>
+                        <td className="p-2">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${indexBadgeClass(String(u.indexStatus))}`}
+                          >
+                            {String(u.indexStatus)}
+                          </span>
+                        </td>
+                        <td className="p-2">{String(u.httpStatus ?? "—")}</td>
+                        <td className="p-2">{String(u.impressions ?? 0)}</td>
+                        <td className="p-2">
+                          {Number(u.averagePosition || 0).toFixed(1)}
+                        </td>
+                        <td className="p-2">
+                          <div>{ranking}</div>
+                          {ranking === "POSITION_11_TO_20" && editable ? (
+                            <p className="mt-1 max-w-[160px] text-[10px] leading-snug text-amber-800">
+                              Title refresh · links · पुराना content अपडेट → toward 4–10
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="p-2">
+                          {editable ? (
+                            <div className="flex min-w-[140px] flex-col gap-1.5">
+                              <div className="flex flex-wrap gap-1">
+                                <button
+                                  type="button"
+                                  disabled={
+                                    busy ||
+                                    Boolean(generatingId) ||
+                                    Boolean(editBusy)
+                                  }
+                                  onClick={() => void generateImprove(id)}
+                                  className="rounded-md bg-emerald-700 px-2 py-1 text-[10px] font-bold text-white disabled:opacity-50"
                                 >
-                                  ~{improve.estimatedPct}% improve
-                                </span>
-                                <p className="text-[10px] leading-snug text-ocean-700">
-                                  Target: {improve.targetBand}
-                                </p>
-                                <p className="text-[10px] leading-snug text-ocean-600">
-                                  {improve.summary}
-                                </p>
+                                  {isGen ? "Generating…" : "Generate"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={
+                                    busy ||
+                                    Boolean(generatingId) ||
+                                    Boolean(editBusy)
+                                  }
+                                  onClick={() =>
+                                    isEditing
+                                      ? closeEditor()
+                                      : void openEdit(id)
+                                  }
+                                  className={`rounded-md border px-2 py-1 text-[10px] font-bold disabled:opacity-50 ${
+                                    isEditing
+                                      ? "border-ocean-700 bg-ocean-800 text-white"
+                                      : "border-ocean-300 bg-white text-ocean-900"
+                                  }`}
+                                >
+                                  {isEditing
+                                    ? "Editing…"
+                                    : editBusy === `edit-${id}`
+                                      ? "Loading…"
+                                      : "Edit"}
+                                </button>
                               </div>
-                            ) : ranking === "POSITION_11_TO_20" ? (
-                              <p className="text-[10px] leading-snug text-amber-900">
-                                Generate → title + links + content update (no image)
+                              {improve ? (
+                                <div className="space-y-0.5">
+                                  <span
+                                    className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${improvePctClass(improve.estimatedPct)}`}
+                                  >
+                                    ~{improve.estimatedPct}% improve
+                                  </span>
+                                  <p className="text-[10px] leading-snug text-ocean-700">
+                                    Target: {improve.targetBand}
+                                  </p>
+                                  <p className="text-[10px] leading-snug text-ocean-600">
+                                    {improve.summary}
+                                  </p>
+                                </div>
+                              ) : ranking === "POSITION_11_TO_20" ? (
+                                <p className="text-[10px] leading-snug text-amber-900">
+                                  Generate → title + links + content · Edit → images too
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-ocean-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                      {isEditing && editingSession ? (
+                        <tr className="bg-ocean-50/50">
+                          <td colSpan={8} className="p-4">
+                            <div
+                              className={`mb-3 rounded-xl border px-3 py-2 text-xs ${
+                                editingSession.rankingStatus ===
+                                "POSITION_11_TO_20"
+                                  ? "border-amber-200 bg-amber-50 text-amber-950"
+                                  : "border-ocean-100 bg-white text-ocean-900"
+                              }`}
+                            >
+                              <p className="font-bold">
+                                {editingSession.guidanceHeadline}
                               </p>
+                              <ul className="mt-1 list-inside list-disc space-y-0.5">
+                                {editingSession.guidanceBullets.map((b) => (
+                                  <li key={b}>{b}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            {editingSession.pageType === "blog" &&
+                            editingBlog ? (
+                              <BlogPostEditorPanel
+                                editing={editingBlog}
+                                busy={editBusy}
+                                publishSlots={PUBLISH_SLOTS}
+                                aiImageProgress={aiImageProgress}
+                                onChangeEditing={setEditingBlog}
+                                onSave={(opts) => void saveEditedBlog(opts)}
+                                onCancelEdit={closeEditor}
+                                onUploadImage={(file) =>
+                                  void uploadBlogImage(file)
+                                }
+                                onGenerateAiImage={() =>
+                                  void generateBlogAiImage()
+                                }
+                              />
                             ) : null}
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-ocean-400">—</span>
-                        )}
-                      </td>
-                    </tr>
+                            {editingSession.pageType === "guide" &&
+                            editingGuide ? (
+                              <GuideEditorPanel
+                                editing={editingGuide}
+                                busy={editBusy}
+                                onChangeEditing={setEditingGuide}
+                                onSave={() => void saveEditedGuide()}
+                                onCancelEdit={closeEditor}
+                                onUploadImage={(file, kind) =>
+                                  void uploadGuideImage(file, kind)
+                                }
+                                generatingContent={
+                                  generatingId === editingSession.urlId
+                                }
+                                onGenerateContent={() =>
+                                  void generateImprove(editingSession.urlId)
+                                }
+                              />
+                            ) : null}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -1107,153 +1360,6 @@ export default function GscIndexingAgentPage() {
         </Link>{" "}
         · Docs: <code>docs/GSC-INDEXING-AGENT.md</code>
       </p>
-
-      {editForm ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-10">
-          <div className="w-full max-w-3xl rounded-2xl border border-ocean-100 bg-white p-4 shadow-xl">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h2 className="text-base font-bold text-ocean-950">
-                  Edit {editForm.pageType}: {editForm.slug}
-                </h2>
-                <a
-                  href={editForm.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-cyan-800 hover:underline"
-                >
-                  {editForm.url}
-                </a>
-              </div>
-              <button
-                type="button"
-                className="rounded-full border border-ocean-200 px-3 py-1 text-xs font-bold"
-                onClick={() => setEditForm(null)}
-              >
-                Close
-              </button>
-            </div>
-
-            <div
-              className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
-                editForm.rankingStatus === "POSITION_11_TO_20"
-                  ? "border-amber-200 bg-amber-50 text-amber-950"
-                  : "border-ocean-100 bg-ocean-50 text-ocean-900"
-              }`}
-            >
-              <p className="font-bold">{editForm.guidanceHeadline}</p>
-              <ul className="mt-1 list-inside list-disc space-y-0.5">
-                {editForm.guidanceBullets.map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs sm:col-span-2">
-                <span className="font-bold">
-                  {editForm.pageType === "guide" ? "Headline" : "Title"}
-                </span>
-                <input
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
-                  value={editForm.title}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, title: e.target.value })
-                  }
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="font-bold">Meta title</span>
-                <input
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
-                  value={editForm.metaTitle}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, metaTitle: e.target.value })
-                  }
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="font-bold">Excerpt</span>
-                <input
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
-                  value={editForm.excerpt}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, excerpt: e.target.value })
-                  }
-                />
-              </label>
-              <label className="block text-xs sm:col-span-2">
-                <span className="font-bold">Meta description</span>
-                <textarea
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
-                  value={editForm.metaDescription}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      metaDescription: e.target.value,
-                    })
-                  }
-                />
-              </label>
-              <label className="block text-xs sm:col-span-2">
-                <span className="font-bold">Keywords (comma-separated)</span>
-                <input
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
-                  value={editForm.keywords}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, keywords: e.target.value })
-                  }
-                />
-              </label>
-              <label className="block text-xs sm:col-span-2">
-                <span className="font-bold">Body content (markdown)</span>
-                <textarea
-                  rows={16}
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 font-mono text-xs leading-relaxed"
-                  value={editForm.content}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, content: e.target.value })
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={savingEdit}
-                onClick={() => void saveEdit()}
-                className="rounded-full bg-ocean-800 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {savingEdit ? "Saving…" : "Save changes"}
-              </button>
-              <button
-                type="button"
-                disabled={savingEdit || Boolean(generatingId)}
-                onClick={() => void generateImprove(editForm.urlId)}
-                className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {generatingId === editForm.urlId
-                  ? "Generating…"
-                  : "Generate with AI (content only)"}
-              </button>
-              <button
-                type="button"
-                disabled={savingEdit}
-                onClick={() => setEditForm(null)}
-                className="rounded-full border border-ocean-200 px-4 py-2 text-xs font-bold"
-              >
-                Cancel
-              </button>
-            </div>
-            <p className="mt-2 text-[11px] text-ocean-500">
-              Images are never changed by Generate. After AI generate, reopen Edit to review
-              the new text, or refresh this modal after generate completes.
-            </p>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

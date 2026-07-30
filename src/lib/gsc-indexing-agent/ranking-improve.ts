@@ -30,6 +30,11 @@ export type RankingImproveFields = {
   faqs: BlogFaq[];
   headline?: string;
   bodyContent?: string;
+  /** Guide images — optional; omitted leaves existing images unchanged. */
+  ogImageUrl?: string;
+  heroImageUrl?: string;
+  bookingOption?: string;
+  published?: boolean;
 };
 
 export type RankingImproveMeta = {
@@ -51,6 +56,10 @@ export type EditablePagePayload = {
   impressions: number;
   clicks: number;
   fields: RankingImproveFields;
+  /** Full blog doc for the shared BlogPostEditorPanel */
+  blogPost: BlogPostFirestore | null;
+  /** Full guide doc for GuideEditorPanel */
+  guidePage: SeoPageFirestore | null;
   lastImprove: RankingImproveMeta | null;
   guidance: {
     headline: string;
@@ -195,6 +204,8 @@ export async function loadEditablePage(
 
   const slug = record.contentId.trim();
   let fields: RankingImproveFields;
+  let blogPost: BlogPostFirestore | null = null;
+  let guidePage: SeoPageFirestore | null = null;
 
   if (record.pageType === "blog") {
     const snap = await db.collection("blogPosts").doc(slug).get();
@@ -205,6 +216,7 @@ export async function loadEditablePage(
       { requirePublished: false },
     );
     if (!post) throw new Error(`Could not parse blog: ${slug}`);
+    blogPost = post;
     fields = {
       title: post.title,
       metaTitle: post.metaTitle || post.title,
@@ -223,6 +235,7 @@ export async function loadEditablePage(
       { requirePublished: false },
     );
     if (!page) throw new Error(`Could not parse guide: ${slug}`);
+    guidePage = page;
     fields = {
       title: page.headline,
       headline: page.headline,
@@ -233,6 +246,10 @@ export async function loadEditablePage(
       content: page.bodyContent,
       bodyContent: page.bodyContent,
       faqs: [],
+      ogImageUrl: page.ogImageUrl,
+      heroImageUrl: page.heroImageUrl,
+      bookingOption: page.bookingOption,
+      published: page.published,
     };
   }
 
@@ -248,6 +265,8 @@ export async function loadEditablePage(
     impressions: record.impressions,
     clicks: record.clicks,
     fields,
+    blogPost,
+    guidePage,
     lastImprove,
     guidance: improvementGuidance(record.rankingStatus),
   };
@@ -447,9 +466,18 @@ async function persistFields(
       keywords: fields.keywords,
       bodyContent: fields.bodyContent || fields.content,
       updatedAt: now,
-      // Images intentionally unchanged
-      ogImageUrl: current.ogImageUrl,
-      heroImageUrl: current.heroImageUrl,
+      ogImageUrl:
+        fields.ogImageUrl != null ? fields.ogImageUrl : current.ogImageUrl,
+      heroImageUrl:
+        fields.heroImageUrl != null ? fields.heroImageUrl : current.heroImageUrl,
+      bookingOption:
+        fields.bookingOption != null
+          ? fields.bookingOption
+          : current.bookingOption,
+      published:
+        typeof fields.published === "boolean"
+          ? fields.published
+          : current.published,
     };
 
     await ref.set(seoPageToFirestorePayload(next), { merge: true });
@@ -559,6 +587,16 @@ export async function saveManualRankingEdit(
     bodyContent: String(
       patch.bodyContent ?? patch.content ?? loaded.fields.bodyContent ?? loaded.fields.content,
     ),
+    ...(patch.ogImageUrl != null ? { ogImageUrl: String(patch.ogImageUrl) } : {}),
+    ...(patch.heroImageUrl != null
+      ? { heroImageUrl: String(patch.heroImageUrl) }
+      : {}),
+    ...(patch.bookingOption != null
+      ? { bookingOption: String(patch.bookingOption) }
+      : {}),
+    ...(typeof patch.published === "boolean"
+      ? { published: patch.published }
+      : {}),
   };
 
   if (!fields.title || fields.content.trim().length < 50) {

@@ -122,6 +122,18 @@ export async function PATCH(req: Request) {
       ? { bodyContent: String(body.bodyContent) }
       : {}),
     ...(faqs ? { faqs: faqs as RankingImproveFields["faqs"] } : {}),
+    ...(body.ogImageUrl != null
+      ? { ogImageUrl: String(body.ogImageUrl) }
+      : {}),
+    ...(body.heroImageUrl != null
+      ? { heroImageUrl: String(body.heroImageUrl) }
+      : {}),
+    ...(body.bookingOption != null
+      ? { bookingOption: String(body.bookingOption) }
+      : {}),
+    ...(typeof body.published === "boolean"
+      ? { published: body.published }
+      : {}),
   };
 
   try {
