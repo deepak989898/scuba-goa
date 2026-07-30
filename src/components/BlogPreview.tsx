@@ -1,50 +1,88 @@
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
-import { blogPosts, SEO_PILLAR_SLUGS } from "@/data/blog-posts";
+import { blogPosts, HOMEPAGE_PACKAGE_GUIDES } from "@/data/blog-posts";
 import { getPublishedBlogPostBySlug } from "@/lib/blog-posts-server";
+import { getAllServicesServer } from "@/lib/get-services-server";
+import { serviceDetailImages } from "@/lib/service-images";
 
 const u = (id: string) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=70`;
 
-/** Fallback card images when a pillar post has no featured image in Firestore. */
-const PILLAR_FALLBACK_IMAGES: Record<string, { src: string; alt: string }> = {
-  "best-time-for-scuba-diving-in-goa": {
+/** Distinct package photos if service CMS image is missing. */
+const PACKAGE_FALLBACK_IMAGES: Record<string, { src: string; alt: string }> = {
+  "scuba-diving": {
     src: u("photo-1544551763-46a013bb70d5"),
-    alt: "Scuba diving in clear Goa waters",
+    alt: "Scuba diving package in Goa",
   },
-  "is-scuba-diving-safe": {
-    src: u("photo-1682687220063-4742bd7fd538"),
-    alt: "Scuba diver with instructor underwater",
+  "water-sports": {
+    src: u("photo-1530549387789-4c1017266635"),
+    alt: "Water sports package — jet ski and parasailing in Goa",
   },
-  "scuba-diving-with-island-trip-goa": {
-    src: u("photo-1559827260-dc66d52bef19"),
-    alt: "Island boat trip for scuba diving in Goa",
+  "dudhsagar-trip": {
+    src: u("photo-1432405972618-c60b0225b8f9"),
+    alt: "Dudhsagar Falls jeep safari day trip",
   },
-  "scuba-diving-price-guide-2026": {
-    src: u("photo-1582967788606-a171f1080dd0"),
-    alt: "Scuba diving gear and packages in Goa",
+  "north-goa-tour": {
+    src: u("photo-1512343879784-a960bf40e7f2"),
+    alt: "North Goa tour package — beaches and forts",
+  },
+  "dolphin-trip": {
+    src: u("photo-1568430462989-d4fbfabde15a"),
+    alt: "Dolphin trip boat package in Goa",
   },
 };
 
+/**
+ * Homepage package guides: one article per package type, with that package’s
+ * own photo (not the same scuba blog graphics on every card).
+ */
 export async function BlogPreview() {
+  const services = await getAllServicesServer();
+  const bySlug = new Map(services.map((s) => [s.slug, s]));
+
   const posts = (
     await Promise.all(
-      SEO_PILLAR_SLUGS.map(async (slug) => {
-        const staticPost = blogPosts.find((p) => p.slug === slug);
+      HOMEPAGE_PACKAGE_GUIDES.map(async (guide) => {
+        const staticPost = blogPosts.find((p) => p.slug === guide.slug);
         if (!staticPost) return null;
-        const fs = await getPublishedBlogPostBySlug(slug);
+
+        const fs = await getPublishedBlogPostBySlug(guide.slug);
+        const service = bySlug.get(guide.serviceSlug);
+        const serviceImage = service
+          ? serviceDetailImages(service).find(Boolean)
+          : "";
+        const fallback = PACKAGE_FALLBACK_IMAGES[guide.serviceSlug];
+
+        // Prefer live package/service photo so cards look different by product.
         const imageUrl =
+          serviceImage ||
+          fallback?.src ||
           fs?.featuredImageUrl?.trim() ||
           fs?.ogImageUrl?.trim() ||
           staticPost.imageUrl?.trim() ||
-          PILLAR_FALLBACK_IMAGES[slug]?.src ||
           "";
+
         const imageAlt =
+          fallback?.alt ||
+          (service ? `${service.title} package in Goa` : "") ||
           fs?.featuredImageAlt?.trim() ||
           staticPost.imageAlt ||
-          PILLAR_FALLBACK_IMAGES[slug]?.alt ||
           staticPost.title;
-        return { ...staticPost, imageUrl, imageAlt };
+
+        const priceFrom =
+          typeof service?.priceFrom === "number" && service.priceFrom > 0
+            ? service.priceFrom
+            : null;
+
+        return {
+          ...staticPost,
+          imageUrl,
+          imageAlt,
+          packageLabel: guide.packageLabel,
+          serviceSlug: guide.serviceSlug,
+          serviceTitle: service?.title ?? guide.packageLabel,
+          priceFrom,
+        };
       }),
     )
   ).filter((p): p is NonNullable<typeof p> => p != null);
@@ -53,25 +91,35 @@ export async function BlogPreview() {
     <section className="bg-white py-4 sm:py-5" id="blog">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
-            Scuba diving in Goa — essential guides
-          </h2>
-          <Link
-            href="/blog"
-            className="inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow-sm hover:border-ocean-300 hover:bg-ocean-50"
-          >
-            All articles →
-          </Link>
+          <div>
+            <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
+              Popular Goa packages — guides to book
+            </h2>
+            <p className="mt-1 text-sm text-ocean-600">
+              Scuba, water sports, Dudhsagar & more — each card is a different package.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/services"
+              className="inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-ocean-800 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-ocean-900"
+            >
+              All packages →
+            </Link>
+            <Link
+              href="/blog"
+              className="inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow-sm hover:border-ocean-300 hover:bg-ocean-50"
+            >
+              All articles →
+            </Link>
+          </div>
         </div>
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {posts.slice(0, 3).map((p) => (
+          {posts.map((p) => (
             <li key={p.slug} className="h-full">
-              <Link
-                href={`/blog/${p.slug}`}
-                className="group flex h-full flex-col overflow-hidden rounded-xl border border-ocean-100 bg-sand shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
-              >
-                {p.imageUrl ? (
-                  <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
+              <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-ocean-100 bg-sand shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md">
+                <Link href={`/blog/${p.slug}`} className="relative block aspect-[16/9] overflow-hidden bg-ocean-100">
+                  {p.imageUrl ? (
                     <CmsRemoteImage
                       src={p.imageUrl}
                       alt={p.imageAlt || p.title}
@@ -80,23 +128,44 @@ export async function BlogPreview() {
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       loading="lazy"
                     />
-                  </div>
-                ) : null}
+                  ) : null}
+                  <span className="absolute left-2 top-2 rounded-md bg-ocean-900/85 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    {p.packageLabel}
+                  </span>
+                </Link>
                 <div className="flex flex-1 flex-col p-3.5">
                   <p className="text-[10px] font-medium text-ocean-700 sm:text-xs">
-                    {p.date} · {p.readTime}
+                    {p.serviceTitle}
+                    {p.priceFrom != null
+                      ? ` · from ₹${p.priceFrom.toLocaleString("en-IN")}`
+                      : ""}
+                    {" · "}
+                    {p.readTime}
                   </p>
-                  <h3 className="mt-1 font-display text-base font-semibold leading-snug text-ocean-900 transition group-hover:text-cyan-800">
-                    {p.title}
-                  </h3>
+                  <Link href={`/blog/${p.slug}`}>
+                    <h3 className="mt-1 font-display text-base font-semibold leading-snug text-ocean-900 transition group-hover:text-cyan-800">
+                      {p.title}
+                    </h3>
+                  </Link>
                   <p className="mt-1.5 line-clamp-2 text-xs text-ocean-700 sm:text-sm">
                     {p.excerpt}
                   </p>
-                  <span className="mt-2.5 text-sm font-bold text-amber-700">
-                    Read article →
-                  </span>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link
+                      href={`/services/${p.serviceSlug}`}
+                      className="inline-flex min-h-9 flex-1 items-center justify-center rounded-full bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-cyan-700"
+                    >
+                      View package
+                    </Link>
+                    <Link
+                      href={`/blog/${p.slug}`}
+                      className="inline-flex min-h-9 items-center justify-center rounded-full border border-ocean-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-50"
+                    >
+                      Read guide →
+                    </Link>
+                  </div>
                 </div>
-              </Link>
+              </article>
             </li>
           ))}
         </ul>

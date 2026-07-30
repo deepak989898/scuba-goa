@@ -21,6 +21,28 @@ export const SEO_PILLAR_SLUGS = [
   "scuba-diving-price-guide-2026",
 ] as const;
 
+/**
+ * Homepage “packages” strip — one guide per product line so cards aren’t
+ * all scuba-only, and images can come from each service package.
+ */
+export const HOMEPAGE_PACKAGE_GUIDES = [
+  {
+    slug: "scuba-diving-with-island-trip-goa",
+    packageLabel: "Scuba + Island",
+    serviceSlug: "scuba-diving",
+  },
+  {
+    slug: "cheap-water-sports-goa",
+    packageLabel: "Water Sports",
+    serviceSlug: "water-sports",
+  },
+  {
+    slug: "dudhsagar-trip-guide",
+    packageLabel: "Dudhsagar Trip",
+    serviceSlug: "dudhsagar-trip",
+  },
+] as const;
+
 export function blogPostsPillarFirst(): BlogPost[] {
   const set = new Set<string>(SEO_PILLAR_SLUGS);
   const first = SEO_PILLAR_SLUGS.map((slug) => blogPosts.find((p) => p.slug === slug)).filter(
