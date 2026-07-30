@@ -27,9 +27,9 @@ export async function generateMetadata(): Promise<Metadata> {
     ? serviceDetailImages(featured).find(Boolean) ?? featured.image
     : DEFAULT_OG_SHARE_IMAGE;
   const canonical = `${SITE_URL.replace(/\/$/, "")}/`;
-  const title = `Book Scuba Diving & Water Sports in Goa - Best Prices & Packages`;
+  const title = `Scuba diving Goa · Book online | ${SITE_NAME}`;
   const description =
-    "Experience the thrill of scuba diving and exciting water sports in Goa. Compare live prices, packages & tours—book online with Razorpay and WhatsApp confirmation.";
+    "Scuba diving in Goa — clear prices, beginner-friendly packages. Book online with Razorpay; confirm on WhatsApp from Baga.";
 
   return {
     title: { absolute: title },
@@ -67,7 +67,7 @@ export default function HomePage() {
     "@type": "TravelAgency",
     name: SITE_NAME,
     description:
-      "Book scuba diving in Goa online with live prices, Grand Island trips, Razorpay checkout, and WhatsApp support from Baga.",
+      "Scuba diving in Goa — clear prices, beginner-friendly packages. Book online with Razorpay; confirm on WhatsApp from Baga.",
     knowsAbout: [...PRIMARY_SEO_KEYWORDS, "book scuba goa", "Grand Island scuba diving"],
     areaServed: { "@type": "Place", name: "Goa, India" },
     url: site,

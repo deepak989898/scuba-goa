@@ -22,11 +22,11 @@ const dm = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `Book Scuba Diving & Water Sports in Goa - Best Prices & Packages`,
+    default: `Scuba diving Goa · Book online | ${SITE_NAME}`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Experience the thrill of scuba diving and exciting water sports in Goa. Compare live prices, packages & tours—book online with Razorpay and WhatsApp confirmation.",
+    "Scuba diving in Goa — clear prices, beginner-friendly packages. Book online with Razorpay; confirm on WhatsApp from Baga.",
   keywords: [
     ...PRIMARY_SEO_KEYWORDS,
     "water sports Goa booking",
@@ -37,9 +37,9 @@ export const metadata: Metadata = {
     "casino bookings Goa",
   ],
   openGraph: {
-    title: `Book Scuba Diving & Water Sports in Goa - Best Prices & Packages`,
+    title: `Scuba diving Goa · Book online | ${SITE_NAME}`,
     description:
-      "Experience the thrill of scuba diving and exciting water sports in Goa. Book your adventure today with clear pricing.",
+      "Scuba diving in Goa — clear prices, beginner-friendly packages. Book online today.",
     url: SITE_URL,
     siteName: SITE_NAME,
     locale: "en_IN",

@@ -8,8 +8,7 @@ import { useHeroSlides } from "@/hooks/useHeroSlides";
 import { usePackages } from "@/hooks/usePackages";
 import { useServices } from "@/hooks/useServices";
 import { useShouldRenderHeroVideo } from "@/hooks/useShouldRenderHeroVideo";
-import { whatsappLink } from "@/lib/constants";
-import { trackMetaWhatsAppClick } from "@/lib/meta-pixel";
+import { SITE_NAME } from "@/lib/constants";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 import { resolveHeroBookingCardModel } from "@/lib/hero-slide-booking";
 import type { PackageDoc } from "@/lib/types";
@@ -22,6 +21,10 @@ function lowestListedPackageInr(list: PackageDoc[]): number | null {
   return Math.min(...nums);
 }
 
+/**
+ * First-viewport conversion card: brand + one offer line + one primary CTA.
+ * WhatsApp / long forms live elsewhere so the hero stays uncluttered (LOW_CTR fix).
+ */
 function HeroConversionCard({
   bookHref,
   detailsHref,
@@ -30,7 +33,6 @@ function HeroConversionCard({
   priceLoading,
   slotsToday,
   perksLine,
-  waPreset,
   primaryCtaLabel,
 }: {
   bookHref: string;
@@ -40,12 +42,8 @@ function HeroConversionCard({
   priceLoading: boolean;
   slotsToday: number | null;
   perksLine: string;
-  waPreset: string;
   primaryCtaLabel: string;
 }) {
-  const [phone, setPhone] = useState("");
-  const [phoneErr, setPhoneErr] = useState<string | null>(null);
-
   const priceLine =
     headlinePriceInr != null &&
     Number.isFinite(headlinePriceInr) &&
@@ -54,105 +52,56 @@ function HeroConversionCard({
       : null;
 
   const bookPrimaryClass =
-    "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:text-base";
+    "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-3.5 text-base font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95";
 
   const detailsSecondaryClass =
-    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-white/10 px-4 py-2.5 text-xs font-extrabold text-white shadow-md backdrop-blur-sm ring-1 ring-white/30 transition hover:bg-white/20 active:bg-white/15 sm:text-sm max-sm:border-ocean-300 max-sm:bg-white max-sm:text-ocean-800 max-sm:ring-ocean-200 max-sm:hover:bg-ocean-50";
-
-  const telInputClass =
-    "mt-1 w-full rounded-lg border border-white/25 bg-white/10 px-2 py-1.5 text-xs text-white placeholder:text-white/50 focus:border-cyan-300/80 focus:outline-none focus:ring-1 focus:ring-cyan-300/60 max-sm:border-ocean-200 max-sm:bg-white max-sm:text-ocean-900 max-sm:placeholder:text-ocean-400 max-sm:focus:border-ocean-500 max-sm:focus:ring-ocean-400 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm";
-
-  function openWhatsAppWithNumber() {
-    setPhoneErr(null);
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 10) {
-      setPhoneErr("Enter a valid 10-digit mobile.");
-      return;
-    }
-    const text = `${waPreset} My WhatsApp number: ${digits}. Please confirm slot and payment.`;
-    trackMetaWhatsAppClick();
-    window.open(whatsappLink(text), "_blank", "noopener,noreferrer");
-  }
+    "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full border border-white/50 bg-transparent px-4 py-2 text-xs font-semibold text-white/95 transition hover:bg-white/10 max-sm:border-ocean-300 max-sm:text-ocean-800 max-sm:hover:bg-ocean-50";
 
   return (
-    <div className="rounded-lg border border-white/20 bg-white/10 p-2 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
-      <p className="text-center font-display text-base font-extrabold tabular-nums leading-tight text-cyan-600 max-sm:text-ocean-900 sm:text-xl sm:text-cyan-100">
+    <div className="rounded-lg border border-white/20 bg-white/10 p-3 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
+      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-200 max-sm:text-ocean-600">
+        {SITE_NAME}
+      </p>
+      <p className="mt-1 text-center font-display text-xl font-extrabold leading-tight text-white max-sm:text-ocean-900 sm:text-2xl">
+        {headlineTitle}
+      </p>
+
+      <p className="mt-2 text-center text-sm font-semibold text-cyan-100 max-sm:text-ocean-800">
         {priceLoading && !priceLine ? (
-          <span className="text-xs font-semibold text-white/80 max-sm:text-ocean-700">
-            Loading price…
-          </span>
+          <span className="text-xs font-semibold opacity-80">Loading price…</span>
         ) : priceLine ? (
           <>
-            <span className="block sm:inline">{headlineTitle}</span>
-            <span className="block text-cyan-700 max-sm:inline sm:text-cyan-200">
-              {" "}
-              · Starting at {priceLine}
-            </span>
-            <span className="mt-1 block text-[10px] font-semibold normal-case tracking-normal text-ocean-700 max-sm:text-ocean-700 sm:text-xs sm:text-cyan-50/95">
-              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now · rest on the day at the
-              centre
+            From {priceLine}
+            <span className="mt-0.5 block text-[11px] font-medium opacity-90">
+              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
             </span>
           </>
         ) : (
-          <>
-            {headlineTitle}
-            <span className="mt-1 block text-[10px] font-semibold text-ocean-700 sm:text-cyan-100/90">
-              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} now · rest on the day
-            </span>
-          </>
+          <span className="text-[11px] font-medium opacity-90">
+            Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
+          </span>
         )}
       </p>
 
-      <p className="mt-2 text-center text-[10px] font-medium leading-snug text-ocean-800 max-sm:text-ocean-800 sm:text-xs sm:text-white/90">
-        {perksLine}
-      </p>
+      {perksLine ? (
+        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white/85 max-sm:text-ocean-700">
+          {perksLine}
+        </p>
+      ) : null}
+
       {slotsToday != null && slotsToday > 0 ? (
-        <p className="mt-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-amber-200 max-sm:text-amber-800 sm:text-xs sm:text-amber-200">
+        <p className="mt-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-amber-200 max-sm:text-amber-800">
           Only {slotsToday} slots left today
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-3">
+      <div className="mt-4 flex flex-col gap-2">
         <Link href={bookHref} className={bookPrimaryClass}>
           {primaryCtaLabel}
         </Link>
         <Link href={detailsHref} className={detailsSecondaryClass}>
-          See more details
+          See prices &amp; packages
         </Link>
-      </div>
-
-      {/* Desktop/tablet only — keeps hero compact on mobile (sticky bar + WhatsApp booking button). */}
-      <div className="mt-3 hidden rounded-lg border border-white/15 bg-black/10 p-2 sm:block sm:bg-white/5">
-        <p className="text-center text-[10px] font-semibold uppercase tracking-wide text-white/80">
-          Or enter mobile — opens WhatsApp
-        </p>
-        <label className="mt-1 block text-[9px] font-medium text-white/85 sm:text-xs">
-          Mobile (India)
-          <input
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            className={telInputClass}
-            value={phone}
-            onChange={(e) => {
-              setPhone(e.target.value);
-              setPhoneErr(null);
-            }}
-            placeholder="10-digit number"
-          />
-        </label>
-        {phoneErr ? (
-          <p className="mt-1 text-center text-[9px] text-red-200" role="alert">
-            {phoneErr}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          onClick={openWhatsAppWithNumber}
-          className="mt-2 flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
-        >
-          Continue on WhatsApp
-        </button>
       </div>
     </div>
   );
@@ -234,7 +183,6 @@ export function HeroSection() {
       {/*
         Mobile: hero media is height-limited; booking card sits in normal flow with
         a negative top margin (straddle look) so it no longer covers service images.
-        Previously absolute + translate-y-[60%] + z-20 painted over the first cards.
       */}
       <div className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden max-sm:h-[min(48dvh,380px)] sm:bottom-0 sm:h-auto">
         {current ? (
@@ -251,7 +199,6 @@ export function HeroSection() {
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
 
-      {/* Holds hero height on all breakpoints; desktop card stays inside */}
       <div className="relative max-sm:min-h-[min(48dvh,380px)] sm:min-h-[min(72vh,640px)]">
         {currentHasVideo && videoActuallyPlays ? (
           <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
@@ -263,16 +210,13 @@ export function HeroSection() {
         ) : null}
 
         <h1 className="sr-only">
-          Dive into Adventure — Book Your Scuba Experience in Goa with Book Scuba
-          Goa.
+          Scuba diving Goa — book online with {SITE_NAME}.
           {headlinePriceInr != null
-            ? ` Try-dive starting at ₹${headlinePriceInr.toLocaleString("en-IN")}.`
+            ? ` Try-dive from ₹${headlinePriceInr.toLocaleString("en-IN")}.`
             : ""}{" "}
-          Pay ₹{ADVANCE_BOOKING_INR} advance online with Razorpay; WhatsApp booking
-          supported.
+          Pay ₹{ADVANCE_BOOKING_INR} advance online; rest at the centre.
         </h1>
 
-        {/* sm+: bottom-right in hero */}
         <div className="pointer-events-none absolute inset-0 z-10 hidden items-end justify-end p-6 pb-8 sm:flex lg:px-8">
           <div className="pointer-events-auto w-full max-w-sm md:max-w-md">
             <HeroConversionCard
@@ -283,14 +227,12 @@ export function HeroSection() {
               priceLoading={priceLoading}
               slotsToday={bookingCard.slotsToday}
               perksLine={bookingCard.perksLine}
-              waPreset={bookingCard.waPreset}
               primaryCtaLabel={bookingCard.primaryCtaLabel}
             />
           </div>
         </div>
       </div>
 
-      {/* Mobile booking card: ~40% over hero via -mt, full height reserved in layout */}
       <div className="relative z-10 -mt-[7.5rem] px-[14px] pb-4 sm:hidden">
         <HeroConversionCard
           bookHref={bookingCard.bookHref}
@@ -300,7 +242,6 @@ export function HeroSection() {
           priceLoading={priceLoading}
           slotsToday={bookingCard.slotsToday}
           perksLine={bookingCard.perksLine}
-          waPreset={bookingCard.waPreset}
           primaryCtaLabel={bookingCard.primaryCtaLabel}
         />
       </div>

@@ -6,10 +6,10 @@ import { findPricedSubByCartKey } from "@/lib/service-sub-helpers";
 /** Booking page query param for encoded package/service selection from hero (and elsewhere). */
 export const HERO_BOOKING_OPT_PARAM = "opt";
 
-const DEFAULT_PERKS =
-  "Beginner friendly · Safe · Certified trainers · Free photos & videos";
+const DEFAULT_PERKS = "Beginner friendly · Certified trainers · Pay online";
 const DEFAULT_WA =
   "Hi, I want to book scuba diving in Goa. Please share slots for today or tomorrow.";
+const DEFAULT_CTA = "Book now";
 
 export type HeroBookingCardModel = {
   bookHref: string;
@@ -54,12 +54,12 @@ export function resolveHeroBookingCardModel(
     return {
       bookHref: "/booking",
       detailsHref: "/services/scuba-diving",
-      headlineTitle: "Dive into Adventure — Scuba in Goa",
+      headlineTitle: "Scuba diving Goa",
       headlinePriceInr: ctx.fallbackHeadlinePrice,
       slotsToday: ctx.fallbackSlots,
       perksLine: DEFAULT_PERKS,
       waPreset: DEFAULT_WA,
-      primaryCtaLabel: "Reserve Your Dive Today",
+      primaryCtaLabel: DEFAULT_CTA,
     };
   }
 
@@ -87,7 +87,7 @@ export function resolveHeroBookingCardModel(
         ...resolveHeroBookingCardModel(undefined, ctx),
         bookHref: href,
         detailsHref: "/services",
-        primaryCtaLabel: "Reserve Your Dive Today",
+        primaryCtaLabel: DEFAULT_CTA,
       };
     }
     const perks =
@@ -103,7 +103,7 @@ export function resolveHeroBookingCardModel(
         p.slotsLeft != null && p.slotsLeft > 0 ? p.slotsLeft : null,
       perksLine: perks,
       waPreset: `Hi, I want to book ${p.name} in Goa. Please share slots and pickup.`,
-      primaryCtaLabel: "Reserve Your Dive Today",
+      primaryCtaLabel: DEFAULT_CTA,
     };
   }
 
@@ -118,7 +118,7 @@ export function resolveHeroBookingCardModel(
         ...resolveHeroBookingCardModel(undefined, ctx),
         bookHref: href,
         detailsHref: `/services/${parsed.slug}`,
-        primaryCtaLabel: "Reserve Your Dive Today",
+        primaryCtaLabel: DEFAULT_CTA,
       };
     }
     const { service: s, sub } = found;
@@ -140,7 +140,7 @@ export function resolveHeroBookingCardModel(
             : null,
       perksLine: perks,
       waPreset: `Hi, I want to book ${s.title} (${sub.title}) in Goa. Please share slots.`,
-      primaryCtaLabel: "Reserve Your Dive Today",
+      primaryCtaLabel: DEFAULT_CTA,
     };
   }
 
@@ -150,7 +150,7 @@ export function resolveHeroBookingCardModel(
       ...resolveHeroBookingCardModel(undefined, ctx),
       bookHref: href,
       detailsHref: `/services/${parsed.slug}`,
-      primaryCtaLabel: "Reserve Your Dive Today",
+      primaryCtaLabel: DEFAULT_CTA,
     };
   }
   const perks =
@@ -165,6 +165,6 @@ export function resolveHeroBookingCardModel(
       s.slotsLeft != null && s.slotsLeft > 0 ? s.slotsLeft : null,
     perksLine: perks,
     waPreset: `Hi, I want to book ${s.title} in Goa. Please share slots.`,
-    primaryCtaLabel: "Reserve Your Dive Today",
+    primaryCtaLabel: DEFAULT_CTA,
   };
 }
