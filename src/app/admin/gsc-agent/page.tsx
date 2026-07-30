@@ -98,6 +98,54 @@ function improvePctClass(pct: number): string {
   return "bg-cyan-700 text-white";
 }
 
+/** Urgency for Generate — red = most needed ranking improve. */
+function generatePriority(rankingStatus: string): {
+  level: "critical" | "high" | "medium" | "low";
+  label: string;
+  buttonClass: string;
+  hintClass: string;
+} {
+  if (
+    rankingStatus === "POSITION_11_TO_20" ||
+    rankingStatus === "IMPRESSIONS_NO_CLICKS" ||
+    rankingStatus === "DECLINING" ||
+    rankingStatus === "LOST_TRAFFIC" ||
+    rankingStatus === "POSITION_21_PLUS"
+  ) {
+    return {
+      level: "critical",
+      label: "Most needed",
+      buttonClass: "bg-red-600 text-white hover:bg-red-700",
+      hintClass: "text-red-800",
+    };
+  }
+
+  if (rankingStatus === "LOW_CTR") {
+    return {
+      level: "high",
+      label: "High priority",
+      buttonClass: "bg-orange-500 text-white hover:bg-orange-600",
+      hintClass: "text-orange-800",
+    };
+  }
+
+  if (rankingStatus === "POSITION_4_TO_10") {
+    return {
+      level: "medium",
+      label: "Medium",
+      buttonClass: "bg-amber-400 text-amber-950 hover:bg-amber-500",
+      hintClass: "text-amber-900",
+    };
+  }
+
+  return {
+    level: "low",
+    label: "Optional",
+    buttonClass: "bg-emerald-700 text-white hover:bg-emerald-800",
+    hintClass: "text-ocean-600",
+  };
+}
+
 function isContentEditableType(pageType: string): boolean {
   return pageType === "blog" || pageType === "guide";
 }
@@ -770,6 +818,21 @@ export default function GscIndexingAgentPage() {
             <strong>Edit</strong> = full editor like AI Blog Automation (all fields + images).
             Blog/guide only.
           </p>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-ocean-100 bg-white px-3 py-2 text-[10px] font-bold">
+            <span className="text-ocean-600">Generate urgency:</span>
+            <span className="rounded bg-red-600 px-1.5 py-0.5 text-white">
+              Red · Most needed
+            </span>
+            <span className="rounded bg-orange-500 px-1.5 py-0.5 text-white">
+              Orange · High
+            </span>
+            <span className="rounded bg-amber-400 px-1.5 py-0.5 text-amber-950">
+              Amber · Medium
+            </span>
+            <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-white">
+              Green · Optional
+            </span>
+          </div>
           {urlFilter === "ranking_opportunity" ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
               <p className="font-bold">POSITION 11–20 वाले blogs / guides</p>
@@ -804,6 +867,7 @@ export default function GscIndexingAgentPage() {
                     (u.lastRankingImprove as ImproveMeta | undefined);
                   const isGen = generatingId === id;
                   const isEditing = editingSession?.urlId === id;
+                  const genPri = generatePriority(ranking);
                   return (
                     <Fragment key={id}>
                       <tr
@@ -854,7 +918,8 @@ export default function GscIndexingAgentPage() {
                                     Boolean(editBusy)
                                   }
                                   onClick={() => void generateImprove(id)}
-                                  className="rounded-md bg-emerald-700 px-2 py-1 text-[10px] font-bold text-white disabled:opacity-50"
+                                  title={`${genPri.label} — ${ranking}`}
+                                  className={`rounded-md px-2 py-1 text-[10px] font-bold disabled:opacity-50 ${genPri.buttonClass}`}
                                 >
                                   {isGen ? "Generating…" : "Generate"}
                                 </button>
@@ -883,6 +948,11 @@ export default function GscIndexingAgentPage() {
                                       : "Edit"}
                                 </button>
                               </div>
+                              <p
+                                className={`text-[10px] font-bold leading-snug ${genPri.hintClass}`}
+                              >
+                                {genPri.label}
+                              </p>
                               {improve ? (
                                 <div className="space-y-0.5">
                                   <span
