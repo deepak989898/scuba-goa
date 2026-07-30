@@ -23,6 +23,7 @@ import {
 } from "@/lib/analytics-bot";
 import {
   trafficChannelStyles,
+  trafficChannelFromLabel,
   type TrafficChannel,
 } from "@/lib/analytics-traffic";
 import { labelFromAttributionSource } from "@/lib/analytics-attribution";
@@ -444,7 +445,10 @@ function buildVisitorSummary(
     }),
     trafficChannel: normalizeTrafficChannel(
       trafficSource?.trafficChannel ?? sess?.trafficChannel
-    ),
+    ) ||
+      trafficChannelFromLabel(
+        trafficSource?.trafficLabel ?? sess?.trafficLabel,
+      ),
     trafficLabel:
       trafficSource?.trafficLabel ||
       sess?.trafficLabel ||
@@ -489,6 +493,7 @@ export default function AdminAnalyticsPage() {
     useState<VisitorKindFilter>("human");
   const [sessionTimeline, setSessionTimeline] = useState<Row[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   const todayIstYmd = useMemo(
     () =>
@@ -877,73 +882,115 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     if (!db || !selectedSessionId) {
       setSessionTimeline([]);
+      setTimelineError(null);
       return;
     }
     let cancelled = false;
     setTimelineLoading(true);
+    setTimelineError(null);
+
+    const mapDocs = (
+      docs: Array<{ id: string; data: () => Record<string, unknown> }>,
+    ): Row[] =>
+      docs.map((d) => {
+        const data = d.data() as Record<string, unknown>;
+        return {
+          id: d.id,
+          path: String(data.path ?? ""),
+          sessionId: String(data.sessionId ?? ""),
+          eventType:
+            data.eventType === "view" ||
+            data.eventType === "leave" ||
+            data.eventType === "heartbeat" ||
+            data.eventType === "click"
+              ? data.eventType
+              : "",
+          pageLabel: String(data.pageLabel ?? ""),
+          clickLabel: String(data.clickLabel ?? ""),
+          clickHref: String(data.clickHref ?? "") || undefined,
+          clickCategory: String(data.clickCategory ?? "") || undefined,
+          clickTarget: String(data.clickTarget ?? "") || undefined,
+          durationMs: toNumberOrNull(data.durationMs),
+          deviceCategory: normalizeDeviceCategory(
+            String(data.deviceCategory ?? ""),
+          ),
+          deviceLabel: String(data.deviceLabel ?? ""),
+          uaSnippet: String(data.uaSnippet ?? ""),
+          createdAt: data.createdAt,
+          ...pickGeoFields(data),
+          ...pickTrafficFields(data),
+        };
+      });
+
     const load = async () => {
       try {
-        const q = query(
-          collection(db, "pageViews"),
-          where("sessionId", "==", selectedSessionId),
-          orderBy("createdAt", "asc"),
-          limit(200),
-        );
-        const snap = await getDocs(q);
-        if (cancelled) return;
-        const list: Row[] = snap.docs.map((d) => {
-          const data = d.data() as Record<string, unknown>;
-          return {
-            id: d.id,
-            path: String(data.path ?? ""),
-            sessionId: String(data.sessionId ?? ""),
-            eventType:
-              data.eventType === "view" ||
-              data.eventType === "leave" ||
-              data.eventType === "heartbeat" ||
-              data.eventType === "click"
-                ? data.eventType
-                : "",
-            pageLabel: String(data.pageLabel ?? ""),
-            clickLabel: String(data.clickLabel ?? ""),
-            clickHref: String(data.clickHref ?? "") || undefined,
-            clickCategory: String(data.clickCategory ?? "") || undefined,
-            clickTarget: String(data.clickTarget ?? "") || undefined,
-            durationMs: toNumberOrNull(data.durationMs),
-            deviceCategory: normalizeDeviceCategory(
-              String(data.deviceCategory ?? ""),
-            ),
-            deviceLabel: String(data.deviceLabel ?? ""),
-            uaSnippet: String(data.uaSnippet ?? ""),
-            createdAt: data.createdAt,
-            ...pickGeoFields(data),
-            ...pickTrafficFields(data),
-          };
-        });
-        setSessionTimeline(list);
-      } catch {
-        if (!cancelled) setSessionTimeline([]);
+        // Prefer composite index query; fall back to equality-only if index missing.
+        let list: Row[] = [];
+        try {
+          const q = query(
+            collection(db, "pageViews"),
+            where("sessionId", "==", selectedSessionId),
+            orderBy("createdAt", "asc"),
+            limit(200),
+          );
+          const snap = await getDocs(q);
+          if (cancelled) return;
+          list = mapDocs(snap.docs);
+        } catch {
+          const q2 = query(
+            collection(db, "pageViews"),
+            where("sessionId", "==", selectedSessionId),
+            limit(200),
+          );
+          const snap2 = await getDocs(q2);
+          if (cancelled) return;
+          list = mapDocs(snap2.docs).sort((a, b) => {
+            const am = toTimestamp(a.createdAt)?.toMillis() ?? 0;
+            const bm = toTimestamp(b.createdAt)?.toMillis() ?? 0;
+            return am - bm;
+          });
+          if (!cancelled) {
+            setTimelineError(
+              "Using fallback timeline query (deploy Firestore index for faster loads).",
+            );
+          }
+        }
+        if (!cancelled) setSessionTimeline(list);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setSessionTimeline([]);
+          setTimelineError(
+            e && typeof e === "object" && "message" in e
+              ? String((e as { message?: string }).message)
+              : "Could not load timeline events",
+          );
+        }
       } finally {
         if (!cancelled) setTimelineLoading(false);
       }
     };
     void load();
+    const poll = window.setInterval(() => {
+      void load();
+    }, 12_000);
     return () => {
       cancelled = true;
+      window.clearInterval(poll);
     };
   }, [db, selectedSessionId]);
 
   const selectedTimeline = useMemo(() => {
-    if (!selectedSessionId) return [] as Array<{
-      id: string;
-      atMs: number;
-      eventType: string;
-      path: string;
-      clickLabel?: string;
-      clickHref?: string;
-      clickCategory?: string;
-      durationMs?: number | null;
-    }>;
+    if (!selectedSessionId)
+      return [] as Array<{
+        id: string;
+        atMs: number;
+        eventType: string;
+        path: string;
+        clickLabel?: string;
+        clickHref?: string;
+        clickCategory?: string;
+        durationMs?: number | null;
+      }>;
 
     const fromQuery = sessionTimeline.map((r) => ({
       id: r.id,
@@ -981,6 +1028,7 @@ export default function AdminAnalyticsPage() {
         durationMs: r.durationMs,
       }));
 
+    // Fallback from denormalized page list so timeline is never blank when pages exist
     const merged = new Map<
       string,
       {
@@ -995,10 +1043,32 @@ export default function AdminAnalyticsPage() {
       }
     >();
     for (const e of [...fromTrail, ...fromSample, ...fromQuery]) {
+      if (e.eventType === "heartbeat" || e.eventType === "scroll") continue;
       if (!e.atMs && !e.path) continue;
       const key = `${e.atMs}|${e.eventType}|${e.path}|${e.clickLabel ?? ""}`;
       if (!merged.has(key)) merged.set(key, e);
     }
+
+    // If still empty, synthesize "Opened page" rows from session page stays
+    if (merged.size === 0 && sess) {
+      const paths = [
+        ...(sess.visitedPaths ?? []),
+        ...(sess.lastPath ? [sess.lastPath] : []),
+        ...(sess.landingPath ? [sess.landingPath] : []),
+      ];
+      const unique = [...new Set(paths.filter(Boolean))];
+      unique.forEach((path, i) => {
+        merged.set(`synth-${path}`, {
+          id: `synth-${path}`,
+          atMs: (sess.firstSeenAt
+            ? toTimestamp(sess.firstSeenAt)?.toMillis()
+            : 0) || Date.now() - (unique.length - i) * 1000,
+          eventType: "view",
+          path,
+        });
+      });
+    }
+
     return [...merged.values()].sort((a, b) => a.atMs - b.atMs);
   }, [selectedSessionId, sessionTimeline, sessions, rows]);
 
@@ -1288,9 +1358,15 @@ export default function AdminAnalyticsPage() {
                                             Legacy
                                           </span>
                                         ) : null}
-                                        {v.trafficChannel ? (
+                                        {v.trafficLabel &&
+                                        v.trafficLabel !== "—" ? (
                                           <span
-                                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${trafficChannelStyles(v.trafficChannel)}`}
+                                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${trafficChannelStyles(
+                                              v.trafficChannel ||
+                                                trafficChannelFromLabel(
+                                                  v.trafficLabel,
+                                                ),
+                                            )}`}
                                           >
                                             {v.trafficLabel}
                                           </span>
@@ -1428,32 +1504,32 @@ export default function AdminAnalyticsPage() {
                                         Came from
                                       </dt>
                                       <dd className="min-w-0">
-                                        {selectedVisitor.trafficLabel !== "—" ? (
-                                          <span className="inline-flex flex-wrap items-center gap-1.5">
-                                            {selectedVisitor.trafficChannel ? (
-                                              <span
-                                                className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${trafficChannelStyles(selectedVisitor.trafficChannel)}`}
-                                              >
-                                                {selectedVisitor.trafficLabel}
-                                              </span>
-                                            ) : (
-                                              <span className="font-medium text-ocean-900">
-                                                {selectedVisitor.trafficLabel}
-                                              </span>
-                                            )}
+                                        {selectedVisitor.trafficLabel !==
+                                        "—" ? (
+                                          <span className="inline-flex flex-wrap items-center gap-2">
+                                            <span
+                                              className={`rounded-md px-2 py-0.5 text-xs font-semibold ${trafficChannelStyles(
+                                                selectedVisitor.trafficChannel ||
+                                                  trafficChannelFromLabel(
+                                                    selectedVisitor.trafficLabel,
+                                                  ),
+                                              )}`}
+                                            >
+                                              {selectedVisitor.trafficLabel}
+                                            </span>
                                             {selectedVisitor.trafficDetail &&
                                             selectedVisitor.trafficDetail !==
                                               selectedVisitor.trafficLabel ? (
                                               <span className="text-ocean-600">
-                                                · {selectedVisitor.trafficDetail}
+                                                {selectedVisitor.trafficDetail}
                                               </span>
                                             ) : null}
                                           </span>
                                         ) : (
                                           <span className="text-ocean-500">
-                                            Not recorded yet (new visits after
-                                            deploy show Direct / Search /
-                                            Facebook / Instagram / etc.)
+                                            Not recorded yet — new visits show
+                                            Direct / Search / Facebook /
+                                            Instagram etc.
                                           </span>
                                         )}
                                       </dd>
@@ -1519,64 +1595,91 @@ export default function AdminAnalyticsPage() {
                                   <h4 className="mt-4 text-sm font-semibold text-ocean-900">
                                     Activity timeline
                                   </h4>
-                                  {timelineLoading ? (
+                                  {timelineError ? (
+                                    <p className="mt-1 text-[11px] text-amber-800">
+                                      {timelineError}
+                                    </p>
+                                  ) : null}
+                                  {timelineLoading &&
+                                  selectedTimeline.length === 0 ? (
                                     <p className="mt-2 text-xs text-ocean-600">
                                       Loading clicks &amp; page events…
                                     </p>
                                   ) : selectedTimeline.length === 0 ? (
                                     <p className="mt-2 text-xs text-ocean-500">
                                       No clicks or page events stored for this
-                                      visit yet. New visits after deploy will
-                                      show menu / button clicks here.
+                                      visit yet. Open the site in a new tab,
+                                      click menu/buttons, then refresh — clicks
+                                      appear here within a few seconds.
                                     </p>
                                   ) : (
                                     <ul className="mt-2 max-h-64 space-y-1.5 overflow-y-auto text-xs">
-                                      {selectedTimeline.map((r) => (
-                                        <li
-                                          key={r.id}
-                                          className="rounded-lg border border-ocean-50 bg-white px-2 py-1.5"
-                                        >
-                                          <span className="text-ocean-600">
-                                            {formatMsIst(r.atMs)}
-                                          </span>
-                                          <span className="mx-1 text-ocean-300">
-                                            ·
-                                          </span>
-                                          <span className="font-medium text-ocean-900">
-                                            {r.eventType === "click"
-                                              ? "Click"
-                                              : r.eventType === "leave"
-                                                ? "Left page"
-                                                : r.eventType === "view"
-                                                  ? "Opened page"
-                                                  : r.eventType}
-                                          </span>
-                                          {r.durationMs ? (
-                                            <span className="text-ocean-600">
-                                              {" "}
-                                              · {formatDurationMs(r.durationMs)}
-                                            </span>
-                                          ) : null}
-                                          {r.path ? (
-                                            <p className="truncate font-mono text-ocean-800">
-                                              {r.path}
-                                            </p>
-                                          ) : null}
-                                          {r.eventType === "click" ? (
-                                            <p className="text-ocean-700">
-                                              {r.clickLabel
-                                                ? `Button: “${r.clickLabel}”`
-                                                : "Button click"}
-                                              {r.clickCategory
-                                                ? ` · ${r.clickCategory}`
-                                                : ""}
-                                              {r.clickHref
-                                                ? ` → ${r.clickHref}`
-                                                : ""}
-                                            </p>
-                                          ) : null}
-                                        </li>
-                                      ))}
+                                      {selectedTimeline.map((r) => {
+                                        const kind =
+                                          r.eventType === "click"
+                                            ? "click"
+                                            : r.eventType === "leave"
+                                              ? "leave"
+                                              : r.eventType === "view"
+                                                ? "view"
+                                                : "other";
+                                        const kindClass =
+                                          kind === "click"
+                                            ? "bg-violet-600 text-white"
+                                            : kind === "leave"
+                                              ? "bg-slate-500 text-white"
+                                              : kind === "view"
+                                                ? "bg-sky-600 text-white"
+                                                : "bg-ocean-600 text-white";
+                                        const kindLabel =
+                                          kind === "click"
+                                            ? "Click"
+                                            : kind === "leave"
+                                              ? "Left page"
+                                              : kind === "view"
+                                                ? "Opened page"
+                                                : r.eventType;
+                                        return (
+                                          <li
+                                            key={r.id}
+                                            className="rounded-lg border border-ocean-50 bg-white px-2 py-1.5"
+                                          >
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                              <span className="text-ocean-600">
+                                                {formatMsIst(r.atMs)}
+                                              </span>
+                                              <span
+                                                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${kindClass}`}
+                                              >
+                                                {kindLabel}
+                                              </span>
+                                              {r.durationMs ? (
+                                                <span className="text-ocean-600">
+                                                  {formatDurationMs(r.durationMs)}
+                                                </span>
+                                              ) : null}
+                                            </div>
+                                            {r.path ? (
+                                              <p className="mt-0.5 truncate font-mono text-ocean-800">
+                                                {r.path}
+                                              </p>
+                                            ) : null}
+                                            {r.eventType === "click" ? (
+                                              <p className="mt-0.5 text-ocean-700">
+                                                {r.clickLabel
+                                                  ? `“${r.clickLabel}”`
+                                                  : "Button click"}
+                                                {r.clickCategory
+                                                  ? ` · ${r.clickCategory}`
+                                                  : ""}
+                                                {r.clickHref
+                                                  ? ` → ${r.clickHref}`
+                                                  : ""}
+                                              </p>
+                                            ) : null}
+                                          </li>
+                                        );
+                                      })}
                                     </ul>
                                   )}
                                 </>

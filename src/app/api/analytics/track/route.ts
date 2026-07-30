@@ -495,10 +495,7 @@ export async function POST(req: Request) {
     Object.assign(sessionPayload, geo);
   }
 
-  // Compact activity trail for admin timeline (survives pageViews sample aging)
-  const prevTrail = Array.isArray(existing.recentEvents)
-    ? (existing.recentEvents as Record<string, unknown>[])
-    : [];
+  // Compact activity trail for admin timeline (arrayUnion avoids lost clicks on race).
   const trailEntry: Record<string, unknown> = {
     atMs: Date.now(),
     eventType,
@@ -510,7 +507,7 @@ export async function POST(req: Request) {
   if (clickTarget) trailEntry.clickTarget = clickTarget;
   if (durationMs != null) trailEntry.durationMs = durationMs;
   if (pageLabel) trailEntry.pageLabel = pageLabel;
-  sessionPayload.recentEvents = [...prevTrail, trailEntry].slice(-50);
+  sessionPayload.recentEvents = FieldValue.arrayUnion(trailEntry);
 
   if (!sessionSnap.exists) {
     sessionPayload.firstSeenAt = FieldValue.serverTimestamp();

@@ -60,35 +60,60 @@ export function classifyTrafficSource(input: {
   };
 }
 
+/** High-contrast badges so each source is obvious in admin. */
 export function trafficChannelStyles(channel: TrafficChannel | ""): string {
   switch (channel) {
     case "facebook":
-      return "bg-blue-100 text-blue-900";
+      return "bg-[#1877F2] text-white ring-1 ring-[#1877F2]/90";
     case "instagram":
-      return "bg-pink-100 text-pink-900";
+      return "bg-[#E1306C] text-white ring-1 ring-[#C13584]/90";
     case "whatsapp":
-      return "bg-emerald-100 text-emerald-900";
+      return "bg-[#128C7E] text-white ring-1 ring-[#075E54]/90";
     case "youtube":
-      return "bg-red-100 text-red-900";
+      return "bg-[#FF0000] text-white ring-1 ring-red-800/80";
     case "twitter":
-      return "bg-sky-100 text-sky-900";
+      return "bg-[#0F1419] text-white ring-1 ring-zinc-700";
     case "linkedin":
-      return "bg-indigo-100 text-indigo-900";
+      return "bg-[#0A66C2] text-white ring-1 ring-sky-900/50";
     case "tiktok":
-      return "bg-zinc-200 text-zinc-900";
+      return "bg-zinc-900 text-[#69C9D0] ring-1 ring-zinc-700";
     case "google_ads":
-      return "bg-amber-100 text-amber-900";
+      return "bg-amber-500 text-amber-950 ring-1 ring-amber-700/60";
     case "google_organic":
-      return "bg-green-100 text-green-900";
+      return "bg-green-600 text-white ring-1 ring-green-800/70";
     case "bing":
-      return "bg-teal-100 text-teal-900";
+      return "bg-teal-600 text-white ring-1 ring-teal-900/50";
     case "direct":
-      return "bg-slate-100 text-slate-800";
+      return "bg-slate-600 text-white ring-1 ring-slate-800/70";
     case "email":
-      return "bg-purple-100 text-purple-900";
+      return "bg-violet-600 text-white ring-1 ring-violet-900/50";
     case "referral":
-      return "bg-cyan-100 text-cyan-900";
+      return "bg-cyan-600 text-white ring-1 ring-cyan-900/50";
+    case "other":
+      return "bg-orange-500 text-white ring-1 ring-orange-800/60";
     default:
-      return "bg-ocean-100 text-ocean-900";
+      return "bg-ocean-700 text-white ring-1 ring-ocean-900/50";
   }
+}
+
+export function trafficChannelFromLabel(
+  label: string | undefined,
+): TrafficChannel | "" {
+  const l = (label ?? "").trim().toLowerCase();
+  if (!l || l === "—" || l === "not recorded") return "";
+  if (l.includes("facebook")) return "facebook";
+  if (l.includes("instagram")) return "instagram";
+  if (l.includes("whatsapp")) return "whatsapp";
+  if (l.includes("youtube")) return "youtube";
+  if (l.includes("twitter") || l === "x" || l.startsWith("x /")) return "twitter";
+  if (l.includes("linkedin")) return "linkedin";
+  if (l.includes("tiktok")) return "tiktok";
+  if (l.includes("google ads") || l.includes("google ad")) return "google_ads";
+  if (l.includes("google")) return "google_organic";
+  if (l.includes("bing")) return "bing";
+  if (l.includes("direct")) return "direct";
+  if (l.includes("email")) return "email";
+  if (l.includes("referral")) return "referral";
+  if (l.includes("bot")) return "other";
+  return "other";
 }

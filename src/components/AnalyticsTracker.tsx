@@ -114,7 +114,7 @@ function track(
   });
 
   const preferBeacon =
-    payload.eventType === "leave" &&
+    (payload.eventType === "leave" || payload.eventType === "click") &&
     typeof navigator !== "undefined" &&
     typeof navigator.sendBeacon === "function";
 
@@ -134,7 +134,11 @@ function track(
   }
 
   let signal: AbortSignal | undefined;
-  if (typeof AbortController !== "undefined") {
+  if (
+    typeof AbortController !== "undefined" &&
+    payload.eventType !== "click" &&
+    payload.eventType !== "leave"
+  ) {
     const controller = new AbortController();
     signal = controller.signal;
     window.setTimeout(() => controller.abort(), TRACK_TIMEOUT_MS);
@@ -147,7 +151,8 @@ function track(
     keepalive:
       payload.eventType === "leave" ||
       payload.eventType === "view" ||
-      payload.eventType === "heartbeat",
+      payload.eventType === "heartbeat" ||
+      payload.eventType === "click",
     signal,
   }).catch(() => {
     if (
@@ -362,13 +367,31 @@ export function AnalyticsTracker() {
     window.addEventListener("scroll", onScroll, { passive: true });
 
     const lastClickAt = new Map<string, number>();
+    const CLICKABLE_SEL =
+      "a,button,[role='button'],[role='menuitem'],[role='link'],[role='tab'],[data-analytics-click],summary,input[type='submit'],input[type='button'],label[for],nav a,header a,footer a";
+
     const onDocumentClick = (ev: MouseEvent) => {
       const target = ev.target;
       if (!(target instanceof Element)) return;
-      const clickable = target.closest(
-        "a,button,[role='button'],[role='menuitem'],[role='link'],[data-analytics-click],summary,input[type='submit'],input[type='button'],label[for]",
-      );
+      // Ignore pure text selection / non-UI chrome
+      if (target.closest("script,style,noscript,svg title")) return;
+
+      let clickable = target.closest(CLICKABLE_SEL);
+      // Cards / tiles: clickable parent with cursor-pointer + nested control intent
+      if (!clickable) {
+        const pointerish = target.closest(
+          "[class*='cursor-pointer'],[onclick]",
+        );
+        if (
+          pointerish instanceof Element &&
+          pointerish.closest("main,header,nav,footer,aside,[role='dialog']")
+        ) {
+          clickable = pointerish;
+        }
+      }
       if (!(clickable instanceof Element)) return;
+      // Don't record admin chrome if somehow mounted
+      if (clickable.closest("[data-admin-shell]")) return;
 
       interactionCountRef.current += 1;
 
@@ -376,13 +399,28 @@ export function AnalyticsTracker() {
         clickable instanceof HTMLAnchorElement ||
         clickable instanceof HTMLButtonElement
           ? clickable.innerText || clickable.textContent || ""
-          : clickable.textContent || "";
+          : clickable.getAttribute("aria-label") ||
+            clickable.textContent ||
+            "";
       const clickLabel = rawText.replace(/\s+/g, " ").trim().slice(0, 140);
+      if (!clickLabel && !(clickable instanceof HTMLAnchorElement)) {
+        // Skip empty anonymous divs
+        const hrefProbe =
+          clickable instanceof HTMLAnchorElement
+            ? clickable.getAttribute("href")
+            : clickable.querySelector?.("a")?.getAttribute("href");
+        if (!hrefProbe) return;
+      }
       const clickTarget = clickable.tagName.toLowerCase();
-      const clickHref =
-        clickable instanceof HTMLAnchorElement
-          ? (clickable.getAttribute("href") || "").slice(0, 500)
-          : "";
+      let clickHref = "";
+      if (clickable instanceof HTMLAnchorElement) {
+        clickHref = (clickable.getAttribute("href") || "").slice(0, 500);
+      } else {
+        const nested = clickable.querySelector?.("a[href]");
+        if (nested) {
+          clickHref = (nested.getAttribute("href") || "").slice(0, 500);
+        }
+      }
 
       const dedupeKey = `${clickTarget}:${clickHref}:${clickLabel.slice(0, 32)}`;
       const lastAt = lastClickAt.get(dedupeKey) ?? 0;
@@ -395,9 +433,10 @@ export function AnalyticsTracker() {
         path: current?.path || key,
         sessionId,
         visitorId,
+        eventId: newId("c"),
         eventType: "click",
         pageLabel: current?.pageLabel || pageLabel,
-        clickLabel,
+        clickLabel: clickLabel || clickHref || clickTarget,
         clickTarget,
         clickHref,
         clickCategory: classifyClick(clickHref, clickLabel, clickable),
@@ -406,14 +445,18 @@ export function AnalyticsTracker() {
       });
     };
 
-    document.addEventListener("click", onDocumentClick, { passive: true });
+    // Capture phase so we see the click before React stops propagation / navigates
+    document.addEventListener("click", onDocumentClick, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.clearInterval(hb);
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
-      document.removeEventListener("click", onDocumentClick);
+      document.removeEventListener("click", onDocumentClick, true);
       // On SPA route change React cleans up before the next effect runs.
       // Leave for the previous path is sent at the start of the next effect.
     };
