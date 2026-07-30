@@ -11,8 +11,15 @@ export type AiAnalyticsDailyDoc = {
 };
 
 export type InternalDailyMetrics = {
+  /** Confirmed humans (same definition as Site analytics Humans tab). Alias of visitorsHuman. */
   visitors: number;
+  visitorsHuman: number;
+  visitorsSuspected: number;
+  visitorsBot: number;
+  visitorsAll: number;
+  /** Human page views (business total). */
   pageViews: number;
+  pageViewsAll: number;
   bounceRatePct: number;
   avgSessionDurationSec: number;
   bookingsPaid: number;

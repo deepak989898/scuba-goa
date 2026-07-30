@@ -168,8 +168,11 @@ export default function AdminAiAnalyticsPage() {
           </label>
 
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard label="Visitors" value={m?.visitors ?? 0} />
-            <MetricCard label="Page views" value={m?.pageViews ?? 0} />
+            <MetricCard label="Humans" value={m?.visitorsHuman ?? m?.visitors ?? 0} />
+            <MetricCard label="Bots" value={m?.visitorsBot ?? 0} />
+            <MetricCard label="Suspected" value={m?.visitorsSuspected ?? 0} />
+            <MetricCard label="All visitors" value={m?.visitorsAll ?? m?.visitors ?? 0} />
+            <MetricCard label="Page views (humans)" value={m?.pageViews ?? 0} />
             <MetricCard label="Bounce rate" value={`${m?.bounceRatePct ?? 0}%`} />
             <MetricCard label="Bookings paid" value={m?.bookingsPaid ?? 0} />
             <MetricCard label="Revenue (₹)" value={(m?.bookingRevenueInr ?? 0).toLocaleString("en-IN")} />

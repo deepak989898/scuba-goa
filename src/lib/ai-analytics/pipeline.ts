@@ -112,6 +112,8 @@ function mHeadline(internal: {
   bookingsPaid: number;
   bookingRevenueInr: number;
   visitors: number;
+  visitorsHuman?: number;
 }): string {
-  return `${internal.bookingsPaid} booking(s) · ₹${internal.bookingRevenueInr.toLocaleString("en-IN")} · ${internal.visitors} visitors`;
+  const humans = internal.visitorsHuman ?? internal.visitors;
+  return `${internal.bookingsPaid} booking(s) · ₹${internal.bookingRevenueInr.toLocaleString("en-IN")} · ${humans} human visitors`;
 }

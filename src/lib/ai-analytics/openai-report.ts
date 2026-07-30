@@ -43,7 +43,8 @@ Rules:
   const user = `Date (IST): ${snapshot.dateIst}
 
 Key metrics:
-- Visitors: ${m.visitors}, Page views: ${m.pageViews}, Bounce: ${m.bounceRatePct}%, Avg session: ${m.avgSessionDurationSec}s
+- Visitors humans: ${m.visitorsHuman ?? m.visitors}, bots: ${m.visitorsBot ?? 0}, suspected: ${m.visitorsSuspected ?? 0}, all: ${m.visitorsAll ?? m.visitors}
+- Page views (humans): ${m.pageViews}, Bounce: ${m.bounceRatePct}%, Avg session: ${m.avgSessionDurationSec}s
 - Bookings paid: ${m.bookingsPaid}, Revenue ₹${m.bookingRevenueInr}, Conversion: ${m.bookingConversionRatePct}%
 - Booking page views: ${m.bookingPageViews}
 - WhatsApp clicks: ${m.whatsappClicks}, Phone clicks: ${m.phoneClicks}
@@ -56,7 +57,7 @@ ${
   gsc
     ? `- Search Console: clicks ${gsc.clicks}, impressions ${gsc.impressions}, CTR ${(gsc.ctr * 100).toFixed(1)}%, avg position ${gsc.position.toFixed(1)}
 - Top queries: ${gsc.topQueries.slice(0, 5).map((q) => `"${q.query}"(${q.clicks}c/${q.impressions}i)`).join(", ") || "none"}`
-    : "- Search Console: not connected"
+    : "- Search Console: not connected (add firebase-adminsdk service account as Full user on www property)"
 }
 
 Rule-based issues already detected:

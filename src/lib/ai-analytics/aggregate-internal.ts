@@ -1,6 +1,10 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { istDayUtcBounds } from "@/lib/ai-analytics/ist";
+import {
+  resolveAdminVisitorKind,
+  type AdminVisitorKind,
+} from "@/lib/analytics-visitor-kind";
 import type {
   InternalDailyMetrics,
   PageMetric,
@@ -9,6 +13,7 @@ import type {
 
 const PAGE_VIEWS_LIMIT = 12_000;
 const SESSIONS_LIMIT = 4_000;
+const FALLBACK_LIMIT = 8_000;
 
 function isWhatsAppClick(data: Record<string, unknown>): boolean {
   const href = String(data.clickHref ?? "").toLowerCase();
@@ -22,13 +27,70 @@ function isPhoneClick(data: Record<string, unknown>): boolean {
   return href.startsWith("tel:") || label.includes("call");
 }
 
+function toMillis(value: unknown): number {
+  if (value == null) return 0;
+  if (typeof value === "string") {
+    const n = Date.parse(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "object" && value !== null && "toMillis" in value) {
+    try {
+      return (value as Timestamp).toMillis();
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+function inDay(ms: number, startMs: number, endMs: number): boolean {
+  return ms >= startMs && ms <= endMs;
+}
+
+type SessionAgg = {
+  kind: AdminVisitorKind;
+  visitorType: string;
+  pageViews: number;
+  totalDurationMs: number;
+  interactionCount: number;
+  trafficChannel: string;
+  trafficLabel: string;
+  sourceConfidence: string;
+  lastPath: string;
+  lastEventType: string;
+  deviceLabel: string;
+  uaSnippet: string;
+  analyticsVersion: number;
+};
+
+function classifySession(data: Record<string, unknown>, pageViews: number): AdminVisitorKind {
+  return resolveAdminVisitorKind({
+    isBot: data.isBot === true,
+    visitorType: String(data.visitorType ?? ""),
+    uaSnippet: String(data.uaSnippet ?? data.userAgent ?? ""),
+    deviceLabel: String(data.deviceLabel ?? ""),
+    trafficChannel: String(data.trafficChannel ?? ""),
+    sourceConfidence: String(data.sourceConfidence ?? ""),
+    totalDurationMs: Number(data.totalDurationMs ?? data.durationMs ?? 0),
+    pageViews: pageViews || Number(data.pageViews ?? data.viewCount ?? 0) || 1,
+    interactionCount: Number(data.interactionCount ?? 0),
+    analyticsVersion: Number(data.analyticsVersion ?? 1),
+  });
+}
+
 export async function aggregateInternalDaily(
   dateIst: string,
 ): Promise<InternalDailyMetrics> {
   const db = getAdminDb();
   const empty: InternalDailyMetrics = {
     visitors: 0,
+    visitorsHuman: 0,
+    visitorsSuspected: 0,
+    visitorsBot: 0,
+    visitorsAll: 0,
     pageViews: 0,
+    pageViewsAll: 0,
     bounceRatePct: 0,
     avgSessionDurationSec: 0,
     bookingsPaid: 0,
@@ -48,103 +110,284 @@ export async function aggregateInternalDaily(
   if (!db) return empty;
 
   const { start, end } = istDayUtcBounds(dateIst);
+  const startMs = start.getTime();
+  const endMs = end.getTime();
   const startTs = Timestamp.fromDate(start);
   const endTs = Timestamp.fromDate(end);
 
-  const [viewsSnap, sessionsSnap, bookingsSnap, paymentSnap] = await Promise.all([
-    db
-      .collection("pageViews")
-      .where("createdAt", ">=", startTs)
-      .where("createdAt", "<=", endTs)
-      .orderBy("createdAt", "desc")
-      .limit(PAGE_VIEWS_LIMIT)
-      .get()
-      .catch(() => null),
-    db
-      .collection("analyticsSessions")
-      .where("lastSeenAt", ">=", startTs)
-      .where("lastSeenAt", "<=", endTs)
-      .orderBy("lastSeenAt", "desc")
-      .limit(SESSIONS_LIMIT)
-      .get()
-      .catch(() => null),
-    db
-      .collection("bookings")
-      .where("createdAt", ">=", start.toISOString())
-      .where("createdAt", "<=", end.toISOString())
-      .get()
-      .catch(() => null),
-    db
-      .collection("paymentEvents")
-      .where("createdAt", ">=", startTs)
-      .where("createdAt", "<=", endTs)
-      .get()
-      .catch(() => null),
-  ]);
+  const [viewsSnap, sessionsByFirst, sessionsByLast, bookingsSnap, paymentSnap] =
+    await Promise.all([
+      db
+        .collection("pageViews")
+        .where("createdAt", ">=", startTs)
+        .where("createdAt", "<=", endTs)
+        .orderBy("createdAt", "desc")
+        .limit(PAGE_VIEWS_LIMIT)
+        .get()
+        .catch(async (err) => {
+          console.error("[ai-analytics] pageViews range query failed", err);
+          const recent = await db
+            .collection("pageViews")
+            .orderBy("createdAt", "desc")
+            .limit(FALLBACK_LIMIT)
+            .get()
+            .catch((e2) => {
+              console.error("[ai-analytics] pageViews fallback failed", e2);
+              return null;
+            });
+          return recent;
+        }),
+      db
+        .collection("analyticsSessions")
+        .where("firstSeenAt", ">=", startTs)
+        .where("firstSeenAt", "<=", endTs)
+        .orderBy("firstSeenAt", "desc")
+        .limit(SESSIONS_LIMIT)
+        .get()
+        .catch(async (err) => {
+          console.error("[ai-analytics] sessions firstSeenAt query failed", err);
+          return null;
+        }),
+      db
+        .collection("analyticsSessions")
+        .where("lastSeenAt", ">=", startTs)
+        .where("lastSeenAt", "<=", endTs)
+        .orderBy("lastSeenAt", "desc")
+        .limit(SESSIONS_LIMIT)
+        .get()
+        .catch(async (err) => {
+          console.error("[ai-analytics] sessions lastSeenAt query failed", err);
+          const recent = await db
+            .collection("analyticsSessions")
+            .orderBy("lastSeenAt", "desc")
+            .limit(FALLBACK_LIMIT)
+            .get()
+            .catch((e2) => {
+              console.error("[ai-analytics] sessions fallback failed", e2);
+              return null;
+            });
+          return recent;
+        }),
+      db
+        .collection("bookings")
+        .where("createdAt", ">=", start.toISOString())
+        .where("createdAt", "<=", end.toISOString())
+        .get()
+        .catch(async (err) => {
+          console.error("[ai-analytics] bookings ISO query failed", err);
+          return db
+            .collection("bookings")
+            .orderBy("createdAt", "desc")
+            .limit(500)
+            .get()
+            .catch((e2) => {
+              console.error("[ai-analytics] bookings fallback failed", e2);
+              return null;
+            });
+        }),
+      db
+        .collection("paymentEvents")
+        .where("createdAt", ">=", startTs)
+        .where("createdAt", "<=", endTs)
+        .get()
+        .catch((err) => {
+          console.error("[ai-analytics] paymentEvents query failed", err);
+          return null;
+        }),
+    ]);
+
+  const sessionMap = new Map<string, SessionAgg>();
+
+  function upsertSession(id: string, data: Record<string, unknown>, viewsHint = 0) {
+    if (!id) return;
+    const existing = sessionMap.get(id);
+    const pageViews = Math.max(
+      viewsHint,
+      Number(data.pageViews ?? data.viewCount ?? 0),
+      existing?.pageViews ?? 0,
+    );
+    const visitorType = String(
+      data.visitorType ?? existing?.visitorType ?? "",
+    );
+    const kind = classifySession({ ...data, visitorType }, pageViews || 1);
+    const channel = String(data.trafficChannel ?? existing?.trafficChannel ?? "direct");
+    const confidence = String(
+      data.sourceConfidence ?? existing?.sourceConfidence ?? "",
+    );
+    const label =
+      channel === "google_organic" && confidence && confidence !== "high"
+        ? "Unknown / low-confidence"
+        : String(data.trafficLabel ?? existing?.trafficLabel ?? channel);
+
+    sessionMap.set(id, {
+      kind,
+      visitorType,
+      pageViews: pageViews || 1,
+      totalDurationMs: Math.max(
+        Number(data.totalDurationMs ?? data.durationMs ?? 0),
+        existing?.totalDurationMs ?? 0,
+      ),
+      interactionCount: Math.max(
+        Number(data.interactionCount ?? 0),
+        existing?.interactionCount ?? 0,
+      ),
+      trafficChannel: channel,
+      trafficLabel: label,
+      sourceConfidence: confidence,
+      lastPath: String(data.lastPath ?? existing?.lastPath ?? ""),
+      lastEventType: String(data.lastEventType ?? existing?.lastEventType ?? ""),
+      deviceLabel: String(data.deviceLabel ?? existing?.deviceLabel ?? ""),
+      uaSnippet: String(
+        data.uaSnippet ?? data.userAgent ?? existing?.uaSnippet ?? "",
+      ),
+      analyticsVersion: Number(
+        data.analyticsVersion ?? existing?.analyticsVersion ?? 1,
+      ),
+    });
+  }
+
+  for (const snap of [sessionsByFirst, sessionsByLast]) {
+    if (!snap) continue;
+    for (const doc of snap.docs) {
+      const data = doc.data() as Record<string, unknown>;
+      const firstMs = toMillis(data.firstSeenAt);
+      const lastMs = toMillis(data.lastSeenAt);
+      // Keep sessions that started on this IST day (primary) or were only seen that day
+      if (
+        !inDay(firstMs, startMs, endMs) &&
+        !inDay(lastMs, startMs, endMs)
+      ) {
+        continue;
+      }
+      // Prefer first-seen day for visitor attribution (match Site analytics)
+      if (firstMs > 0 && !inDay(firstMs, startMs, endMs) && inDay(lastMs, startMs, endMs)) {
+        // Session started another day — still include for traffic continuity only if
+        // it has views today; visitor count uses firstSeen. Skip for visitor totals.
+        continue;
+      }
+      upsertSession(doc.id, data);
+    }
+  }
 
   const pageViewCounts = new Map<string, number>();
   const exitCounts = new Map<string, number>();
-  const sessionIds = new Set<string>();
-  let pageViews = 0;
+  const sessionPageCounts = new Map<string, number>();
+  let pageViewsHuman = 0;
+  let pageViewsAll = 0;
   let whatsappClicks = 0;
   let phoneClicks = 0;
   let bookingPageViews = 0;
+  let totalDwellSec = 0;
+  let dwellSamples = 0;
 
   if (viewsSnap) {
     for (const doc of viewsSnap.docs) {
       const data = doc.data() as Record<string, unknown>;
-      if (data.isBot === true) continue;
-      const visitorType = String(data.visitorType ?? "");
-      if (visitorType === "bot" || visitorType === "suspected_bot") continue;
-      // Legacy zero-engagement Google scrapers: skip from business totals
-      const deviceLabel = String(data.deviceLabel ?? "").toLowerCase();
-      const durationMs = Number(data.durationMs ?? -1);
-      const channel = String(data.trafficChannel ?? "");
-      if (
-        data.eventType === "leave" &&
-        durationMs >= 0 &&
-        durationMs < 1500 &&
-        channel === "google_organic" &&
-        deviceLabel.includes("linux")
-      ) {
-        continue;
-      }
+      const createdMs = toMillis(data.createdAt);
+      if (createdMs && !inDay(createdMs, startMs, endMs)) continue;
+
+      const sid = String(data.sessionId ?? "");
       const eventType = String(data.eventType ?? "");
       const path = String(data.path ?? "/");
-      const sid = String(data.sessionId ?? "");
+
+      // Ensure every session seen in pageViews is classified
+      if (sid && !sessionMap.has(sid)) {
+        upsertSession(sid, data, eventType === "view" ? 1 : 0);
+      }
+
+      const kind = sid ? sessionMap.get(sid)?.kind : classifySession(data, 1);
+      const isHumanish = kind === "human" || kind === "unknown";
 
       if (eventType === "view") {
-        pageViews += 1;
-        if (sid) sessionIds.add(sid);
-        pageViewCounts.set(path, (pageViewCounts.get(path) ?? 0) + 1);
-        if (path === "/booking" || path.startsWith("/booking")) {
-          bookingPageViews += 1;
+        pageViewsAll += 1;
+        if (isHumanish) {
+          pageViewsHuman += 1;
+          pageViewCounts.set(path, (pageViewCounts.get(path) ?? 0) + 1);
+          if (path === "/booking" || path.startsWith("/booking")) {
+            bookingPageViews += 1;
+          }
+        }
+        if (sid) {
+          sessionPageCounts.set(sid, (sessionPageCounts.get(sid) ?? 0) + 1);
+          const cur = sessionMap.get(sid);
+          if (cur) {
+            cur.pageViews = Math.max(cur.pageViews, sessionPageCounts.get(sid) ?? 0);
+            cur.kind = resolveAdminVisitorKind({
+              visitorType: cur.visitorType,
+              uaSnippet: cur.uaSnippet,
+              deviceLabel: cur.deviceLabel,
+              trafficChannel: cur.trafficChannel,
+              sourceConfidence: cur.sourceConfidence,
+              totalDurationMs: cur.totalDurationMs,
+              pageViews: cur.pageViews,
+              interactionCount: cur.interactionCount,
+              analyticsVersion: cur.analyticsVersion,
+            });
+          }
         }
       }
       if (eventType === "leave") {
-        exitCounts.set(path, (exitCounts.get(path) ?? 0) + 1);
+        if (isHumanish) exitCounts.set(path, (exitCounts.get(path) ?? 0) + 1);
+        const ms = Number(data.durationMs ?? 0);
+        if (isHumanish && Number.isFinite(ms) && ms > 0) {
+          totalDwellSec += ms / 1000;
+          dwellSamples += 1;
+        }
       }
-      if (eventType === "click") {
+      if (eventType === "click" && isHumanish) {
         if (isWhatsAppClick(data)) whatsappClicks += 1;
         if (isPhoneClick(data)) phoneClicks += 1;
       }
     }
   }
 
+  let visitorsHuman = 0;
+  let visitorsSuspected = 0;
+  let visitorsBot = 0;
+  let visitorsInternal = 0;
+  let bounceSessions = 0;
+  const sourceCounts = new Map<string, TrafficSourceMetric>();
+
+  for (const [sid, s] of sessionMap) {
+    if (s.kind === "human" || s.kind === "unknown") {
+      visitorsHuman += 1;
+      const views = sessionPageCounts.get(sid) ?? s.pageViews;
+      if (views <= 1) bounceSessions += 1;
+      const key = `${s.trafficChannel}::${s.trafficLabel}`;
+      const cur = sourceCounts.get(key) ?? {
+        channel: s.trafficChannel,
+        label: s.trafficLabel,
+        sessions: 0,
+      };
+      cur.sessions += 1;
+      sourceCounts.set(key, cur);
+    } else if (s.kind === "suspected") {
+      visitorsSuspected += 1;
+    } else if (s.kind === "bot") {
+      visitorsBot += 1;
+    } else if (s.kind === "internal") {
+      visitorsInternal += 1;
+    }
+  }
+
+  const visitorsAll =
+    visitorsHuman + visitorsSuspected + visitorsBot + visitorsInternal;
+  const visitors = visitorsHuman;
+
   let paymentSuccess = 0;
   let paymentFailed = 0;
   let paymentDismissed = 0;
   let verifyFailed = 0;
-  let checkoutStarts = 0;
 
   if (paymentSnap) {
     for (const doc of paymentSnap.docs) {
+      const createdMs = toMillis(doc.data().createdAt);
+      if (createdMs && !inDay(createdMs, startMs, endMs)) continue;
       const t = String(doc.data().eventType ?? "");
       if (t === "payment_success") paymentSuccess += 1;
       else if (t === "payment_failed") paymentFailed += 1;
       else if (t === "checkout_dismissed") paymentDismissed += 1;
       else if (t === "verify_failed") verifyFailed += 1;
-      else if (t === "checkout_started") checkoutStarts += 1;
     }
   }
 
@@ -153,6 +396,8 @@ export async function aggregateInternalDaily(
   if (bookingsSnap) {
     for (const doc of bookingsSnap.docs) {
       const data = doc.data() as Record<string, unknown>;
+      const createdMs = toMillis(data.createdAt);
+      if (createdMs && !inDay(createdMs, startMs, endMs)) continue;
       if (data.status !== "paid") continue;
       bookingsPaid += 1;
       const paise = Number(data.amountPaise ?? 0);
@@ -160,65 +405,8 @@ export async function aggregateInternalDaily(
     }
   }
 
-  const visitors = sessionIds.size;
   const bookingConversionRatePct =
     visitors > 0 ? Math.round((bookingsPaid / visitors) * 10000) / 100 : 0;
-
-  let bounceSessions = 0;
-  let totalDwellSec = 0;
-  let dwellSamples = 0;
-  const sourceCounts = new Map<string, TrafficSourceMetric>();
-
-  if (sessionsSnap) {
-    for (const doc of sessionsSnap.docs) {
-      const data = doc.data() as Record<string, unknown>;
-      if (data.isBot === true) continue;
-      const visitorType = String(data.visitorType ?? "");
-      if (visitorType === "bot" || visitorType === "suspected_bot") continue;
-      const lastPath = String(data.lastPath ?? "");
-      const lastEvent = String(data.lastEventType ?? "");
-      if (lastEvent === "view" && lastPath) {
-        bounceSessions += 1;
-      }
-      const channel = String(data.trafficChannel ?? "direct");
-      const confidence = String(data.sourceConfidence ?? "");
-      // Don't treat low-confidence google_organic as real Google search in AI reports
-      const label =
-        channel === "google_organic" && confidence && confidence !== "high"
-          ? "Unknown / low-confidence"
-          : String(data.trafficLabel ?? channel);
-      const key = `${channel}::${label}`;
-      const cur = sourceCounts.get(key) ?? { channel, label, sessions: 0 };
-      cur.sessions += 1;
-      sourceCounts.set(key, cur);
-    }
-  }
-
-  if (viewsSnap) {
-    const sessionPageCounts = new Map<string, number>();
-    for (const doc of viewsSnap.docs) {
-      const data = doc.data() as Record<string, unknown>;
-      if (data.eventType !== "view" || data.isBot === true) continue;
-      const sid = String(data.sessionId ?? "");
-      if (!sid) continue;
-      sessionPageCounts.set(sid, (sessionPageCounts.get(sid) ?? 0) + 1);
-    }
-    bounceSessions = 0;
-    for (const count of sessionPageCounts.values()) {
-      if (count <= 1) bounceSessions += 1;
-    }
-
-    for (const doc of viewsSnap.docs) {
-      const data = doc.data() as Record<string, unknown>;
-      if (data.eventType !== "leave" || data.isBot === true) continue;
-      const ms = Number(data.durationMs ?? 0);
-      if (Number.isFinite(ms) && ms > 0) {
-        totalDwellSec += ms / 1000;
-        dwellSamples += 1;
-      }
-    }
-  }
-
   const bounceRatePct =
     visitors > 0 ? Math.round((bounceSessions / visitors) * 10000) / 100 : 0;
   const avgSessionDurationSec =
@@ -240,7 +428,12 @@ export async function aggregateInternalDaily(
 
   return {
     visitors,
-    pageViews,
+    visitorsHuman,
+    visitorsSuspected,
+    visitorsBot,
+    visitorsAll,
+    pageViews: pageViewsHuman,
+    pageViewsAll,
     bounceRatePct,
     avgSessionDurationSec,
     bookingsPaid,
