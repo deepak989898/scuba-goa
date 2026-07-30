@@ -814,20 +814,6 @@ export default function AdminAnalyticsPage() {
     const todayVisitors = todayGroup?.visitors.length ?? 0;
     const todayPageViews = todayGroup?.pageViews ?? 0;
 
-    const trafficBreakdown = new Map<string, number>();
-    for (const v of todayGroup?.visitors ?? []) {
-      // Only count high-confidence Google as "Google (search)" in cards
-      let key = v.trafficLabel || "Unknown";
-      if (
-        v.trafficChannel === "google_organic" &&
-        v.sourceConfidence &&
-        v.sourceConfidence !== "high"
-      ) {
-        key = "Unknown / low-confidence";
-      }
-      trafficBreakdown.set(key, (trafficBreakdown.get(key) ?? 0) + 1);
-    }
-
     const todaySuspected =
       todayRaw?.visitors.filter((v) => v.visitorKind === "suspected").length ?? 0;
     const todayBots =
@@ -848,9 +834,6 @@ export default function AdminAnalyticsPage() {
       dayGroups,
       todayVisitors,
       todayPageViews,
-      trafficBreakdown: [...trafficBreakdown.entries()].sort(
-        (a, b) => b[1] - a[1]
-      ),
       todayBotsHidden: visitorFilter === "human" ? todayBots + todaySuspected : 0,
       todaySuspected,
       todayBots,
@@ -1094,13 +1077,6 @@ export default function AdminAnalyticsPage() {
         Clarity (different bot filters and sampling).
       </p>
 
-      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <strong>Analytics v2:</strong> Google Search is only counted with a verified
-        Google referrer (or organic UTM). If Today looks empty vs Clarity/GA4,
-        switch to <em>All</em> once, then refresh after deploying the latest
-        tracker — older sessions may have been over-classified as bots.
-      </div>
-
       {loadError ? (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
           <p className="font-semibold">Could not load analytics</p>
@@ -1210,29 +1186,6 @@ export default function AdminAnalyticsPage() {
               ))}
             </div>
           </div>
-
-          {analytics.trafficBreakdown.length > 0 ? (
-            <div className="mt-3 rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-ocean-900">
-                Today — where visitors came from
-              </h2>
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {analytics.trafficBreakdown.map(([label, n]) => (
-                  <li
-                    key={label}
-                    className="rounded-full border border-ocean-100 bg-sand/60 px-3 py-1 text-sm text-ocean-900"
-                  >
-                    <span className="font-medium">{label}</span>
-                    <span className="ml-1.5 text-ocean-600">({n})</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-xs text-ocean-500">
-                New visits only — older sessions may show &quot;—&quot; until
-                visitors return with the updated tracker.
-              </p>
-            </div>
-          ) : null}
 
           <div className="mt-4">
             <h2 className="font-display text-base font-semibold text-ocean-900">
