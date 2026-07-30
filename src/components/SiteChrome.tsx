@@ -16,6 +16,8 @@ import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 export function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
+  const isBooking =
+    pathname === "/booking" || (pathname?.startsWith("/booking/") ?? false);
 
   if (isAdmin) {
     return <>{children}</>;
@@ -23,7 +25,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <ScrollProgressBar />
+      {!isBooking ? <ScrollProgressBar /> : null}
       <Header />
       {/*
         Mobile sticky bar is ~6.5rem tall + safe-area inset. 7.5rem reserves a

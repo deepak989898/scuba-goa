@@ -5,9 +5,10 @@ const HERO_LEFT =
 const HERO_RIGHT =
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=75";
 
+/** Compact hero so cart + checkout fit above the fold on desktop. */
 export function BookingHero() {
   return (
-    <section className="relative overflow-hidden rounded-2xl shadow-lg sm:rounded-3xl">
+    <section className="relative overflow-hidden rounded-xl shadow-md sm:rounded-2xl">
       <div className="absolute inset-0 grid grid-cols-2">
         <div className="relative">
           <CmsRemoteImage
@@ -31,19 +32,18 @@ export function BookingHero() {
         </div>
       </div>
       <div
-        className="absolute inset-0 bg-gradient-to-b from-ocean-950/55 via-ocean-950/45 to-ocean-950/70"
+        className="absolute inset-0 bg-gradient-to-b from-ocean-950/50 via-ocean-950/40 to-ocean-950/65"
         aria-hidden
       />
-      <div className="relative z-10 px-4 py-10 text-center sm:px-8 sm:py-14 lg:py-16">
-        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-cyan-100 sm:text-xs">
+      <div className="relative z-10 px-4 py-5 text-center sm:px-6 sm:py-6 lg:py-7">
+        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-100 sm:text-[11px]">
           ~~ Reserve your dive ~~
         </p>
-        <h1 className="mt-3 font-display text-3xl font-extrabold uppercase leading-[1.05] tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
-          <span className="text-white">Clear price,</span>
-          <br />
+        <h1 className="mt-1.5 font-display text-2xl font-extrabold uppercase leading-[1.05] tracking-tight text-white sm:text-3xl md:text-4xl">
+          <span className="text-white">Clear price,</span>{" "}
           <span className="text-orange-400">Small advance</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-sm text-cyan-50/95 sm:text-base">
+        <p className="mx-auto mt-1.5 max-w-xl text-xs text-cyan-50/95 sm:text-sm">
           Choose your package · Select your date · Dive in. Contact details only
           when you pay.
         </p>

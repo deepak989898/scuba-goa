@@ -33,14 +33,14 @@ export default function BookingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
-      <div className="bg-gradient-to-b from-sky-100 via-ocean-50 to-white pb-10 pt-4 sm:pb-14 sm:pt-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="bg-gradient-to-b from-sky-100 via-ocean-50 to-white pb-6 pt-2 sm:pb-8 sm:pt-3">
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
           <BookingHero />
           <BookingTrustRow />
-          <div className="mt-5">
+          <div className="mt-3">
             <BookingAdvanceBanner />
           </div>
-          <div className="mt-6">
+          <div className="mt-3">
             <Suspense
               fallback={
                 <p className="text-center text-ocean-700">Loading booking…</p>
@@ -49,7 +49,9 @@ export default function BookingPage() {
               <BookingForm />
             </Suspense>
           </div>
-          <BookingBottomBar />
+          <div className="mt-4">
+            <BookingBottomBar />
+          </div>
         </div>
       </div>
     </>
