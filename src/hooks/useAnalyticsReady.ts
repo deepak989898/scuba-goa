@@ -10,7 +10,7 @@ const INTERACTION_EVENTS: Array<keyof WindowEventMap> = [
 ];
 
 /** Delay before counting a page view without interaction (bounce traffic). */
-const IDLE_ARM_MS = 4_000;
+const IDLE_ARM_MS = 1_500;
 
 /**
  * Arms analytics after first interaction OR a short idle delay so blog view

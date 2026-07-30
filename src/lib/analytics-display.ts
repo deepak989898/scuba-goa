@@ -33,12 +33,20 @@ export function formatDurationMs(ms: number | null): string {
 export function formatGeoLine(parts: {
   geoCity?: string;
   geoRegion?: string;
+  geoRegionName?: string;
   geoCountry?: string;
+  geoCountryName?: string;
 }): string {
-  const { geoCity, geoRegion, geoCountry } = parts;
+  const city = parts.geoCity?.trim();
+  const region =
+    parts.geoRegionName?.trim() ||
+    parts.geoRegion?.trim();
+  const country =
+    parts.geoCountryName?.trim() ||
+    parts.geoCountry?.trim();
   const bits: string[] = [];
-  if (geoCity) bits.push(geoCity);
-  if (geoRegion && geoRegion !== geoCity) bits.push(geoRegion);
-  if (geoCountry) bits.push(geoCountry);
+  if (city) bits.push(city);
+  if (region && region !== city) bits.push(region);
+  if (country && country !== region && country !== city) bits.push(country);
   return bits.length ? bits.join(", ") : "";
 }

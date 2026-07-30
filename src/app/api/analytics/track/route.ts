@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { parseRequestDevice } from "@/lib/clientDevice";
-import { geoFromRequestHeaders } from "@/lib/analytics-geo";
+import { resolveRequestGeo } from "@/lib/analytics-geo";
 import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 import { classifyAttribution } from "@/lib/analytics-attribution";
 import {
@@ -327,6 +327,21 @@ export async function POST(req: Request) {
         hbPayload.isEngagedSession = true;
         hbPayload.isBot = false;
       }
+      // Backfill geo on heartbeat if session still has no location
+      try {
+        const existing = await sessionRef.get();
+        const ex = existing.data() as Record<string, unknown> | undefined;
+        if (!ex?.firstSeenAt) {
+          hbPayload.firstSeenAt = FieldValue.serverTimestamp();
+        }
+        if (!ex?.geoCountry && !ex?.geoCity) {
+          const ip = clientIpFromHeaders(req.headers);
+          const geo = await resolveRequestGeo(req.headers, ip);
+          Object.assign(hbPayload, geo);
+        }
+      } catch {
+        /* ignore geo backfill errors */
+      }
       await sessionRef.set(hbPayload, { merge: true });
     } catch (e) {
       console.error("heartbeat session update failed", e);
@@ -353,7 +368,10 @@ export async function POST(req: Request) {
       : Math.max(0, Math.min(Math.round(durationMsRaw), 1000 * 60 * 60 * 6));
   const interactionCount = toFiniteNumber(body.interactionCount);
   const webdriver = body.webdriver === true;
-  const geo = geoFromRequestHeaders(req.headers);
+  const geo = await resolveRequestGeo(
+    req.headers,
+    clientIpFromHeaders(req.headers),
+  );
 
   const screenWidth = clampDim(body.screenWidth);
   const screenHeight = clampDim(body.screenHeight);
@@ -441,7 +459,27 @@ export async function POST(req: Request) {
   if (maxScrollDepthPct != null) {
     sessionPayload.maxScrollDepthPct = Math.min(100, Math.max(0, Math.round(maxScrollDepthPct)));
   }
-  Object.assign(sessionPayload, geo);
+  // Prefer new geo; never wipe an existing city/country with empty headers
+  if (geo.geoCity || geo.geoCountry || geo.geoRegion) {
+    Object.assign(sessionPayload, geo);
+  }
+
+  // Compact activity trail for admin timeline (survives pageViews sample aging)
+  const prevTrail = Array.isArray(existing.recentEvents)
+    ? (existing.recentEvents as Record<string, unknown>[])
+    : [];
+  const trailEntry: Record<string, unknown> = {
+    atMs: Date.now(),
+    eventType,
+    path,
+  };
+  if (clickLabel) trailEntry.clickLabel = clickLabel;
+  if (clickHref) trailEntry.clickHref = clickHref;
+  if (clickCategory) trailEntry.clickCategory = clickCategory;
+  if (clickTarget) trailEntry.clickTarget = clickTarget;
+  if (durationMs != null) trailEntry.durationMs = durationMs;
+  if (pageLabel) trailEntry.pageLabel = pageLabel;
+  sessionPayload.recentEvents = [...prevTrail, trailEntry].slice(-50);
 
   if (!sessionSnap.exists) {
     sessionPayload.firstSeenAt = FieldValue.serverTimestamp();

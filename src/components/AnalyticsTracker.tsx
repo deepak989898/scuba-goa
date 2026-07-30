@@ -17,7 +17,7 @@ const VIEW_DEDUPE_MS = 400;
 /** Keep "Online" accurate in admin (was 3 minutes — too sparse). */
 const HEARTBEAT_MS = 25_000;
 const TRACK_TIMEOUT_MS = 12_000;
-const CLICK_THROTTLE_MS = 1_500;
+const CLICK_THROTTLE_MS = 600;
 
 type EventType = "view" | "leave" | "heartbeat" | "click" | "scroll";
 
@@ -424,7 +424,7 @@ export function AnalyticsTracker() {
       const target = ev.target;
       if (!(target instanceof Element)) return;
       const clickable = target.closest(
-        "a,button,[role='button'],[data-analytics-click]",
+        "a,button,[role='button'],[role='menuitem'],[role='link'],[data-analytics-click],summary,input[type='submit'],input[type='button'],label[for]",
       );
       if (!(clickable instanceof Element)) return;
 

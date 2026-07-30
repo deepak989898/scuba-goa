@@ -1,20 +1,21 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { useAnalyticsReady } from "@/hooks/useAnalyticsReady";
+import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 
 /**
- * The custom Firestore analytics tracker attaches document-level listeners and
- * creates a session on first render. Keep it out of the initial Lighthouse
- * trace; start after first interaction or a short idle delay so views are counted.
+ * Start tracking after first interaction or short idle.
+ * Uses sync import (not next/dynamic) so click listeners attach immediately
+ * after arming — dynamic() was too slow and dropped the first menu clicks.
  */
-const LazyAnalyticsTracker = dynamic(
-  () => import("@/components/AnalyticsTracker").then((m) => m.AnalyticsTracker),
-  { ssr: false, loading: () => null },
-);
-
 export function DeferredAnalyticsTracker() {
   const armed = useAnalyticsReady();
+
+  useEffect(() => {
+    // Warm nothing — tracker mounts as soon as armed.
+  }, [armed]);
+
   if (!armed) return null;
-  return <LazyAnalyticsTracker />;
+  return <AnalyticsTracker />;
 }

@@ -7,6 +7,7 @@ import {
   limit,
   orderBy,
   query,
+  where,
   type Timestamp,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
@@ -39,6 +40,9 @@ type Row = {
   eventType: "view" | "leave" | "heartbeat" | "click" | "";
   pageLabel: string;
   clickLabel?: string;
+  clickHref?: string;
+  clickCategory?: string;
+  clickTarget?: string;
   durationMs: number | null;
   deviceCategory: DeviceCategory | "";
   deviceLabel: string;
@@ -46,11 +50,25 @@ type Row = {
   isBot?: boolean;
   createdAt: unknown;
   geoCountry?: string;
+  geoCountryName?: string;
   geoCity?: string;
   geoRegion?: string;
+  geoRegionName?: string;
   trafficChannel?: string;
   trafficLabel?: string;
   trafficDetail?: string;
+};
+
+type RecentEvent = {
+  atMs?: number;
+  eventType?: string;
+  path?: string;
+  clickLabel?: string;
+  clickHref?: string;
+  clickCategory?: string;
+  clickTarget?: string;
+  durationMs?: number;
+  pageLabel?: string;
 };
 
 type SessionDoc = {
@@ -67,8 +85,10 @@ type SessionDoc = {
   lastSeenAt: unknown;
   firstSeenAt?: unknown;
   geoCountry?: string;
+  geoCountryName?: string;
   geoCity?: string;
   geoRegion?: string;
+  geoRegionName?: string;
   trafficChannel?: string;
   trafficLabel?: string;
   trafficDetail?: string;
@@ -91,6 +111,7 @@ type SessionDoc = {
   pageDurationsMs?: Record<string, number>;
   pageViewCounts?: Record<string, number>;
   pageLabels?: Record<string, string>;
+  recentEvents?: RecentEvent[];
 };
 
 type PageStay = {
@@ -211,6 +232,23 @@ function formatTs(v: unknown): string {
   if (!t) return "—";
   return t.toDate().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour12: true,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function formatMsIst(ms: number): string {
+  if (!ms || !Number.isFinite(ms)) return "—";
+  return new Date(ms).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
     hour12: true,
     hour: "2-digit",
     minute: "2-digit",
@@ -221,8 +259,10 @@ function formatTs(v: unknown): string {
 function pickGeoFields(data: Record<string, unknown>) {
   return {
     geoCountry: String(data.geoCountry ?? "").trim() || undefined,
+    geoCountryName: String(data.geoCountryName ?? "").trim() || undefined,
     geoCity: String(data.geoCity ?? "").trim() || undefined,
     geoRegion: String(data.geoRegion ?? "").trim() || undefined,
+    geoRegionName: String(data.geoRegionName ?? "").trim() || undefined,
   };
 }
 
@@ -322,14 +362,15 @@ function buildVisitorSummary(
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
   const arrivedAtMs =
-    toTimestamp(first?.createdAt)?.toMillis() ??
     toTimestamp(sess?.firstSeenAt)?.toMillis() ??
+    toTimestamp(first?.createdAt)?.toMillis() ??
     toTimestamp(sess?.lastSeenAt)?.toMillis() ??
     0;
-  const leftAtMs =
-    toTimestamp(last?.createdAt)?.toMillis() ??
-    toTimestamp(sess?.lastSeenAt)?.toMillis() ??
-    arrivedAtMs;
+  const leftAtMs = Math.max(
+    toTimestamp(sess?.lastSeenAt)?.toMillis() ?? 0,
+    toTimestamp(last?.createdAt)?.toMillis() ?? 0,
+    arrivedAtMs,
+  );
   const leaveDurationMs = sorted
     .filter((r) => r.eventType === "leave")
     .reduce((acc, r) => acc + (r.durationMs ?? 0), 0);
@@ -371,8 +412,8 @@ function buildVisitorSummary(
 
   return {
     sessionId: sid,
-    arrivedAt: first?.createdAt ?? sess?.firstSeenAt ?? sess?.lastSeenAt,
-    leftAt: last?.createdAt ?? sess?.lastSeenAt,
+    arrivedAt: sess?.firstSeenAt ?? first?.createdAt ?? sess?.lastSeenAt,
+    leftAt: sess?.lastSeenAt ?? last?.createdAt,
     arrivedAtMs,
     leftAtMs,
     totalDurationMs:
@@ -388,7 +429,9 @@ function buildVisitorSummary(
     geoLine: formatGeoLine({
       geoCity: geoSource?.geoCity,
       geoRegion: geoSource?.geoRegion,
+      geoRegionName: geoSource?.geoRegionName,
       geoCountry: geoSource?.geoCountry,
+      geoCountryName: geoSource?.geoCountryName,
     }),
     trafficChannel: normalizeTrafficChannel(
       trafficSource?.trafficChannel ?? sess?.trafficChannel
@@ -430,6 +473,8 @@ export default function AdminAnalyticsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [visitorFilter, setVisitorFilter] =
     useState<VisitorKindFilter>("human");
+  const [sessionTimeline, setSessionTimeline] = useState<Row[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   const todayIstYmd = useMemo(
     () =>
@@ -483,6 +528,9 @@ export default function AdminAnalyticsPage() {
                 : "",
             pageLabel: String(data.pageLabel ?? ""),
             clickLabel: String(data.clickLabel ?? ""),
+            clickHref: String(data.clickHref ?? "") || undefined,
+            clickCategory: String(data.clickCategory ?? "") || undefined,
+            clickTarget: String(data.clickTarget ?? "") || undefined,
             durationMs: toNumberOrNull(data.durationMs),
             deviceCategory: normalizeDeviceCategory(
               String(data.deviceCategory ?? "")
@@ -556,6 +604,9 @@ export default function AdminAnalyticsPage() {
               data.pageLabels && typeof data.pageLabels === "object"
                 ? (data.pageLabels as Record<string, string>)
                 : undefined,
+            recentEvents: Array.isArray(data.recentEvents)
+              ? (data.recentEvents as RecentEvent[]).slice(-50)
+              : undefined,
             ...pickGeoFields(data),
             ...pickTrafficFields(data),
           };
@@ -809,16 +860,133 @@ export default function AdminAnalyticsPage() {
     (v) => v.sessionId === selectedSessionId
   );
 
+  useEffect(() => {
+    if (!db || !selectedSessionId) {
+      setSessionTimeline([]);
+      return;
+    }
+    let cancelled = false;
+    setTimelineLoading(true);
+    const load = async () => {
+      try {
+        const q = query(
+          collection(db, "pageViews"),
+          where("sessionId", "==", selectedSessionId),
+          orderBy("createdAt", "asc"),
+          limit(200),
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        const list: Row[] = snap.docs.map((d) => {
+          const data = d.data() as Record<string, unknown>;
+          return {
+            id: d.id,
+            path: String(data.path ?? ""),
+            sessionId: String(data.sessionId ?? ""),
+            eventType:
+              data.eventType === "view" ||
+              data.eventType === "leave" ||
+              data.eventType === "heartbeat" ||
+              data.eventType === "click"
+                ? data.eventType
+                : "",
+            pageLabel: String(data.pageLabel ?? ""),
+            clickLabel: String(data.clickLabel ?? ""),
+            clickHref: String(data.clickHref ?? "") || undefined,
+            clickCategory: String(data.clickCategory ?? "") || undefined,
+            clickTarget: String(data.clickTarget ?? "") || undefined,
+            durationMs: toNumberOrNull(data.durationMs),
+            deviceCategory: normalizeDeviceCategory(
+              String(data.deviceCategory ?? ""),
+            ),
+            deviceLabel: String(data.deviceLabel ?? ""),
+            uaSnippet: String(data.uaSnippet ?? ""),
+            createdAt: data.createdAt,
+            ...pickGeoFields(data),
+            ...pickTrafficFields(data),
+          };
+        });
+        setSessionTimeline(list);
+      } catch {
+        if (!cancelled) setSessionTimeline([]);
+      } finally {
+        if (!cancelled) setTimelineLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [db, selectedSessionId]);
+
   const selectedTimeline = useMemo(() => {
-    if (!selectedSessionId) return [];
-    return rows
+    if (!selectedSessionId) return [] as Array<{
+      id: string;
+      atMs: number;
+      eventType: string;
+      path: string;
+      clickLabel?: string;
+      clickHref?: string;
+      clickCategory?: string;
+      durationMs?: number | null;
+    }>;
+
+    const fromQuery = sessionTimeline.map((r) => ({
+      id: r.id,
+      atMs: toTimestamp(r.createdAt)?.toMillis() ?? 0,
+      eventType: r.eventType || "view",
+      path: r.path,
+      clickLabel: r.clickLabel,
+      clickHref: r.clickHref,
+      clickCategory: r.clickCategory,
+      durationMs: r.durationMs,
+    }));
+
+    const sess = sessions.find((s) => s.sessionId === selectedSessionId);
+    const fromTrail = (sess?.recentEvents ?? []).map((e, i) => ({
+      id: `trail-${i}-${e.atMs ?? i}`,
+      atMs: typeof e.atMs === "number" ? e.atMs : 0,
+      eventType: String(e.eventType ?? "event"),
+      path: String(e.path ?? ""),
+      clickLabel: e.clickLabel,
+      clickHref: e.clickHref,
+      clickCategory: e.clickCategory,
+      durationMs: e.durationMs ?? null,
+    }));
+
+    const fromSample = rows
       .filter((r) => r.sessionId === selectedSessionId)
-      .sort((a, b) => {
-        const ta = toTimestamp(a.createdAt)?.toMillis() ?? 0;
-        const tb = toTimestamp(b.createdAt)?.toMillis() ?? 0;
-        return ta - tb;
-      });
-  }, [rows, selectedSessionId]);
+      .map((r) => ({
+        id: r.id,
+        atMs: toTimestamp(r.createdAt)?.toMillis() ?? 0,
+        eventType: r.eventType || "view",
+        path: r.path,
+        clickLabel: r.clickLabel,
+        clickHref: r.clickHref,
+        clickCategory: r.clickCategory,
+        durationMs: r.durationMs,
+      }));
+
+    const merged = new Map<
+      string,
+      {
+        id: string;
+        atMs: number;
+        eventType: string;
+        path: string;
+        clickLabel?: string;
+        clickHref?: string;
+        clickCategory?: string;
+        durationMs?: number | null;
+      }
+    >();
+    for (const e of [...fromTrail, ...fromSample, ...fromQuery]) {
+      if (!e.atMs && !e.path) continue;
+      const key = `${e.atMs}|${e.eventType}|${e.path}|${e.clickLabel ?? ""}`;
+      if (!merged.has(key)) merged.set(key, e);
+    }
+    return [...merged.values()].sort((a, b) => a.atMs - b.atMs);
+  }, [selectedSessionId, sessionTimeline, sessions, rows]);
 
   if (!db) {
     return (
@@ -1146,8 +1314,8 @@ export default function AdminAnalyticsPage() {
                                       </p>
                                     ) : (
                                       <p className="mt-1.5 text-xs text-ocean-500">
-                                        Location: not available (local dev or
-                                        missing IP headers)
+                                        Location: unavailable (waiting for geo
+                                        from next visit)
                                       </p>
                                     )}
 
@@ -1216,7 +1384,8 @@ export default function AdminAnalyticsPage() {
                                         Location
                                       </dt>
                                       <dd>
-                                        {selectedVisitor.geoLine || "—"}
+                                        {selectedVisitor.geoLine ||
+                                          "Unavailable (will fill on next visit)"}
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">
@@ -1316,38 +1485,66 @@ export default function AdminAnalyticsPage() {
                                   <h4 className="mt-4 text-sm font-semibold text-ocean-900">
                                     Activity timeline
                                   </h4>
-                                  <ul className="mt-2 max-h-52 space-y-1.5 overflow-y-auto text-xs">
-                                    {selectedTimeline.map((r) => (
-                                      <li
-                                        key={r.id}
-                                        className="rounded-lg border border-ocean-50 bg-white px-2 py-1.5"
-                                      >
-                                        <span className="text-ocean-600">
-                                          {formatTs(r.createdAt)}
-                                        </span>
-                                        <span className="mx-1 text-ocean-300">
-                                          ·
-                                        </span>
-                                        <span className="font-medium text-ocean-900">
-                                          {r.eventType || "view"}
-                                        </span>
-                                        {r.durationMs ? (
+                                  {timelineLoading ? (
+                                    <p className="mt-2 text-xs text-ocean-600">
+                                      Loading clicks &amp; page events…
+                                    </p>
+                                  ) : selectedTimeline.length === 0 ? (
+                                    <p className="mt-2 text-xs text-ocean-500">
+                                      No clicks or page events stored for this
+                                      visit yet. New visits after deploy will
+                                      show menu / button clicks here.
+                                    </p>
+                                  ) : (
+                                    <ul className="mt-2 max-h-64 space-y-1.5 overflow-y-auto text-xs">
+                                      {selectedTimeline.map((r) => (
+                                        <li
+                                          key={r.id}
+                                          className="rounded-lg border border-ocean-50 bg-white px-2 py-1.5"
+                                        >
                                           <span className="text-ocean-600">
-                                            {" "}
-                                            · {formatDurationMs(r.durationMs)}
+                                            {formatMsIst(r.atMs)}
                                           </span>
-                                        ) : null}
-                                        <p className="truncate font-mono text-ocean-800">
-                                          {r.path}
-                                        </p>
-                                        {r.eventType === "click" && r.clickLabel ? (
-                                          <p className="text-ocean-600">
-                                            Click: {r.clickLabel}
-                                          </p>
-                                        ) : null}
-                                      </li>
-                                    ))}
-                                  </ul>
+                                          <span className="mx-1 text-ocean-300">
+                                            ·
+                                          </span>
+                                          <span className="font-medium text-ocean-900">
+                                            {r.eventType === "click"
+                                              ? "Click"
+                                              : r.eventType === "leave"
+                                                ? "Left page"
+                                                : r.eventType === "view"
+                                                  ? "Opened page"
+                                                  : r.eventType}
+                                          </span>
+                                          {r.durationMs ? (
+                                            <span className="text-ocean-600">
+                                              {" "}
+                                              · {formatDurationMs(r.durationMs)}
+                                            </span>
+                                          ) : null}
+                                          {r.path ? (
+                                            <p className="truncate font-mono text-ocean-800">
+                                              {r.path}
+                                            </p>
+                                          ) : null}
+                                          {r.eventType === "click" ? (
+                                            <p className="text-ocean-700">
+                                              {r.clickLabel
+                                                ? `Button: “${r.clickLabel}”`
+                                                : "Button click"}
+                                              {r.clickCategory
+                                                ? ` · ${r.clickCategory}`
+                                                : ""}
+                                              {r.clickHref
+                                                ? ` → ${r.clickHref}`
+                                                : ""}
+                                            </p>
+                                          ) : null}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
                                 </>
                               )}
                             </div>
