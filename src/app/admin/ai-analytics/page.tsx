@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type { AiAnalyticsDailyDoc, AiAnalyticsReportDoc } from "@/lib/ai-analytics/types";
+import { AiReportMarkdown } from "@/components/admin/AiReportMarkdown";
+import {
+  trafficChannelStyles,
+  trafficChannelFromLabel,
+  type TrafficChannel,
+} from "@/lib/analytics-traffic";
 
 async function adminFetch(path: string, init?: RequestInit) {
   const auth = getFirebaseAuth();
@@ -43,7 +49,10 @@ export default function AdminAiAnalyticsPage() {
       const r = (data.reports ?? []) as ReportRow[];
       setDaily(d);
       setReports(r);
-      setSelectedDate((prev) => prev || d[0]?.dateIst || "");
+      setSelectedDate((prev) => {
+        if (prev && d.some((row) => row.dateIst === prev)) return prev;
+        return d[0]?.dateIst || prev || "";
+      });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -63,16 +72,28 @@ export default function AdminAiAnalyticsPage() {
     setErr(null);
     setOk(null);
     try {
-      await adminFetch("/api/admin/ai-analytics/run", {
+      const dateIst =
+        selectedDate ||
+        daily[0]?.dateIst ||
+        new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+      const result = (await adminFetch("/api/admin/ai-analytics/run", {
         method: "POST",
-        body: JSON.stringify({ skipNotifications: skipNotify }),
-      });
+        body: JSON.stringify({
+          dateIst,
+          skipNotifications: skipNotify,
+        }),
+      })) as { dateIst?: string };
+
+      const generatedFor = result.dateIst || dateIst;
+      setSelectedDate(generatedFor);
       setOk(
         skipNotify
-          ? "Daily snapshot + AI report generated (notifications skipped)."
-          : "Daily snapshot generated and notifications sent where configured.",
+          ? `Snapshot + AI report generated for ${generatedFor} (IST). Notifications skipped.`
+          : `Snapshot generated for ${generatedFor} (IST) and notifications sent where configured.`,
       );
       await load();
+      // Keep the day we just generated (load() preserves selection when set)
+      setSelectedDate(generatedFor);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Run failed");
     } finally {
@@ -153,7 +174,7 @@ export default function AdminAiAnalyticsPage() {
       ) : (
         <>
           <label className="mt-3 block text-sm text-ocean-800">
-            Day (IST)
+            Day (IST) — Generate uses this date
             <select
               className="mt-1 rounded-lg border border-ocean-200 px-3 py-2"
               value={selectedDate || snapshot.dateIst}
@@ -162,10 +183,24 @@ export default function AdminAiAnalyticsPage() {
               {daily.map((d) => (
                 <option key={d.dateIst} value={d.dateIst}>
                   {d.dateIst}
+                  {d.internal?.visitorsHuman || d.internal?.visitors
+                    ? ` · ${d.internal?.visitorsHuman ?? d.internal?.visitors} humans`
+                    : " · no traffic"}
                 </option>
               ))}
             </select>
           </label>
+
+          {(m?.visitorsAll ?? 0) === 0 && (m?.pageViews ?? 0) === 0 ? (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              No traffic found for <strong>{snapshot.dateIst}</strong>. Pick a day
+              that has visitors in{" "}
+              <Link href="/admin/analytics" className="underline">
+                Site analytics
+              </Link>
+              , then click <strong>Generate report now</strong> again.
+            </p>
+          ) : null}
 
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard label="Humans" value={m?.visitorsHuman ?? m?.visitors ?? 0} />
@@ -184,8 +219,8 @@ export default function AdminAiAnalyticsPage() {
             />
           </div>
 
-          <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-ocean-900">Connectors</h2>
+          <section className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 shadow-sm">
+            <h2 className="font-display text-lg font-bold text-indigo-900">Connectors</h2>
             <ul className="mt-3 space-y-1 text-sm text-ocean-800">
               <li>
                 GA4:{" "}
@@ -234,14 +269,14 @@ export default function AdminAiAnalyticsPage() {
           </section>
 
           {(report?.actions?.length || snapshot.insights?.recommendations?.length) ? (
-            <section className="mt-3 rounded-xl border border-ocean-200 bg-ocean-50/40 p-3 shadow-sm">
-              <h2 className="font-display text-lg font-bold text-ocean-900">
+            <section className="mt-3 rounded-xl border border-violet-200 bg-violet-50/50 p-4 shadow-sm">
+              <h2 className="font-display text-lg font-bold text-violet-900">
                 Tomorrow&apos;s 3 actions
               </h2>
-              <p className="mt-1 text-xs text-ocean-600">
+              <p className="mt-1 text-xs text-violet-700">
                 Based on exit pages, bounce, and bookings — not generic marketing tips.
               </p>
-              <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm text-ocean-900">
+              <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm text-ocean-900 marker:font-bold marker:text-violet-700">
                 {(report?.actions?.length
                   ? report.actions
                   : snapshot.insights.recommendations
@@ -257,28 +292,30 @@ export default function AdminAiAnalyticsPage() {
           ) : null}
 
           {report?.summaryMarkdown ? (
-            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-              <h2 className="font-display text-lg font-bold text-ocean-900">
+            <section className="mt-3 rounded-xl border border-sky-200 bg-white p-4 shadow-sm">
+              <h2 className="font-display text-lg font-bold text-sky-900">
                 AI daily report — {report.dateIst}
               </h2>
               {report.headline ? (
-                <p className="mt-2 text-sm font-semibold text-ocean-800">{report.headline}</p>
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+                  {report.headline}
+                </p>
               ) : null}
-              <div className="prose prose-ocean mt-4 max-w-none whitespace-pre-wrap text-sm text-ocean-800">
-                {report.summaryMarkdown}
+              <div className="mt-4">
+                <AiReportMarkdown markdown={report.summaryMarkdown} />
               </div>
             </section>
           ) : null}
 
           {snapshot.insights?.recommendations?.length ? (
-            <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50/50 p-3">
-              <h2 className="font-display text-lg font-bold text-ocean-900">
+            <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+              <h2 className="font-display text-lg font-bold text-amber-900">
                 Agent recommendations
               </h2>
-              <p className="mt-1 text-xs text-ocean-600">
+              <p className="mt-1 text-xs text-amber-800">
                 Rule-based alerts from today&apos;s paths and metrics.
               </p>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ocean-800">
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ocean-800 marker:text-amber-600">
                 {snapshot.insights.recommendations.map((r) => (
                   <li key={r}>{r}</li>
                 ))}
@@ -286,27 +323,63 @@ export default function AdminAiAnalyticsPage() {
             </section>
           ) : null}
 
+          {(m?.trafficSources?.length ?? 0) > 0 ? (
+            <section className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-sm">
+              <h2 className="font-display text-lg font-bold text-emerald-900">
+                Traffic sources
+              </h2>
+              <p className="mt-1 text-xs text-emerald-800">
+                How visitors arrived (Direct, Google, Facebook, Instagram, etc.)
+              </p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {m!.trafficSources!.map((t) => {
+                  const channel = (normalizeChannel(t.channel) ||
+                    trafficChannelFromLabel(t.label)) as TrafficChannel | "";
+                  return (
+                    <li key={`${t.channel}-${t.label}`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${trafficChannelStyles(channel)}`}
+                      >
+                        {t.label || t.channel || "Unknown"}
+                        <span className="opacity-90">({t.sessions})</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             <TableBlock
               title="Top pages (views)"
+              titleClass="text-cyan-900"
+              borderClass="border-cyan-200"
+              emptyHint="No page paths for this day — regenerate after new visits."
               rows={m?.topPages?.map((p) => [p.path, String(p.views)]) ?? []}
             />
             <TableBlock
               title="Exit pages (leaves)"
+              titleClass="text-rose-900"
+              borderClass="border-rose-200"
+              emptyHint="No exit paths yet — leave events or last page will appear after regenerate."
               rows={m?.exitPages?.map((p) => [p.path, String(p.views)]) ?? []}
             />
           </div>
 
           {snapshot.insights?.highTrafficLowConversion?.length ? (
-            <section className="mt-3 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-              <h2 className="font-display text-lg font-bold text-ocean-900">
+            <section className="mt-3 rounded-xl border border-orange-200 bg-orange-50/40 p-4 shadow-sm">
+              <h2 className="font-display text-lg font-bold text-orange-900">
                 High traffic, low conversion
               </h2>
               <ul className="mt-4 space-y-3 text-sm">
                 {snapshot.insights.highTrafficLowConversion.map((p) => (
-                  <li key={p.path} className="rounded-lg border border-ocean-100 bg-sand/40 p-3">
-                    <p className="font-mono font-semibold text-ocean-900">{p.path}</p>
-                    <p className="text-ocean-700">
+                  <li
+                    key={p.path}
+                    className="rounded-lg border border-orange-100 bg-white p-3"
+                  >
+                    <p className="font-mono font-semibold text-orange-950">{p.path}</p>
+                    <p className="text-orange-800">
                       {p.views} views · ~{p.conversionRatePct}% conv
                     </p>
                     <p className="mt-1 text-ocean-600">{p.likelyIssue}</p>
@@ -344,19 +417,60 @@ function StatusBadge({ status }: { status?: string }) {
   return <span className={`font-semibold ${cls}`}>{status ?? "—"}</span>;
 }
 
-function TableBlock({ title, rows }: { title: string; rows: string[][] }) {
+function normalizeChannel(raw: string | undefined): TrafficChannel | "" {
+  const v = (raw ?? "").trim();
+  const allowed: TrafficChannel[] = [
+    "facebook",
+    "instagram",
+    "whatsapp",
+    "youtube",
+    "twitter",
+    "linkedin",
+    "tiktok",
+    "google_ads",
+    "google_organic",
+    "bing",
+    "direct",
+    "email",
+    "referral",
+    "other",
+  ];
+  return allowed.includes(v as TrafficChannel) ? (v as TrafficChannel) : "";
+}
+
+function TableBlock({
+  title,
+  rows,
+  titleClass = "text-ocean-900",
+  borderClass = "border-ocean-100",
+  emptyHint = "No data",
+}: {
+  title: string;
+  rows: string[][];
+  titleClass?: string;
+  borderClass?: string;
+  emptyHint?: string;
+}) {
   return (
-    <section className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-      <h2 className="font-display text-lg font-bold text-ocean-900">{title}</h2>
+    <section className={`rounded-xl border ${borderClass} bg-white p-4 shadow-sm`}>
+      <h2 className={`font-display text-lg font-bold ${titleClass}`}>{title}</h2>
       {rows.length === 0 ? (
-        <p className="mt-2 text-sm text-ocean-500">No data</p>
+        <p className="mt-2 text-sm text-ocean-500">{emptyHint}</p>
       ) : (
         <table className="mt-3 w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-ocean-100 text-xs uppercase tracking-wide text-ocean-500">
+              <th className="py-1.5 font-semibold">Path</th>
+              <th className="py-1.5 text-right font-semibold">Count</th>
+            </tr>
+          </thead>
           <tbody>
             {rows.map(([path, n]) => (
               <tr key={path} className="border-b border-ocean-50">
-                <td className="py-2 font-mono text-xs text-ocean-800">{path}</td>
-                <td className="py-2 text-right tabular-nums text-ocean-900">{n}</td>
+                <td className="py-2 font-mono text-xs text-cyan-950">{path}</td>
+                <td className="py-2 text-right tabular-nums font-semibold text-ocean-900">
+                  {n}
+                </td>
               </tr>
             ))}
           </tbody>

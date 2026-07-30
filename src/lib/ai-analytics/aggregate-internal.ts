@@ -62,7 +62,24 @@ type SessionAgg = {
   deviceLabel: string;
   uaSnippet: string;
   analyticsVersion: number;
+  visitedPaths: string[];
 };
+
+function sessionPageViewCount(data: Record<string, unknown>): number {
+  return Math.max(
+    0,
+    Number(data.pageViewCount ?? data.pageViews ?? data.viewCount ?? 0) || 0,
+  );
+}
+
+function sessionDurationMs(data: Record<string, unknown>): number {
+  return Math.max(
+    0,
+    Number(
+      data.engagedMs ?? data.totalDurationMs ?? data.durationMs ?? 0,
+    ) || 0,
+  );
+}
 
 function classifySession(data: Record<string, unknown>, pageViews: number): AdminVisitorKind {
   return resolveAdminVisitorKind({
@@ -72,8 +89,8 @@ function classifySession(data: Record<string, unknown>, pageViews: number): Admi
     deviceLabel: String(data.deviceLabel ?? ""),
     trafficChannel: String(data.trafficChannel ?? ""),
     sourceConfidence: String(data.sourceConfidence ?? ""),
-    totalDurationMs: Number(data.totalDurationMs ?? data.durationMs ?? 0),
-    pageViews: pageViews || Number(data.pageViews ?? data.viewCount ?? 0) || 1,
+    totalDurationMs: sessionDurationMs(data),
+    pageViews: pageViews || sessionPageViewCount(data) || 1,
     interactionCount: Number(data.interactionCount ?? 0),
     analyticsVersion: Number(data.analyticsVersion ?? 1),
   });
@@ -146,7 +163,17 @@ export async function aggregateInternalDaily(
         .get()
         .catch(async (err) => {
           console.error("[ai-analytics] sessions firstSeenAt query failed", err);
-          return null;
+          // Same fallback as lastSeen — filter by inDay below
+          const recent = await db
+            .collection("analyticsSessions")
+            .orderBy("lastSeenAt", "desc")
+            .limit(FALLBACK_LIMIT)
+            .get()
+            .catch((e2) => {
+              console.error("[ai-analytics] sessions firstSeen fallback failed", e2);
+              return null;
+            });
+          return recent;
         }),
       db
         .collection("analyticsSessions")
@@ -175,15 +202,25 @@ export async function aggregateInternalDaily(
         .get()
         .catch(async (err) => {
           console.error("[ai-analytics] bookings ISO query failed", err);
-          return db
-            .collection("bookings")
-            .orderBy("createdAt", "desc")
-            .limit(500)
-            .get()
-            .catch((e2) => {
-              console.error("[ai-analytics] bookings fallback failed", e2);
-              return null;
-            });
+          // Try Timestamp range, then recent scan
+          try {
+            return await db
+              .collection("bookings")
+              .where("createdAt", ">=", startTs)
+              .where("createdAt", "<=", endTs)
+              .get();
+          } catch (eTs) {
+            console.error("[ai-analytics] bookings Timestamp query failed", eTs);
+            return db
+              .collection("bookings")
+              .orderBy("createdAt", "desc")
+              .limit(500)
+              .get()
+              .catch((e2) => {
+                console.error("[ai-analytics] bookings fallback failed", e2);
+                return null;
+              });
+          }
         }),
       db
         .collection("paymentEvents")
@@ -203,7 +240,7 @@ export async function aggregateInternalDaily(
     const existing = sessionMap.get(id);
     const pageViews = Math.max(
       viewsHint,
-      Number(data.pageViews ?? data.viewCount ?? 0),
+      sessionPageViewCount(data),
       existing?.pageViews ?? 0,
     );
     const visitorType = String(
@@ -219,12 +256,30 @@ export async function aggregateInternalDaily(
         ? "Unknown / low-confidence"
         : String(data.trafficLabel ?? existing?.trafficLabel ?? channel);
 
+    const visitedFromData = Array.isArray(data.visitedPaths)
+      ? data.visitedPaths.map((p) => String(p)).filter(Boolean)
+      : [];
+    const lastPath = String(
+      data.lastPath ?? existing?.lastPath ?? data.path ?? "",
+    );
+    const landingPath = String(data.landingPath ?? "");
+    const eventPath = String(data.path ?? "");
+    const visitedPaths = [
+      ...new Set([
+        ...(existing?.visitedPaths ?? []),
+        ...visitedFromData,
+        ...(lastPath ? [lastPath] : []),
+        ...(landingPath ? [landingPath] : []),
+        ...(eventPath ? [eventPath] : []),
+      ]),
+    ];
+
     sessionMap.set(id, {
       kind,
       visitorType,
       pageViews: pageViews || 1,
       totalDurationMs: Math.max(
-        Number(data.totalDurationMs ?? data.durationMs ?? 0),
+        sessionDurationMs(data),
         existing?.totalDurationMs ?? 0,
       ),
       interactionCount: Math.max(
@@ -234,7 +289,7 @@ export async function aggregateInternalDaily(
       trafficChannel: channel,
       trafficLabel: label,
       sourceConfidence: confidence,
-      lastPath: String(data.lastPath ?? existing?.lastPath ?? ""),
+      lastPath,
       lastEventType: String(data.lastEventType ?? existing?.lastEventType ?? ""),
       deviceLabel: String(data.deviceLabel ?? existing?.deviceLabel ?? ""),
       uaSnippet: String(
@@ -243,6 +298,7 @@ export async function aggregateInternalDaily(
       analyticsVersion: Number(
         data.analyticsVersion ?? existing?.analyticsVersion ?? 1,
       ),
+      visitedPaths,
     });
   }
 
@@ -287,7 +343,13 @@ export async function aggregateInternalDaily(
       if (createdMs && !inDay(createdMs, startMs, endMs)) continue;
 
       const sid = String(data.sessionId ?? "");
-      const eventType = String(data.eventType ?? "");
+      // Legacy rows often omit eventType — treat blank as a page view (Site analytics parity)
+      const rawType = String(data.eventType ?? "").trim();
+      const eventType =
+        !rawType || rawType === "view"
+          ? "view"
+          : rawType;
+      // Skip heartbeats/scrolls from page-view tallies; clicks/leaves handled below
       const path = String(data.path ?? "/");
 
       // Ensure every session seen in pageViews is classified
@@ -325,19 +387,18 @@ export async function aggregateInternalDaily(
             });
           }
         }
-      }
-      if (eventType === "leave") {
+      } else if (eventType === "leave") {
         if (isHumanish) exitCounts.set(path, (exitCounts.get(path) ?? 0) + 1);
         const ms = Number(data.durationMs ?? 0);
         if (isHumanish && Number.isFinite(ms) && ms > 0) {
           totalDwellSec += ms / 1000;
           dwellSamples += 1;
         }
-      }
-      if (eventType === "click" && isHumanish) {
+      } else if (eventType === "click" && isHumanish) {
         if (isWhatsAppClick(data)) whatsappClicks += 1;
         if (isPhoneClick(data)) phoneClicks += 1;
       }
+      // heartbeat / scroll / other — ignore for counts
     }
   }
 
@@ -412,6 +473,37 @@ export async function aggregateInternalDaily(
   const avgSessionDurationSec =
     dwellSamples > 0 ? Math.round(totalDwellSec / dwellSamples) : 0;
 
+  // Fallback: when pageViews events are missing, use session paths so Top/Exit pages still show
+  if (pageViewCounts.size === 0) {
+    for (const [, s] of sessionMap) {
+      if (s.kind !== "human" && s.kind !== "unknown") continue;
+      const paths =
+        s.visitedPaths.length > 0
+          ? s.visitedPaths
+          : s.lastPath
+            ? [s.lastPath]
+            : [];
+      for (const path of paths) {
+        if (!path) continue;
+        pageViewCounts.set(path, (pageViewCounts.get(path) ?? 0) + 1);
+      }
+    }
+  }
+  if (exitCounts.size === 0) {
+    for (const [, s] of sessionMap) {
+      if (s.kind !== "human" && s.kind !== "unknown") continue;
+      const path = s.lastPath || s.visitedPaths[s.visitedPaths.length - 1] || "";
+      if (!path) continue;
+      exitCounts.set(path, (exitCounts.get(path) ?? 0) + 1);
+    }
+  }
+
+  // Prefer real view counts; if still empty after fallback, keep empty arrays
+  let pageViewsOut = pageViewsHuman;
+  if (pageViewsOut === 0 && pageViewCounts.size > 0) {
+    pageViewsOut = [...pageViewCounts.values()].reduce((a, b) => a + b, 0);
+  }
+
   const topPages: PageMetric[] = [...pageViewCounts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 15)
@@ -432,8 +524,8 @@ export async function aggregateInternalDaily(
     visitorsSuspected,
     visitorsBot,
     visitorsAll,
-    pageViews: pageViewsHuman,
-    pageViewsAll,
+    pageViews: pageViewsOut,
+    pageViewsAll: Math.max(pageViewsAll, pageViewsOut),
     bounceRatePct,
     avgSessionDurationSec,
     bookingsPaid,
