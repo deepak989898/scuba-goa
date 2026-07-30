@@ -16,7 +16,7 @@ function highlightDetailLine(line: string, key: string | number): ReactNode {
     return (
       <span
         key={key}
-        className="block font-display text-base font-extrabold tracking-wide text-emerald-600 sm:text-lg"
+        className="block bg-gradient-to-r from-cyan-500 via-ocean-600 to-emerald-500 bg-clip-text font-display text-base font-extrabold tracking-wide text-transparent sm:text-lg"
       >
         {trimmed}
       </span>

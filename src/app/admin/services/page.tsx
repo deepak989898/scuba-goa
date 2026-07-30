@@ -632,8 +632,13 @@ export default function AdminServicesPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, detailContent: e.target.value }))
               }
-              placeholder="Shown on /services/your-slug. Leave blank to use the default text. Use a blank line between paragraphs."
+              placeholder="Shown under the Inclusion heading on /services/your-slug (after the short description). Use a blank line between paragraphs."
             />
+            <span className="mt-1 block text-xs text-ocean-700">
+              On the website: short description → styled &quot;Inclusion&quot;
+              heading → this copy. Tip: put the intro in Short description and
+              list pickup, gear, guide, etc. here.
+            </span>
           </label>
           <div className="rounded-xl border border-ocean-100 bg-ocean-50/50 p-4 sm:col-span-2">
             <p className="text-sm font-semibold text-ocean-900">
