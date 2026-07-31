@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { videoSrcForThumbnailFrame } from "@/components/HomeGalleryMedia";
 import type { ServiceItem } from "@/data/services";
 
 type TabType = "posts" | "reels" | "videos";
@@ -9,6 +10,55 @@ type TabType = "posts" | "reels" | "videos";
 function normalizeList(raw: string[] | undefined): string[] {
   if (!raw?.length) return [];
   return raw.map((x) => x.trim()).filter(Boolean);
+}
+
+/** Compact reel/video thumbnail — portrait or landscape from metadata. */
+function MediaVideoThumb({
+  url,
+  label,
+  preferPortrait,
+  onPlay,
+}: {
+  url: string;
+  label: string;
+  preferPortrait: boolean;
+  onPlay: () => void;
+}) {
+  const [portrait, setPortrait] = useState(preferPortrait);
+
+  return (
+    <button
+      type="button"
+      onClick={onPlay}
+      className={`relative shrink-0 overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 text-left shadow-sm transition hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
+        portrait
+          ? "aspect-[9/16] w-[min(100%,9.5rem)] sm:w-[11rem]"
+          : "aspect-video w-[min(100%,16rem)] sm:w-[18rem]"
+      }`}
+      aria-label={`Play ${label}`}
+    >
+      <video
+        src={videoSrcForThumbnailFrame(url)}
+        muted
+        playsInline
+        preload="metadata"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        onLoadedMetadata={(e) => {
+          const v = e.currentTarget;
+          if (v.videoWidth > 0 && v.videoHeight > 0) {
+            setPortrait(v.videoHeight >= v.videoWidth);
+          }
+        }}
+        onContextMenu={(e) => e.preventDefault()}
+        aria-hidden
+      />
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-xl font-bold text-ocean-900 shadow-lg">
+          ▶
+        </span>
+      </span>
+    </button>
+  );
 }
 
 export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
@@ -28,9 +78,15 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
     availableTabs[0]?.key ?? "posts"
   );
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
+  const [playVideo, setPlayVideo] = useState<{
+    url: string;
+    label: string;
+    list: string[];
+    index: number;
+  } | null>(null);
   const touchStartX = useRef<number | null>(null);
+  const playVideoRef = useRef<HTMLVideoElement>(null);
 
-  const currentList = tab === "posts" ? posts : tab === "reels" ? reels : videos;
   const zoomUrl =
     zoomIndex != null && zoomIndex >= 0 && zoomIndex < posts.length
       ? posts[zoomIndex]
@@ -38,24 +94,54 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
   const zoomCount = posts.length;
 
   useEffect(() => {
-    if (zoomIndex == null) return;
+    if (zoomIndex == null && !playVideo) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setZoomIndex(null);
+        setPlayVideo(null);
         return;
       }
-      if (zoomCount <= 1) return;
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        setZoomIndex((i) =>
-          i == null ? i : (i - 1 + zoomCount) % zoomCount
-        );
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        setZoomIndex((i) => (i == null ? i : (i + 1) % zoomCount));
+      if (zoomIndex != null && zoomCount > 1) {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          setZoomIndex((i) =>
+            i == null ? i : (i - 1 + zoomCount) % zoomCount
+          );
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          setZoomIndex((i) => (i == null ? i : (i + 1) % zoomCount));
+        }
+      }
+      if (playVideo && playVideo.list.length > 1) {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          setPlayVideo((cur) => {
+            if (!cur) return cur;
+            const next =
+              (cur.index - 1 + cur.list.length) % cur.list.length;
+            return {
+              ...cur,
+              index: next,
+              url: cur.list[next]!,
+              label: `${service.title} ${tab} ${next + 1}`,
+            };
+          });
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          setPlayVideo((cur) => {
+            if (!cur) return cur;
+            const next = (cur.index + 1) % cur.list.length;
+            return {
+              ...cur,
+              index: next,
+              url: cur.list[next]!,
+              label: `${service.title} ${tab} ${next + 1}`,
+            };
+          });
+        }
       }
     }
 
@@ -64,7 +150,16 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [zoomIndex, zoomCount]);
+  }, [zoomIndex, zoomCount, playVideo, service.title, tab]);
+
+  useEffect(() => {
+    const el = playVideoRef.current;
+    if (!el || !playVideo) return;
+    el.load();
+    void el.play().catch(() => {
+      /* autoplay may be blocked; controls remain */
+    });
+  }, [playVideo?.url]);
 
   if (availableTabs.length === 0) return null;
 
@@ -74,6 +169,19 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
       i == null ? i : (i + delta + zoomCount) % zoomCount
     );
   }
+
+  function openVideo(list: string[], index: number, kind: "reel" | "video") {
+    const url = list[index];
+    if (!url) return;
+    setPlayVideo({
+      url,
+      label: `${service.title} ${kind} ${index + 1}`,
+      list,
+      index,
+    });
+  }
+
+  const videoList = tab === "reels" ? reels : videos;
 
   return (
     <section className="mt-5 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm sm:p-3.5">
@@ -88,6 +196,7 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
             onClick={() => {
               setTab(t.key);
               setZoomIndex(null);
+              setPlayVideo(null);
             }}
             className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
               tab === t.key
@@ -109,7 +218,6 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
               onClick={() => setZoomIndex(index)}
               className="block w-[min(100%,9.5rem)] shrink-0 overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 text-left shadow-sm transition hover:opacity-95 sm:w-[11rem]"
             >
-              {/* showFull + capped width: full graphic, smaller card, no crop/gaps */}
               <CmsRemoteImage
                 src={url}
                 alt={`${service.title} post ${index + 1}`}
@@ -121,24 +229,17 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
           ))}
         </div>
       ) : (
-        <div className="mt-2.5 grid gap-2">
-          {currentList.map((url, index) => (
-            <div
+        <div className="mt-2.5 flex flex-wrap gap-2.5">
+          {videoList.map((url, index) => (
+            <MediaVideoThumb
               key={`${url}-${index}`}
-              className="overflow-hidden rounded-lg border border-ocean-100 bg-black/5 p-1.5"
-              onContextMenu={(e) => e.preventDefault()}
-            >
-              <video
-                src={url}
-                controls
-                controlsList="nodownload"
-                disablePictureInPicture
-                playsInline
-                preload="metadata"
-                className="max-h-[20rem] w-full rounded-md bg-black"
-                onContextMenu={(e) => e.preventDefault()}
-              />
-            </div>
+              url={url}
+              label={`${service.title} ${tab} ${index + 1}`}
+              preferPortrait={tab === "reels"}
+              onPlay={() =>
+                openVideo(videoList, index, tab === "reels" ? "reel" : "video")
+              }
+            />
           ))}
         </div>
       )}
@@ -217,6 +318,97 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
             {zoomCount > 1 ? (
               <p className="mt-3 text-sm font-semibold text-white/90">
                 {zoomIndex + 1} / {zoomCount}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {playVideo ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-3 sm:p-6"
+          onClick={() => setPlayVideo(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={playVideo.label}
+        >
+          <button
+            type="button"
+            className="absolute right-3 top-3 z-10 rounded-full bg-white px-3.5 py-1.5 text-sm font-bold text-ocean-900 shadow sm:right-5 sm:top-5"
+            onClick={() => setPlayVideo(null)}
+          >
+            Close
+          </button>
+
+          {playVideo.list.length > 1 ? (
+            <>
+              <button
+                type="button"
+                className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full bg-white/95 text-2xl font-bold text-ocean-900 shadow-lg sm:left-4"
+                aria-label="Previous video"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlayVideo((cur) => {
+                    if (!cur) return cur;
+                    const next =
+                      (cur.index - 1 + cur.list.length) % cur.list.length;
+                    return {
+                      ...cur,
+                      index: next,
+                      url: cur.list[next]!,
+                      label: `${service.title} ${tab} ${next + 1}`,
+                    };
+                  });
+                }}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full bg-white/95 text-2xl font-bold text-ocean-900 shadow-lg sm:right-4"
+                aria-label="Next video"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlayVideo((cur) => {
+                    if (!cur) return cur;
+                    const next = (cur.index + 1) % cur.list.length;
+                    return {
+                      ...cur,
+                      index: next,
+                      url: cur.list[next]!,
+                      label: `${service.title} ${tab} ${next + 1}`,
+                    };
+                  });
+                }}
+              >
+                ›
+              </button>
+            </>
+          ) : null}
+
+          <div
+            className="relative flex max-h-[90vh] w-full max-w-4xl flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="inline-flex max-h-[min(82vh,900px)] max-w-full overflow-hidden rounded-xl bg-black shadow-2xl">
+              <video
+                key={playVideo.url}
+                ref={playVideoRef}
+                src={playVideo.url}
+                controls
+                controlsList="nodownload"
+                disablePictureInPicture
+                playsInline
+                autoPlay
+                className="max-h-[min(82vh,900px)] max-w-[min(100vw-1.5rem,56rem)] bg-black object-contain"
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                {playVideo.label}
+              </video>
+            </div>
+            {playVideo.list.length > 1 ? (
+              <p className="mt-3 text-sm font-semibold text-white/90">
+                {playVideo.index + 1} / {playVideo.list.length}
               </p>
             ) : null}
           </div>
