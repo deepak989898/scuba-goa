@@ -194,16 +194,22 @@ export function ServiceCardAddToCart({
     </ul>
   ) : null;
 
+  const layoutOnly = className?.includes("w-full")
+    ? "relative block w-full"
+    : "relative inline-block";
+  const buttonExtra = className
+    ?.replace(/\bw-full\b/g, "")
+    .replace(/\bblock\b/g, "")
+    .trim();
+
   return (
-    <div
-      className={`relative ${className?.includes("w-full") ? "block" : "inline-block"} ${className ?? ""}`}
-    >
+    <div className={layoutOnly}>
       <button
         ref={btnRef}
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`${base} ${
+        className={`${base} ${buttonExtra ?? ""} ${
           flash ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-white" : ""
         }`}
         onClick={(e) => {
