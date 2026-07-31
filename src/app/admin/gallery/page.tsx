@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
@@ -32,6 +32,8 @@ export default function AdminGalleryPage() {
   const db = getDb();
   const [list, setList] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [form, setForm] = useState<{
     type: "image" | "video";
     mediaUrl: string;
@@ -49,6 +51,22 @@ export default function AdminGalleryPage() {
   });
   const [syncingBlog, setSyncingBlog] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  const counts = useMemo(() => {
+    const photos = list.filter((r) => r.type === "image").length;
+    const videos = list.filter((r) => r.type === "video").length;
+    const reels = list.filter((r) => r.category === "reels").length;
+    return {
+      total: list.length,
+      photos,
+      videos,
+      reels,
+    };
+  }, [list]);
+
+  const allSelected =
+    list.length > 0 && list.every((r) => selected.has(r.id));
+  const selectedCount = selected.size;
 
   const refresh = useCallback(async () => {
     if (!db) return;
@@ -69,6 +87,13 @@ export default function AdminGalleryPage() {
     });
     rows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
     setList(rows);
+    setSelected((prev) => {
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (rows.some((r) => r.id === id)) next.add(id);
+      }
+      return next;
+    });
   }, [db]);
 
   useEffect(() => {
@@ -78,6 +103,23 @@ export default function AdminGalleryPage() {
     }
     refresh().finally(() => setLoading(false));
   }, [db, refresh]);
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelected(new Set());
+      return;
+    }
+    setSelected(new Set(list.map((r) => r.id)));
+  }
 
   async function saveNew() {
     if (!db || !form.mediaUrl.trim()) return;
@@ -115,6 +157,26 @@ export default function AdminGalleryPage() {
     if (!db || !confirm("Remove this item?")) return;
     await deleteDoc(doc(db, "homeGallery", id));
     await refresh();
+  }
+
+  async function removeSelected() {
+    if (!db || selectedCount === 0) return;
+    if (
+      !confirm(
+        `Delete ${selectedCount} selected item(s) from gallery? They will no longer show on /gallery.`,
+      )
+    ) {
+      return;
+    }
+    setBulkDeleting(true);
+    try {
+      const ids = [...selected];
+      await Promise.all(ids.map((id) => deleteDoc(doc(db, "homeGallery", id))));
+      setSelected(new Set());
+      await refresh();
+    } finally {
+      setBulkDeleting(false);
+    }
   }
 
   async function patch(id: string, patch: Partial<Row>) {
@@ -193,6 +255,21 @@ export default function AdminGalleryPage() {
         filters on the public gallery. Lower sort order appears first. Auto blog posts sync here
         when published.
       </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="inline-flex items-center rounded-full border border-ocean-200 bg-ocean-50 px-3 py-1.5 text-sm font-semibold text-ocean-900">
+          Total {counts.total}
+        </span>
+        <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm font-semibold text-cyan-900">
+          Photos {counts.photos}
+        </span>
+        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-900">
+          Reels {counts.reels}
+        </span>
+        <span className="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-900">
+          Videos {counts.videos}
+        </span>
+      </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
@@ -312,113 +389,155 @@ export default function AdminGalleryPage() {
             No items — homepage uses built-in default photos until you add some.
           </p>
         ) : (
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-ocean-100 bg-ocean-50 text-ocean-800">
-              <tr>
-                <th className="p-3">Order</th>
-                <th className="p-3">Type</th>
-                <th className="p-3">Category</th>
-                <th className="p-3">Preview</th>
-                <th className="p-3">Details</th>
-                <th className="p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((r, idx) => (
-                <tr key={r.id} className="border-b border-ocean-50">
-                  <td className="p-3 align-top">
-                    <div className="flex flex-col gap-1">
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ocean-100 bg-ocean-50/80 px-3 py-2">
+              <p className="text-sm text-ocean-800">
+                {selectedCount > 0
+                  ? `${selectedCount} selected`
+                  : "Select items to delete together"}
+              </p>
+              <button
+                type="button"
+                disabled={selectedCount === 0 || bulkDeleting}
+                onClick={removeSelected}
+                className="rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {bulkDeleting
+                  ? "Deleting…"
+                  : `Delete selected (${selectedCount})`}
+              </button>
+            </div>
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-ocean-100 bg-ocean-50 text-ocean-800">
+                <tr>
+                  <th className="p-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      aria-label="Select all gallery items"
+                      className="h-4 w-4 accent-ocean-700"
+                    />
+                  </th>
+                  <th className="p-3">Order</th>
+                  <th className="p-3">Type</th>
+                  <th className="p-3">Category</th>
+                  <th className="p-3">Preview</th>
+                  <th className="p-3">Details</th>
+                  <th className="p-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((r, idx) => (
+                  <tr
+                    key={r.id}
+                    className={`border-b border-ocean-50 ${
+                      selected.has(r.id) ? "bg-amber-50/60" : ""
+                    }`}
+                  >
+                    <td className="p-3 align-top">
                       <input
-                        type="number"
-                        className="w-20 rounded border border-ocean-200 px-2 py-1"
-                        defaultValue={r.sortOrder}
-                        onBlur={(e) =>
-                          patch(r.id, { sortOrder: Number(e.target.value) || 0 })
-                        }
+                        type="checkbox"
+                        checked={selected.has(r.id)}
+                        onChange={() => toggleOne(r.id)}
+                        aria-label={`Select ${r.alt || r.id}`}
+                        className="h-4 w-4 accent-ocean-700"
                       />
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          className="rounded border border-ocean-200 px-2 py-0.5 text-xs disabled:opacity-40"
-                          disabled={idx === 0}
-                          onClick={() => move(r.id, -1)}
-                        >
-                          Up
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded border border-ocean-200 px-2 py-0.5 text-xs disabled:opacity-40"
-                          disabled={idx === list.length - 1}
-                          onClick={() => move(r.id, 1)}
-                        >
-                          Down
-                        </button>
+                    </td>
+                    <td className="p-3 align-top">
+                      <div className="flex flex-col gap-1">
+                        <input
+                          type="number"
+                          className="w-20 rounded border border-ocean-200 px-2 py-1"
+                          defaultValue={r.sortOrder}
+                          onBlur={(e) =>
+                            patch(r.id, { sortOrder: Number(e.target.value) || 0 })
+                          }
+                        />
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            className="rounded border border-ocean-200 px-2 py-0.5 text-xs disabled:opacity-40"
+                            disabled={idx === 0}
+                            onClick={() => move(r.id, -1)}
+                          >
+                            Up
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-ocean-200 px-2 py-0.5 text-xs disabled:opacity-40"
+                            disabled={idx === list.length - 1}
+                            onClick={() => move(r.id, 1)}
+                          >
+                            Down
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="p-3 align-top capitalize text-ocean-800">
-                    {r.type}
-                  </td>
-                  <td className="p-3 align-top">
-                    <select
-                      className="max-w-[10rem] rounded border border-ocean-200 px-1 py-1 text-xs"
-                      value={r.category || "underwater"}
-                      disabled={r.source === "blog"}
-                      onChange={(e) => {
-                        const cat = normalizeGalleryCategory(e.target.value);
-                        if (cat) patch(r.id, { category: cat });
-                      }}
-                    >
-                      {GALLERY_CATEGORIES.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    {r.source === "blog" ? (
-                      <p className="mt-1 text-[10px] text-ocean-500">From blog</p>
-                    ) : null}
-                  </td>
-                  <td className="p-3 align-top">
-                    {r.type === "video" ? (
-                      r.posterUrl ? (
+                    </td>
+                    <td className="p-3 align-top capitalize text-ocean-800">
+                      {r.type}
+                    </td>
+                    <td className="p-3 align-top">
+                      <select
+                        className="max-w-[10rem] rounded border border-ocean-200 px-1 py-1 text-xs"
+                        value={r.category || "underwater"}
+                        disabled={r.source === "blog"}
+                        onChange={(e) => {
+                          const cat = normalizeGalleryCategory(e.target.value);
+                          if (cat) patch(r.id, { category: cat });
+                        }}
+                      >
+                        {GALLERY_CATEGORIES.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                      {r.source === "blog" ? (
+                        <p className="mt-1 text-[10px] text-ocean-500">From blog</p>
+                      ) : null}
+                    </td>
+                    <td className="p-3 align-top">
+                      {r.type === "video" ? (
+                        r.posterUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={r.posterUrl}
+                            alt=""
+                            className="h-14 w-24 rounded object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs text-ocean-500">No poster</span>
+                        )
+                      ) : (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={r.posterUrl}
+                          src={r.mediaUrl}
                           alt=""
                           className="h-14 w-24 rounded object-cover"
                         />
-                      ) : (
-                        <span className="text-xs text-ocean-500">No poster</span>
-                      )
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={r.mediaUrl}
-                        alt=""
-                        className="h-14 w-24 rounded object-cover"
-                      />
-                    )}
-                  </td>
-                  <td className="max-w-xs p-3 align-top text-xs text-ocean-700">
-                    <p className="font-medium text-ocean-900">{r.alt}</p>
-                    <p className="mt-1 truncate font-mono text-[10px] text-ocean-500">
-                      {r.mediaUrl}
-                    </p>
-                  </td>
-                  <td className="p-3 align-top">
-                    <button
-                      type="button"
-                      className="text-red-600 hover:underline"
-                      onClick={() => remove(r.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      )}
+                    </td>
+                    <td className="max-w-xs p-3 align-top text-xs text-ocean-700">
+                      <p className="font-medium text-ocean-900">{r.alt}</p>
+                      <p className="mt-1 truncate font-mono text-[10px] text-ocean-500">
+                        {r.mediaUrl}
+                      </p>
+                    </td>
+                    <td className="p-3 align-top">
+                      <button
+                        type="button"
+                        className="text-red-600 hover:underline"
+                        onClick={() => remove(r.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>
