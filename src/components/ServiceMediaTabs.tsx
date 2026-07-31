@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import type { ServiceItem } from "@/data/services";
 
@@ -27,11 +27,53 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
   const [tab, setTab] = useState<TabType>(
     availableTabs[0]?.key ?? "posts"
   );
-  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+  const [zoomIndex, setZoomIndex] = useState<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
+
+  const currentList = tab === "posts" ? posts : tab === "reels" ? reels : videos;
+  const zoomUrl =
+    zoomIndex != null && zoomIndex >= 0 && zoomIndex < posts.length
+      ? posts[zoomIndex]
+      : null;
+  const zoomCount = posts.length;
+
+  useEffect(() => {
+    if (zoomIndex == null) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setZoomIndex(null);
+        return;
+      }
+      if (zoomCount <= 1) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setZoomIndex((i) =>
+          i == null ? i : (i - 1 + zoomCount) % zoomCount
+        );
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setZoomIndex((i) => (i == null ? i : (i + 1) % zoomCount));
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [zoomIndex, zoomCount]);
 
   if (availableTabs.length === 0) return null;
 
-  const currentList = tab === "posts" ? posts : tab === "reels" ? reels : videos;
+  function goZoom(delta: number) {
+    if (zoomCount <= 1) return;
+    setZoomIndex((i) =>
+      i == null ? i : (i + delta + zoomCount) % zoomCount
+    );
+  }
 
   return (
     <section className="mt-5 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm sm:p-3.5">
@@ -43,7 +85,10 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
           <button
             key={t.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => {
+              setTab(t.key);
+              setZoomIndex(null);
+            }}
             className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
               tab === t.key
                 ? "border-ocean-300 bg-ocean-100 text-ocean-900"
@@ -57,16 +102,16 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
 
       {tab === "posts" ? (
         <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
-          {currentList.map((url) => (
+          {posts.map((url, index) => (
             <button
-              key={url}
+              key={`${url}-${index}`}
               type="button"
-              onClick={() => setZoomImageUrl(url)}
+              onClick={() => setZoomIndex(index)}
               className="relative block h-36 w-full overflow-hidden rounded-lg border border-ocean-100 text-left sm:h-40"
             >
               <CmsRemoteImage
                 src={url}
-                alt={service.title}
+                alt={`${service.title} post ${index + 1}`}
                 fill
                 sizes="(max-width: 640px) 100vw, 50vw"
                 className="object-cover transition-transform duration-200 hover:scale-[1.02]"
@@ -77,9 +122,9 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
         </div>
       ) : (
         <div className="mt-2.5 grid gap-2">
-          {currentList.map((url) => (
+          {currentList.map((url, index) => (
             <div
-              key={url}
+              key={`${url}-${index}`}
               className="overflow-hidden rounded-lg border border-ocean-100 bg-black/5 p-1.5"
               onContextMenu={(e) => e.preventDefault()}
             >
@@ -98,33 +143,82 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
         </div>
       )}
 
-      {zoomImageUrl ? (
+      {zoomUrl && zoomIndex != null ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setZoomImageUrl(null)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-3 sm:p-6"
+          onClick={() => setZoomIndex(null)}
           role="dialog"
           aria-modal="true"
-          aria-label="Image preview"
+          aria-label="Related media image preview"
         >
           <button
             type="button"
-            className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-ocean-900"
-            onClick={() => setZoomImageUrl(null)}
+            className="absolute right-3 top-3 z-10 rounded-full bg-white px-3.5 py-1.5 text-sm font-bold text-ocean-900 shadow sm:right-5 sm:top-5"
+            onClick={() => setZoomIndex(null)}
           >
             Close
           </button>
+
+          {zoomCount > 1 ? (
+            <>
+              <button
+                type="button"
+                className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full bg-white/95 text-2xl font-bold text-ocean-900 shadow-lg sm:left-4"
+                aria-label="Previous image"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goZoom(-1);
+                }}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full bg-white/95 text-2xl font-bold text-ocean-900 shadow-lg sm:right-4"
+                aria-label="Next image"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goZoom(1);
+                }}
+              >
+                ›
+              </button>
+            </>
+          ) : null}
+
           <div
-            className="relative h-[90vh] w-[95vw]"
+            className="relative flex max-h-[90vh] w-full max-w-5xl flex-col items-center"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              touchStartX.current = e.changedTouches[0]?.clientX ?? null;
+            }}
+            onTouchEnd={(e) => {
+              const start = touchStartX.current;
+              touchStartX.current = null;
+              if (start == null || zoomCount <= 1) return;
+              const end = e.changedTouches[0]?.clientX;
+              if (end == null) return;
+              const dx = end - start;
+              if (Math.abs(dx) < 50) return;
+              goZoom(dx > 0 ? -1 : 1);
+            }}
           >
-            <CmsRemoteImage
-              src={zoomImageUrl}
-              alt={`${service.title} preview`}
-              fill
-              sizes="95vw"
-              className="rounded-xl object-contain"
-              loading="eager"
-            />
+            <div className="relative h-[min(82vh,900px)] w-full overflow-hidden rounded-xl bg-black/40">
+              <CmsRemoteImage
+                key={zoomUrl}
+                src={zoomUrl}
+                alt={`${service.title} post ${zoomIndex + 1}`}
+                fill
+                sizes="95vw"
+                className="object-contain"
+                loading="eager"
+              />
+            </div>
+            {zoomCount > 1 ? (
+              <p className="mt-3 text-sm font-semibold text-white/90">
+                {zoomIndex + 1} / {zoomCount}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
