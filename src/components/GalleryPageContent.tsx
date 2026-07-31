@@ -7,6 +7,7 @@ import { useHomeGallery } from "@/hooks/useHomeGallery";
 import {
   galleryCategoryLabel,
 } from "@/lib/gallery-categories";
+import { dedupeHomeGalleryItems, galleryMediaDedupeKey } from "@/lib/home-gallery-dedupe";
 import type { HomeGalleryItem } from "@/lib/home-gallery-default";
 import Link from "next/link";
 
@@ -243,16 +244,19 @@ export function GalleryPageContent() {
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
-    return items.filter((item) => {
+    const list = items.filter((item) => {
       if (mediaFilter !== "all" && item.type !== mediaFilter) return false;
       return true;
     });
+    // Belt-and-suspenders: never show the same media file twice on /gallery
+    return dedupeHomeGalleryItems(list);
   }, [items, mediaFilter]);
 
   const counts = useMemo(() => {
-    const images = items.filter((i) => i.type === "image").length;
-    const videos = items.filter((i) => i.type === "video").length;
-    return { images, videos, total: items.length };
+    const unique = dedupeHomeGalleryItems(items);
+    const images = unique.filter((i) => i.type === "image").length;
+    const videos = unique.filter((i) => i.type === "video").length;
+    return { images, videos, total: unique.length };
   }, [items]);
 
   const closeZoom = useCallback(() => setZoomIndex(null), []);
@@ -310,7 +314,7 @@ export function GalleryPageContent() {
           <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-4">
             {filtered.map((item, i) => (
               <GalleryGridCard
-                key={`${item.mediaUrl}-${i}`}
+                key={galleryMediaDedupeKey(item.mediaUrl) || `${item.mediaUrl}-${i}`}
                 item={item}
                 index={i}
                 onOpen={() => setZoomIndex(i)}

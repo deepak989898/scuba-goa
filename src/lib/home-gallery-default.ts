@@ -8,6 +8,10 @@ export type HomeGalleryItem = {
   category?: GalleryCategoryId;
   source?: string;
   sourceSlug?: string;
+  /** Exact file hash when known (blog image pipeline). */
+  sha256?: string;
+  /** Perceptual hash for near-duplicate detection. */
+  perceptualHash?: string;
 };
 
 /** Used when Firestore `homeGallery` is empty or unavailable. */

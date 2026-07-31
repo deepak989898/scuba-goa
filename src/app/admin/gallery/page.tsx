@@ -132,11 +132,12 @@ export default function AdminGalleryPage() {
         ok?: boolean;
         synced?: number;
         skipped?: number;
+        purged?: number;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? "Sync failed");
       setSyncMsg(
-        `Added/updated ${data.synced ?? 0} blog photos in gallery (${data.skipped ?? 0} skipped — no image).`,
+        `Gallery sync: ${data.synced ?? 0} blog photos kept/added, ${data.skipped ?? 0} skipped, ${data.purged ?? 0} duplicate images removed.`,
       );
       await refresh();
     } catch (e) {

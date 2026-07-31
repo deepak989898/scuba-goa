@@ -22,6 +22,8 @@ function normalizeRow(
   const category = normalizeGalleryCategory(x.category);
   const source = String(x.source ?? "").trim() || undefined;
   const sourceSlug = String(x.sourceSlug ?? "").trim() || undefined;
+  const sha256 = String(x.sha256 ?? "").trim() || undefined;
+  const perceptualHash = String(x.perceptualHash ?? "").trim() || undefined;
   return {
     id,
     type,
@@ -32,6 +34,8 @@ function normalizeRow(
     category,
     source,
     sourceSlug,
+    sha256,
+    perceptualHash,
   };
 }
 
@@ -74,6 +78,8 @@ export function useHomeGallery() {
                 category,
                 source,
                 sourceSlug,
+                sha256,
+                perceptualHash,
               }) => ({
                 type,
                 mediaUrl,
@@ -82,6 +88,8 @@ export function useHomeGallery() {
                 category,
                 source,
                 sourceSlug,
+                sha256,
+                perceptualHash,
               }),
             ),
           );
