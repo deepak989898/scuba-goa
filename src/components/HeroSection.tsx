@@ -22,8 +22,8 @@ function lowestListedPackageInr(list: PackageDoc[]): number | null {
 }
 
 /**
- * First-viewport conversion card.
- * Mobile: price + CTAs only (compact, transparent). Desktop: full offer copy.
+ * First-viewport conversion card: brand + one offer line + one primary CTA.
+ * WhatsApp / long forms live elsewhere so the hero stays uncluttered (LOW_CTR fix).
  */
 function HeroConversionCard({
   bookHref,
@@ -50,60 +50,44 @@ function HeroConversionCard({
       : null;
 
   const bookPrimaryClass =
-    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:min-h-12 sm:py-3.5 sm:text-base";
+    "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-3.5 text-base font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95";
 
   const detailsSecondaryClass =
-    "inline-flex min-h-9 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-black/25 px-4 py-1.5 text-xs font-bold text-white shadow-md backdrop-blur-sm transition hover:bg-black/35 sm:min-h-10 sm:py-2";
+    "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-black/25 px-4 py-2 text-xs font-bold text-white shadow-md backdrop-blur-sm transition hover:bg-black/35";
 
   return (
-    <div className="rounded-lg border border-transparent bg-transparent p-2 u-hero-3d sm:rounded-3xl sm:border-white/20 sm:bg-white/10 sm:p-5 sm:shadow-lg sm:backdrop-blur-md">
-      {/* Desktop / tablet: full offer copy */}
-      <div className="hidden sm:block">
-        <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-          {SITE_NAME}
-        </p>
-        <p className="mt-1 text-center font-display text-2xl font-extrabold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
-          {headlineTitle}
-        </p>
-        <p className="mt-2 text-center text-sm font-semibold text-cyan-50 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-          {priceLoading && !priceLine ? (
-            <span className="text-xs font-semibold opacity-90">Loading price…</span>
-          ) : priceLine ? (
-            <>
-              From {priceLine}
-              <span className="mt-0.5 block text-[11px] font-medium text-white/95">
-                Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at
-                the centre
-              </span>
-            </>
-          ) : (
-            <span className="text-[11px] font-medium text-white/95">
-              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at
-              the centre
-            </span>
-          )}
-        </p>
-        {perksLine ? (
-          <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-            {perksLine}
-          </p>
-        ) : null}
-      </div>
+    <div className="rounded-lg border border-transparent bg-transparent p-3 u-hero-3d sm:rounded-3xl sm:border-white/20 sm:bg-white/10 sm:p-5 sm:shadow-lg sm:backdrop-blur-md">
+      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+        {SITE_NAME}
+      </p>
+      <p className="mt-1 text-center font-display text-xl font-extrabold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] sm:text-2xl">
+        {headlineTitle}
+      </p>
 
-      {/* Mobile: colorful price only */}
-      <div className="sm:hidden">
+      <p className="mt-2 text-center text-sm font-semibold text-cyan-50 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
         {priceLoading && !priceLine ? (
-          <p className="text-center text-xs font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-            Loading price…
-          </p>
+          <span className="text-xs font-semibold opacity-90">Loading price…</span>
         ) : priceLine ? (
-          <p className="bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 bg-clip-text text-center font-display text-3xl font-extrabold tracking-tight text-transparent drop-shadow-sm">
+          <>
             From {priceLine}
-          </p>
-        ) : null}
-      </div>
+            <span className="mt-0.5 block text-[11px] font-medium text-white/95">
+              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
+            </span>
+          </>
+        ) : (
+          <span className="text-[11px] font-medium text-white/95">
+            Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
+          </span>
+        )}
+      </p>
 
-      <div className="mt-2.5 flex flex-col gap-1.5 sm:mt-4 sm:gap-2">
+      {perksLine ? (
+        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+          {perksLine}
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex flex-col gap-2">
         <Link href={bookHref} className={bookPrimaryClass}>
           {primaryCtaLabel}
         </Link>
@@ -187,12 +171,12 @@ export function HeroSection() {
   );
 
   return (
-    <section className="relative isolate -mt-20 overflow-visible bg-ocean-900 pt-20 sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:pt-[4.75rem]">
+    <section className="relative isolate -mt-20 overflow-visible bg-white pt-20 sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:bg-ocean-900 sm:pt-[4.75rem]">
       {/*
-        Mobile: hero media is height-limited; booking card sits in normal flow with
-        a negative top margin (straddle look) so it no longer covers service images.
+        Mobile: taller hero media + deeper card overlap so the ocean-blue band
+        under the booking card is covered / not visible.
       */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden max-sm:h-[min(48dvh,380px)] sm:bottom-0 sm:h-auto">
+      <div className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden max-sm:h-[min(58dvh,460px)] sm:bottom-0 sm:h-auto">
         {current ? (
           <div key={slideKey} className="absolute inset-0">
             <HeroSlideBackground
@@ -207,7 +191,7 @@ export function HeroSection() {
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
 
-      <div className="relative max-sm:min-h-[min(48dvh,380px)] sm:min-h-[min(72vh,640px)]">
+      <div className="relative max-sm:min-h-[min(58dvh,460px)] sm:min-h-[min(72vh,640px)]">
         {currentHasVideo && videoActuallyPlays ? (
           <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
             <HeroVideoSoundToggle
@@ -240,7 +224,8 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="relative z-10 -mt-[4.5rem] px-[14px] pb-3 sm:hidden">
+      {/* ~20% higher overlap into hero + sits over media so blue band is hidden */}
+      <div className="relative z-10 -mt-[min(28vw,9.5rem)] px-[14px] pb-2 sm:hidden">
         <HeroConversionCard
           bookHref={bookingCard.bookHref}
           detailsHref={bookingCard.detailsHref}
