@@ -173,25 +173,31 @@ export function HeroSection() {
   return (
     <section className="relative isolate -mt-20 overflow-visible bg-white pt-20 sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:bg-ocean-900 sm:pt-[4.75rem]">
       {/*
-        Mobile: taller hero media + deeper card overlap so the ocean-blue band
-        under the booking card is covered / not visible.
+        One mobile media frame for image + video. Booking card is anchored to
+        the bottom of that frame (translateY) so height never opens a gap.
+        Overlay stays transparent at the bottom on mobile — the cream fade in
+        bg-hero-overlay looked like empty space over dark video frames.
       */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden max-sm:h-[min(58dvh,460px)] sm:bottom-0 sm:h-auto">
-        {current ? (
-          <div key={slideKey} className="absolute inset-0">
-            <HeroSlideBackground
-              slide={current}
-              slideKey={slideKey}
-              onVideoEnded={advanceSlide}
-              shouldLoopWhenSingleSlide={n <= 1}
-              heroSoundEnabled={heroSoundOn}
-            />
-          </div>
-        ) : null}
-        <div className="absolute inset-0 bg-hero-overlay" />
-      </div>
+      <div className="relative max-sm:h-[min(58dvh,460px)] sm:min-h-[min(72vh,640px)]">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {current ? (
+            <div key={slideKey} className="absolute inset-0 [&_img]:h-full [&_img]:w-full [&_img]:object-cover [&_video]:h-full [&_video]:min-h-full [&_video]:w-full [&_video]:min-w-full [&_video]:object-cover [&_video]:object-center">
+              <HeroSlideBackground
+                slide={current}
+                slideKey={slideKey}
+                onVideoEnded={advanceSlide}
+                shouldLoopWhenSingleSlide={n <= 1}
+                heroSoundEnabled={heroSoundOn}
+              />
+            </div>
+          ) : null}
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-ocean-950/55 via-ocean-900/20 to-transparent sm:hidden"
+            aria-hidden
+          />
+          <div className="absolute inset-0 hidden bg-hero-overlay sm:block" aria-hidden />
+        </div>
 
-      <div className="relative max-sm:min-h-[min(58dvh,460px)] sm:min-h-[min(72vh,640px)]">
         {currentHasVideo && videoActuallyPlays ? (
           <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
             <HeroVideoSoundToggle
@@ -222,20 +228,26 @@ export function HeroSection() {
             />
           </div>
         </div>
+
+        {/* Mobile: glued to media bottom so image and video share the same overlap */}
+        <div className="absolute inset-x-0 bottom-0 z-10 translate-y-[42%] px-[14px] sm:hidden">
+          <HeroConversionCard
+            bookHref={bookingCard.bookHref}
+            detailsHref={bookingCard.detailsHref}
+            headlineTitle={bookingCard.headlineTitle}
+            headlinePriceInr={bookingCard.headlinePriceInr}
+            priceLoading={priceLoading}
+            perksLine={bookingCard.perksLine}
+            primaryCtaLabel={bookingCard.primaryCtaLabel}
+          />
+        </div>
       </div>
 
-      {/* ~20% higher overlap into hero + sits over media so blue band is hidden */}
-      <div className="relative z-10 -mt-[min(28vw,9.5rem)] px-[14px] pb-2 sm:hidden">
-        <HeroConversionCard
-          bookHref={bookingCard.bookHref}
-          detailsHref={bookingCard.detailsHref}
-          headlineTitle={bookingCard.headlineTitle}
-          headlinePriceInr={bookingCard.headlinePriceInr}
-          priceLoading={priceLoading}
-          perksLine={bookingCard.perksLine}
-          primaryCtaLabel={bookingCard.primaryCtaLabel}
-        />
-      </div>
+      {/* Space for the card hanging below the media frame */}
+      <div
+        className="pointer-events-none max-sm:h-[min(38vw,12.5rem)] sm:hidden"
+        aria-hidden
+      />
     </section>
   );
 }
