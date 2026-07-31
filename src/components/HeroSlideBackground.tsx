@@ -160,7 +160,7 @@ export function HeroSlideBackground({
       <video
         ref={videoRef}
         key={slideKey}
-        className={`absolute inset-0 h-full min-h-full w-full min-w-full scale-[1.05] object-cover object-center transition-opacity duration-300 ${
+        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ${
           videoReady ? "opacity-100" : "opacity-0"
         }`}
         poster={videoPosterSrc}
