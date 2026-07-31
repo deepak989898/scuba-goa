@@ -35,7 +35,12 @@ function resolveDailyReportRecipients(): string[] {
 async function sendTelegram(text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
-  if (!token || !chatId) return false;
+  if (!token || !chatId) {
+    console.error(
+      "[daily-report] Telegram skipped: set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID on Vercel",
+    );
+    return false;
+  }
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
@@ -46,7 +51,15 @@ async function sendTelegram(text: string): Promise<boolean> {
       disable_web_page_preview: true,
     }),
   });
-  return res.ok;
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error("[daily-report] Telegram send failed", {
+      status: res.status,
+      body: body.slice(0, 300),
+    });
+    return false;
+  }
+  return true;
 }
 
 async function sendEmailReport(opts: {

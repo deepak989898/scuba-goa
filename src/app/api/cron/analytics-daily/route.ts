@@ -9,7 +9,17 @@ export const maxDuration = 120;
 
 export async function GET(req: Request) {
   if (!verifyCronRequest(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const host = new URL(req.url).host;
+    console.warn(
+      `[cron:analytics-daily] 401 Unauthorized on host=${host}. Use https://www.bookscubagoa.com/api/cron/analytics-daily with Authorization: Bearer <CRON_SECRET> (apex redirects drop the header).`,
+    );
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        hint: "Use www host + Bearer CRON_SECRET (or X-Cron-Secret). Apex bookscubagoa.com 308-redirects and often drops Authorization.",
+      },
+      { status: 401 },
+    );
   }
 
   scheduleCronTask("analytics-daily", async () => {
