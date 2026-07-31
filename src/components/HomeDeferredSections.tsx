@@ -7,10 +7,6 @@ const ServiceCards = dynamic(
   () => import("@/components/ServiceCards").then((m) => m.ServiceCards),
   { ssr: false, loading: () => null },
 );
-const AdConversionStrip = dynamic(
-  () => import("@/components/AdConversionStrip").then((m) => m.AdConversionStrip),
-  { ssr: false, loading: () => null },
-);
 const RatingsSection = dynamic(
   () => import("@/components/RatingsSection").then((m) => m.RatingsSection),
   { ssr: false, loading: () => null },
@@ -40,7 +36,6 @@ export function HomeDeferredSections() {
   return (
     <>
       <ServiceCards />
-      <AdConversionStrip />
       <RatingsSection />
     </>
   );
