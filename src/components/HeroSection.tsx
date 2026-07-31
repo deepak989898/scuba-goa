@@ -53,36 +53,36 @@ function HeroConversionCard({
     "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-3.5 text-base font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95";
 
   const detailsSecondaryClass =
-    "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-black/25 px-4 py-2 text-xs font-bold text-white shadow-md backdrop-blur-sm transition hover:bg-black/35";
+    "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full border-2 border-ocean-600 bg-white/90 px-4 py-2 text-xs font-bold text-ocean-900 shadow-md transition hover:bg-white sm:border-white/80 sm:bg-black/25 sm:text-white sm:hover:bg-black/35";
 
   return (
     <div className="rounded-lg border border-transparent bg-transparent p-3 u-hero-3d sm:rounded-3xl sm:border-white/20 sm:bg-white/10 sm:p-5 sm:shadow-lg sm:backdrop-blur-md">
-      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-ocean-700 sm:text-cyan-100 sm:drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
         {SITE_NAME}
       </p>
-      <p className="mt-1 text-center font-display text-xl font-extrabold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] sm:text-2xl">
+      <p className="mt-1 text-center font-display text-xl font-extrabold leading-tight text-ocean-950 sm:text-2xl sm:text-white sm:drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
         {headlineTitle}
       </p>
 
-      <p className="mt-2 text-center text-sm font-semibold text-cyan-50 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+      <p className="mt-2 text-center text-sm font-semibold text-ocean-800 sm:text-cyan-50 sm:drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
         {priceLoading && !priceLine ? (
           <span className="text-xs font-semibold opacity-90">Loading price…</span>
         ) : priceLine ? (
           <>
             From {priceLine}
-            <span className="mt-0.5 block text-[11px] font-medium text-white/95">
+            <span className="mt-0.5 block text-[11px] font-medium text-ocean-700 sm:text-white/95">
               Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
             </span>
           </>
         ) : (
-          <span className="text-[11px] font-medium text-white/95">
+          <span className="text-[11px] font-medium text-ocean-700 sm:text-white/95">
             Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
           </span>
         )}
       </p>
 
       {perksLine ? (
-        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-ocean-700 sm:text-white sm:drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
           {perksLine}
         </p>
       ) : null}
