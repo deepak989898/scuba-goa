@@ -31,7 +31,6 @@ function HeroConversionCard({
   headlineTitle,
   headlinePriceInr,
   priceLoading,
-  slotsToday,
   perksLine,
   primaryCtaLabel,
 }: {
@@ -40,7 +39,6 @@ function HeroConversionCard({
   headlineTitle: string;
   headlinePriceInr: number | null;
   priceLoading: boolean;
-  slotsToday: number | null;
   perksLine: string;
   primaryCtaLabel: string;
 }) {
@@ -55,43 +53,37 @@ function HeroConversionCard({
     "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-3.5 text-base font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95";
 
   const detailsSecondaryClass =
-    "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full border border-white/50 bg-transparent px-4 py-2 text-xs font-semibold text-white/95 transition hover:bg-white/10 max-sm:border-ocean-300 max-sm:text-ocean-800 max-sm:hover:bg-ocean-50";
+    "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-black/25 px-4 py-2 text-xs font-bold text-white shadow-md backdrop-blur-sm transition hover:bg-black/35";
 
   return (
-    <div className="rounded-lg border border-white/20 bg-white/10 p-3 shadow-lg backdrop-blur-md u-hero-3d max-sm:border-ocean-200/90 max-sm:bg-white/95 max-sm:shadow-xl sm:rounded-3xl sm:p-5 sm:shadow-none">
-      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-200 max-sm:text-ocean-600">
+    <div className="rounded-lg border border-transparent bg-transparent p-3 u-hero-3d sm:rounded-3xl sm:border-white/20 sm:bg-white/10 sm:p-5 sm:shadow-lg sm:backdrop-blur-md">
+      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
         {SITE_NAME}
       </p>
-      <p className="mt-1 text-center font-display text-xl font-extrabold leading-tight text-white max-sm:text-ocean-900 sm:text-2xl">
+      <p className="mt-1 text-center font-display text-xl font-extrabold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] sm:text-2xl">
         {headlineTitle}
       </p>
 
-      <p className="mt-2 text-center text-sm font-semibold text-cyan-100 max-sm:text-ocean-800">
+      <p className="mt-2 text-center text-sm font-semibold text-cyan-50 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
         {priceLoading && !priceLine ? (
-          <span className="text-xs font-semibold opacity-80">Loading price…</span>
+          <span className="text-xs font-semibold opacity-90">Loading price…</span>
         ) : priceLine ? (
           <>
             From {priceLine}
-            <span className="mt-0.5 block text-[11px] font-medium opacity-90">
+            <span className="mt-0.5 block text-[11px] font-medium text-white/95">
               Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
             </span>
           </>
         ) : (
-          <span className="text-[11px] font-medium opacity-90">
+          <span className="text-[11px] font-medium text-white/95">
             Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
           </span>
         )}
       </p>
 
       {perksLine ? (
-        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white/85 max-sm:text-ocean-700">
+        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
           {perksLine}
-        </p>
-      ) : null}
-
-      {slotsToday != null && slotsToday > 0 ? (
-        <p className="mt-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-amber-200 max-sm:text-amber-800">
-          Only {slotsToday} slots left today
         </p>
       ) : null}
 
@@ -225,7 +217,6 @@ export function HeroSection() {
               headlineTitle={bookingCard.headlineTitle}
               headlinePriceInr={bookingCard.headlinePriceInr}
               priceLoading={priceLoading}
-              slotsToday={bookingCard.slotsToday}
               perksLine={bookingCard.perksLine}
               primaryCtaLabel={bookingCard.primaryCtaLabel}
             />
@@ -240,7 +231,6 @@ export function HeroSection() {
           headlineTitle={bookingCard.headlineTitle}
           headlinePriceInr={bookingCard.headlinePriceInr}
           priceLoading={priceLoading}
-          slotsToday={bookingCard.slotsToday}
           perksLine={bookingCard.perksLine}
           primaryCtaLabel={bookingCard.primaryCtaLabel}
         />

@@ -1377,9 +1377,31 @@ export default function AdminAnalyticsPage() {
                                       {v.deviceCategory}
                                       {v.deviceLabel ? ` · ${v.deviceLabel}` : ""}
                                     </p>
-                                    <p className="mt-0.5 truncate font-mono text-xs text-ocean-600">
-                                      Last: {v.lastPath}
-                                    </p>
+                                    <div className="mt-1 space-y-0.5 font-mono text-[11px] leading-snug text-ocean-700">
+                                      <p className="truncate">
+                                        <span className="font-sans font-semibold text-cyan-800">
+                                          First:
+                                        </span>{" "}
+                                        <span
+                                          className={
+                                            v.landingPath.startsWith("/blog/")
+                                              ? "font-semibold text-amber-800"
+                                              : ""
+                                          }
+                                          title={v.landingPath}
+                                        >
+                                          {v.landingPath || "—"}
+                                        </span>
+                                      </p>
+                                      <p className="truncate">
+                                        <span className="font-sans font-semibold text-ocean-800">
+                                          Last:
+                                        </span>{" "}
+                                        <span title={v.lastPath}>
+                                          {v.lastPath || "—"}
+                                        </span>
+                                      </p>
+                                    </div>
                                   </button>
                                 </li>
                               ))}
