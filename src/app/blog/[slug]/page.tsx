@@ -23,6 +23,11 @@ import { relatedServicesForContent } from "@/lib/related-services-for-content";
 import { extractBlogToc } from "@/lib/blog-seo/headings";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
+import { encodeServiceBaseOption } from "@/lib/booking-selection";
+import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
+
+const blogBookNowClass =
+  "inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/70 transition hover:brightness-110 active:brightness-95";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -248,6 +253,9 @@ export default async function BlogPostPage({ params }: Props) {
   const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.updatedAt ?? p.date;
   const publishedLabel = (fs?.publishedAt || p.date || "").slice(0, 10);
   const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
+  const bookHref = focusServiceSlug
+    ? buildHeroBookingHref(encodeServiceBaseOption(focusServiceSlug))
+    : "/booking";
   const relatedServices = relatedServicesForContent(
     catalog.services,
     p,
@@ -328,13 +336,26 @@ export default async function BlogPostPage({ params }: Props) {
             updatedAt={dateModified}
           />
 
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <Link href={bookHref} className={blogBookNowClass}>
+              Book Now
+            </Link>
+            <Link
+              href="/services"
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-2 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50"
+            >
+              View services
+            </Link>
+          </div>
+
           {featuredImage ? (
-            <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100 bg-ocean-50">
+            <figure className="relative mt-2 h-36 w-full overflow-hidden rounded-md border border-ocean-100 bg-ocean-50 sm:h-44 lg:h-48">
               <CmsRemoteImage
                 src={featuredImage}
                 alt={featuredImageAlt}
-                showFull
-                className="block"
+                fill
+                sizes="(max-width: 1024px) 100vw, 720px"
+                className="object-cover object-center"
                 priority
               />
             </figure>
@@ -472,11 +493,8 @@ export default async function BlogPostPage({ params }: Props) {
             </p>
             <ul className="mt-2.5 flex flex-wrap gap-2 text-sm font-semibold">
               <li>
-                <Link
-                  href="/booking"
-                  className="inline-flex rounded-full bg-ocean-gradient px-4 py-2 text-white hover:opacity-95"
-                >
-                  Book now — live rates
+                <Link href={bookHref} className={blogBookNowClass}>
+                  Book Now
                 </Link>
               </li>
               <li>
