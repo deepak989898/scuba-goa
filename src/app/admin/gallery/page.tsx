@@ -9,7 +9,7 @@ import {
   getDocs,
   updateDoc,
 } from "firebase/firestore";
-import { getDb } from "@/lib/firebase";
+import { getDb, getFirebaseAuth } from "@/lib/firebase";
 import {
   GALLERY_CATEGORIES,
   normalizeGalleryCategory,
@@ -127,7 +127,16 @@ export default function AdminGalleryPage() {
     setSyncingBlog(true);
     setSyncMsg(null);
     try {
-      const res = await fetch("/api/admin/gallery-sync-blog", { method: "POST" });
+      const auth = getFirebaseAuth();
+      const user = auth?.currentUser;
+      if (!user) {
+        throw new Error("Sign in at /admin/login first.");
+      }
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/gallery-sync-blog", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = (await res.json()) as {
         ok?: boolean;
         synced?: number;
