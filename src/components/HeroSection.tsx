@@ -22,8 +22,8 @@ function lowestListedPackageInr(list: PackageDoc[]): number | null {
 }
 
 /**
- * First-viewport conversion card: brand + one offer line + one primary CTA.
- * WhatsApp / long forms live elsewhere so the hero stays uncluttered (LOW_CTR fix).
+ * First-viewport conversion card.
+ * Mobile: price + CTAs only (compact, transparent). Desktop: full offer copy.
  */
 function HeroConversionCard({
   bookHref,
@@ -50,44 +50,60 @@ function HeroConversionCard({
       : null;
 
   const bookPrimaryClass =
-    "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-3.5 text-base font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95";
+    "inline-flex min-h-11 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-ocean-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-ocean-900/35 ring-2 ring-cyan-300/50 transition hover:brightness-110 active:brightness-95 sm:min-h-12 sm:py-3.5 sm:text-base";
 
   const detailsSecondaryClass =
-    "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-black/25 px-4 py-2 text-xs font-bold text-white shadow-md backdrop-blur-sm transition hover:bg-black/35";
+    "inline-flex min-h-9 w-full touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-black/25 px-4 py-1.5 text-xs font-bold text-white shadow-md backdrop-blur-sm transition hover:bg-black/35 sm:min-h-10 sm:py-2";
 
   return (
-    <div className="rounded-lg border border-transparent bg-transparent p-3 u-hero-3d sm:rounded-3xl sm:border-white/20 sm:bg-white/10 sm:p-5 sm:shadow-lg sm:backdrop-blur-md">
-      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-        {SITE_NAME}
-      </p>
-      <p className="mt-1 text-center font-display text-xl font-extrabold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] sm:text-2xl">
-        {headlineTitle}
-      </p>
-
-      <p className="mt-2 text-center text-sm font-semibold text-cyan-50 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-        {priceLoading && !priceLine ? (
-          <span className="text-xs font-semibold opacity-90">Loading price…</span>
-        ) : priceLine ? (
-          <>
-            From {priceLine}
-            <span className="mt-0.5 block text-[11px] font-medium text-white/95">
-              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
-            </span>
-          </>
-        ) : (
-          <span className="text-[11px] font-medium text-white/95">
-            Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at the centre
-          </span>
-        )}
-      </p>
-
-      {perksLine ? (
-        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-          {perksLine}
+    <div className="rounded-lg border border-transparent bg-transparent p-2 u-hero-3d sm:rounded-3xl sm:border-white/20 sm:bg-white/10 sm:p-5 sm:shadow-lg sm:backdrop-blur-md">
+      {/* Desktop / tablet: full offer copy */}
+      <div className="hidden sm:block">
+        <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+          {SITE_NAME}
         </p>
-      ) : null}
+        <p className="mt-1 text-center font-display text-2xl font-extrabold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+          {headlineTitle}
+        </p>
+        <p className="mt-2 text-center text-sm font-semibold text-cyan-50 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+          {priceLoading && !priceLine ? (
+            <span className="text-xs font-semibold opacity-90">Loading price…</span>
+          ) : priceLine ? (
+            <>
+              From {priceLine}
+              <span className="mt-0.5 block text-[11px] font-medium text-white/95">
+                Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at
+                the centre
+              </span>
+            </>
+          ) : (
+            <span className="text-[11px] font-medium text-white/95">
+              Pay ₹{ADVANCE_BOOKING_INR.toLocaleString("en-IN")} online · rest at
+              the centre
+            </span>
+          )}
+        </p>
+        {perksLine ? (
+          <p className="mt-2 text-center text-[11px] font-medium leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            {perksLine}
+          </p>
+        ) : null}
+      </div>
 
-      <div className="mt-4 flex flex-col gap-2">
+      {/* Mobile: colorful price only */}
+      <div className="sm:hidden">
+        {priceLoading && !priceLine ? (
+          <p className="text-center text-xs font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            Loading price…
+          </p>
+        ) : priceLine ? (
+          <p className="bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 bg-clip-text text-center font-display text-3xl font-extrabold tracking-tight text-transparent drop-shadow-sm">
+            From {priceLine}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-2.5 flex flex-col gap-1.5 sm:mt-4 sm:gap-2">
         <Link href={bookHref} className={bookPrimaryClass}>
           {primaryCtaLabel}
         </Link>
@@ -224,7 +240,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="relative z-10 -mt-[7.5rem] px-[14px] pb-4 sm:hidden">
+      <div className="relative z-10 -mt-[4.5rem] px-[14px] pb-3 sm:hidden">
         <HeroConversionCard
           bookHref={bookingCard.bookHref}
           detailsHref={bookingCard.detailsHref}
