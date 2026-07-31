@@ -20,7 +20,7 @@ export function ServiceMetaBlock({
     <ul
       className={
         variant === "cardGrid"
-          ? "flex flex-wrap content-start gap-1 sm:gap-1.5"
+          ? "flex flex-wrap content-start gap-0.5 sm:gap-1"
           : "flex flex-wrap gap-1 sm:gap-1.5"
       }
     >
@@ -41,11 +41,11 @@ export function ServiceMetaBlock({
   );
 
   return (
-    <div className="mt-1 space-y-0.5 sm:mt-1.5 sm:space-y-1">
+    <div className="mt-0.5 space-y-0 sm:mt-1 sm:space-y-0.5">
       <p
         className={
           variant === "cardGrid"
-            ? "min-h-[1rem] truncate text-[10px] font-medium text-ocean-700 sm:min-h-0 sm:text-xs"
+            ? "truncate text-[10px] font-medium leading-tight text-ocean-700 sm:text-xs"
             : "text-xs font-medium text-ocean-700"
         }
       >
@@ -54,14 +54,14 @@ export function ServiceMetaBlock({
       <p
         className={
           variant === "cardGrid"
-            ? "min-h-[1rem] text-[10px] font-medium text-amber-700 sm:min-h-0 sm:text-xs"
+            ? "text-[10px] font-medium leading-tight text-amber-700 sm:text-xs"
             : "text-xs font-medium text-amber-700"
         }
       >
         ⭐ {s.rating.toFixed(1)} rated
       </p>
       {variant === "cardGrid" ? (
-        <div className="mt-1 box-border h-[3.25rem] max-h-[3.25rem] w-full shrink-0 overflow-x-hidden overflow-y-auto overscroll-y-contain sm:mt-1.5 sm:h-[4rem] sm:max-h-[4rem]">
+        <div className="mt-0.5 max-h-[2.5rem] w-full shrink-0 overflow-hidden sm:mt-1 sm:max-h-[2.75rem]">
           {includesList}
         </div>
       ) : (
@@ -71,11 +71,11 @@ export function ServiceMetaBlock({
         <div
           className={
             variant === "cardGrid"
-              ? "flex min-h-[2rem] flex-col justify-end gap-0.5 text-[9px] font-medium text-ocean-700 sm:min-h-[1.5rem] sm:text-xs"
+              ? "mt-0.5 text-[9px] font-medium leading-tight text-ocean-700 sm:text-xs"
               : "flex flex-col gap-0.5 text-[10px] font-medium text-ocean-700 sm:text-xs"
           }
         >
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap gap-1 sm:gap-1.5">
             {slotsLeft != null ? (
               <span className="font-semibold text-red-600">
                 {slotsLeft} slots left
