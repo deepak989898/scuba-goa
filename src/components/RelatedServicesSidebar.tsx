@@ -118,7 +118,7 @@ export function RelatedServicesSidebar({
                   href={`/services/${service.slug}`}
                   className="inline-flex min-h-10 items-center justify-center rounded-full bg-cyan-500 px-3.5 py-1.5 text-sm font-extrabold text-slate-950 shadow-md transition hover:bg-cyan-400"
                 >
-                  See &amp; book
+                  Book Now
                 </Link>
               </div>
             </div>

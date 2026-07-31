@@ -107,14 +107,14 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
               key={`${url}-${index}`}
               type="button"
               onClick={() => setZoomIndex(index)}
-              className="relative block h-36 w-full overflow-hidden rounded-lg border border-ocean-100 text-left sm:h-40"
+              className="block w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 text-left transition hover:opacity-95"
             >
+              {/* showFull = intrinsic ratio: full graphic, no crop, no letterbox gaps */}
               <CmsRemoteImage
                 src={url}
                 alt={`${service.title} post ${index + 1}`}
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
-                className="object-cover transition-transform duration-200 hover:scale-[1.02]"
+                showFull
+                className="block"
                 loading="lazy"
               />
             </button>

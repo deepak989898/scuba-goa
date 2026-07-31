@@ -121,7 +121,7 @@ export function ServiceDetailActions({
             />
           )}
           <Link href={bookHref} className={bookGradientClass}>
-            See &amp; book
+            Book Now
           </Link>
         </div>
       </div>

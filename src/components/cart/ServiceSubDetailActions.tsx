@@ -82,7 +82,7 @@ export function ServiceSubDetailActions({
           href={bookingHref}
           className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-sm font-extrabold text-slate-950 shadow-md transition hover:bg-cyan-400"
         >
-          See &amp; book
+          Book Now
         </Link>
       </div>
       <a
