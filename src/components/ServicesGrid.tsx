@@ -72,7 +72,7 @@ export function ServicesGrid() {
                 )}
               </div>
               <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-3.5 [&_a]:pointer-events-auto">
-                <h2 className="line-clamp-2 min-h-[2.5rem] font-display text-lg font-semibold leading-snug text-ocean-900 sm:text-xl">
+                <h2 className="line-clamp-2 min-h-[2.5rem] bg-gradient-to-r from-cyan-600 via-ocean-700 to-teal-600 bg-clip-text font-display text-lg font-extrabold leading-snug text-transparent sm:text-xl">
                   {s.title}
                 </h2>
                 <ServiceShortClamp slug={s.slug} text={s.short} />
