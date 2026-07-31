@@ -104,7 +104,7 @@ export function ServiceDetailSections({ service: s }: { service: ServiceItem }) 
         <ServiceDetailProse text={scubaFallback} className="space-y-2.5" />
       ) : null}
 
-      {s.slug === "scuba-diving" ? (
+      {s.slug === "scuba-diving" && !s.subServices?.length ? (
         <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 sm:p-3.5">
           <h2 className="font-display text-base font-bold text-cyan-900 sm:text-lg">
             What you will experience

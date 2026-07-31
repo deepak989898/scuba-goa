@@ -17,8 +17,9 @@ const bookNowClass =
 const addToCartClass =
   "!min-h-10 !border-0 !bg-gradient-to-r !from-teal-500 !via-cyan-600 !to-ocean-800 !px-5 !py-2 !text-sm !font-extrabold !text-white !shadow-lg !shadow-cyan-700/40 ring-2 ring-cyan-300/60 hover:!brightness-110 active:!brightness-95";
 
-/** Inclusion heading + Book now / Add to cart on the service detail page. */
+/** Inclusion heading + Book now / Add to cart (hidden when packages/sub-services exist). */
 export function ServiceInclusionCtas({ service: s }: Props) {
+  const hasSubServices = Boolean(s.subServices?.length);
   const bookHref = buildHeroBookingHref(encodeServiceBaseOption(s.slug));
 
   return (
@@ -26,16 +27,18 @@ export function ServiceInclusionCtas({ service: s }: Props) {
       <h2 className="bg-gradient-to-r from-cyan-500 via-ocean-600 to-emerald-500 bg-clip-text font-display text-xl font-extrabold tracking-wide text-transparent sm:text-2xl">
         Inclusion
       </h2>
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={bookHref} className={bookNowClass}>
-          Book now
-        </Link>
-        <ServiceCardAddToCart
-          service={s}
-          size="sm"
-          className={addToCartClass}
-        />
-      </div>
+      {!hasSubServices ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={bookHref} className={bookNowClass}>
+            Book now
+          </Link>
+          <ServiceCardAddToCart
+            service={s}
+            size="sm"
+            className={addToCartClass}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

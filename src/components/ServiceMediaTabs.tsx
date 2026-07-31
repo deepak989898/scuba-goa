@@ -101,15 +101,15 @@ export function ServiceMediaTabs({ service }: { service: ServiceItem }) {
       </div>
 
       {tab === "posts" ? (
-        <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+        <div className="mt-2.5 flex flex-wrap gap-2.5">
           {posts.map((url, index) => (
             <button
               key={`${url}-${index}`}
               type="button"
               onClick={() => setZoomIndex(index)}
-              className="block w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 text-left transition hover:opacity-95"
+              className="block w-[min(100%,9.5rem)] shrink-0 overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 text-left shadow-sm transition hover:opacity-95 sm:w-[11rem]"
             >
-              {/* showFull = intrinsic ratio: full graphic, no crop, no letterbox gaps */}
+              {/* showFull + capped width: full graphic, smaller card, no crop/gaps */}
               <CmsRemoteImage
                 src={url}
                 alt={`${service.title} post ${index + 1}`}

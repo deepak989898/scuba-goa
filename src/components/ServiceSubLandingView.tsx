@@ -10,11 +10,25 @@ import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { ServiceDetailProse } from "@/components/ServiceDetailProse";
 import { serviceDetailImages } from "@/lib/service-images";
 import { getSubServiceFaqs } from "@/lib/service-faqs";
+import { encodeServiceSubOption } from "@/lib/booking-selection";
+import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
 import {
   assignSubServicePublicSlugs,
   getSubServiceCartKey,
   isPricedSubService,
 } from "@/lib/service-sub-helpers";
+
+const sibPriceBadgeClass =
+  "inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-full border-2 border-amber-500/80 bg-gradient-to-r from-yellow-200 via-amber-100 to-orange-100 px-3 py-2 text-center font-display text-sm font-extrabold tabular-nums text-amber-950 shadow-sm";
+
+const sibViewDetailsClass =
+  "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 px-3 py-2 text-center text-sm font-extrabold text-white shadow-md shadow-cyan-700/30 ring-1 ring-cyan-200/60 transition hover:brightness-110 active:brightness-95";
+
+const sibAddToCartClass =
+  "!min-h-10 !w-full !border-0 !bg-gradient-to-r !from-teal-500 !via-cyan-600 !to-ocean-800 !px-3 !py-2 !text-sm !font-extrabold !text-white !shadow-md !shadow-cyan-700/35 ring-1 ring-cyan-300/50 hover:!brightness-110";
+
+const sibBookNowClass =
+  "inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-3 py-2 text-center text-sm font-extrabold text-white shadow-md shadow-orange-500/35 ring-1 ring-amber-200/70 transition hover:brightness-110 active:brightness-95";
 
 type Props = {
   parent: ServiceItem;
@@ -260,10 +274,10 @@ export function ServiceSubLandingView({
 
             {siblings.length > 0 ? (
               <section className="mt-6 border-t border-ocean-100 pt-5">
-                <h2 className="font-display text-lg font-bold text-ocean-900">
+                <h2 className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 bg-clip-text font-display text-lg font-extrabold tracking-wide text-transparent sm:text-xl">
                   Other {parent.title} options
                 </h2>
-                <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                <ul className="mt-3 grid gap-3 sm:grid-cols-2">
                   {siblings.map((sib) => {
                     const sibPriced = isPricedSubService(sib.sub);
                     const sibPrice = sibPriced
@@ -271,46 +285,63 @@ export function ServiceSubLandingView({
                       : parent.priceFrom;
                     const sibCartKey = getSubServiceCartKey(sib.sub, sib.index);
                     const sibTitle = `${parent.title} — ${sib.sub.title}`;
+                    const bookHref = buildHeroBookingHref(
+                      encodeServiceSubOption(parent.slug, sibCartKey),
+                    );
                     return (
                       <li
                         key={sib.path}
-                        className="flex flex-col rounded-xl border border-ocean-100 bg-sand/30 px-3 py-2.5"
+                        className="relative overflow-hidden rounded-2xl border-2 border-amber-300/90 bg-gradient-to-br from-amber-200 via-yellow-100 to-orange-100 p-3 shadow-lg shadow-amber-400/25 ring-2 ring-amber-200/70 sm:p-3.5"
                       >
-                        <Link
-                          href={sib.path}
-                          className="hover:text-cyan-800 hover:underline"
-                        >
-                          <span className="font-semibold text-ocean-900">
-                            {sib.sub.title}
-                          </span>
-                          <span className="mt-0.5 block text-sm font-bold tabular-nums text-ocean-800">
-                            From ₹{sibPrice.toLocaleString("en-IN")}
-                          </span>
-                        </Link>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <AddToCartButton
-                            variant="service"
-                            slug={parent.slug}
-                            title={sibTitle}
-                            priceFrom={sibPrice}
-                            subKey={sibCartKey}
-                            image={parent.image}
-                            duration={parent.duration}
-                            includes={sib.sub.includes ?? parent.includes}
-                            rating={parent.rating}
-                            slotsLeft={sib.sub.slotsLeft ?? parent.slotsLeft}
-                            bookedToday={
-                              sib.sub.bookedToday ?? parent.bookedToday
-                            }
-                            size="sm"
-                            className="flex-1 justify-center"
-                          />
-                          <Link
-                            href={sib.path}
-                            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-ocean-300 bg-white px-3 py-2 text-sm font-bold text-ocean-900 transition hover:bg-ocean-50"
-                          >
-                            Details
-                          </Link>
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-yellow-300/60 to-orange-300/35 blur-2xl"
+                        />
+                        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              href={sib.path}
+                              className="font-display text-base font-bold text-amber-950 hover:text-orange-800 hover:underline sm:text-lg"
+                            >
+                              {sib.sub.title}
+                            </Link>
+                            {sib.sub.description ? (
+                              <p className="mt-1 line-clamp-3 text-sm leading-snug text-amber-950/80">
+                                {sib.sub.description}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-36 sm:self-center">
+                            <div
+                              className={sibPriceBadgeClass}
+                              aria-label={`Price ₹${sibPrice.toLocaleString("en-IN")}`}
+                            >
+                              ₹{sibPrice.toLocaleString("en-IN")}
+                            </div>
+                            <Link href={sib.path} className={sibViewDetailsClass}>
+                              View details
+                            </Link>
+                            <AddToCartButton
+                              variant="service"
+                              slug={parent.slug}
+                              title={sibTitle}
+                              priceFrom={sibPrice}
+                              subKey={sibCartKey}
+                              image={parent.image}
+                              duration={parent.duration}
+                              includes={sib.sub.includes ?? parent.includes}
+                              rating={parent.rating}
+                              slotsLeft={sib.sub.slotsLeft ?? parent.slotsLeft}
+                              bookedToday={
+                                sib.sub.bookedToday ?? parent.bookedToday
+                              }
+                              size="sm"
+                              className={sibAddToCartClass}
+                            />
+                            <Link href={bookHref} className={sibBookNowClass}>
+                              Book now
+                            </Link>
+                          </div>
                         </div>
                       </li>
                     );
