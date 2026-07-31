@@ -336,7 +336,19 @@ export default async function BlogPostPage({ params }: Props) {
             updatedAt={dateModified}
           />
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          {featuredImage ? (
+            <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100 bg-ocean-50">
+              <CmsRemoteImage
+                src={featuredImage}
+                alt={featuredImageAlt}
+                showFull
+                className="block"
+                priority
+              />
+            </figure>
+          ) : null}
+
+          <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
             <Link href={bookHref} className={blogBookNowClass}>
               Book Now
             </Link>
@@ -347,19 +359,6 @@ export default async function BlogPostPage({ params }: Props) {
               View services
             </Link>
           </div>
-
-          {featuredImage ? (
-            <figure className="relative mt-2 h-36 w-full overflow-hidden rounded-md border border-ocean-100 bg-ocean-50 sm:h-44 lg:h-48">
-              <CmsRemoteImage
-                src={featuredImage}
-                alt={featuredImageAlt}
-                fill
-                sizes="(max-width: 1024px) 100vw, 720px"
-                className="object-cover object-center"
-                priority
-              />
-            </figure>
-          ) : null}
 
           <p className="mt-1.5 border-l-4 border-amber-400 bg-amber-50/60 py-1 pl-2 text-sm leading-snug text-ocean-800">
             {p.excerpt}

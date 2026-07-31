@@ -8,8 +8,7 @@ type Props = {
 };
 
 /**
- * Accessible table of contents for long blog articles.
- * Desktop: sticky sidebar-friendly list. Mobile: collapsible details.
+ * Horizontal “On this page” jump buttons for blog articles.
  */
 export function BlogTableOfContents({ items }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -42,45 +41,38 @@ export function BlogTableOfContents({ items }: Props) {
 
   if (items.length < 3) return null;
 
-  const list = (
-    <ol className="mt-1 space-y-0.5 text-xs sm:text-sm">
-      {items.map((item) => (
-        <li
-          key={item.id}
-          className={item.level === 3 ? "ml-2 border-l border-ocean-100 pl-1.5" : ""}
-        >
-          <a
-            href={`#${item.id}`}
-            className={`block rounded px-1 py-px transition hover:bg-ocean-50 hover:text-ocean-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
-              activeId === item.id
-                ? "font-semibold text-cyan-800"
-                : "text-ocean-700"
-            }`}
-          >
-            {item.text}
-          </a>
-        </li>
-      ))}
-    </ol>
-  );
-
   return (
-    <nav aria-label="Table of contents" className="mt-1.5">
-      <details className="rounded-md border border-ocean-100 bg-sand open:shadow-sm lg:hidden">
-        <summary className="cursor-pointer list-none px-2 py-1.5 text-xs font-bold text-ocean-900 marker:hidden sm:text-sm">
-          On this page
-          <span className="float-right text-ocean-500" aria-hidden>
-            ⌄
-          </span>
-        </summary>
-        <div className="border-t border-ocean-100 px-2 pb-2">{list}</div>
-      </details>
-      <div className="hidden lg:block">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-cyan-700">
-          On this page
-        </p>
-        {list}
-      </div>
+    <nav aria-label="Table of contents" className="mt-2">
+      <h2 className="bg-gradient-to-r from-cyan-500 via-ocean-600 to-emerald-500 bg-clip-text font-display text-base font-extrabold tracking-wide text-transparent sm:text-lg">
+        On this page
+      </h2>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {items.map((item) => {
+          const active = activeId === item.id;
+          return (
+            <li key={item.id}>
+              <a
+                href={`#${item.id}`}
+                onClick={(e) => {
+                  const el = document.getElementById(item.id);
+                  if (!el) return;
+                  e.preventDefault();
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  window.history.replaceState(null, "", `#${item.id}`);
+                  setActiveId(item.id);
+                }}
+                className={`inline-flex min-h-9 touch-manipulation items-center justify-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition sm:min-h-10 sm:px-4 sm:text-sm ${
+                  active
+                    ? "border-amber-400 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/30 ring-2 ring-amber-200/70"
+                    : "border-ocean-200 bg-white text-ocean-800 shadow-sm hover:border-cyan-400 hover:bg-cyan-50 hover:text-cyan-900"
+                }`}
+              >
+                {item.text}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }
