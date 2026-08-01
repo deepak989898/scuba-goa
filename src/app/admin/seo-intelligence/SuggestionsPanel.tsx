@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { seoIntelFetch } from "./admin-fetch";
 import type { SeoIntelSuggestion } from "@/lib/seo-intelligence/types";
 
-type Mode = "all" | "queue" | "applied";
+type Mode = "all" | "open" | "queue" | "applied";
 
 const STATUS_CLASS: Record<string, string> = {
   pending_approval: "border-sky-300 bg-sky-50 text-sky-900",
@@ -42,12 +42,19 @@ export function SuggestionsPanel({
     setErr(null);
     try {
       const status =
-        mode === "queue" ? "queue" : mode === "applied" ? "applied" : "";
-      const q = status ? `?status=${status}` : "";
+        mode === "queue" || mode === "open" || mode === "all"
+          ? "open"
+          : mode === "applied"
+            ? "applied"
+            : "open";
       const data = await seoIntelFetch(
-        `/api/admin/seo-intelligence/suggestions${q}`,
+        `/api/admin/seo-intelligence/suggestions?status=${status}`,
       );
-      setRows((data.suggestions ?? []) as SeoIntelSuggestion[]);
+      // Never keep successfully applied items on Suggestions / Approval Queue
+      const list = ((data.suggestions ?? []) as SeoIntelSuggestion[]).filter(
+        (s) => s.status !== "applied" && s.status !== "rolled_back",
+      );
+      setRows(list);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -123,7 +130,8 @@ export function SuggestionsPanel({
         `/api/admin/seo-intelligence/suggestions/${id}/apply`,
         { method: "POST" },
       );
-      setMsg("Applied successfully.");
+      setMsg("Applied successfully. Moved to Applied Changes.");
+      setRows((prev) => prev.filter((s) => s.id !== id));
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Apply failed");

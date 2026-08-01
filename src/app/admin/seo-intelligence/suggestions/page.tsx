@@ -3,9 +3,9 @@ import { SuggestionsPanel } from "../SuggestionsPanel";
 export default function Page() {
   return (
     <SuggestionsPanel
-      mode="all"
+      mode="open"
       title="Suggestions"
-      description="AI/rule-based SEO recommendations with current vs proposed preview. Approve before anything changes production content."
+      description="Open recommendations only. After Apply succeeds, items leave this list and appear under Applied Changes."
     />
   );
 }

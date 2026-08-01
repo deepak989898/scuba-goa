@@ -15,13 +15,17 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const statusParam = url.searchParams.get("status");
     let status: SeoIntelSuggestionStatus | SeoIntelSuggestionStatus[] | undefined;
-    if (statusParam === "queue") {
+    if (statusParam === "queue" || statusParam === "open") {
+      // Active work only — hide after successful apply (see Applied Changes)
       status = [
         "pending_approval",
         "edited_by_admin",
         "approved",
         "auto_approved",
         "deferred",
+        "draft",
+        "needs_review",
+        "applying",
       ];
     } else if (statusParam === "applied") {
       status = ["applied", "rolled_back", "failed"];
