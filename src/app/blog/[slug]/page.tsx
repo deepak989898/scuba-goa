@@ -297,7 +297,7 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       )}
-      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start lg:gap-4 lg:px-6">
+      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-4 lg:px-6">
         <div className="min-w-0">
           <nav
             className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-xs text-ocean-700"
@@ -323,7 +323,7 @@ export default async function BlogPostPage({ params }: Props) {
             </Link>
           </nav>
           <div className="mt-1 flex flex-wrap items-start justify-between gap-x-2 gap-y-0">
-            <h1 className="min-w-0 flex-1 font-display text-lg font-extrabold leading-snug text-ocean-900 sm:text-xl lg:text-2xl">
+            <h1 className="min-w-0 flex-1 bg-gradient-to-r from-cyan-600 via-teal-600 to-ocean-700 bg-clip-text font-display text-lg font-extrabold leading-snug text-transparent sm:text-xl lg:text-2xl">
               {p.title}
             </h1>
             <p className="shrink-0 pt-0.5 text-[11px] text-ocean-500 sm:text-xs sm:text-right">
@@ -337,7 +337,7 @@ export default async function BlogPostPage({ params }: Props) {
           />
 
           {featuredImage ? (
-            <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100 bg-ocean-50">
+            <figure className="mx-auto mt-1.5 w-full max-w-md overflow-hidden rounded-md border border-ocean-100 sm:max-w-lg">
               <CmsRemoteImage
                 src={featuredImage}
                 alt={featuredImageAlt}

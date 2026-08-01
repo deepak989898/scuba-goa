@@ -63,7 +63,7 @@ export function BlogTableOfContents({ items }: Props) {
                 }}
                 className={`inline-flex min-h-9 touch-manipulation items-center justify-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition sm:min-h-10 sm:px-4 sm:text-sm ${
                   active
-                    ? "border-amber-400 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/30 ring-2 ring-amber-200/70"
+                    ? "border-teal-400 bg-gradient-to-r from-cyan-500 via-teal-500 to-ocean-600 text-white shadow-md shadow-teal-500/30 ring-2 ring-cyan-200/70"
                     : "border-ocean-200 bg-white text-ocean-800 shadow-sm hover:border-cyan-400 hover:bg-cyan-50 hover:text-cyan-900"
                 }`}
               >

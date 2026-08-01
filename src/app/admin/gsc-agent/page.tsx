@@ -875,12 +875,13 @@ export default function GscIndexingAgentPage() {
                           isEditing ? "bg-ocean-50/40" : ""
                         }`}
                       >
-                        <td className="max-w-[240px] truncate p-2">
+                        <td className="min-w-[220px] max-w-[360px] p-2">
                           <a
                             href={String(u.url)}
                             target="_blank"
                             rel="noreferrer"
-                            className="font-semibold text-cyan-800 hover:underline"
+                            className="break-all font-semibold leading-snug text-cyan-800 hover:underline"
+                            title={String(u.url)}
                           >
                             {String(u.url)}
                           </a>

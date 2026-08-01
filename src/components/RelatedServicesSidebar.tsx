@@ -55,7 +55,7 @@ export function RelatedServicesSidebar({
                 alt={service.title}
                 fill
                 className="object-cover transition duration-500 group-hover:scale-105"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
                 loading="lazy"
               />
               {showScarcity && service.mostBooked ? (

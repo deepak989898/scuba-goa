@@ -126,7 +126,7 @@ export function BlogContent({ content }: { content: string }) {
         <h2
           key={i}
           id={id}
-          className="mt-4 scroll-mt-20 border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-50/80 to-transparent py-0.5 pl-2.5 text-lg font-bold text-ocean-900 first:mt-0 sm:text-xl"
+          className="mt-4 scroll-mt-20 border-l-4 border-teal-500 bg-gradient-to-r from-cyan-600 via-teal-600 to-ocean-700 bg-clip-text py-0.5 pl-2.5 text-lg font-extrabold text-transparent first:mt-0 sm:text-xl"
         >
           {text}
         </h2>,
@@ -141,7 +141,7 @@ export function BlogContent({ content }: { content: string }) {
         <h3
           key={i}
           id={id}
-          className="mt-3 scroll-mt-20 text-base font-bold text-cyan-800 sm:text-lg"
+          className="mt-3 scroll-mt-20 bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-base font-extrabold text-transparent sm:text-lg"
         >
           {text}
         </h3>,
