@@ -4,16 +4,21 @@ Admin module at **`/admin/seo-intelligence`** beside the existing **GSC Indexing
 
 GSC Indexing Agent stays unchanged for index coverage, URL inspection, sitemaps, and ranking text improve.
 
-## What ships in this foundation
+## What ships now
 
-- Overview dashboard (counts + provider status + activity)
+- Overview dashboard (keyword position buckets + competitors + activity)
 - Competitors: manual add, approve/reject/block/pause, SERP discovery
+- **Keyword discovery** from services, blogs, guides, seed topics + modifiers, GSC queries, Google Suggest
+- **Page matching** (correct / related / wrong / missing / cannibalisation)
+- **Keyword clustering** (near-duplicates → one primary)
+- **Ranking refresh** via Serper (bounded) + competitor preview
+- Keyword Rankings / Gap / Content Gap / Opportunities tables + keyword detail
 - Settings: suggestion auto-approve **OFF** by default + granular / dangerous toggles
 - Activity logs
 - SERP provider abstraction (`Serper` via `SERPER_API_KEY` / `SERP_API_KEY`)
 - Additive Firestore collections only (no data deletion)
 
-Placeholder sections (next phases): Keyword Rankings, Keyword Gap, Content Gap, Opportunities, Suggestions, Approval Queue, Applied Changes.
+Still next: Suggestions engine, Approval Queue apply/rollback, cron schedules, impact charts.
 
 ## Safety rules
 
@@ -59,8 +64,20 @@ SEO_MIN_AUTO_APPROVE_CONFIDENCE=85
 - `GET|POST /api/admin/seo-intelligence/competitors`
 - `POST /api/admin/seo-intelligence/competitors/discover`
 - `PATCH|DELETE /api/admin/seo-intelligence/competitors/[id]`
+- `GET /api/admin/seo-intelligence/keywords?view=all|gap|content-gap|opportunities`
+- `POST /api/admin/seo-intelligence/keywords/discover`
+- `POST /api/admin/seo-intelligence/keywords/refresh`
+- `GET /api/admin/seo-intelligence/keywords/[id]`
 
 Auth: Firebase Bearer + `admins/{uid}` (same as other admin APIs).
+
+### Recommended admin flow
+
+1. Add / discover competitors  
+2. **Run keyword discovery** (GSC optional; works from site inventory alone)  
+3. **Refresh rankings** (needs `SERPER_API_KEY`; limited batch)  
+4. Review Keyword Gap / Opportunities  
+5. Keep suggestion auto-approve OFF until apply pipeline ships
 
 ## Cron (later)
 

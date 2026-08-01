@@ -1,10 +1,11 @@
-import { ComingSoonPanel } from "../ComingSoonPanel";
+import { KeywordsView } from "../KeywordsView";
 
 export default function Page() {
   return (
-    <ComingSoonPanel
+    <KeywordsView
+      view="opportunities"
       title="Ranking Opportunities"
-      body="Colour-coded opportunities (positions 4–10, 11–30, missing pages) with estimated improvement potential — never guaranteed rankings."
+      description="Higher opportunity scores (estimated improvement potential only). Ranking impact is not guaranteed and can vary with seasonality and Google updates."
     />
   );
 }

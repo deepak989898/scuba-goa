@@ -1,10 +1,11 @@
-import { ComingSoonPanel } from "../ComingSoonPanel";
+import { KeywordsView } from "../KeywordsView";
 
 export default function Page() {
   return (
-    <ComingSoonPanel
+    <KeywordsView
+      view="content-gap"
       title="Content Gap"
-      body="Detect missing pages, weak pages, and wrong-page rankings without copying competitor content."
+      description="Missing pages, wrong-page rankings, cannibalisation, and related-but-weak matches. Use this to decide create vs optimise — never copy competitor content."
     />
   );
 }

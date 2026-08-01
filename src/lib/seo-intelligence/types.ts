@@ -161,9 +161,24 @@ export type SeoIntelKeyword = {
   businessValueScore: number;
   existingPageId: string | null;
   existingPageUrl: string | null;
+  /** Matched page type when a page exists */
+  existingPageType: SeoIntelContentType | null;
   pageMatchStatus: SeoIntelPageMatchStatus;
+  pageMatchNote: string;
   recommendedContentType: SeoIntelContentType;
   status: "active" | "paused" | "archived";
+  /** Denormalised latest ranking for admin tables */
+  myPosition: number | null;
+  myUrl: string | null;
+  impressions: number | null;
+  clicks: number | null;
+  ctr: number | null;
+  bestCompetitorPosition: number | null;
+  bestCompetitorDomain: string | null;
+  rankingGap: number | null;
+  opportunityScore: number;
+  recommendedAction: string;
+  competitorPreview: SeoIntelCompetitorPosition[];
   discoveredAt: string;
   lastCheckedAt: string | null;
   updatedAt: string;

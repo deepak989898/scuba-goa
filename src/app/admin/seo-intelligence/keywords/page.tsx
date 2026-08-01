@@ -1,10 +1,11 @@
-import { ComingSoonPanel } from "../ComingSoonPanel";
+import { KeywordsView } from "../KeywordsView";
 
 export default function Page() {
   return (
-    <ComingSoonPanel
+    <KeywordsView
+      view="all"
       title="Keyword Rankings"
-      body="Ranking comparison table (your position vs competitors, page match, opportunity score) will land in the next phase. Data will reuse GSC analytics + SERP provider."
+      description="Compare your positions with competitors, page match status, GSC metrics, and recommended actions. Clusters keep near-duplicate keywords on one primary page plan."
     />
   );
 }

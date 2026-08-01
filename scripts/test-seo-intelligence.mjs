@@ -168,4 +168,25 @@ assert.match(nav, /\/admin\/seo-intelligence/);
 const gscDocs = read("docs/GSC-INDEXING-AGENT.md");
 assert.match(gscDocs, /Never.*Indexing API/i);
 
+// Page match + opportunity modules exist
+assert.match(read("src/lib/seo-intelligence/page-match.ts"), /cannibalisation/);
+assert.match(read("src/lib/seo-intelligence/discover-keywords.ts"), /SEED_TOPICS/);
+assert.match(read("src/lib/seo-intelligence/refresh-rankings.ts"), /refreshKeywordRankings/);
+assert.match(
+  read("src/lib/seo-intelligence/opportunity.ts"),
+  /not guaranteed/i,
+);
+
+// Inline page-match style scoring sanity
+function jaccard(a, b) {
+  const A = new Set(a);
+  const B = new Set(b);
+  let inter = 0;
+  for (const t of A) if (B.has(t)) inter += 1;
+  const union = A.size + B.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+assert.ok(jaccard(["scuba", "diving", "goa"], ["scuba", "diving", "baga"]) >= 0.4);
+assert.ok(jaccard(["casino", "goa"], ["scuba", "diving"]) < 0.2);
+
 console.log("seo-intelligence tests passed");

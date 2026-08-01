@@ -1,10 +1,11 @@
-import { ComingSoonPanel } from "../ComingSoonPanel";
+import { KeywordsView } from "../KeywordsView";
 
 export default function Page() {
   return (
-    <ComingSoonPanel
+    <KeywordsView
+      view="gap"
       title="Keyword Gap"
-      body="Keywords competitors rank for that you do not — clustered to avoid duplicate weak pages."
+      description="Keywords where you have no suitable page, or competitors outrank you. Prefer improving one strong page per cluster — do not create duplicate weak pages."
     />
   );
 }

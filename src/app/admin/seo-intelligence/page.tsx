@@ -9,6 +9,14 @@ type Dashboard = {
   provider: { name: string; configured: boolean };
   stats: {
     totalTrackedKeywords: number;
+    position1to3: number;
+    position4to10: number;
+    position11to20: number;
+    position21to50: number;
+    positionBelow50: number;
+    notRanking: number;
+    missingPages: number;
+    cannibalisation: number;
     competitorsTracked: number;
     competitorsPending: number;
     competitorsTotal: number;
@@ -131,24 +139,32 @@ export default function SeoIntelligenceOverviewPage() {
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Tracked keywords" value={s.totalTrackedKeywords} />
+        <StatCard label="Positions 1–3" value={s.position1to3 ?? 0} tone="good" />
+        <StatCard label="Positions 4–10" value={s.position4to10 ?? 0} tone="warn" />
+        <StatCard label="Positions 11–20" value={s.position11to20 ?? 0} />
+        <StatCard label="Positions 21–50" value={s.position21to50 ?? 0} />
+        <StatCard label="Below 50" value={s.positionBelow50 ?? 0} />
+        <StatCard label="Not ranking" value={s.notRanking ?? 0} tone="info" />
+        <StatCard
+          label="Missing pages"
+          value={s.missingPages ?? 0}
+          tone={s.missingPages ? "warn" : "neutral"}
+        />
+        <StatCard
+          label="Cannibalisation"
+          value={s.cannibalisation ?? 0}
+          tone={s.cannibalisation ? "warn" : "neutral"}
+        />
         <StatCard
           label="Competitors tracked"
           value={s.competitorsTracked}
           tone="good"
         />
         <StatCard
-          label="Pending review"
+          label="Pending competitors"
           value={s.competitorsPending}
           tone={s.competitorsPending ? "warn" : "neutral"}
         />
-        <StatCard
-          label="Pending suggestions"
-          value={s.pendingSuggestions}
-          tone="info"
-        />
-        <StatCard label="Direct local" value={s.directLocalCompetitors} />
-        <StatCard label="Marketplace portals" value={s.marketplaceCompetitors} />
-        <StatCard label="Applied changes" value={s.appliedChanges} tone="good" />
         <StatCard
           label="Suggestion auto-approve"
           value={s.autoApproveOn ? "ON" : "OFF"}
@@ -158,8 +174,14 @@ export default function SeoIntelligenceOverviewPage() {
 
       <div className="flex flex-wrap gap-2">
         <Link
-          href="/admin/seo-intelligence/competitors"
+          href="/admin/seo-intelligence/keywords"
           className="rounded-full bg-ocean-800 px-4 py-2 text-xs font-bold text-white"
+        >
+          Keyword rankings
+        </Link>
+        <Link
+          href="/admin/seo-intelligence/competitors"
+          className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-bold text-ocean-800"
         >
           Manage competitors
         </Link>
