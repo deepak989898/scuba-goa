@@ -19,6 +19,71 @@ const STATUS_CLASS: Record<string, string> = {
   applying: "border-cyan-300 bg-cyan-50 text-cyan-900",
 };
 
+/** Colour-coded suggestion type for quick admin scan */
+const TYPE_BADGE: Record<string, { label: string; className: string }> = {
+  update_seo_title: {
+    label: "TITLE",
+    className: "border-violet-400 bg-violet-100 text-violet-900",
+  },
+  improve_h1: {
+    label: "H1",
+    className: "border-violet-400 bg-violet-100 text-violet-900",
+  },
+  update_meta_description: {
+    label: "META",
+    className: "border-sky-400 bg-sky-100 text-sky-900",
+  },
+  add_faqs: {
+    label: "FAQ",
+    className: "border-amber-400 bg-amber-100 text-amber-950",
+  },
+  add_internal_links: {
+    label: "LINKS",
+    className: "border-teal-400 bg-teal-100 text-teal-900",
+  },
+  expand_content: {
+    label: "CONTENT",
+    className: "border-cyan-400 bg-cyan-100 text-cyan-900",
+  },
+  create_blog: {
+    label: "NEW BLOG",
+    className: "border-emerald-400 bg-emerald-100 text-emerald-900",
+  },
+  create_service_page: {
+    label: "NEW SERVICE",
+    className: "border-orange-400 bg-orange-100 text-orange-950",
+  },
+  fix_cannibalisation: {
+    label: "CANNIBAL",
+    className: "border-fuchsia-400 bg-fuchsia-100 text-fuchsia-900",
+  },
+  add_faq_schema: {
+    label: "FAQ SCHEMA",
+    className: "border-amber-400 bg-amber-100 text-amber-950",
+  },
+  improve_ctr: {
+    label: "CTR",
+    className: "border-rose-400 bg-rose-100 text-rose-900",
+  },
+};
+
+const MANUAL_ONLY_TYPES = new Set([
+  "create_service_page",
+  "fix_cannibalisation",
+  "consolidate_pages",
+  "improve_url",
+  "fix_canonical",
+]);
+
+function typeBadge(type: string) {
+  return (
+    TYPE_BADGE[type] ?? {
+      label: type.replace(/_/g, " ").toUpperCase(),
+      className: "border-slate-300 bg-slate-100 text-slate-800",
+    }
+  );
+}
+
 export function SuggestionsPanel({
   mode,
   title,
@@ -94,7 +159,7 @@ export function SuggestionsPanel({
 
   async function decide(
     id: string,
-    decision: "approve" | "reject" | "defer",
+    decision: "reject" | "defer",
   ) {
     setBusy(true);
     setErr(null);
@@ -115,26 +180,56 @@ export function SuggestionsPanel({
     }
   }
 
-  async function apply(id: string) {
-    if (
+  /** One click: Approve → Apply (no second Apply step). */
+  async function approveAndApply(s: SeoIntelSuggestion) {
+    const badge = typeBadge(s.type);
+    const canAutoApply = Boolean(s.proposedPatch) && !MANUAL_ONLY_TYPES.has(s.type);
+
+    if (canAutoApply) {
+      if (
+        !confirm(
+          `Approve & apply this ${badge.label} change for “${s.keyword}”?\n\nTarget: ${s.targetUrl || "—"}\nA rollback snapshot will be saved. Ranking impact is not guaranteed.`,
+        )
+      ) {
+        return;
+      }
+    } else if (
       !confirm(
-        "Apply this change to the live CMS document? A rollback snapshot will be saved. Ranking impact is not guaranteed.",
+        `Approve this ${badge.label} suggestion for “${s.keyword}”?\n\nThis type needs manual CMS work — it will not auto-apply to the live page.`,
       )
     ) {
       return;
     }
+
     setBusy(true);
     setErr(null);
+    setMsg(null);
     try {
+      await seoIntelFetch(`/api/admin/seo-intelligence/suggestions/${s.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision: "approve" }),
+      });
+
+      if (!canAutoApply) {
+        setMsg(
+          `Approved ${badge.label} — apply manually in CMS (not auto-applicable).`,
+        );
+        await load();
+        return;
+      }
+
       await seoIntelFetch(
-        `/api/admin/seo-intelligence/suggestions/${id}/apply`,
+        `/api/admin/seo-intelligence/suggestions/${s.id}/apply`,
         { method: "POST" },
       );
-      setMsg("Applied successfully. Moved to Applied Changes.");
-      setRows((prev) => prev.filter((s) => s.id !== id));
+      setMsg(
+        `Approved & applied ${badge.label} for “${s.keyword}”. Moved to Applied Changes.`,
+      );
+      setRows((prev) => prev.filter((row) => row.id !== s.id));
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Apply failed");
+      setErr(e instanceof Error ? e.message : "Approve/apply failed");
+      await load();
     } finally {
       setBusy(false);
     }
@@ -176,8 +271,9 @@ export function SuggestionsPanel({
         <h2 className="font-display text-lg font-bold text-ocean-900">{title}</h2>
         <p className="mt-0.5 text-sm text-ocean-700">{description}</p>
         <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
-          Ranking impact is not guaranteed. Auto-approve stays OFF unless you
-          enable it in Settings. Dangerous actions never auto-apply by default.
+          Colour badges show suggestion type (TITLE, META, FAQ, LINKS…).{" "}
+          <strong>Approve &amp; Apply</strong> does both in one click. Ranking
+          impact is not guaranteed. Rollback is available under Applied Changes.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -224,19 +320,34 @@ export function SuggestionsPanel({
               className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-ocean-900">{s.keyword}</p>
-                  <p className="text-xs text-ocean-500">
-                    {s.type} · {s.targetUrl || "—"} · conf {s.confidence}% ·{" "}
-                    {s.risk} risk · {s.priority}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(() => {
+                      const tb = typeBadge(s.type);
+                      return (
+                        <span
+                          className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] font-extrabold tracking-wide ${tb.className}`}
+                        >
+                          {tb.label}
+                        </span>
+                      );
+                    })()}
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CLASS[s.status] || STATUS_CLASS.pending_approval}`}
+                    >
+                      {s.status}
+                      {s.autoApproved ? " · auto" : ""}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 font-semibold text-ocean-900">
+                    Keyword:{" "}
+                    <span className="text-cyan-800">{s.keyword}</span>
+                  </p>
+                  <p className="mt-0.5 break-all text-xs text-ocean-500">
+                    {s.targetUrl || "—"} · conf {s.confidence}% · {s.risk} risk ·{" "}
+                    {s.priority}
                   </p>
                 </div>
-                <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CLASS[s.status] || STATUS_CLASS.pending_approval}`}
-                >
-                  {s.status}
-                  {s.autoApproved ? " · auto" : ""}
-                </span>
               </div>
 
               <p className="mt-2 text-sm text-ocean-800">{s.reason}</p>
@@ -314,10 +425,12 @@ export function SuggestionsPanel({
                         <button
                           type="button"
                           disabled={busy}
-                          onClick={() => void decide(s.id, "approve")}
-                          className="rounded bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white"
+                          onClick={() => void approveAndApply(s)}
+                          className="rounded bg-emerald-600 px-2.5 py-1.5 text-[11px] font-extrabold text-white"
                         >
-                          Approve
+                          {s.proposedPatch && !MANUAL_ONLY_TYPES.has(s.type)
+                            ? "Approve & Apply"
+                            : "Approve"}
                         </button>
                         <button
                           type="button"
@@ -337,14 +450,14 @@ export function SuggestionsPanel({
                         </button>
                       </>
                     ) : null}
-                    {["approved", "auto_approved", "edited_by_admin"].includes(
-                      s.status,
-                    ) && s.proposedPatch ? (
+                    {["approved", "auto_approved"].includes(s.status) &&
+                    s.proposedPatch &&
+                    !MANUAL_ONLY_TYPES.has(s.type) ? (
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => void apply(s.id)}
-                        className="rounded bg-cyan-700 px-2.5 py-1 text-[10px] font-bold text-white"
+                        onClick={() => void approveAndApply(s)}
+                        className="rounded bg-cyan-700 px-2.5 py-1.5 text-[11px] font-extrabold text-white"
                       >
                         Apply now
                       </button>

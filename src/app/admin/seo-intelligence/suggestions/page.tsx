@@ -5,7 +5,7 @@ export default function Page() {
     <SuggestionsPanel
       mode="open"
       title="Suggestions"
-      description="Open recommendations only. After Apply succeeds, items leave this list and appear under Applied Changes."
+      description="Colour badges show TITLE / META / FAQ / LINKS / etc. One click Approve & Apply — then the item moves to Applied Changes."
     />
   );
 }

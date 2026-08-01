@@ -5,7 +5,7 @@ export default function Page() {
     <SuggestionsPanel
       mode="queue"
       title="Approval Queue"
-      description="Pending, edited, approved, auto-approved, and deferred suggestions. Apply only after review. New blog drafts stay unpublished until you publish them."
+      description="Review queue: colour type badges + one-click Approve & Apply. New blog drafts stay unpublished until you publish them from Blog posts."
     />
   );
 }
