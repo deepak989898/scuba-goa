@@ -69,7 +69,6 @@ const TYPE_BADGE: Record<string, { label: string; className: string }> = {
 
 const MANUAL_ONLY_TYPES = new Set([
   "create_service_page",
-  "fix_cannibalisation",
   "consolidate_pages",
   "improve_url",
   "fix_canonical",
@@ -82,6 +81,62 @@ function typeBadge(type: string) {
       className: "border-slate-300 bg-slate-100 text-slate-800",
     }
   );
+}
+
+function canAutoApplySuggestion(s: SeoIntelSuggestion): boolean {
+  return Boolean(s.proposedPatch) && !MANUAL_ONLY_TYPES.has(s.type);
+}
+
+function isActionable(s: SeoIntelSuggestion): boolean {
+  return [
+    "pending_approval",
+    "edited_by_admin",
+    "deferred",
+    "approved",
+    "auto_approved",
+  ].includes(s.status);
+}
+
+/** Colour our SERP position for quick admin scan */
+function ourRankStyle(pos: number | null | undefined): {
+  label: string;
+  className: string;
+} {
+  if (pos == null || pos <= 0) {
+    return {
+      label: "Not ranking",
+      className: "font-extrabold text-slate-500",
+    };
+  }
+  const n = Math.round(pos);
+  if (n <= 3) {
+    return {
+      label: `#${n}`,
+      className: "font-extrabold text-emerald-600",
+    };
+  }
+  if (n <= 10) {
+    return {
+      label: `#${n}`,
+      className: "font-extrabold text-teal-600",
+    };
+  }
+  if (n <= 20) {
+    return {
+      label: `#${n}`,
+      className: "font-extrabold text-amber-600",
+    };
+  }
+  if (n <= 50) {
+    return {
+      label: `#${n}`,
+      className: "font-extrabold text-orange-600",
+    };
+  }
+  return {
+    label: `#${n}`,
+    className: "font-extrabold text-rose-600",
+  };
 }
 
 export function SuggestionsPanel({
@@ -98,6 +153,7 @@ export function SuggestionsPanel({
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [rows, setRows] = useState<SeoIntelSuggestion[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editNotes, setEditNotes] = useState("");
@@ -115,11 +171,16 @@ export function SuggestionsPanel({
       const data = await seoIntelFetch(
         `/api/admin/seo-intelligence/suggestions?status=${status}`,
       );
+      const raw = (data.suggestions ?? []) as SeoIntelSuggestion[];
       // Never keep successfully applied items on Suggestions / Approval Queue
-      const list = ((data.suggestions ?? []) as SeoIntelSuggestion[]).filter(
-        (s) => s.status !== "applied" && s.status !== "rolled_back",
-      );
+      const list =
+        mode === "applied"
+          ? raw
+          : raw.filter(
+              (s) => s.status !== "applied" && s.status !== "rolled_back",
+            );
       setRows(list);
+      setSelected(new Set());
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -180,10 +241,39 @@ export function SuggestionsPanel({
     }
   }
 
+  async function runApproveApply(
+    s: SeoIntelSuggestion,
+  ): Promise<{ ok: true; applied: boolean } | { ok: false; error: string }> {
+    const canAutoApply = canAutoApplySuggestion(s);
+    try {
+      if (
+        ["pending_approval", "edited_by_admin", "deferred"].includes(s.status)
+      ) {
+        await seoIntelFetch(`/api/admin/seo-intelligence/suggestions/${s.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ decision: "approve" }),
+        });
+      }
+      if (!canAutoApply) {
+        return { ok: true, applied: false };
+      }
+      await seoIntelFetch(
+        `/api/admin/seo-intelligence/suggestions/${s.id}/apply`,
+        { method: "POST" },
+      );
+      return { ok: true, applied: true };
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Approve/apply failed",
+      };
+    }
+  }
+
   /** One click: Approve → Apply (no second Apply step). */
   async function approveAndApply(s: SeoIntelSuggestion) {
     const badge = typeBadge(s.type);
-    const canAutoApply = Boolean(s.proposedPatch) && !MANUAL_ONLY_TYPES.has(s.type);
+    const canAutoApply = canAutoApplySuggestion(s);
 
     if (canAutoApply) {
       if (
@@ -205,31 +295,131 @@ export function SuggestionsPanel({
     setErr(null);
     setMsg(null);
     try {
-      await seoIntelFetch(`/api/admin/seo-intelligence/suggestions/${s.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ decision: "approve" }),
-      });
-
-      if (!canAutoApply) {
-        setMsg(
-          `Approved ${badge.label} — apply manually in CMS (not auto-applicable).`,
-        );
+      const result = await runApproveApply(s);
+      if (!result.ok) {
+        setErr(result.error);
         await load();
         return;
       }
+      if (!result.applied) {
+        setMsg(
+          `Approved ${badge.label} — apply manually in CMS (not auto-applicable).`,
+        );
+      } else {
+        setMsg(
+          `Approved & applied ${badge.label} for “${s.keyword}”. Moved to Applied Changes.`,
+        );
+        setRows((prev) => prev.filter((row) => row.id !== s.id));
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(s.id);
+          return next;
+        });
+      }
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
 
-      await seoIntelFetch(
-        `/api/admin/seo-intelligence/suggestions/${s.id}/apply`,
-        { method: "POST" },
-      );
-      setMsg(
-        `Approved & applied ${badge.label} for “${s.keyword}”. Moved to Applied Changes.`,
-      );
-      setRows((prev) => prev.filter((row) => row.id !== s.id));
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllActionable() {
+    setSelected(
+      new Set(rows.filter(isActionable).map((s) => s.id)),
+    );
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  async function bulkApproveAndApply() {
+    const picked = rows.filter((s) => selected.has(s.id) && isActionable(s));
+    if (picked.length === 0) {
+      setErr("Select at least one suggestion.");
+      return;
+    }
+    const autoCount = picked.filter(canAutoApplySuggestion).length;
+    const manualCount = picked.length - autoCount;
+    if (
+      !confirm(
+        `Approve & apply ${picked.length} selected suggestion(s)?\n\n` +
+          `• ${autoCount} will apply automatically\n` +
+          `• ${manualCount} manual-only (approve only, no live apply)\n\n` +
+          `Rollback snapshots are saved. Ranking impact is not guaranteed.`,
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    let applied = 0;
+    let approvedOnly = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    const appliedIds: string[] = [];
+
+    for (const s of picked) {
+      const result = await runApproveApply(s);
+      if (!result.ok) {
+        failed += 1;
+        errors.push(`${s.keyword}: ${result.error}`);
+        continue;
+      }
+      if (result.applied) {
+        applied += 1;
+        appliedIds.push(s.id);
+      } else {
+        approvedOnly += 1;
+      }
+    }
+
+    setRows((prev) => prev.filter((r) => !appliedIds.includes(r.id)));
+    setSelected(new Set());
+    setMsg(
+      `Bulk done: ${applied} applied · ${approvedOnly} approved-only · ${failed} failed. Applied items moved to Applied Changes.`,
+    );
+    if (errors.length) {
+      setErr(errors.slice(0, 5).join(" · "));
+    }
+    await load();
+    setBusy(false);
+  }
+
+  async function bulkReject() {
+    const picked = rows.filter((s) => selected.has(s.id));
+    if (picked.length === 0) {
+      setErr("Select at least one suggestion.");
+      return;
+    }
+    if (!confirm(`Reject ${picked.length} selected suggestion(s)?`)) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      for (const s of picked) {
+        await seoIntelFetch(`/api/admin/seo-intelligence/suggestions/${s.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            decision: "reject",
+            rejectionReason: "Bulk rejected by admin",
+          }),
+        });
+      }
+      setMsg(`Rejected ${picked.length} suggestion(s).`);
+      setSelected(new Set());
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Approve/apply failed");
-      await load();
+      setErr(e instanceof Error ? e.message : "Bulk reject failed");
     } finally {
       setBusy(false);
     }
@@ -271,9 +461,9 @@ export function SuggestionsPanel({
         <h2 className="font-display text-lg font-bold text-ocean-900">{title}</h2>
         <p className="mt-0.5 text-sm text-ocean-700">{description}</p>
         <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
-          Colour badges show suggestion type (TITLE, META, FAQ, LINKS…).{" "}
-          <strong>Approve &amp; Apply</strong> does both in one click. Ranking
-          impact is not guaranteed. Rollback is available under Applied Changes.
+          Colour badges show type (TITLE, META, FAQ, LINKS…). Use checkboxes +{" "}
+          <strong>Approve &amp; Apply selected</strong> for bulk. Ranking impact
+          is not guaranteed. Rollback under Applied Changes.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -313,13 +503,73 @@ export function SuggestionsPanel({
           suggestions.
         </p>
       ) : (
-        <ul className="space-y-3">
+        <div className="space-y-3">
+          <div className="sticky top-14 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-ocean-200 bg-white/95 p-2.5 shadow-sm backdrop-blur">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-ocean-800">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-ocean-700"
+                checked={
+                  rows.filter(isActionable).length > 0 &&
+                  rows.filter(isActionable).every((s) => selected.has(s.id))
+                }
+                onChange={(e) => {
+                  if (e.target.checked) selectAllActionable();
+                  else clearSelection();
+                }}
+              />
+              Select all
+            </label>
+            <span className="text-xs text-ocean-500">
+              {selected.size} selected
+            </span>
+            <button
+              type="button"
+              disabled={busy || selected.size === 0}
+              onClick={() => void bulkApproveAndApply()}
+              className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-extrabold text-white disabled:opacity-50"
+            >
+              Approve &amp; Apply selected
+            </button>
+            <button
+              type="button"
+              disabled={busy || selected.size === 0}
+              onClick={() => void bulkReject()}
+              className="rounded-full bg-slate-500 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+            >
+              Reject selected
+            </button>
+            <button
+              type="button"
+              disabled={busy || selected.size === 0}
+              onClick={clearSelection}
+              className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-bold text-ocean-800 disabled:opacity-50"
+            >
+              Clear
+            </button>
+          </div>
+
+          <ul className="space-y-3">
           {rows.map((s) => (
             <li
               key={s.id}
-              className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm"
+              className={`rounded-xl border bg-white p-3 shadow-sm ${
+                selected.has(s.id)
+                  ? "border-emerald-400 ring-1 ring-emerald-200"
+                  : "border-ocean-100"
+              }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="flex flex-wrap items-start gap-2">
+                <label className="mt-0.5 flex shrink-0 cursor-pointer items-start pt-0.5">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-ocean-700"
+                    checked={selected.has(s.id)}
+                    disabled={!isActionable(s) || busy}
+                    onChange={() => toggleSelect(s.id)}
+                    aria-label={`Select ${s.keyword}`}
+                  />
+                </label>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {(() => {
@@ -338,11 +588,54 @@ export function SuggestionsPanel({
                       {s.status}
                       {s.autoApproved ? " · auto" : ""}
                     </span>
+                    {canAutoApplySuggestion(s) ? (
+                      <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800">
+                        AUTO-APPLY OK
+                      </span>
+                    ) : (
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">
+                        MANUAL ONLY
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1.5 font-semibold text-ocean-900">
                     Keyword:{" "}
                     <span className="text-cyan-800">{s.keyword}</span>
                   </p>
+                  {(() => {
+                    const rank = ourRankStyle(s.myPosition);
+                    const compPos =
+                      s.bestCompetitorPosition != null &&
+                      s.bestCompetitorPosition > 0
+                        ? Math.round(s.bestCompetitorPosition)
+                        : null;
+                    return (
+                      <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+                        <span className="text-ocean-600">Our rank:</span>
+                        <span
+                          className={rank.className}
+                          title={
+                            s.myPosition != null && s.myPosition > 0
+                              ? `Current SERP position ${Math.round(s.myPosition)}`
+                              : "No ranking in latest SERP check — run Refresh rankings on Keywords"
+                          }
+                        >
+                          {rank.label}
+                        </span>
+                        {compPos != null ? (
+                          <span className="text-xs text-ocean-500">
+                            · Best comp{" "}
+                            <span className="font-bold text-fuchsia-700">
+                              #{compPos}
+                            </span>
+                            {s.bestCompetitorDomain
+                              ? ` (${s.bestCompetitorDomain.replace(/^www\./, "")})`
+                              : ""}
+                          </span>
+                        ) : null}
+                      </p>
+                    );
+                  })()}
                   <p className="mt-0.5 break-all text-xs text-ocean-500">
                     {s.targetUrl || "—"} · conf {s.confidence}% · {s.risk} risk ·{" "}
                     {s.priority}
@@ -350,13 +643,15 @@ export function SuggestionsPanel({
                 </div>
               </div>
 
-              <p className="mt-2 text-sm text-ocean-800">{s.reason}</p>
-              <p className="mt-1 text-xs text-ocean-600">{s.expectedBenefit}</p>
-              <p className="mt-1 text-xs text-ocean-500">
+              <p className="mt-2 pl-6 text-sm text-ocean-800 sm:pl-0">{s.reason}</p>
+              <p className="mt-1 pl-6 text-xs text-ocean-600 sm:pl-0">
+                {s.expectedBenefit}
+              </p>
+              <p className="mt-1 pl-6 text-xs text-ocean-500 sm:pl-0">
                 Competitors: {s.competitorComparison}
               </p>
 
-              <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              <div className="mt-3 grid gap-2 pl-6 sm:pl-0 lg:grid-cols-2">
                 <div className="rounded-lg border border-ocean-100 bg-ocean-50/50 p-2">
                   <p className="text-[10px] font-bold uppercase text-ocean-500">
                     Current
@@ -396,7 +691,7 @@ export function SuggestionsPanel({
                 <p className="mt-2 text-xs text-red-700">{s.applyError}</p>
               ) : null}
 
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <div className="mt-3 flex flex-wrap gap-1.5 pl-6 sm:pl-0">
                 {editingId === s.id ? (
                   <>
                     <button
@@ -483,7 +778,8 @@ export function SuggestionsPanel({
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
+        </div>
       )}
     </div>
   );

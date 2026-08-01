@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
+import { normaliseKeyword } from "@/lib/seo-intelligence/domain";
+import { listKeywords } from "@/lib/seo-intelligence/keywords-store";
 import { listSuggestions } from "@/lib/seo-intelligence/suggestions-store";
-import type { SeoIntelSuggestionStatus } from "@/lib/seo-intelligence/types";
+import type {
+  SeoIntelSuggestion,
+  SeoIntelSuggestionStatus,
+} from "@/lib/seo-intelligence/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,9 +37,28 @@ export async function GET(req: Request) {
     } else if (statusParam) {
       status = statusParam as SeoIntelSuggestionStatus;
     }
-    const suggestions = await listSuggestions({ status, limit: 300 });
+    const [suggestions, keywords] = await Promise.all([
+      listSuggestions({ status, limit: 300 }),
+      listKeywords({ limit: 5000 }),
+    ]);
+    const byId = new Map(keywords.map((k) => [k.id, k]));
+    const byNorm = new Map(keywords.map((k) => [k.normalisedKeyword, k]));
+
+    const enriched: SeoIntelSuggestion[] = suggestions.map((s) => {
+      const kw =
+        (s.keywordId ? byId.get(s.keywordId) : undefined) ||
+        byNorm.get(normaliseKeyword(s.keyword));
+      if (!kw) return s;
+      return {
+        ...s,
+        myPosition: kw.myPosition ?? null,
+        bestCompetitorPosition: kw.bestCompetitorPosition ?? null,
+        bestCompetitorDomain: kw.bestCompetitorDomain ?? null,
+      };
+    });
+
     return NextResponse.json({
-      suggestions,
+      suggestions: enriched,
       disclaimer:
         "Ranking impact is not guaranteed. Review every suggestion before apply.",
     });

@@ -3,9 +3,12 @@ import { appendSeoIntelLog } from "./activity-log";
 import { canAutoApproveSuggestion } from "./settings";
 import { getSeoIntelSettings } from "./settings";
 import { listKeywords } from "./keywords-store";
+import { buildSitePageCorpus, type SitePageRef } from "./page-corpus";
+import { matchKeywordToPages } from "./page-match";
 import {
   createSuggestion,
   countAppliedToday,
+  findOpenSuggestion,
   hasSimilarOpenSuggestion,
   saveSuggestion,
 } from "./suggestions-store";
@@ -87,7 +90,24 @@ type Draft = Omit<
   "id" | "createdAt" | "updatedAt" | "status" | "autoApproved"
 > & { status?: SeoIntelSuggestion["status"] };
 
-function draftsForKeyword(kw: SeoIntelKeyword): Draft[] {
+function pickCannibalPrimary(
+  matchUrl: string | null,
+  competing: string[],
+): string {
+  const all = [...new Set([matchUrl, ...competing].filter(Boolean))] as string[];
+  const service = all.find((u) => u.startsWith("/services/"));
+  if (service) return service;
+  const blog = all.find((u) => u.startsWith("/blog/"));
+  if (blog) return blog;
+  const guide = all.find((u) => u.startsWith("/guides/"));
+  if (guide) return guide;
+  return matchUrl || all[0] || "";
+}
+
+function draftsForKeyword(
+  kw: SeoIntelKeyword,
+  corpus: SitePageRef[],
+): Draft[] {
   const target = parseTarget(kw);
   const comps =
     (kw.competitorPreview ?? [])
@@ -182,23 +202,50 @@ function draftsForKeyword(kw: SeoIntelKeyword): Draft[] {
   }
 
   if (kw.pageMatchStatus === "cannibalisation") {
+    const rematch = matchKeywordToPages(kw.keyword, corpus, {
+      preferType: kw.recommendedContentType,
+      rankingUrl: kw.myUrl,
+    });
+    const competing = rematch.competingUrls.length
+      ? rematch.competingUrls
+      : [kw.existingPageUrl, kw.myUrl].filter(Boolean) as string[];
+    const primaryUrl = pickCannibalPrimary(
+      rematch.pageUrl || kw.existingPageUrl,
+      competing,
+    );
+    const linkFromPaths = competing.filter(
+      (u) =>
+        u &&
+        u !== primaryUrl &&
+        (u.startsWith("/blog/") || u.startsWith("/guides/")),
+    );
+    const linkBlock = `\n\n### Related experience\nLooking for **${kw.keyword}**? See our main page: [${primaryUrl}](${primaryUrl})\n`;
+
     out.push({
       ...base,
-      targetUrl: kw.existingPageUrl || kw.myUrl || "",
+      targetUrl: primaryUrl || kw.existingPageUrl || kw.myUrl || "",
       targetCollection: target.collection,
       targetDocId: target.docId,
       pageType: target.pageType,
       type: "fix_cannibalisation",
-      currentValue: kw.pageMatchNote,
-      proposedValue:
-        "Keep one primary URL; consolidate overlapping pages with internal links. Do not delete ranking pages automatically.",
-      proposedPatch: null,
-      reason: "Multiple pages compete for this keyword.",
-      risk: "high",
+      currentValue: `${kw.pageMatchNote}\nCompeting: ${competing.join(", ")}`,
+      proposedValue: linkFromPaths.length
+        ? `Primary page: ${primaryUrl}\nAuto-add internal links FROM:\n${linkFromPaths.map((p) => `- ${p}`).join("\n")}\n\nNo pages will be deleted.`
+        : `Primary page: ${primaryUrl}\nNo editable blog/guide competitors found to link from (service-only cluster).`,
+      proposedPatch: {
+        mode: "cannibal_internal_links",
+        primaryUrl,
+        keyword: kw.keyword,
+        linkFromPaths,
+        appendMarkdown: linkBlock,
+      },
+      reason:
+        "Multiple pages compete for this keyword. Approve & Apply adds links from competing blogs/guides to the primary URL. Pages are never deleted.",
+      risk: "medium",
       priority: "high",
       confidence: 70,
-      changeScope: "manual_review",
-      rollbackAvailable: false,
+      changeScope: "cannibal_internal_links",
+      rollbackAvailable: true,
     });
   }
 
@@ -363,7 +410,10 @@ export async function generateSuggestions(opts?: {
 }> {
   const actor = opts?.actor ?? "system";
   const settings = await getSeoIntelSettings();
-  const keywords = await listKeywords({ status: "active" });
+  const [keywords, corpus] = await Promise.all([
+    listKeywords({ status: "active" }),
+    buildSitePageCorpus(),
+  ]);
   const targets = [...keywords]
     .sort((a, b) => (b.opportunityScore ?? 0) - (a.opportunityScore ?? 0))
     .slice(0, opts?.limitKeywords ?? 40);
@@ -375,9 +425,29 @@ export async function generateSuggestions(opts?: {
   let appliedToday = await countAppliedToday();
 
   for (const kw of targets) {
-    const drafts = draftsForKeyword(kw);
+    const drafts = draftsForKeyword(kw, corpus);
     for (const draft of drafts) {
       try {
+        // Upgrade old cannibal suggestions that had no auto-apply patch
+        if (draft.type === "fix_cannibalisation" && draft.proposedPatch) {
+          const existingCannibal = await findOpenSuggestion({
+            keywordId: draft.keywordId,
+            type: "fix_cannibalisation",
+          });
+          if (existingCannibal && !existingCannibal.proposedPatch) {
+            await saveSuggestion({
+              ...existingCannibal,
+              ...draft,
+              id: existingCannibal.id,
+              status: "pending_approval",
+              autoApproved: false,
+              createdAt: existingCannibal.createdAt,
+            });
+            created += 1;
+            continue;
+          }
+        }
+
         const similar = await hasSimilarOpenSuggestion({
           keywordId: draft.keywordId,
           type: draft.type,

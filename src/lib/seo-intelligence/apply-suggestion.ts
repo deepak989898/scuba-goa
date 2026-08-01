@@ -23,11 +23,11 @@ const APPLYABLE = new Set([
   "add_internal_links",
   "expand_content",
   "create_blog",
+  "fix_cannibalisation",
 ]);
 
 const MANUAL_ONLY = new Set([
   "create_service_page",
-  "fix_cannibalisation",
   "consolidate_pages",
   "improve_url",
   "fix_canonical",
@@ -127,6 +127,19 @@ export async function applySuggestion(input: {
   try {
     if (suggestion.type === "create_blog") {
       const result = await applyCreateBlogDraft(suggestion);
+      if (!result.ok) {
+        await saveSuggestion({
+          ...suggestion,
+          status: "failed",
+          applyError: result.error,
+        });
+        return result;
+      }
+      return { ok: true, suggestion: result.suggestion };
+    }
+
+    if (suggestion.type === "fix_cannibalisation") {
+      const result = await applyCannibalInternalLinks(suggestion, input.actor);
       if (!result.ok) {
         await saveSuggestion({
           ...suggestion,
@@ -323,6 +336,205 @@ export async function applySuggestion(input: {
   }
 }
 
+function parseContentPath(path: string): {
+  collection: "blogPosts" | "seoPages";
+  docId: string;
+} | null {
+  const p = path.replace(/^https?:\/\/[^/]+/i, "").split("?")[0];
+  if (p.startsWith("/blog/")) {
+    const docId = p.slice("/blog/".length).replace(/\/$/, "");
+    return docId ? { collection: "blogPosts", docId } : null;
+  }
+  if (p.startsWith("/guides/")) {
+    const docId = p.slice("/guides/".length).replace(/\/$/, "");
+    return docId ? { collection: "seoPages", docId } : null;
+  }
+  return null;
+}
+
+/**
+ * Cannibalisation fix: append primary-page links on competing blogs/guides.
+ * Never deletes pages. Service pages are link targets only (not rewritten).
+ */
+async function applyCannibalInternalLinks(
+  suggestion: SeoIntelSuggestion,
+  actor: string,
+): Promise<
+  | { ok: true; suggestion: SeoIntelSuggestion }
+  | { ok: false; error: string }
+> {
+  const db = getAdminDb();
+  if (!db) return { ok: false, error: "Server not configured" };
+
+  const patch = suggestion.proposedPatch || {};
+  const primaryUrl = String(patch.primaryUrl || suggestion.targetUrl || "").trim();
+  const linkFromPaths = Array.isArray(patch.linkFromPaths)
+    ? (patch.linkFromPaths as string[]).filter(Boolean)
+    : [];
+  const appendMarkdown = String(
+    patch.appendMarkdown ||
+      `\n\n### Related experience\nSee: [${primaryUrl}](${primaryUrl})\n`,
+  );
+
+  if (!primaryUrl) {
+    return { ok: false, error: "Missing primary URL for cannibalisation fix" };
+  }
+  if (linkFromPaths.length === 0) {
+    return {
+      ok: false,
+      error:
+        "No competing blog/guide pages to update. Primary may already be the only editable page — handle service clusters manually if needed.",
+    };
+  }
+
+  const now = new Date().toISOString();
+  const docsBefore: {
+    collection: "blogPosts" | "seoPages";
+    docId: string;
+    before: Record<string, unknown>;
+  }[] = [];
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  for (const path of linkFromPaths) {
+    const parsed = parseContentPath(path);
+    if (!parsed) {
+      skippedCount += 1;
+      continue;
+    }
+    const snap = await db.collection(parsed.collection).doc(parsed.docId).get();
+    if (!snap.exists) {
+      skippedCount += 1;
+      continue;
+    }
+    const before = (snap.data() || {}) as Record<string, unknown>;
+
+    if (parsed.collection === "blogPosts") {
+      const post = parseBlogPostFromFirestore(parsed.docId, before, {
+        requirePublished: false,
+      });
+      if (!post) {
+        skippedCount += 1;
+        continue;
+      }
+      if (post.content.includes(primaryUrl)) {
+        skippedCount += 1;
+        continue;
+      }
+      docsBefore.push({
+        collection: parsed.collection,
+        docId: parsed.docId,
+        before: stripUndefinedDeep(before) as Record<string, unknown>,
+      });
+      const content = `${post.content.trim()}\n${appendMarkdown}`;
+      const next: BlogPostFirestore = {
+        ...post,
+        content,
+        readTime: estimateReadTime(content),
+        updatedAt: now,
+      };
+      const payload = blogPostToFirestorePayload(next);
+      delete (payload as { published?: unknown }).published;
+      delete (payload as { slug?: unknown }).slug;
+      await db
+        .collection("blogPosts")
+        .doc(parsed.docId)
+        .set(stripUndefinedDeep(payload), { merge: true });
+      revalidatePath(`/blog/${parsed.docId}`);
+      updatedCount += 1;
+    } else {
+      const page = parseSeoPageFromFirestore(parsed.docId, before, {
+        requirePublished: false,
+      });
+      if (!page) {
+        skippedCount += 1;
+        continue;
+      }
+      if (page.bodyContent.includes(primaryUrl)) {
+        skippedCount += 1;
+        continue;
+      }
+      docsBefore.push({
+        collection: parsed.collection,
+        docId: parsed.docId,
+        before: stripUndefinedDeep(before) as Record<string, unknown>,
+      });
+      const bodyContent = `${page.bodyContent.trim()}\n${appendMarkdown}`;
+      const payload = seoPageToFirestorePayload({
+        ...page,
+        bodyContent,
+        updatedAt: now,
+      });
+      delete (payload as { bookingOption?: unknown }).bookingOption;
+      delete (payload as { published?: unknown }).published;
+      delete (payload as { slug?: unknown }).slug;
+      await db
+        .collection("seoPages")
+        .doc(parsed.docId)
+        .set(stripUndefinedDeep(payload), { merge: true });
+      revalidatePath(`/guides/${parsed.docId}`);
+      updatedCount += 1;
+    }
+  }
+
+  if (updatedCount === 0) {
+    return {
+      ok: false,
+      error:
+        skippedCount > 0
+          ? "All competing pages already link to the primary URL (or were not editable)."
+          : "Nothing to update",
+    };
+  }
+
+  revalidatePath("/blog");
+  revalidatePath("/guides");
+
+  const versionId = `cv_${suggestion.id}_${Date.now()}`;
+  const first = docsBefore[0];
+  await saveChangeVersion({
+    id: versionId,
+    pageId: `multi:${updatedCount}`,
+    suggestionId: suggestion.id,
+    collection: first?.collection || "blogPosts",
+    docId: first?.docId || "multi",
+    beforeSnapshot: { docs: docsBefore.length },
+    afterSnapshot: {
+      primaryUrl,
+      updatedCount,
+      paths: linkFromPaths,
+    },
+    status: "applied",
+    rollbackData: {
+      multi: true,
+      docs: docsBefore,
+    },
+    createdAt: now,
+    rolledBackAt: null,
+  });
+
+  const updated = await saveSuggestion({
+    ...suggestion,
+    status: "applied",
+    appliedAt: now,
+    changeVersionId: versionId,
+    rollbackAvailable: true,
+    applyError: null,
+    adminNotes: `${suggestion.adminNotes || ""}\nCannibal fix: linked ${updatedCount} page(s) → ${primaryUrl} (skipped ${skippedCount}). No deletes.`.trim(),
+  });
+
+  await appendSeoIntelLog({
+    action: "suggestions.apply",
+    entityType: "suggestion",
+    entityId: suggestion.id,
+    actor,
+    details: `Cannibal links: ${updatedCount} pages → ${primaryUrl}`,
+    result: "ok",
+  });
+
+  return { ok: true, suggestion: updated };
+}
+
 async function applyCreateBlogDraft(
   suggestion: SeoIntelSuggestion,
 ): Promise<
@@ -430,28 +642,48 @@ export async function rollbackSuggestionChange(input: {
   const db = getAdminDb();
   if (!db) return { ok: false, error: "Server not configured" };
 
-  const createdFlag = Boolean(
-    (version.rollbackData as { created?: boolean } | null)?.created,
-  );
+  const rb = version.rollbackData as {
+    created?: boolean;
+    multi?: boolean;
+    docs?: {
+      collection: "blogPosts" | "seoPages";
+      docId: string;
+      before: Record<string, unknown>;
+    }[];
+  } | null;
+  const createdFlag = Boolean(rb?.created);
 
   try {
     if (createdFlag) {
       await db.collection(version.collection).doc(version.docId).delete();
+    } else if (rb?.multi && Array.isArray(rb.docs)) {
+      for (const doc of rb.docs) {
+        await db
+          .collection(doc.collection)
+          .doc(doc.docId)
+          .set(stripUndefinedDeep(doc.before), { merge: false });
+        if (doc.collection === "blogPosts") {
+          revalidatePath(`/blog/${doc.docId}`);
+        } else {
+          revalidatePath(`/guides/${doc.docId}`);
+        }
+      }
+      revalidatePath("/blog");
+      revalidatePath("/guides");
     } else if (version.rollbackData && Object.keys(version.rollbackData).length) {
       await db
         .collection(version.collection)
         .doc(version.docId)
         .set(stripUndefinedDeep(version.rollbackData), { merge: false });
+      if (version.collection === "blogPosts") {
+        revalidatePath(`/blog/${version.docId}`);
+        revalidatePath("/blog");
+      } else {
+        revalidatePath(`/guides/${version.docId}`);
+        revalidatePath("/guides");
+      }
     } else {
       return { ok: false, error: "No rollback data" };
-    }
-
-    if (version.collection === "blogPosts") {
-      revalidatePath(`/blog/${version.docId}`);
-      revalidatePath("/blog");
-    } else {
-      revalidatePath(`/guides/${version.docId}`);
-      revalidatePath("/guides");
     }
 
     await saveChangeVersion({

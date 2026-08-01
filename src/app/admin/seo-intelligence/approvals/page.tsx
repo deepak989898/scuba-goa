@@ -5,7 +5,7 @@ export default function Page() {
     <SuggestionsPanel
       mode="queue"
       title="Approval Queue"
-      description="Review queue: colour type badges + one-click Approve & Apply. New blog drafts stay unpublished until you publish them from Blog posts."
+      description="Select one or many → Approve & Apply selected. Colour type badges. New blog drafts stay unpublished until you publish them from Blog posts."
     />
   );
 }

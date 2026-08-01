@@ -5,7 +5,7 @@ export default function Page() {
     <SuggestionsPanel
       mode="open"
       title="Suggestions"
-      description="Colour badges show TITLE / META / FAQ / LINKS / etc. One click Approve & Apply — then the item moves to Applied Changes."
+      description="Each card shows Our rank in colour (#1–3 green … not ranking grey). Select one or many → Approve & Apply selected. Applied items move to Applied Changes."
     />
   );
 }

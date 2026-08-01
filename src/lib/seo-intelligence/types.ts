@@ -242,6 +242,10 @@ export type SeoIntelSuggestion = {
   approvedAt: string | null;
   appliedAt: string | null;
   updatedAt: string;
+  /** Live rank from keyword store (list enrichment; may not be persisted) */
+  myPosition?: number | null;
+  bestCompetitorPosition?: number | null;
+  bestCompetitorDomain?: string | null;
 };
 
 export type SeoIntelChangeVersion = {

@@ -84,6 +84,30 @@ export async function createSuggestion(
   return row;
 }
 
+/** Find an open suggestion matching keyword+type (any target URL). */
+export async function findOpenSuggestion(input: {
+  keywordId: string | null;
+  type: string;
+}): Promise<SeoIntelSuggestion | null> {
+  const rows = await listSuggestions({
+    status: [
+      "pending_approval",
+      "approved",
+      "auto_approved",
+      "edited_by_admin",
+      "deferred",
+      "applying",
+    ],
+  });
+  return (
+    rows.find(
+      (r) =>
+        r.type === input.type &&
+        (r.keywordId || "") === (input.keywordId || ""),
+    ) ?? null
+  );
+}
+
 /** Avoid regenerating an identical pending/rejected suggestion. */
 export async function hasSimilarOpenSuggestion(input: {
   keywordId: string | null;
@@ -105,7 +129,10 @@ export async function hasSimilarOpenSuggestion(input: {
   return rows.some((r) => {
     if (r.type !== input.type) return false;
     if ((r.keywordId || "") !== (input.keywordId || "")) return false;
-    if ((r.targetUrl || "") !== (input.targetUrl || "")) return false;
+    // Same keyword+type is enough for cannibal (target URL may change to primary)
+    if (input.type !== "fix_cannibalisation") {
+      if ((r.targetUrl || "") !== (input.targetUrl || "")) return false;
+    }
     if (r.status === "rejected") {
       const t = Date.parse(r.updatedAt || r.createdAt || "");
       return Number.isFinite(t) && t >= recentRejectCutoff;
