@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { getAllPermanentRedirects } from "./src/lib/blog-redirects";
+import { securityHeaderPairs } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   // Tree-shake heavy packages so homepage bundles pull fewer unused modules.
@@ -19,7 +20,13 @@ const nextConfig: NextConfig = {
     }));
   },
   async headers() {
+    const security = securityHeaderPairs({ includeCorsOrigin: true });
     return [
+      {
+        // Site-wide hardening (CSP, clickjacking, MIME sniff, CORS not *)
+        source: "/:path*",
+        headers: security,
+      },
       {
         source: "/sw.js",
         headers: [

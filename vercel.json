@@ -8,5 +8,23 @@
       "path": "/api/cron/gsc-indexing-agent",
       "schedule": "30 5 * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/phpinfo.php",
+      "destination": "/api/security/not-found"
+    },
+    {
+      "source": "/wp-config.php.bak",
+      "destination": "/api/security/not-found"
+    },
+    {
+      "source": "/.env",
+      "destination": "/api/security/not-found"
+    },
+    {
+      "source": "/.git/config",
+      "destination": "/api/security/not-found"
+    }
   ]
 }
