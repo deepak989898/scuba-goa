@@ -337,12 +337,12 @@ export default async function BlogPostPage({ params }: Props) {
           />
 
           {featuredImage ? (
-            <figure className="mx-auto mt-1.5 w-full max-w-md overflow-hidden rounded-md border border-ocean-100 sm:max-w-lg">
+            <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100">
               <CmsRemoteImage
                 src={featuredImage}
                 alt={featuredImageAlt}
                 showFull
-                className="block"
+                className="block h-auto w-full"
                 priority
               />
             </figure>
