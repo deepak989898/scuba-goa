@@ -126,9 +126,14 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setErr(null);
+  /**
+   * silent: refresh lists without flipping `loading` (keeps editor mounted /
+   * scroll position after image upload or save).
+   */
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
+    if (!silent) setLoading(true);
+    if (!silent) setErr(null);
     try {
       const [s, q, p] = await Promise.all([
         adminFetch("/api/admin/blog-automation"),
@@ -139,9 +144,15 @@ export default function AdminBlogAutomationPage() {
       setQueue(q.items ?? []);
       const loadedPosts = (p.posts ?? []) as BlogPostFirestore[];
       setPosts(loadedPosts);
-      await loadBlogTraffic();
+      // Keep the open editor on the same post with fresh server fields
+      setEditing((current) => {
+        if (!current) return current;
+        const match = loadedPosts.find((post) => post.slug === current.slug);
+        return match ?? current;
+      });
+      await loadBlogTraffic({ silent: true });
 
-      if (typeof window !== "undefined") {
+      if (!silent && typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);
         const editSlug = params.get("edit")?.trim();
         if (editSlug) {
@@ -164,7 +175,7 @@ export default function AdminBlogAutomationPage() {
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [loadBlogTraffic]);
 
@@ -180,6 +191,33 @@ export default function AdminBlogAutomationPage() {
       return b.updatedAt.localeCompare(a.updatedAt);
     });
   }, [posts, blogTrafficBySlug]);
+
+  /** Freeze row order while editing so save/publish doesn't reshuffle the open editor. */
+  const [frozenEditOrder, setFrozenEditOrder] = useState<string[] | null>(null);
+
+  const displayPosts = useMemo(() => {
+    if (!editing || !frozenEditOrder?.length) return sortedPosts;
+    const bySlug = new Map(posts.map((p) => [p.slug, p]));
+    const out: BlogPostFirestore[] = [];
+    for (const slug of frozenEditOrder) {
+      const p = bySlug.get(slug);
+      if (p) out.push(p);
+    }
+    for (const p of posts) {
+      if (!frozenEditOrder.includes(p.slug)) out.push(p);
+    }
+    return out;
+  }, [editing, frozenEditOrder, posts, sortedPosts]);
+
+  function beginEdit(post: BlogPostFirestore) {
+    setFrozenEditOrder(sortedPosts.map((p) => p.slug));
+    setEditing(post);
+  }
+
+  function cancelEdit() {
+    setEditing(null);
+    setFrozenEditOrder(null);
+  }
 
   /** Slot dropdown options when editing posts (includes calendar-friendly times). */
   const publishSlotOptions = useMemo(() => {
@@ -342,7 +380,13 @@ export default function AdminBlogAutomationPage() {
       await adminFetch(`/api/admin/blog-posts?slug=${encodeURIComponent(slug)}`, {
         method: "DELETE",
       });
-      setEditing((e) => (e?.slug === slug ? null : e));
+      setEditing((e) => {
+        if (e?.slug === slug) {
+          setFrozenEditOrder(null);
+          return null;
+        }
+        return e;
+      });
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Delete failed");
@@ -353,7 +397,10 @@ export default function AdminBlogAutomationPage() {
 
   async function saveEditedPost(opts?: { publishNow?: boolean }) {
     if (!editing) return;
-    setBusy(`save-${editing.slug}`);
+    const slug = editing.slug;
+    const scrollY =
+      typeof window !== "undefined" ? window.scrollY : 0;
+    setBusy(`save-${slug}`);
     setErr(null);
     try {
       await adminFetch("/api/admin/blog-posts", {
@@ -368,11 +415,14 @@ export default function AdminBlogAutomationPage() {
       });
       setOkMsg(
         opts?.publishNow
-          ? `Published /blog/${editing.slug}`
-          : `Saved /blog/${editing.slug}`,
+          ? `Saved & published /blog/${slug} — editor stays open.`
+          : `Saved /blog/${slug}`,
       );
-      setEditing(null);
-      await refresh();
+      // Stay on the same editor; silent refresh avoids jump-to-top remount
+      await refresh({ silent: true });
+      if (typeof window !== "undefined") {
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -388,9 +438,8 @@ export default function AdminBlogAutomationPage() {
         method: "PATCH",
         body: JSON.stringify({ slug, publishNow: true }),
       });
-      setOkMsg(`Published /blog/${slug}`);
-      setEditing((e) => (e?.slug === slug ? null : e));
-      await refresh();
+      setOkMsg(`Published /blog/${slug} — editor stays open.`);
+      await refresh({ silent: true });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Publish failed");
     } finally {
@@ -439,9 +488,15 @@ export default function AdminBlogAutomationPage() {
           : `Bulk ${action}: ${okN} ok, ${failN} failed.`,
       );
       if (action === "delete") {
-        setEditing((e) => (e && slugs.includes(e.slug) ? null : e));
+        setEditing((e) => {
+          if (e && slugs.includes(e.slug)) {
+            setFrozenEditOrder(null);
+            return null;
+          }
+          return e;
+        });
       }
-      await refresh();
+      await refresh({ silent: Boolean(editing) });
       return okN > 0;
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Bulk action failed");
@@ -503,6 +558,8 @@ export default function AdminBlogAutomationPage() {
 
   async function uploadBlogImage(file: File | null) {
     if (!file || !editing) return;
+    const scrollY =
+      typeof window !== "undefined" ? window.scrollY : 0;
     setBusy(`img-${editing.slug}`);
     setErr(null);
     try {
@@ -517,19 +574,37 @@ export default function AdminBlogAutomationPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      const featuredImageUrl =
+        (data.featuredImageUrl as string | undefined) ?? undefined;
+      const ogImageUrl =
+        (data.ogImageUrl as string | undefined) ?? featuredImageUrl;
       setEditing((e) =>
         e
           ? {
               ...e,
-              featuredImageUrl: data.featuredImageUrl ?? e.featuredImageUrl,
-              ogImageUrl: data.ogImageUrl ?? data.featuredImageUrl ?? e.ogImageUrl,
+              featuredImageUrl: featuredImageUrl ?? e.featuredImageUrl,
+              ogImageUrl: ogImageUrl ?? e.ogImageUrl,
             }
           : e,
       );
-      setOkMsg(
-        "New image uploaded and saved to the live blog. Hard-refresh the public page if you still see the old photo.",
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.slug === editing.slug
+            ? {
+                ...p,
+                featuredImageUrl: featuredImageUrl ?? p.featuredImageUrl,
+                ogImageUrl: ogImageUrl ?? p.ogImageUrl,
+              }
+            : p,
+        ),
       );
-      await refresh();
+      setOkMsg(
+        "Image uploaded. You can keep editing — page stays here.",
+      );
+      await refresh({ silent: true });
+      if (typeof window !== "undefined") {
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Image upload failed");
     } finally {
@@ -563,6 +638,8 @@ export default function AdminBlogAutomationPage() {
       );
     }, 400);
 
+    const scrollY =
+      typeof window !== "undefined" ? window.scrollY : 0;
     try {
       const data = await adminFetch("/api/admin/blog-image-generate", {
         method: "POST",
@@ -586,9 +663,12 @@ export default function AdminBlogAutomationPage() {
           : e,
       );
       setOkMsg(
-        "AI image generated from the title, saved as WebP with top-left logo, and applied to the live blog.",
+        "AI image saved. You can keep editing — page stays here.",
       );
-      await refresh();
+      await refresh({ silent: true });
+      if (typeof window !== "undefined") {
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      }
       window.setTimeout(() => setAiImageProgress(null), 900);
     } catch (e) {
       window.clearInterval(tick);
@@ -931,11 +1011,11 @@ export default function AdminBlogAutomationPage() {
           <StaticCodeBlogsPanel
             adminFetch={adminFetch}
             onEdit={(post) => {
-              setEditing(post);
+              beginEdit(post);
               window.setTimeout(() => {
                 document
-                  .querySelector("[data-blog-editor-panel]")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  .getElementById(`blog-editor-${post.slug}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
               }, 150);
             }}
             busy={busy}
@@ -950,15 +1030,15 @@ export default function AdminBlogAutomationPage() {
           <div data-blog-editor-panel>
           <BlogPostsTable
             posts={posts}
-            sortedPosts={sortedPosts}
+            sortedPosts={displayPosts}
             publishSlots={publishSlotOptions}
             blogTrafficBySlug={blogTrafficBySlug}
             blogIndexTraffic={blogIndexTraffic}
             trafficLoading={trafficLoading}
             editing={editing}
             busy={busy}
-            onEdit={setEditing}
-            onCancelEdit={() => setEditing(null)}
+            onEdit={beginEdit}
+            onCancelEdit={cancelEdit}
             onChangeEditing={setEditing}
             onSave={(opts) => void saveEditedPost(opts)}
             onPublishNow={(slug) => void publishPostNow(slug)}

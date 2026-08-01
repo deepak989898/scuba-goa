@@ -189,7 +189,11 @@ export function BlogPostEditorPanel({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={editing.featuredImageUrl}
+                  src={
+                    editing.featuredImageUrl.includes("?")
+                      ? `${editing.featuredImageUrl}&v=${encodeURIComponent(editing.updatedAt || "")}`
+                      : `${editing.featuredImageUrl}?v=${encodeURIComponent(editing.updatedAt || "")}`
+                  }
                   alt={editing.featuredImageAlt || editing.title}
                   className="h-full w-full object-cover"
                 />
@@ -224,7 +228,11 @@ export function BlogPostEditorPanel({
                 busy === `img-${editing.slug}` ||
                 busy === `ai-img-${editing.slug}`
               }
-              onChange={(e) => onUploadImage(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                onUploadImage(e.target.files?.[0] ?? null);
+                // Allow re-selecting the same file later
+                e.target.value = "";
+              }}
             />
             <button
               type="button"

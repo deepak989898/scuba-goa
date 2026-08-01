@@ -385,7 +385,10 @@ export function BlogPostsTable({
                     </td>
                   </tr>
                   {editing?.slug === p.slug ? (
-                    <tr className="bg-ocean-50/50">
+                    <tr
+                      id={`blog-editor-${p.slug}`}
+                      className="bg-ocean-50/50"
+                    >
                       <td colSpan={9} className="p-4">
                         <BlogPostEditorPanel
                           editing={editing}
