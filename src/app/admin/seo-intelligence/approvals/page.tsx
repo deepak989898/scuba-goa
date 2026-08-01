@@ -1,10 +1,11 @@
-import { ComingSoonPanel } from "../ComingSoonPanel";
+import { SuggestionsPanel } from "../SuggestionsPanel";
 
 export default function Page() {
   return (
-    <ComingSoonPanel
+    <SuggestionsPanel
+      mode="queue"
       title="Approval Queue"
-      body="Approve, edit, reject, defer, or regenerate every suggestion. Default path is manual approval (auto-approve OFF)."
+      description="Pending, edited, approved, auto-approved, and deferred suggestions. Apply only after review. New blog drafts stay unpublished until you publish them."
     />
   );
 }

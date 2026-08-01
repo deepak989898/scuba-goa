@@ -18,7 +18,7 @@ GSC Indexing Agent stays unchanged for index coverage, URL inspection, sitemaps,
 - SERP provider abstraction (`Serper` via `SERPER_API_KEY` / `SERP_API_KEY`)
 - Additive Firestore collections only (no data deletion)
 
-Still next: Suggestions engine, Approval Queue apply/rollback, cron schedules, impact charts.
+Still later (optional): cron schedules, SERP impact charts, richer OpenAI rewrite per suggestion.
 
 ## Safety rules
 
@@ -68,16 +68,38 @@ SEO_MIN_AUTO_APPROVE_CONFIDENCE=85
 - `POST /api/admin/seo-intelligence/keywords/discover`
 - `POST /api/admin/seo-intelligence/keywords/refresh`
 - `GET /api/admin/seo-intelligence/keywords/[id]`
+- `GET /api/admin/seo-intelligence/suggestions`
+- `POST /api/admin/seo-intelligence/suggestions/generate`
+- `GET|PATCH /api/admin/seo-intelligence/suggestions/[id]`
+- `POST /api/admin/seo-intelligence/suggestions/[id]/apply`
+- `GET /api/admin/seo-intelligence/changes`
+- `POST /api/admin/seo-intelligence/changes/[id]/rollback`
 
 Auth: Firebase Bearer + `admins/{uid}` (same as other admin APIs).
+
+### Suggestion apply safety
+
+**Can apply (with snapshot + rollback):**
+- Title / meta description / H1
+- FAQ merge (blogs)
+- Internal link append
+- Create **unpublished** blog draft (`published: false`)
+
+**Manual only (never auto-applied):**
+- New service pages
+- Cannibalisation consolidation
+- URL / redirect / canonical changes
 
 ### Recommended admin flow
 
 1. Add / discover competitors  
-2. **Run keyword discovery** (GSC optional; works from site inventory alone)  
-3. **Refresh rankings** (needs `SERPER_API_KEY`; limited batch)  
+2. **Run keyword discovery**  
+3. **Refresh rankings** (needs `SERPER_API_KEY`)  
 4. Review Keyword Gap / Opportunities  
-5. Keep suggestion auto-approve OFF until apply pipeline ships
+5. **Generate suggestions** → Approval Queue  
+6. Edit / Approve / Apply (or keep Auto-approve OFF)  
+7. Publish blog drafts from **Blog posts & schedule** when ready  
+8. Rollback from **Applied Changes** if needed
 
 ## Cron (later)
 

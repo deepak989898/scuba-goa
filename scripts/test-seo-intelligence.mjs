@@ -176,6 +176,15 @@ assert.match(
   read("src/lib/seo-intelligence/opportunity.ts"),
   /not guaranteed/i,
 );
+assert.match(read("src/lib/seo-intelligence/apply-suggestion.ts"), /rollback/);
+assert.match(
+  read("src/lib/seo-intelligence/apply-suggestion.ts"),
+  /published:\s*false/,
+);
+assert.match(
+  read("src/lib/seo-intelligence/generate-suggestions.ts"),
+  /pending_approval/,
+);
 
 // Inline page-match style scoring sanity
 function jaccard(a, b) {

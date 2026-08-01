@@ -1,10 +1,11 @@
-import { ComingSoonPanel } from "../ComingSoonPanel";
+import { SuggestionsPanel } from "../SuggestionsPanel";
 
 export default function Page() {
   return (
-    <ComingSoonPanel
+    <SuggestionsPanel
+      mode="all"
       title="Suggestions"
-      body="AI SEO suggestions with current vs proposed preview, confidence, risk, and no fake uplift percentages."
+      description="AI/rule-based SEO recommendations with current vs proposed preview. Approve before anything changes production content."
     />
   );
 }

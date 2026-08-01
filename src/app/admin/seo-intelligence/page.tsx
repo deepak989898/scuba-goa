@@ -180,6 +180,12 @@ export default function SeoIntelligenceOverviewPage() {
           Keyword rankings
         </Link>
         <Link
+          href="/admin/seo-intelligence/approvals"
+          className="rounded-full bg-gradient-to-r from-cyan-600 to-teal-600 px-4 py-2 text-xs font-bold text-white"
+        >
+          Approval queue
+        </Link>
+        <Link
           href="/admin/seo-intelligence/competitors"
           className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-bold text-ocean-800"
         >

@@ -208,12 +208,18 @@ export type SeoIntelRankSnapshot = {
 export type SeoIntelSuggestion = {
   id: string;
   keywordId: string | null;
+  keyword: string;
   targetPageId: string | null;
   targetUrl: string;
+  /** Firestore collection for apply, if any */
+  targetCollection: "blogPosts" | "seoPages" | null;
+  targetDocId: string | null;
   pageType: SeoIntelContentType;
   type: SeoIntelSuggestionType;
   currentValue: string;
   proposedValue: string;
+  /** Structured fields to merge on apply */
+  proposedPatch: Record<string, unknown> | null;
   reason: string;
   evidence: string;
   competitorComparison: string;
@@ -230,6 +236,8 @@ export type SeoIntelSuggestion = {
   aiModel: string | null;
   estimatedCost: number | null;
   adminNotes: string;
+  changeVersionId: string | null;
+  applyError: string | null;
   createdAt: string;
   approvedAt: string | null;
   appliedAt: string | null;
@@ -240,11 +248,14 @@ export type SeoIntelChangeVersion = {
   id: string;
   pageId: string;
   suggestionId: string;
+  collection: "blogPosts" | "seoPages";
+  docId: string;
   beforeSnapshot: Record<string, unknown>;
   afterSnapshot: Record<string, unknown>;
   status: "applied" | "rolled_back" | "failed";
   rollbackData: Record<string, unknown> | null;
   createdAt: string;
+  rolledBackAt: string | null;
 };
 
 export type SeoIntelAgentSettings = {
