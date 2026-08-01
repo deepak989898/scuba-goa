@@ -64,9 +64,9 @@ SEO_MIN_AUTO_APPROVE_CONFIDENCE=85
 - `GET|POST /api/admin/seo-intelligence/competitors`
 - `POST /api/admin/seo-intelligence/competitors/discover`
 - `PATCH|DELETE /api/admin/seo-intelligence/competitors/[id]`
-- `GET /api/admin/seo-intelligence/keywords?view=all|gap|content-gap|opportunities`
+- `GET /api/admin/seo-intelligence/keywords?view=all|mine|gap|content-gap|opportunities`
 - `POST /api/admin/seo-intelligence/keywords/discover`
-- `POST /api/admin/seo-intelligence/keywords/refresh`
+- `POST /api/admin/seo-intelligence/keywords/refresh` (`focus=owned|opportunity`)
 - `GET /api/admin/seo-intelligence/keywords/[id]`
 - `GET /api/admin/seo-intelligence/suggestions`
 - `POST /api/admin/seo-intelligence/suggestions/generate`

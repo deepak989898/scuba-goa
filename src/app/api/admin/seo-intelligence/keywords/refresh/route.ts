@@ -12,10 +12,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
   try {
-    const body = (await req.json().catch(() => ({}))) as { limit?: number };
+    const body = (await req.json().catch(() => ({}))) as {
+      limit?: number;
+      focus?: "opportunity" | "owned";
+    };
     const result = await refreshKeywordRankings({
       actor: auth.uid,
       limit: Math.min(25, Math.max(1, Number(body.limit) || 12)),
+      focus: body.focus === "owned" ? "owned" : "opportunity",
     });
     return NextResponse.json(result);
   } catch (e) {

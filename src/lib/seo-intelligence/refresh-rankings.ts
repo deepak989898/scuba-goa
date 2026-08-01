@@ -1,5 +1,9 @@
 import { listCompetitors } from "./competitors";
 import { appendSeoIntelLog } from "./activity-log";
+import {
+  filterOwnedKeywords,
+  ownedKeywordUrgency,
+} from "./discover-keywords";
 import { isOwnDomain, normaliseDomain } from "./domain";
 import {
   listKeywords,
@@ -25,19 +29,23 @@ function pathFromUrl(url: string): string | null {
 }
 
 /**
- * Refresh SERP rankings for top opportunity keywords vs approved competitors.
+ * Refresh SERP rankings for keywords vs approved competitors.
  * Bounded to control Serper spend.
+ * focus=owned → prefer existing site pages (improve what you have first).
  */
 export async function refreshKeywordRankings(opts?: {
   actor?: string;
   limit?: number;
+  focus?: "opportunity" | "owned";
 }): Promise<{
   configured: boolean;
   refreshed: number;
   skipped: number;
   errors: string[];
+  focus: "opportunity" | "owned";
 }> {
   const actor = opts?.actor ?? "system";
+  const focus = opts?.focus === "owned" ? "owned" : "opportunity";
   const limit = Math.min(25, Math.max(1, opts?.limit ?? 12));
   const provider = getSerpProvider();
   const errors: string[] = [];
@@ -55,6 +63,7 @@ export async function refreshKeywordRankings(opts?: {
       refreshed: 0,
       skipped: 0,
       errors: ["SERP provider not configured. Set SERPER_API_KEY."],
+      focus,
     };
   }
 
@@ -69,12 +78,18 @@ export async function refreshKeywordRankings(opts?: {
   );
   const competitorDomains = tracked.map((c) => c.canonicalDomain);
 
-  const targets = [...keywords]
-    .sort(
-      (a, b) =>
+  const pool =
+    focus === "owned" ? filterOwnedKeywords(keywords) : [...keywords];
+  const targets = pool
+    .sort((a, b) => {
+      if (focus === "owned") {
+        return ownedKeywordUrgency(b) - ownedKeywordUrgency(a);
+      }
+      return (
         (b.opportunityScore ?? 0) - (a.opportunityScore ?? 0) ||
-        (b.impressions ?? 0) - (a.impressions ?? 0),
-    )
+        (b.impressions ?? 0) - (a.impressions ?? 0)
+      );
+    })
     .slice(0, limit);
 
   let refreshed = 0;
@@ -192,6 +207,10 @@ export async function refreshKeywordRankings(opts?: {
           myPosition,
           pageMatchStatus,
           opportunityScore,
+          bestCompetitorPosition: best?.position ?? null,
+          bestCompetitorDomain: best?.domain ?? null,
+          existingPageUrl: match.pageUrl || kw.existingPageUrl,
+          keyword: kw.keyword,
         }),
         competitorPreview: preview,
         lastCheckedAt: checkedAt,
@@ -210,12 +229,18 @@ export async function refreshKeywordRankings(opts?: {
     action: "keywords.refresh_rankings",
     entityType: "keyword",
     actor,
-    details: `Refreshed ${refreshed} keywords; skipped ${skipped}`,
+    details: `Refreshed ${refreshed} keywords (focus=${focus}); skipped ${skipped}`,
     result: errors.length && !refreshed ? "error" : "ok",
     error: errors[0] ?? null,
   });
 
-  return { configured: true, refreshed, skipped, errors: errors.slice(0, 12) };
+  return {
+    configured: true,
+    refreshed,
+    skipped,
+    errors: errors.slice(0, 12),
+    focus,
+  };
 }
 
 export function keywordTableRow(k: SeoIntelKeyword) {

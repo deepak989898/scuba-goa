@@ -4,8 +4,11 @@ import {
   filterContentGap,
   filterKeywordGap,
   filterOpportunities,
+  filterOwnedKeywords,
+  sortOwnedRankings,
 } from "@/lib/seo-intelligence/discover-keywords";
 import { listKeywords } from "@/lib/seo-intelligence/keywords-store";
+import { recommendedAction } from "@/lib/seo-intelligence/opportunity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,13 +30,30 @@ export async function GET(req: Request) {
     if (view === "gap") keywords = filterKeywordGap(keywords);
     if (view === "content-gap") keywords = filterContentGap(keywords);
     if (view === "opportunities") keywords = filterOpportunities(keywords);
+    if (view === "mine") {
+      keywords = sortOwnedRankings(filterOwnedKeywords(keywords));
+      // Fresh improve tips from current rank vs competitor (even before next SERP refresh)
+      keywords = keywords.map((k) => ({
+        ...k,
+        recommendedAction: recommendedAction({
+          myPosition: k.myPosition,
+          pageMatchStatus: k.pageMatchStatus,
+          opportunityScore: k.opportunityScore,
+          bestCompetitorPosition: k.bestCompetitorPosition,
+          bestCompetitorDomain: k.bestCompetitorDomain,
+          existingPageUrl: k.existingPageUrl || k.myUrl,
+          keyword: k.keyword,
+        }),
+      }));
+    }
 
     if (q) {
       keywords = keywords.filter(
         (k) =>
           k.keyword.toLowerCase().includes(q) ||
           k.category.toLowerCase().includes(q) ||
-          (k.existingPageUrl || "").toLowerCase().includes(q),
+          (k.existingPageUrl || "").toLowerCase().includes(q) ||
+          (k.myUrl || "").toLowerCase().includes(q),
       );
     }
     if (category) {
@@ -51,8 +71,11 @@ export async function GET(req: Request) {
     return NextResponse.json({
       keywords,
       categories,
+      view,
       disclaimer:
-        "Ranking impact is not guaranteed. Opportunity scores estimate potential only.",
+        view === "mine"
+          ? "My website rankings: existing pages first. Improve these before chasing new keywords. Ranking impact is not guaranteed."
+          : "Ranking impact is not guaranteed. Opportunity scores estimate potential only.",
     });
   } catch (e) {
     console.error("[seo-intelligence/keywords GET]", e);

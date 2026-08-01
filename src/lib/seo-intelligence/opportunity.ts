@@ -50,29 +50,51 @@ export function recommendedAction(input: {
   myPosition: number | null;
   pageMatchStatus: SeoIntelPageMatchStatus;
   opportunityScore: number;
+  bestCompetitorPosition?: number | null;
+  bestCompetitorDomain?: string | null;
+  existingPageUrl?: string | null;
+  keyword?: string;
 }): string {
+  const me = input.myPosition;
+  const comp = input.bestCompetitorPosition ?? null;
+  const domain = (input.bestCompetitorDomain || "competitor").replace(
+    /^www\./,
+    "",
+  );
+  const page = input.existingPageUrl || "your page";
+  const behind =
+    comp != null && (me == null || me <= 0 || me > comp);
+
   if (input.pageMatchStatus === "no_page") {
     return "Create a high-quality page matching search intent (no ranking guarantee)";
   }
   if (input.pageMatchStatus === "cannibalisation") {
-    return "Consolidate competing pages and strengthen one primary URL";
+    return behind
+      ? `${domain} leads while your pages compete — pick one primary URL, unify title/H1, add internal links (impact not guaranteed)`
+      : "Consolidate competing pages and strengthen one primary URL";
   }
   if (input.pageMatchStatus === "wrong_page") {
-    return "Align ranking URL with the best-fit page (title, internal links, intent)";
+    return `Wrong page ranking — retarget title/H1/meta on ${page} and point internal links there`;
   }
-  if (input.myPosition == null) {
-    return "Refresh rankings / improve existing related page for discovery";
+  if (behind && comp != null) {
+    if (me == null || me <= 0) {
+      return `${domain} is #${comp}; you are not ranking — strengthen ${page}: title, H1, FAQs, internal links`;
+    }
+    return `${domain} #${comp} beats you #${Math.round(me)} — improve title/CTR, expand FAQs/content, add internal links from related posts`;
   }
-  if (input.myPosition > 20) {
-    return "Expand content and internal links — ranking opportunity (not guaranteed)";
+  if (me == null || me <= 0) {
+    return "Page exists but not ranking yet — refresh SERP, then improve on-page SEO + internal links";
   }
-  if (input.myPosition > 10) {
-    return "Strengthen page for page-1 push — estimated improvement potential: Medium";
+  if (me > 20) {
+    return `You are #${Math.round(me)} — expand content depth, FAQs, and internal links (impact not guaranteed)`;
   }
-  if (input.myPosition > 3) {
-    return "CTR and content refresh for top-3 opportunity — impact not guaranteed";
+  if (me > 10) {
+    return `You are #${Math.round(me)} (page 2) — tighten title/meta for intent, clarify packages/pricing, earn internal links`;
   }
-  return "Maintain and monitor — already strong position";
+  if (me > 3) {
+    return `You are #${Math.round(me)} — CTR push: sharper title + meta, trust signals, clear booking CTA`;
+  }
+  return `Strong #${Math.round(me)} — maintain freshness and watch competitors`;
 }
 
 export function businessValueFromCategory(category: string, intent: string): number {

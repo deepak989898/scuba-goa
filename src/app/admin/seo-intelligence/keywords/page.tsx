@@ -5,7 +5,7 @@ export default function Page() {
     <KeywordsView
       view="all"
       title="Keyword Rankings"
-      description="Compare your positions with competitors, page match status, GSC metrics, and recommended actions. Clusters keep near-duplicate keywords on one primary page plan."
+      description="Use My website rankings to see existing pages first — your position, competitors, and what to improve when they rank higher. Then chase new keywords."
     />
   );
 }

@@ -352,3 +352,39 @@ export function filterContentGap(rows: SeoIntelKeyword[]): SeoIntelKeyword[] {
 export function filterOpportunities(rows: SeoIntelKeyword[]): SeoIntelKeyword[] {
   return rows.filter((r) => (r.opportunityScore ?? 0) >= 45);
 }
+
+/**
+ * Keywords that already map to a page on our site.
+ * Admin should improve these before chasing brand-new keyword opportunities.
+ */
+export function filterOwnedKeywords(rows: SeoIntelKeyword[]): SeoIntelKeyword[] {
+  return rows.filter((r) => {
+    if (r.pageMatchStatus === "no_page") return false;
+    return Boolean(
+      r.existingPageUrl ||
+        r.myUrl ||
+        (r.myPosition != null && r.myPosition > 0),
+    );
+  });
+}
+
+/** Higher = more urgent for admin (behind competitors / weak rank first). */
+export function ownedKeywordUrgency(k: SeoIntelKeyword): number {
+  const me = k.myPosition;
+  const comp = k.bestCompetitorPosition;
+  if (comp != null && (me == null || me > comp)) {
+    const gap = me == null ? 40 : me - comp;
+    return 1000 + gap * 10 + (k.opportunityScore ?? 0);
+  }
+  if (me == null || me <= 0) return 500 + (k.opportunityScore ?? 0);
+  if (me > 20) return 300 + me;
+  if (me > 10) return 150 + me;
+  if (me > 3) return 50 + me;
+  return me;
+}
+
+export function sortOwnedRankings(rows: SeoIntelKeyword[]): SeoIntelKeyword[] {
+  return [...rows].sort(
+    (a, b) => ownedKeywordUrgency(b) - ownedKeywordUrgency(a),
+  );
+}
