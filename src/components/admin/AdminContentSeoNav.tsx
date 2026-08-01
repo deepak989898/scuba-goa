@@ -24,6 +24,11 @@ const LINKS = [
     label: "GSC Indexing Agent",
     short: "GSC",
   },
+  {
+    href: "/admin/seo-intelligence",
+    label: "SEO Intelligence",
+    short: "Intel",
+  },
 ] as const;
 
 /**

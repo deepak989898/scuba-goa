@@ -89,6 +89,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         highlight: true,
         badge: "action",
       },
+      {
+        href: "/admin/seo-intelligence",
+        label: "SEO Intelligence",
+        description: "Competitors, keywords, suggestions",
+        highlight: true,
+        badge: "action",
+      },
     ],
   },
   {
