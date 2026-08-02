@@ -230,16 +230,16 @@ export default function RefundCancellationPage() {
       {/* Compact hero — image stays visible; card stays small */}
       <section className="relative isolate h-[9.5rem] overflow-hidden sm:h-[11rem] lg:h-[12rem]">
         <Image
-          src="/offer-header.webp"
+          src="/booking-header.png"
           alt=""
           fill
           priority
-          quality={70}
+          quality={72}
           sizes="100vw"
-          className="object-cover object-[center_30%]"
+          className="object-cover object-center"
         />
         <div
-          className="absolute inset-0 bg-gradient-to-b from-ocean-950/35 via-sky-900/25 to-ocean-950/45"
+          className="absolute inset-0 bg-gradient-to-b from-ocean-950/40 via-sky-900/30 to-ocean-950/50"
           aria-hidden
         />
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
