@@ -18,6 +18,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
   const isAdmin = pathname?.startsWith("/admin") ?? false;
   const isBooking =
     pathname === "/booking" || (pathname?.startsWith("/booking/") ?? false);
+  const isOffers = pathname === "/offers";
 
   if (isAdmin) {
     return <>{children}</>;
@@ -30,11 +31,24 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       {/*
         Mobile sticky bar is ~6.5rem tall + safe-area inset. 7.5rem reserves a
         small visual gap so footer text never touches the bar.
+        Offers page is designed compact — lighter bottom pad + hide footer on md+.
       */}
-      <main className="pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+      <main
+        className={
+          isOffers
+            ? "pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-3"
+            : "pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-0"
+        }
+      >
         {children}
       </main>
-      <Footer />
+      {isOffers ? (
+        <div className="md:hidden">
+          <Footer />
+        </div>
+      ) : (
+        <Footer />
+      )}
       <WhatsAppFloat />
       <StickyBookBar />
       <DeferredSiteWidgets />

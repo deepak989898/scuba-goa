@@ -41,7 +41,7 @@ export function PromoCopyButton({
 
   const base =
     variant === "solid"
-      ? "min-h-10 touch-manipulation rounded-lg bg-[#0b3d66] px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#0e4d7a] active:scale-[0.98]"
+      ? "min-h-8 touch-manipulation rounded-md bg-[#0b3d66] px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm transition hover:bg-[#0e4d7a] active:scale-[0.98] sm:text-xs"
       : "min-h-11 touch-manipulation rounded-full border border-ocean-200 bg-white px-4 py-3 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50";
 
   return (
