@@ -122,6 +122,9 @@ const nav = [
 export function Header() {
   const pathname = usePathname();
   const isHome = pathname === "/";
+  const isOffers = pathname === "/offers";
+  /** Transparent nav over full-bleed photo heroes */
+  const overHero = isHome || isOffers;
   const isBooking = pathname === "/booking" || pathname?.startsWith("/booking/");
   const [open, setOpen] = useState(false);
 
@@ -130,7 +133,7 @@ export function Header() {
   return (
     <header
       className={
-        isHome
+        overHero
           ? "sticky top-0 z-50 border-b border-white/15 bg-transparent shadow-none backdrop-blur-md"
           : lightHeader
             ? "sticky top-0 z-50 border-b border-ocean-100/90 bg-white/95 shadow-sm backdrop-blur-md"
@@ -141,7 +144,7 @@ export function Header() {
         <Link
           href="/"
           className={
-            isHome
+            overHero
               ? "inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-ocean-900"
               : lightHeader
                 ? "inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
@@ -175,8 +178,10 @@ export function Header() {
                 key={item.href}
                 href={item.href}
                 className={
-                  isHome
-                    ? "rounded-full px-3 py-2 text-sm font-medium text-white/90 transition hover:bg-white/10 hover:text-cyan-200"
+                  overHero
+                    ? active
+                      ? "rounded-full px-3 py-2 text-sm font-bold text-white underline decoration-orange-400 decoration-2 underline-offset-4"
+                      : "rounded-full px-3 py-2 text-sm font-medium text-white/90 transition hover:bg-white/10 hover:text-cyan-200"
                     : lightHeader
                       ? active
                         ? "rounded-full bg-sky-500 px-3 py-1.5 text-sm font-bold text-white shadow-sm"
@@ -185,11 +190,6 @@ export function Header() {
                 }
               >
                 {item.label}
-                {item.href === "/offers" && lightHeader ? (
-                  <span className="ml-1 rounded bg-red-500 px-1 py-px text-[9px] font-extrabold uppercase text-white">
-                    Hot
-                  </span>
-                ) : null}
               </Link>
             );
           })}
@@ -200,7 +200,7 @@ export function Header() {
             target="_blank"
             rel="noopener noreferrer"
             className={
-              isHome
+              overHero
                 ? "hidden rounded-full border border-emerald-800/90 bg-emerald-700 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-black/20 transition hover:bg-emerald-600 sm:inline-flex"
                 : lightHeader
                   ? "hidden items-center gap-1.5 rounded-full bg-emerald-500 px-3.5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-600 sm:inline-flex"
@@ -227,7 +227,7 @@ export function Header() {
           <button
             type="button"
             className={
-              isHome
+              overHero
                 ? "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/50 bg-slate-950/75 text-white shadow-md shadow-black/20 backdrop-blur-sm md:hidden"
                 : lightHeader
                   ? "inline-flex h-10 w-10 items-center justify-center rounded-full border border-ocean-200 bg-white text-ocean-900 md:hidden"
@@ -238,7 +238,7 @@ export function Header() {
           >
             <span
               className={
-                isHome ? "text-white" : lightHeader ? "text-ocean-900" : "text-slate-100"
+                overHero ? "text-white" : lightHeader ? "text-ocean-900" : "text-slate-100"
               }
             >
               {open ? "✕" : "☰"}

@@ -2,7 +2,18 @@
 
 import { useCallback, useState } from "react";
 
-export function PromoCopyButton({ code }: { code: string }) {
+type Props = {
+  code: string;
+  /** solid = dark blue CTA (offers redesign); default = light pill */
+  variant?: "default" | "solid";
+  className?: string;
+};
+
+export function PromoCopyButton({
+  code,
+  variant = "default",
+  className = "",
+}: Props) {
   const [done, setDone] = useState(false);
 
   const copy = useCallback(async () => {
@@ -28,13 +39,18 @@ export function PromoCopyButton({ code }: { code: string }) {
     }
   }, [code]);
 
+  const base =
+    variant === "solid"
+      ? "min-h-10 touch-manipulation rounded-lg bg-[#0b3d66] px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#0e4d7a] active:scale-[0.98]"
+      : "min-h-11 touch-manipulation rounded-full border border-ocean-200 bg-white px-4 py-3 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50";
+
   return (
     <button
       type="button"
       onClick={() => void copy()}
-      className="min-h-11 touch-manipulation rounded-full border border-ocean-200 bg-white px-4 py-3 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50"
+      className={`${base} ${className}`.trim()}
     >
-      {done ? "Copied" : "Copy code"}
+      {done ? "Copied!" : "Copy Code"}
     </button>
   );
 }
