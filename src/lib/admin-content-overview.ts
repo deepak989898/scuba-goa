@@ -1,6 +1,5 @@
 import { blogPosts as staticCodeBlogs } from "@/data/blog-posts";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
-import { getAdminDb } from "@/lib/firebase-admin";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
 import { getAllServicesServer } from "@/lib/get-services-server";
 import {
@@ -175,7 +174,6 @@ function bumpBucket(bucket: PageTypeBucket, u: SeoUrlRecord) {
 }
 
 export async function buildContentOverview(): Promise<ContentOverview> {
-  const db = getAdminDb();
   const [
     services,
     packages,
@@ -187,34 +185,20 @@ export async function buildContentOverview(): Promise<ContentOverview> {
     getAllPackagesServer().catch(() => []),
     listPublishedSeoPagesServer().catch(() => []),
     listPublishedBlogPostsServer().catch(() => []),
-    listSeoUrls({ limit: 2500 }).catch(() => [] as SeoUrlRecord[]),
+    // Cap reads — store hard-max is 2000
+    listSeoUrls({ limit: 800 }).catch(() => [] as SeoUrlRecord[]),
   ]);
 
   const subPaths = listSubServicePaths(services);
   const servicePageCount = services.length + subPaths.length;
 
-  let firestoreBlogTotal = publishedFsBlogs.length;
+  // Published blogs only — avoid a second full blogPosts collection scan.
+  const firestoreBlogTotal = publishedFsBlogs.length;
   const blogCountByService = new Map<string, number>();
   for (const p of publishedFsBlogs) {
     const key = (p.serviceSlug || "").trim();
     if (!key) continue;
     blogCountByService.set(key, (blogCountByService.get(key) ?? 0) + 1);
-  }
-  if (db) {
-    try {
-      const refs = await db.collection("blogPosts").listDocuments();
-      firestoreBlogTotal = refs.length;
-      // Enrich service blog counts from all docs (lightweight field read)
-      const snaps = await db.collection("blogPosts").select("serviceSlug").get();
-      blogCountByService.clear();
-      for (const doc of snaps.docs) {
-        const key = String(doc.data().serviceSlug ?? "").trim();
-        if (!key) continue;
-        blogCountByService.set(key, (blogCountByService.get(key) ?? 0) + 1);
-      }
-    } catch {
-      /* keep published-based counts */
-    }
   }
 
   const serviceOptions: ServiceOption[] = [...services]

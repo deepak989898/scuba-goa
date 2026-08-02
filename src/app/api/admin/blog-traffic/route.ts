@@ -43,13 +43,34 @@ export async function GET(req: Request) {
         .filter(Boolean)
         .slice(0, 80)
     : [];
+  const includePageViews =
+    url.searchParams.get("includePageViews") === "1" ||
+    url.searchParams.get("includePageViews") === "true";
 
   try {
+    // Slug focus: cheap path only — do NOT also scan whole collections.
+    if (focusSlugs.length > 0) {
+      const precise = await countBlogViewsForSlugs(db, focusSlugs, {
+        includePageViews,
+      });
+      return NextResponse.json({
+        bySlug: precise,
+        index: { views: 0, visitors: 0 },
+        source: includePageViews
+          ? "slugCounts+pageViews"
+          : "analyticsBlogTraffic+viewCount",
+        trackingConfigured: true,
+        aggregatedDocs: 0,
+        backfilled: false,
+        mode: "slugs",
+      });
+    }
+
     const { bySlug, index, aggregatedDocs, backfilled } =
       await loadContentTrafficWithBackfill(db, {
         collection: "analyticsBlogTraffic",
         indexDocId: BLOG_INDEX_KEY,
-        mode: focusSlugs.length > 0 ? "aggregated" : mode,
+        mode,
         backfill: {
           pathPrefix: "/blog",
           indexPath: "/blog",
@@ -57,28 +78,16 @@ export async function GET(req: Request) {
         },
       });
 
-    if (focusSlugs.length > 0) {
-      const precise = await countBlogViewsForSlugs(db, focusSlugs);
-      for (const [slug, t] of Object.entries(precise)) {
-        mergeContentTraffic(bySlug, slug, t.views, t.visitors);
-      }
-    } else if (mode === "full") {
-      // already backfilled inside loader
-    }
-
     return NextResponse.json({
       bySlug,
       index,
-      source:
-        focusSlugs.length > 0
-          ? "analyticsBlogTraffic+slugCounts"
-          : backfilled
-            ? "analyticsBlogTraffic+pageViews"
-            : "analyticsBlogTraffic",
+      source: backfilled
+        ? "analyticsBlogTraffic+pageViews"
+        : "analyticsBlogTraffic",
       trackingConfigured: true,
       aggregatedDocs,
-      backfilled: backfilled || focusSlugs.length > 0,
-      mode: focusSlugs.length > 0 ? "slugs" : mode,
+      backfilled,
+      mode,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load traffic";

@@ -98,8 +98,8 @@ export function ContentOverviewBar({ overview, loading }: Props) {
         />
         <Chip
           label="Firestore blogs"
-          value={`${c.publishedBlogs}/${c.firestoreBlogs}`}
-          hint="Published / all Firestore blog docs"
+          value={c.publishedBlogs}
+          hint="Published Firestore blog posts"
         />
         <Chip label="Guides" value={c.guidePages} />
       </div>

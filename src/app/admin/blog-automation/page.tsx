@@ -19,21 +19,6 @@ import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 
 type BlogTraffic = { views: number; visitors: number };
 
-function mergeTrafficMaps(
-  into: Record<string, BlogTraffic>,
-  from: Record<string, BlogTraffic>,
-) {
-  for (const [slug, t] of Object.entries(from)) {
-    const key = slug.trim().toLowerCase();
-    if (!key) continue;
-    const cur = into[key] ?? { views: 0, visitors: 0 };
-    into[key] = {
-      views: Math.max(cur.views, Math.round(Number(t.views) || 0)),
-      visitors: Math.max(cur.visitors, Math.round(Number(t.visitors) || 0)),
-    };
-  }
-}
-
 async function adminToken(): Promise<string> {
   const auth = getFirebaseAuth();
   if (!auth?.currentUser) throw new Error("Sign in at /admin/login first.");
@@ -107,6 +92,10 @@ export default function AdminBlogAutomationPage() {
     window.history.replaceState({}, "", next);
   }, []);
 
+  /**
+   * Cheap traffic load: one aggregated collection read + merge blogPosts.viewCount
+   * from memory. Never N×slug precise queries (those burned Firestore quota).
+   */
   const loadBlogTraffic = useCallback(
     async (opts?: { silent?: boolean; posts?: BlogPostFirestore[] }) => {
       if (!opts?.silent) setTrafficLoading(true);
@@ -132,24 +121,6 @@ export default function AdminBlogAutomationPage() {
             views: Math.max(cur.views, vc),
             visitors: Math.max(cur.visitors, vc > 0 ? 1 : 0),
           };
-        }
-
-        const published = list
-          .filter((p) => p.published)
-          .map((p) => p.slug.trim().toLowerCase())
-          .filter(Boolean);
-        const BATCH = 40;
-        for (let i = 0; i < published.length; i += BATCH) {
-          const batch = published.slice(i, i + BATCH);
-          const precise = await adminFetch(
-            `/api/admin/blog-traffic?slugs=${encodeURIComponent(batch.join(","))}`,
-          ).catch(() => null);
-          if (precise?.bySlug) {
-            mergeTrafficMaps(
-              bySlug,
-              precise.bySlug as Record<string, BlogTraffic>,
-            );
-          }
         }
 
         setBlogTrafficBySlug(bySlug);
@@ -184,46 +155,9 @@ export default function AdminBlogAutomationPage() {
   async function refreshTrafficOnly() {
     setTrafficRefreshing(true);
     try {
-      const data = await adminFetch("/api/admin/blog-traffic?mode=full").catch(
-        () => null,
-      );
-      const bySlug = {
-        ...((data?.bySlug ?? {}) as Record<string, BlogTraffic>),
-      };
-      for (const p of posts) {
-        const vc = Math.max(0, Math.round(Number(p.viewCount) || 0));
-        if (vc <= 0) continue;
-        const key = p.slug.trim().toLowerCase();
-        const cur = bySlug[key] ?? { views: 0, visitors: 0 };
-        bySlug[key] = {
-          views: Math.max(cur.views, vc),
-          visitors: Math.max(cur.visitors, vc > 0 ? 1 : 0),
-        };
-      }
-      const published = posts
-        .filter((p) => p.published)
-        .map((p) => p.slug.trim().toLowerCase());
-      for (let i = 0; i < published.length; i += 40) {
-        const batch = published.slice(i, i + 40);
-        const precise = await adminFetch(
-          `/api/admin/blog-traffic?slugs=${encodeURIComponent(batch.join(","))}`,
-        ).catch(() => null);
-        if (precise?.bySlug) {
-          mergeTrafficMaps(
-            bySlug,
-            precise.bySlug as Record<string, BlogTraffic>,
-          );
-        }
-      }
-      setBlogTrafficBySlug(bySlug);
-      if (data?.index) {
-        const index = data.index as BlogTraffic;
-        setBlogIndexTraffic({
-          views: Math.max(0, Math.round(Number(index.views) || 0)),
-          visitors: Math.max(0, Math.round(Number(index.visitors) || 0)),
-        });
-      }
-      setOkMsg("View counts updated.");
+      // Aggregated only — avoid mode=full (scans up to 5k pageViews) unless empty.
+      await loadBlogTraffic({ silent: true, posts: postsRef.current });
+      setOkMsg("View counts updated (low-read mode).");
     } catch {
       setErr("Could not refresh view counts.");
     } finally {
@@ -255,10 +189,12 @@ export default function AdminBlogAutomationPage() {
         const match = loadedPosts.find((post) => post.slug === current.slug);
         return match ?? current;
       });
-      await Promise.all([
-        loadBlogTraffic({ silent: true, posts: loadedPosts }),
-        loadOverview(),
-      ]);
+      // Traffic every time (cheap). Overview only on full page load — not on
+      // every silent save/image refresh (seoUrls read was ~800–2000/load).
+      await loadBlogTraffic({ silent: true, posts: loadedPosts });
+      if (!silent) {
+        await loadOverview();
+      }
 
       if (!silent && typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);

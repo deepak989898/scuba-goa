@@ -175,10 +175,15 @@ export async function loadContentTrafficWithBackfill(
   return { bySlug, index, aggregatedDocs: snap.size, backfilled };
 }
 
-/** Precise per-slug counts for admin tables (aggregated → pageViews → blogPosts.viewCount). */
+/**
+ * Precise per-slug counts for admin tables.
+ * Default is CHEAP: analyticsBlogTraffic doc + blogPosts.viewCount only (2 reads/slug).
+ * Never scans pageViews unless `includePageViews` — that path can burn 500 reads/slug.
+ */
 export async function countBlogViewsForSlugs(
   db: NonNullable<ReturnType<typeof getAdminDb>>,
   slugs: string[],
+  opts?: { includePageViews?: boolean },
 ): Promise<Record<string, ContentTraffic>> {
   const unique = [
     ...new Set(
@@ -190,11 +195,16 @@ export async function countBlogViewsForSlugs(
   const out: Record<string, ContentTraffic> = {};
   if (unique.length === 0) return out;
 
+  const includePageViews = opts?.includePageViews === true;
+
   await Promise.all(
     unique.map(async (slug) => {
       const path = `/blog/${slug}`;
       try {
-        const agg = await db.collection("analyticsBlogTraffic").doc(slug).get();
+        const [agg, post] = await Promise.all([
+          db.collection("analyticsBlogTraffic").doc(slug).get(),
+          db.collection("blogPosts").doc(slug).get(),
+        ]);
         let views = 0;
         let visitors = 0;
         if (agg.exists) {
@@ -203,11 +213,24 @@ export async function countBlogViewsForSlugs(
           visitors = Math.max(0, Math.round(Number(data.visitors ?? 0)));
         }
 
-        if (views === 0) {
+        const postViews = post.exists
+          ? Math.max(
+              0,
+              Math.round(
+                Number(
+                  (post.data() as Record<string, unknown>).viewCount ?? 0,
+                ),
+              ),
+            )
+          : 0;
+        views = Math.max(views, postViews);
+
+        // Expensive recovery only when explicitly requested and still zero.
+        if (includePageViews && views === 0) {
           const snap = await db
             .collection("pageViews")
             .where("path", "==", path)
-            .limit(500)
+            .limit(100)
             .get();
           const sessions = new Set<string>();
           for (const doc of snap.docs) {
@@ -220,20 +243,7 @@ export async function countBlogViewsForSlugs(
           visitors = Math.max(visitors, sessions.size);
         }
 
-        const post = await db.collection("blogPosts").doc(slug).get();
-        const postViews = post.exists
-          ? Math.max(
-              0,
-              Math.round(
-                Number(
-                  (post.data() as Record<string, unknown>).viewCount ?? 0,
-                ),
-              ),
-            )
-          : 0;
-        views = Math.max(views, postViews);
         if (visitors === 0 && views > 0) visitors = 1;
-
         out[slug] = { views, visitors };
       } catch (e) {
         console.error(`[analytics-content-traffic] count for ${slug} failed`, e);
