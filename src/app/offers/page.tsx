@@ -172,11 +172,11 @@ export default async function OffersPage() {
 
   return (
     <div className="relative overflow-x-hidden pb-2 md:pb-4">
-      {/* Full-width hero; natural scale, then clip 150px from the bottom */}
+      {/* Full-width hero; natural scale, then clip 80px from the bottom */}
       <div
         className="relative w-full overflow-hidden bg-[#6eb8d8]"
         style={{
-          height: "max(11rem, calc(100vw * 793 / 1983 - 150px))",
+          height: "max(11rem, calc(100vw * 793 / 1983 - 80px))",
         }}
       >
         <Image
