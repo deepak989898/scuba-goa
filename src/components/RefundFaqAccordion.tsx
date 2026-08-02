@@ -13,7 +13,7 @@ type Props = {
 
 export function RefundFaqAccordion({ items }: Props) {
   const baseId = useId();
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
     <div className="space-y-3">
@@ -25,7 +25,7 @@ export function RefundFaqAccordion({ items }: Props) {
         return (
           <div
             key={item.question}
-            className="overflow-hidden rounded-[1.25rem] border border-ocean-100 bg-white shadow-sm transition hover:shadow-md"
+            className="overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm transition hover:shadow-md"
           >
             <h3 className="m-0">
               <button
@@ -34,18 +34,18 @@ export function RefundFaqAccordion({ items }: Props) {
                 aria-expanded={open}
                 aria-controls={panelId}
                 onClick={() => setOpenIndex(open ? null : index)}
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-500 sm:px-6 sm:py-5"
+                className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-500 sm:px-4"
               >
-                <span className="font-display text-base font-bold text-ocean-900 sm:text-lg">
+                <span className="font-display text-sm font-bold text-ocean-900 sm:text-base">
                   {item.question}
                 </span>
                 <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ocean-50 text-ocean-800 transition-transform duration-300 ${
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ocean-50 text-ocean-800 transition-transform duration-300 ${
                     open ? "rotate-180 bg-ocean-800 text-white" : ""
                   }`}
                   aria-hidden
                 >
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path
                       fillRule="evenodd"
                       d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
@@ -64,7 +64,7 @@ export function RefundFaqAccordion({ items }: Props) {
               }`}
             >
               <div className="min-h-0 overflow-hidden">
-                <p className="border-t border-ocean-50 px-5 pb-5 pt-3 text-[1.05rem] leading-relaxed text-ocean-800 sm:px-6 sm:pb-6">
+                <p className="border-t border-ocean-50 px-3.5 pb-3 pt-2 text-sm leading-relaxed text-ocean-800 sm:px-4">
                   {item.answer}
                 </p>
               </div>

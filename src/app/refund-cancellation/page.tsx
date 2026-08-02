@@ -227,53 +227,43 @@ export default function RefundCancellationPage() {
 
   return (
     <div className="bg-gradient-to-b from-sky-50 via-white to-cyan-50/40">
-      {/* Hero */}
-      <section className="relative isolate overflow-hidden">
-        <div className="absolute inset-0">
-          <Image
-            src="/offer-header.webp"
-            alt=""
-            fill
-            priority
-            quality={70}
-            sizes="100vw"
-            className="object-cover object-[center_35%]"
-          />
-          <div
-            className="absolute inset-0 bg-gradient-to-b from-ocean-950/75 via-sky-900/65 to-ocean-950/85"
-            aria-hidden
-          />
-          {/* Subtle bubbles */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-            <span className="absolute left-[8%] top-[22%] h-3 w-3 rounded-full bg-white/20 blur-[0.5px]" />
-            <span className="absolute left-[18%] top-[58%] h-2 w-2 rounded-full bg-cyan-200/30" />
-            <span className="absolute right-[14%] top-[28%] h-4 w-4 rounded-full bg-white/15" />
-            <span className="absolute right-[28%] top-[62%] h-2.5 w-2.5 rounded-full bg-sky-100/25" />
-            <span className="absolute left-[46%] top-[18%] h-1.5 w-1.5 rounded-full bg-white/35" />
-            <span className="absolute left-[62%] top-[72%] h-3 w-3 rounded-full bg-white/10" />
-          </div>
+      {/* Compact hero — image stays visible; card stays small */}
+      <section className="relative isolate h-[9.5rem] overflow-hidden sm:h-[11rem] lg:h-[12rem]">
+        <Image
+          src="/offer-header.webp"
+          alt=""
+          fill
+          priority
+          quality={70}
+          sizes="100vw"
+          className="object-cover object-[center_30%]"
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-ocean-950/35 via-sky-900/25 to-ocean-950/45"
+          aria-hidden
+        />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          <span className="absolute left-[10%] top-[30%] h-2 w-2 rounded-full bg-white/25" />
+          <span className="absolute right-[16%] top-[40%] h-2.5 w-2.5 rounded-full bg-white/15" />
         </div>
 
-        <div className="relative mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-          <div className="mx-auto max-w-3xl rounded-[1.25rem] border border-white/25 bg-white/10 p-6 shadow-2xl shadow-ocean-950/30 backdrop-blur-md sm:p-10">
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-white">
-                Last Updated · {UPDATED}
-              </span>
-            </div>
-            <h1 className="mt-4 text-center font-display text-[2.15rem] font-black leading-tight tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
+        <div className="relative flex h-full items-center justify-center px-3 sm:px-6">
+          <div className="w-full max-w-xl rounded-2xl border border-white/30 bg-white/15 px-3 py-2.5 text-center shadow-lg backdrop-blur-sm sm:px-5 sm:py-3">
+            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/90 sm:text-[10px]">
+              Last Updated · {UPDATED}
+            </p>
+            <h1 className="mt-0.5 font-display text-lg font-black leading-tight tracking-tight text-white sm:text-2xl lg:text-[1.75rem]">
               Refund &amp; Cancellation Policy
             </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-base leading-relaxed text-sky-50 sm:text-lg">
+            <p className="mx-auto mt-0.5 max-w-md text-[11px] leading-snug text-sky-50/95 sm:text-xs">
               Your booking is protected with transparent cancellation and refund
               policies.
             </p>
-
-            <ul className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+            <ul className="mt-1.5 flex flex-wrap items-center justify-center gap-1 sm:gap-1.5">
               {TRUST_BADGES.map((label) => (
                 <li
                   key={label}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-2 py-2.5 text-center text-[11px] font-semibold text-white sm:text-xs"
+                  className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-white sm:text-[10px]"
                 >
                   <span className="text-emerald-300" aria-hidden>
                     ✓
@@ -288,22 +278,22 @@ export default function RefundCancellationPage() {
 
       {/* Quick summary cards */}
       <section
-        className="relative z-10 mx-auto -mt-6 max-w-6xl px-4 sm:-mt-8 sm:px-6 lg:px-8"
+        className="relative z-10 mx-auto max-w-6xl px-3 pt-3 sm:px-6 sm:pt-4 lg:px-8"
         aria-label="Policy summary"
       >
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+        <ul className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-2.5">
           {SUMMARY_CARDS.map((card) => (
             <li
               key={card.title}
-              className={`rounded-[1.25rem] border bg-gradient-to-b p-5 shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl ${summaryToneClass[card.tone]}`}
+              className={`rounded-xl border bg-gradient-to-b p-2.5 shadow-md transition duration-300 hover:-translate-y-0.5 hover:shadow-lg sm:p-3 ${summaryToneClass[card.tone]}`}
             >
-              <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/90 shadow-sm">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/90 shadow-sm [&_svg]:h-5 [&_svg]:w-5">
                 <SummaryIcon name={card.icon} />
               </span>
-              <h2 className="mt-4 font-display text-xl font-black tracking-tight">
+              <h2 className="mt-1.5 font-display text-sm font-black tracking-tight sm:text-base">
                 {card.title}
               </h2>
-              <p className="mt-1.5 text-sm font-medium leading-snug opacity-90">
+              <p className="mt-0.5 text-[10px] font-medium leading-snug opacity-90 sm:text-xs">
                 {card.description}
               </p>
             </li>
@@ -312,13 +302,13 @@ export default function RefundCancellationPage() {
       </section>
 
       {/* Intro + policy cards */}
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <p className="text-center text-lg leading-relaxed text-ocean-800 sm:text-[1.15rem]">
+      <div className="mx-auto max-w-4xl px-3 py-5 sm:px-6 sm:py-7 lg:px-8">
+        <p className="text-center text-sm leading-relaxed text-ocean-800 sm:text-base">
           This policy explains cancellations, rescheduling, and refunds for bookings
           made on <strong className="text-ocean-950">{SITE_NAME}</strong>.
         </p>
 
-        <div className="mt-10 space-y-6 sm:mt-12 sm:space-y-8">
+        <div className="mt-4 space-y-3 sm:mt-5 sm:space-y-4">
           <PolicyCard
             title="Before you book"
             icon="book"
@@ -396,52 +386,38 @@ export default function RefundCancellationPage() {
 
       {/* Visual timeline */}
       <section
-        className="border-y border-ocean-100 bg-white/70 px-4 py-12 sm:px-6 sm:py-16 lg:px-8"
+        className="border-y border-ocean-100 bg-white/70 px-3 py-5 sm:px-6 sm:py-6 lg:px-8"
         aria-labelledby="refund-timeline-heading"
       >
         <div className="mx-auto max-w-5xl">
           <h2
             id="refund-timeline-heading"
-            className="text-center font-display text-[1.75rem] font-black tracking-tight text-ocean-900 sm:text-[2rem]"
+            className="text-center font-display text-xl font-black tracking-tight text-ocean-900 sm:text-2xl"
           >
             Refund timeline
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed text-ocean-700 sm:text-lg">
+          <p className="mx-auto mt-1.5 max-w-2xl text-center text-xs leading-relaxed text-ocean-700 sm:text-sm">
             Approved refunds are processed to the original payment method. Typical
             timelines are <strong className="text-ocean-900">5–10 business days</strong>,
             depending on your bank or payment provider.
           </p>
 
-          <ol className="mt-10 flex flex-col items-stretch gap-0 lg:flex-row lg:items-start lg:justify-between lg:gap-2">
+          <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-1">
             {TIMELINE_STEPS.map((step, index) => (
               <li
                 key={step}
-                className="relative flex flex-1 flex-col items-center text-center"
+                className="relative flex flex-col items-center text-center"
               >
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-ocean-800 text-sm font-black text-white shadow-lg shadow-ocean-900/20">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-ocean-800 text-xs font-black text-white shadow-md">
                   {index + 1}
                 </div>
-                <p className="mt-3 max-w-[9.5rem] font-display text-sm font-bold text-ocean-900 sm:text-base">
+                <p className="mt-1.5 max-w-[8rem] font-display text-[11px] font-bold text-ocean-900 sm:text-xs">
                   {step}
                 </p>
-                {index < TIMELINE_STEPS.length - 1 ? (
-                  <>
-                    <span
-                      className="my-2 text-ocean-400 lg:hidden"
-                      aria-hidden
-                    >
-                      ↓
-                    </span>
-                    <span
-                      className="absolute left-[calc(50%+1.75rem)] top-7 hidden h-0.5 w-[calc(100%-3.5rem)] bg-gradient-to-r from-sky-400 to-ocean-300 lg:block"
-                      aria-hidden
-                    />
-                  </>
-                ) : null}
               </li>
             ))}
           </ol>
-          <p className="mt-8 text-center font-display text-lg font-bold text-sky-700 sm:text-xl">
+          <p className="mt-3 text-center font-display text-sm font-bold text-sky-700 sm:text-base">
             5–10 Business Days
           </p>
         </div>
@@ -449,41 +425,41 @@ export default function RefundCancellationPage() {
 
       {/* FAQ */}
       <section
-        className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8"
+        className="mx-auto max-w-3xl px-3 py-5 sm:px-6 sm:py-6 lg:px-8"
         aria-labelledby="refund-faq-heading"
       >
         <h2
           id="refund-faq-heading"
-          className="text-center font-display text-[1.75rem] font-black tracking-tight text-ocean-900 sm:text-[2rem]"
+          className="text-center font-display text-xl font-black tracking-tight text-ocean-900 sm:text-2xl"
         >
           Frequently asked questions
         </h2>
-        <p className="mx-auto mt-3 max-w-xl text-center text-base text-ocean-700 sm:text-lg">
+        <p className="mx-auto mt-1 text-center text-xs text-ocean-700 sm:text-sm">
           Quick answers based on this policy.
         </p>
-        <div className="mt-8">
+        <div className="mt-3">
           <RefundFaqAccordion items={FAQ_ITEMS} />
         </div>
       </section>
 
       {/* Support */}
-      <section className="mx-auto max-w-5xl px-4 pb-10 sm:px-6 lg:px-8">
-        <div className="rounded-[1.25rem] bg-gradient-to-br from-ocean-900 via-sky-800 to-cyan-700 p-6 text-white shadow-xl shadow-ocean-900/25 sm:p-10">
+      <section className="mx-auto max-w-5xl px-3 pb-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl bg-gradient-to-br from-ocean-900 via-sky-800 to-cyan-700 p-4 text-white shadow-lg sm:p-5">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="font-display text-3xl font-black tracking-tight sm:text-4xl">
+            <p className="font-display text-xl font-black tracking-tight sm:text-2xl">
               Need Help?
             </p>
-            <p className="mt-3 text-base leading-relaxed text-sky-100 sm:text-lg">
+            <p className="mt-1 text-xs leading-relaxed text-sky-100 sm:text-sm">
               Our booking team is here to help. Contact us with your booking details
               (name, phone, date, and payment/order ID).
             </p>
           </div>
-          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <a
               href={waHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:scale-[1.02] hover:bg-[#1ebe57]"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#1ebe57] sm:text-sm"
               aria-label="WhatsApp support"
             >
               <WhatsAppIcon />
@@ -491,7 +467,7 @@ export default function RefundCancellationPage() {
             </a>
             <a
               href={CONTACT_PHONE_HREF}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-ocean-900 shadow-md transition hover:scale-[1.02] hover:bg-sky-50"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-ocean-900 shadow-md transition hover:bg-sky-50 sm:text-sm"
               aria-label={`Call ${CONTACT_PHONE_LABEL}`}
             >
               <PhoneIcon />
@@ -499,7 +475,7 @@ export default function RefundCancellationPage() {
             </a>
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/40 bg-white/10 px-4 py-3 text-sm font-bold text-white shadow-md backdrop-blur transition hover:scale-[1.02] hover:bg-white/20"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/40 bg-white/10 px-3 py-2 text-xs font-bold text-white shadow-md backdrop-blur transition hover:bg-white/20 sm:text-sm"
               aria-label={`Email ${CONTACT_EMAIL}`}
             >
               <MailIcon />
@@ -510,24 +486,24 @@ export default function RefundCancellationPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="mx-auto max-w-5xl px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8">
-        <div className="rounded-[1.25rem] border border-ocean-100 bg-white p-6 text-center shadow-lg shadow-ocean-900/5 sm:p-10">
-          <h2 className="font-display text-[1.75rem] font-black tracking-tight text-ocean-900 sm:text-[2.15rem]">
+      <section className="mx-auto max-w-5xl px-3 pb-8 sm:px-6 sm:pb-10 lg:px-8">
+        <div className="rounded-2xl border border-ocean-100 bg-white p-4 text-center shadow-md sm:p-5">
+          <h2 className="font-display text-xl font-black tracking-tight text-ocean-900 sm:text-2xl">
             Ready To Book Your Next Adventure?
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-ocean-700 sm:text-lg">
+          <p className="mx-auto mt-1 max-w-xl text-xs leading-relaxed text-ocean-700 sm:text-sm">
             Book your scuba diving experience today.
           </p>
-          <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+          <div className="mt-3 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
             <Link
               href="/booking"
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-ocean-800 px-8 py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110"
+              className="inline-flex min-h-10 items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-ocean-800 px-6 py-2 text-xs font-bold text-white shadow-md transition hover:brightness-110 sm:text-sm"
             >
               Book Now
             </Link>
             <Link
               href="/services"
-              className="inline-flex min-h-12 items-center justify-center rounded-full border-2 border-ocean-200 bg-white px-8 py-3 text-sm font-bold text-ocean-900 transition hover:border-ocean-400 hover:bg-ocean-50"
+              className="inline-flex min-h-10 items-center justify-center rounded-full border-2 border-ocean-200 bg-white px-6 py-2 text-xs font-bold text-ocean-900 transition hover:border-ocean-400 hover:bg-ocean-50 sm:text-sm"
             >
               View Packages
             </Link>
@@ -548,19 +524,19 @@ function PolicyCard({
   children: ReactNode;
 }) {
   return (
-    <article className="rounded-[1.25rem] border border-ocean-100 border-l-4 border-l-sky-500 bg-white p-6 shadow-md shadow-ocean-900/5 sm:p-8">
-      <div className="flex items-start gap-3">
-        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-cyan-50 text-ocean-800">
+    <article className="rounded-xl border border-ocean-100 border-l-4 border-l-sky-500 bg-white p-3.5 shadow-sm sm:p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-100 to-cyan-50 text-ocean-800 [&_svg]:h-5 [&_svg]:w-5">
           <SectionIcon variant={icon} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-[1.45rem] font-black tracking-tight text-ocean-900 sm:text-[1.75rem]">
+          <h2 className="font-display text-base font-black tracking-tight text-ocean-900 sm:text-lg">
             {title}
           </h2>
-          <div className="mt-2 h-1 w-14 rounded-full bg-gradient-to-r from-sky-500 to-ocean-700" />
+          <div className="mt-1 h-0.5 w-10 rounded-full bg-gradient-to-r from-sky-500 to-ocean-700" />
         </div>
       </div>
-      <div className="mt-5 text-[1.05rem] leading-relaxed text-ocean-800 sm:text-lg [&_strong]:text-ocean-950">
+      <div className="mt-2.5 text-sm leading-relaxed text-ocean-800 sm:text-[0.95rem] [&_strong]:text-ocean-950">
         {children}
       </div>
     </article>
