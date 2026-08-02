@@ -7,14 +7,32 @@ import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
+import { ContentOverviewBar } from "@/app/admin/blog-automation/ContentOverviewBar";
 import { BlogDailySchedulePanel } from "@/app/admin/blog-automation/BlogDailySchedulePanel";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
 import { StaticCodeBlogsPanel } from "@/components/admin/StaticCodeBlogsPanel";
+import type { ContentOverview } from "@/lib/admin-content-overview";
+import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 
 type BlogTraffic = { views: number; visitors: number };
+
+function mergeTrafficMaps(
+  into: Record<string, BlogTraffic>,
+  from: Record<string, BlogTraffic>,
+) {
+  for (const [slug, t] of Object.entries(from)) {
+    const key = slug.trim().toLowerCase();
+    if (!key) continue;
+    const cur = into[key] ?? { views: 0, visitors: 0 };
+    into[key] = {
+      views: Math.max(cur.views, Math.round(Number(t.views) || 0)),
+      visitors: Math.max(cur.visitors, Math.round(Number(t.visitors) || 0)),
+    };
+  }
+}
 
 async function adminToken(): Promise<string> {
   const auth = getFirebaseAuth();
@@ -58,6 +76,9 @@ export default function AdminBlogAutomationPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
+  const [overview, setOverview] = useState<ContentOverview | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [serviceFilter, setServiceFilter] = useState("");
   /** Estimated % while OpenAI image generation runs (API has no real progress stream). */
   const [aiImageProgress, setAiImageProgress] = useState<number | null>(null);
 
@@ -83,36 +104,117 @@ export default function AdminBlogAutomationPage() {
     window.history.replaceState({}, "", next);
   }, []);
 
-  const loadBlogTraffic = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setTrafficLoading(true);
+  const loadBlogTraffic = useCallback(
+    async (opts?: { silent?: boolean; posts?: BlogPostFirestore[] }) => {
+      if (!opts?.silent) setTrafficLoading(true);
+      try {
+        const data = await adminFetch(
+          "/api/admin/blog-traffic?mode=aggregated",
+        );
+        const bySlug = {
+          ...((data.bySlug ?? {}) as Record<string, BlogTraffic>),
+        };
+        const index = (data.index ?? {
+          views: 0,
+          visitors: 0,
+        }) as BlogTraffic;
+
+        const list = opts?.posts ?? posts;
+        for (const p of list) {
+          const vc = Math.max(0, Math.round(Number(p.viewCount) || 0));
+          if (vc <= 0) continue;
+          const key = p.slug.trim().toLowerCase();
+          const cur = bySlug[key] ?? { views: 0, visitors: 0 };
+          bySlug[key] = {
+            views: Math.max(cur.views, vc),
+            visitors: Math.max(cur.visitors, vc > 0 ? 1 : 0),
+          };
+        }
+
+        const published = list
+          .filter((p) => p.published)
+          .map((p) => p.slug.trim().toLowerCase())
+          .filter(Boolean);
+        const BATCH = 40;
+        for (let i = 0; i < published.length; i += BATCH) {
+          const batch = published.slice(i, i + BATCH);
+          const precise = await adminFetch(
+            `/api/admin/blog-traffic?slugs=${encodeURIComponent(batch.join(","))}`,
+          ).catch(() => null);
+          if (precise?.bySlug) {
+            mergeTrafficMaps(
+              bySlug,
+              precise.bySlug as Record<string, BlogTraffic>,
+            );
+          }
+        }
+
+        setBlogTrafficBySlug(bySlug);
+        setBlogIndexTraffic({
+          views: Math.max(0, Math.round(Number(index.views) || 0)),
+          visitors: Math.max(0, Math.round(Number(index.visitors) || 0)),
+        });
+      } catch {
+        setBlogTrafficBySlug({});
+        setBlogIndexTraffic({ views: 0, visitors: 0 });
+      } finally {
+        if (!opts?.silent) setTrafficLoading(false);
+      }
+    },
+    [posts],
+  );
+
+  const loadOverview = useCallback(async () => {
+    setOverviewLoading(true);
     try {
-      const data = await adminFetch("/api/admin/blog-traffic?mode=aggregated");
-      const bySlug = (data.bySlug ?? {}) as Record<string, BlogTraffic>;
-      const index = (data.index ?? { views: 0, visitors: 0 }) as BlogTraffic;
-      setBlogTrafficBySlug(bySlug);
-      setBlogIndexTraffic({
-        views: Math.max(0, Math.round(Number(index.views) || 0)),
-        visitors: Math.max(0, Math.round(Number(index.visitors) || 0)),
-      });
+      const data = (await adminFetch(
+        "/api/admin/content-overview",
+      )) as ContentOverview;
+      setOverview(data);
     } catch {
-      setBlogTrafficBySlug({});
-      setBlogIndexTraffic({ views: 0, visitors: 0 });
+      setOverview(null);
     } finally {
-      if (!opts?.silent) setTrafficLoading(false);
+      setOverviewLoading(false);
     }
   }, []);
 
   async function refreshTrafficOnly() {
     setTrafficRefreshing(true);
     try {
-      await loadBlogTraffic({ silent: true });
-      // One recovery pass against raw pageViews if aggregated looks empty.
       const data = await adminFetch("/api/admin/blog-traffic?mode=full").catch(
         () => null,
       );
-      if (data?.bySlug) {
-        setBlogTrafficBySlug(data.bySlug as Record<string, BlogTraffic>);
-        const index = (data.index ?? { views: 0, visitors: 0 }) as BlogTraffic;
+      const bySlug = {
+        ...((data?.bySlug ?? {}) as Record<string, BlogTraffic>),
+      };
+      for (const p of posts) {
+        const vc = Math.max(0, Math.round(Number(p.viewCount) || 0));
+        if (vc <= 0) continue;
+        const key = p.slug.trim().toLowerCase();
+        const cur = bySlug[key] ?? { views: 0, visitors: 0 };
+        bySlug[key] = {
+          views: Math.max(cur.views, vc),
+          visitors: Math.max(cur.visitors, vc > 0 ? 1 : 0),
+        };
+      }
+      const published = posts
+        .filter((p) => p.published)
+        .map((p) => p.slug.trim().toLowerCase());
+      for (let i = 0; i < published.length; i += 40) {
+        const batch = published.slice(i, i + 40);
+        const precise = await adminFetch(
+          `/api/admin/blog-traffic?slugs=${encodeURIComponent(batch.join(","))}`,
+        ).catch(() => null);
+        if (precise?.bySlug) {
+          mergeTrafficMaps(
+            bySlug,
+            precise.bySlug as Record<string, BlogTraffic>,
+          );
+        }
+      }
+      setBlogTrafficBySlug(bySlug);
+      if (data?.index) {
+        const index = data.index as BlogTraffic;
         setBlogIndexTraffic({
           views: Math.max(0, Math.round(Number(index.views) || 0)),
           visitors: Math.max(0, Math.round(Number(index.visitors) || 0)),
@@ -150,7 +252,10 @@ export default function AdminBlogAutomationPage() {
         const match = loadedPosts.find((post) => post.slug === current.slug);
         return match ?? current;
       });
-      await loadBlogTraffic({ silent: true });
+      await Promise.all([
+        loadBlogTraffic({ silent: true, posts: loadedPosts }),
+        loadOverview(),
+      ]);
 
       if (!silent && typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);
@@ -177,7 +282,7 @@ export default function AdminBlogAutomationPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [loadBlogTraffic]);
+  }, [loadBlogTraffic, loadOverview]);
 
   useEffect(() => {
     void refresh();
@@ -185,8 +290,14 @@ export default function AdminBlogAutomationPage() {
 
   const sortedPosts = useMemo(() => {
     return [...posts].sort((a, b) => {
-      const ta = blogTrafficBySlug[a.slug]?.views ?? 0;
-      const tb = blogTrafficBySlug[b.slug]?.views ?? 0;
+      const ta = Math.max(
+        getContentTrafficForSlug(blogTrafficBySlug, a.slug)?.views ?? 0,
+        a.viewCount ?? 0,
+      );
+      const tb = Math.max(
+        getContentTrafficForSlug(blogTrafficBySlug, b.slug)?.views ?? 0,
+        b.viewCount ?? 0,
+      );
       if (tb !== ta) return tb - ta;
       return b.updatedAt.localeCompare(a.updatedAt);
     });
@@ -196,18 +307,47 @@ export default function AdminBlogAutomationPage() {
   const [frozenEditOrder, setFrozenEditOrder] = useState<string[] | null>(null);
 
   const displayPosts = useMemo(() => {
-    if (!editing || !frozenEditOrder?.length) return sortedPosts;
-    const bySlug = new Map(posts.map((p) => [p.slug, p]));
-    const out: BlogPostFirestore[] = [];
-    for (const slug of frozenEditOrder) {
-      const p = bySlug.get(slug);
-      if (p) out.push(p);
+    let list: BlogPostFirestore[];
+    if (!editing || !frozenEditOrder?.length) {
+      list = sortedPosts;
+    } else {
+      const bySlug = new Map(posts.map((p) => [p.slug, p]));
+      const out: BlogPostFirestore[] = [];
+      for (const slug of frozenEditOrder) {
+        const p = bySlug.get(slug);
+        if (p) out.push(p);
+      }
+      for (const p of posts) {
+        if (!frozenEditOrder.includes(p.slug)) out.push(p);
+      }
+      list = out;
     }
+    if (serviceFilter === "__none__") {
+      return list.filter((p) => !String(p.serviceSlug || "").trim());
+    }
+    if (serviceFilter) {
+      return list.filter((p) => p.serviceSlug === serviceFilter);
+    }
+    return list;
+  }, [editing, frozenEditOrder, posts, sortedPosts, serviceFilter]);
+
+  const serviceOptions = useMemo(() => {
+    const counts = new Map<string, number>();
     for (const p of posts) {
-      if (!frozenEditOrder.includes(p.slug)) out.push(p);
+      const key = String(p.serviceSlug || "").trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     }
-    return out;
-  }, [editing, frozenEditOrder, posts, sortedPosts]);
+    if (overview?.services?.length) {
+      return overview.services.map((s) => ({
+        ...s,
+        blogCount: counts.get(s.slug) ?? s.blogCount,
+      }));
+    }
+    return [...counts.entries()]
+      .map(([slug, blogCount]) => ({ slug, title: slug, blogCount }))
+      .sort((a, b) => a.blogCount - b.blogCount);
+  }, [overview, posts]);
 
   function beginEdit(post: BlogPostFirestore) {
     setFrozenEditOrder(sortedPosts.map((p) => p.slug));
@@ -759,6 +899,13 @@ export default function AdminBlogAutomationPage() {
         <p className="mt-3 text-ocean-600">Loading…</p>
       ) : (
         <>
+          <div className="mt-3">
+            <ContentOverviewBar
+              overview={overview}
+              loading={overviewLoading}
+            />
+          </div>
+
           <AdminCollapseSection title="Automation settings" hint={automationHint}>
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm font-medium text-ocean-800">
@@ -1037,6 +1184,9 @@ export default function AdminBlogAutomationPage() {
             trafficLoading={trafficLoading}
             editing={editing}
             busy={busy}
+            services={serviceOptions}
+            serviceFilter={serviceFilter}
+            onServiceFilterChange={setServiceFilter}
             onEdit={beginEdit}
             onCancelEdit={cancelEdit}
             onChangeEditing={setEditing}

@@ -6,11 +6,14 @@ import {
   utcIsoToIstDatetimeLocalValue,
 } from "@/lib/blog-automation/schedule-ist";
 
+type ServiceOption = { slug: string; title: string };
+
 type Props = {
   editing: BlogPostFirestore;
   busy: string | null;
   publishSlots: string[];
   aiImageProgress?: number | null;
+  services?: ServiceOption[];
   onChangeEditing: (post: BlogPostFirestore) => void;
   onSave: (opts?: { publishNow?: boolean }) => void;
   onCancelEdit: () => void;
@@ -23,6 +26,7 @@ export function BlogPostEditorPanel({
   busy,
   publishSlots,
   aiImageProgress = null,
+  services = [],
   onChangeEditing,
   onSave,
   onCancelEdit,
@@ -61,6 +65,36 @@ export function BlogPostEditorPanel({
             <option value="en">English</option>
             <option value="hi">Hindi</option>
           </select>
+        </label>
+        <label className="block text-sm text-ocean-800 lg:col-span-2">
+          Related service
+          <select
+            className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2"
+            value={editing.serviceSlug || ""}
+            onChange={(e) =>
+              onChangeEditing({
+                ...editing,
+                serviceSlug: e.target.value,
+              })
+            }
+          >
+            <option value="">— Unassigned —</option>
+            {editing.serviceSlug &&
+            !services.some((s) => s.slug === editing.serviceSlug) ? (
+              <option value={editing.serviceSlug}>
+                {editing.serviceSlug} (current)
+              </option>
+            ) : null}
+            {services.map((s) => (
+              <option key={s.slug} value={s.slug}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-ocean-500">
+            Used for the service filter — assign so you can see which services
+            need more blogs.
+          </span>
         </label>
         <label className="block text-sm text-ocean-800">
           IST slot

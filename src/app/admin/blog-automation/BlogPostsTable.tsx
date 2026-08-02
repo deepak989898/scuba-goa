@@ -6,9 +6,16 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import type { BlogPostFirestore } from "@/lib/blog-firestore";
 import { isBlogScheduled } from "@/lib/blog-firestore";
 import { formatUtcInIst } from "@/lib/blog-automation/schedule-ist";
+import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 import { BlogPostEditorPanel } from "./BlogPostEditorPanel";
 
 type BlogTraffic = { views: number; visitors: number };
+
+export type ServiceFilterOption = {
+  slug: string;
+  title: string;
+  blogCount: number;
+};
 
 type Props = {
   posts: BlogPostFirestore[];
@@ -19,6 +26,9 @@ type Props = {
   trafficLoading: boolean;
   editing: BlogPostFirestore | null;
   busy: string | null;
+  services?: ServiceFilterOption[];
+  serviceFilter?: string;
+  onServiceFilterChange?: (slug: string) => void;
   onEdit: (post: BlogPostFirestore) => void;
   onCancelEdit: () => void;
   onChangeEditing: (post: BlogPostFirestore) => void;
@@ -37,6 +47,14 @@ type Props = {
   onRefreshTraffic?: () => void;
   trafficRefreshing?: boolean;
 };
+
+function viewCountForPost(
+  p: BlogPostFirestore,
+  bySlug: Record<string, BlogTraffic>,
+): number {
+  const t = getContentTrafficForSlug(bySlug, p.slug);
+  return Math.max(t?.views ?? 0, p.viewCount ?? 0);
+}
 
 function statusBadge(p: BlogPostFirestore) {
   if (p.published) {
@@ -69,6 +87,9 @@ export function BlogPostsTable({
   trafficLoading,
   editing,
   busy,
+  services = [],
+  serviceFilter = "",
+  onServiceFilterChange,
   onEdit,
   onCancelEdit,
   onChangeEditing,
@@ -90,6 +111,17 @@ export function BlogPostsTable({
     src: string;
     alt: string;
   } | null>(null);
+
+  const serviceTitleBySlug = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of services) m.set(s.slug, s.title);
+    return m;
+  }, [services]);
+
+  const unassignedCount = useMemo(
+    () => posts.filter((p) => !String(p.serviceSlug || "").trim()).length,
+    [posts],
+  );
 
   const visibleSlugs = useMemo(
     () => sortedPosts.map((p) => p.slug),
@@ -155,7 +187,8 @@ export function BlogPostsTable({
     <section className="mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
       <div className="border-b border-ocean-100 px-3 py-4">
         <h2 className="font-display text-lg font-bold text-ocean-900">
-          All blogs ({posts.length})
+          All blogs ({sortedPosts.length}
+          {serviceFilter ? ` of ${posts.length}` : ` · ${posts.length} total`})
         </h2>
         <p className="mt-1 text-sm text-ocean-600">
           {liveCount} live · {scheduledCount} scheduled · review and edit before
@@ -165,6 +198,27 @@ export function BlogPostsTable({
             : `${blogIndexTraffic.views.toLocaleString("en-IN")} views · ${blogIndexTraffic.visitors.toLocaleString("en-IN")} visitors`}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          {onServiceFilterChange ? (
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-ocean-800">
+              <span className="whitespace-nowrap">Service</span>
+              <select
+                value={serviceFilter}
+                onChange={(e) => onServiceFilterChange(e.target.value)}
+                className="max-w-[16rem] rounded-lg border border-ocean-200 bg-white px-2 py-1.5 text-xs font-medium text-ocean-900"
+              >
+                <option value="">All services</option>
+                <option value="__none__">
+                  Unassigned ({unassignedCount})
+                </option>
+                {services.map((s) => (
+                  <option key={s.slug} value={s.slug}>
+                    {s.title} ({s.blogCount})
+                    {s.blogCount === 0 ? " · low" : s.blogCount < 3 ? " · few" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           {onRefreshTraffic ? (
             <button
               type="button"
@@ -242,6 +296,7 @@ export function BlogPostsTable({
                 <th className="p-3">Image</th>
                 <th className="p-3">Slug</th>
                 <th className="p-3">Title</th>
+                <th className="p-3">Service</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Scheduled (IST)</th>
                 <th className="p-3">Published (IST)</th>
@@ -305,6 +360,19 @@ export function BlogPostsTable({
                     <td className="max-w-[14rem] p-3 align-top text-ocean-900">
                       {p.title}
                     </td>
+                    <td className="max-w-[9rem] p-3 align-top text-xs text-ocean-700">
+                      {p.serviceSlug ? (
+                        <span
+                          className="line-clamp-2"
+                          title={p.serviceSlug}
+                        >
+                          {serviceTitleBySlug.get(p.serviceSlug) ||
+                            p.serviceSlug}
+                        </span>
+                      ) : (
+                        <span className="text-orange-700">Unassigned</span>
+                      )}
+                    </td>
                     <td className="p-3 align-top">{statusBadge(p)}</td>
                     <td className="p-3 align-top text-xs text-ocean-700">
                       {isBlogScheduled(p) ? (
@@ -327,11 +395,11 @@ export function BlogPostsTable({
                         ? formatUtcInIst(p.publishedAt, "long")
                         : "—"}
                     </td>
-                    <td className="p-3 align-top text-right tabular-nums">
+                    <td className="p-3 align-top text-right tabular-nums font-semibold text-ocean-900">
                       {p.published
                         ? trafficLoading
-                          ? "—"
-                          : (blogTrafficBySlug[p.slug]?.views ?? 0).toLocaleString(
+                          ? "…"
+                          : viewCountForPost(p, blogTrafficBySlug).toLocaleString(
                               "en-IN",
                             )
                         : "—"}
@@ -389,12 +457,13 @@ export function BlogPostsTable({
                       id={`blog-editor-${p.slug}`}
                       className="bg-ocean-50/50"
                     >
-                      <td colSpan={9} className="p-4">
+                      <td colSpan={10} className="p-4">
                         <BlogPostEditorPanel
                           editing={editing}
                           busy={busy}
                           publishSlots={publishSlots}
                           aiImageProgress={aiImageProgress}
+                          services={services}
                           onChangeEditing={onChangeEditing}
                           onSave={onSave}
                           onCancelEdit={onCancelEdit}
