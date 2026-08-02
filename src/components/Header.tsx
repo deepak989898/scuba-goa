@@ -122,12 +122,12 @@ const nav = [
 export function Header() {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const isOffers = pathname === "/offers";
-  /** Transparent nav over full-bleed photo heroes */
-  const overHero = isHome || isOffers;
+  /** Transparent nav only over the home full-bleed hero */
+  const overHero = isHome;
   const isBooking = pathname === "/booking" || pathname?.startsWith("/booking/");
   const [open, setOpen] = useState(false);
 
+  /** Booking keeps the light bar; all other non-home pages use the dark nav */
   const lightHeader = isBooking;
 
   return (

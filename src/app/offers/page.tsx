@@ -160,7 +160,7 @@ function OfferCard({ o, index }: { o: OfferDoc; index: number }) {
         <PromoCopyButton
           code={o.promoCode}
           variant="solid"
-          className="!min-h-0 shrink-0 !rounded-md !px-2 !py-1 !text-[10px] sm:!text-[11px]"
+          className="shrink-0 !min-h-0 !rounded-md !px-2 !py-1 !text-[10px] sm:!text-[11px]"
         />
       </div>
     </article>
@@ -171,27 +171,30 @@ export default async function OffersPage() {
   const offers = await fetchActiveOffersPublic();
 
   return (
-    <div className="relative -mt-1 overflow-x-hidden pb-2 md:pb-4">
-      {/* Tall hero so beach/boat stay visible above the sheet */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[14rem] sm:h-[16.5rem] lg:h-[18.5rem]">
+    <div className="relative overflow-x-hidden pb-2 md:pb-4">
+      {/* Full hero band — cards sit below so image + title stay clear */}
+      <div className="relative h-[13.5rem] w-full sm:h-[16rem] lg:h-[18rem]">
         <Image
           src="/offer-header.webp"
           alt=""
           fill
           priority
           quality={72}
-          className="object-cover object-[center_32%]"
+          className="object-cover object-[center_30%]"
           sizes="100vw"
         />
         <div
-          className="absolute inset-0 bg-gradient-to-b from-sky-950/20 via-transparent to-[#dceef8]"
+          className="absolute inset-0 bg-gradient-to-b from-sky-950/15 via-transparent to-[#dceef8]/90"
           aria-hidden
         />
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-5 pt-10 text-center sm:pb-6">
+          <h1 className="font-display text-2xl font-black uppercase tracking-tight text-[#0b3d66] drop-shadow-sm sm:text-3xl lg:text-[2.15rem]">
+            Offers &amp; Promo Codes
+          </h1>
+        </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-2 pt-[7.5rem] sm:px-4 sm:pt-[9rem] lg:px-6 lg:pt-[10.5rem]">
-        <h1 className="sr-only">Offers &amp; promo codes</h1>
-
+      <div className="relative z-10 mx-auto max-w-5xl px-2 pt-2 sm:px-4 sm:pt-3 lg:px-6">
         <div className="overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_12px_40px_rgba(8,40,80,0.14)] sm:rounded-[1.25rem]">
           <div className="px-2 py-2 sm:px-3 sm:py-2.5">
             {offers.length === 0 ? (
