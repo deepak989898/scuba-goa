@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
@@ -79,6 +79,9 @@ export default function AdminBlogAutomationPage() {
   const [overview, setOverview] = useState<ContentOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [serviceFilter, setServiceFilter] = useState("");
+  /** Avoid refresh↔posts dependency loop (continuous re-fetch). */
+  const postsRef = useRef<BlogPostFirestore[]>([]);
+  postsRef.current = posts;
   /** Estimated % while OpenAI image generation runs (API has no real progress stream). */
   const [aiImageProgress, setAiImageProgress] = useState<number | null>(null);
 
@@ -119,7 +122,7 @@ export default function AdminBlogAutomationPage() {
           visitors: 0,
         }) as BlogTraffic;
 
-        const list = opts?.posts ?? posts;
+        const list = opts?.posts ?? postsRef.current;
         for (const p of list) {
           const vc = Math.max(0, Math.round(Number(p.viewCount) || 0));
           if (vc <= 0) continue;
@@ -161,7 +164,7 @@ export default function AdminBlogAutomationPage() {
         if (!opts?.silent) setTrafficLoading(false);
       }
     },
-    [posts],
+    [],
   );
 
   const loadOverview = useCallback(async () => {
