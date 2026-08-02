@@ -1,9 +1,4 @@
-import {
-  SITE_IMAGE_PLACEHOLDER,
-  sanitizePublicImageUrl,
-} from "@/lib/cms-image";
-
-const DEFAULT_HERO_POSTER_FALLBACK = SITE_IMAGE_PLACEHOLDER;
+import { sanitizePublicImageUrl } from "@/lib/cms-image";
 
 /**
  * `src` is the main image URL (fallback poster for video if `videoThumbnailUrl` is unset).
@@ -25,13 +20,19 @@ export type HeroSlide = {
   bookingOption?: string;
 };
 
-/** Poster/thumbnail shown for hero video slides (custom thumb → main image → placeholder). */
+function heroMediaUrl(url: string | undefined | null): string {
+  const t = sanitizePublicImageUrl(url);
+  if (!t) return "";
+  // Never use the booking banner as a hero poster (homepage refresh flash).
+  if (t.includes("booking-header")) return "";
+  return t;
+}
+
+/** Poster/thumbnail for hero video — admin thumb/src only; empty → solid ocean (no banner). */
 export function getHeroVideoPosterSrc(slide: HeroSlide): string {
-  const t = sanitizePublicImageUrl(slide.videoThumbnailUrl);
+  const t = heroMediaUrl(slide.videoThumbnailUrl);
   if (t) return t;
-  const s = sanitizePublicImageUrl(slide.src);
-  if (s) return s;
-  return DEFAULT_HERO_POSTER_FALLBACK;
+  return heroMediaUrl(slide.src);
 }
 
 /** Empty by default — public site waits for admin heroSlides (no stock Unsplash). */

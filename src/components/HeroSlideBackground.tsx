@@ -12,6 +12,12 @@ import {
 import { getHeroVideoPosterSrc, type HeroSlide } from "@/lib/hero-slides-default";
 import { getYoutubeVideoId } from "@/lib/hero-video";
 
+function heroMediaSafe(url: string | undefined | null): string {
+  const t = String(url ?? "").trim();
+  if (!t || t.includes("booking-header")) return "";
+  return t;
+}
+
 export function HeroSlideBackground({
   slide,
   slideKey,
@@ -118,10 +124,12 @@ export function HeroSlideBackground({
     shouldRenderVideo,
   ]);
 
-  // Always paint an optimized next/image poster first — this is the LCP element.
-  const poster = (
+  const posterSrc = videoPosterSrc || heroMediaSafe(slide.src);
+
+  // Poster first for LCP; empty src → solid ocean (never booking-header flash).
+  const poster = posterSrc ? (
     <CmsRemoteImage
-      src={videoPosterSrc || slide.src}
+      src={posterSrc}
       alt={slide.alt}
       fill
       priority
@@ -129,6 +137,8 @@ export function HeroSlideBackground({
       className="object-cover object-center"
       sizes="100vw"
     />
+  ) : (
+    <div className="absolute inset-0 bg-ocean-900" aria-hidden />
   );
 
   if (!vUrl || !shouldRenderVideo) {

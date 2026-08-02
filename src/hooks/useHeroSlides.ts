@@ -4,30 +4,29 @@ import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import {
-  cmsImageOrPlaceholder,
+  SITE_IMAGE_PLACEHOLDER,
   sanitizePublicImageUrl,
 } from "@/lib/cms-image";
 import type { HeroSlide } from "@/lib/hero-slides-default";
 
-const PLACEHOLDER_HERO: HeroSlide[] = [
-  {
-    src: cmsImageOrPlaceholder(),
-    alt: "Book Scuba Goa",
-  },
-];
-
-function withHeroFallback(list: HeroSlide[]): HeroSlide[] {
-  return list.length > 0 ? list : PLACEHOLDER_HERO;
+/** Never show the site booking banner as a hero slide (causes refresh flash). */
+function heroSafeSrc(url: string | undefined | null): string {
+  const t = sanitizePublicImageUrl(url);
+  if (!t) return "";
+  if (t === SITE_IMAGE_PLACEHOLDER) return "";
+  if (t.includes("booking-header")) return "";
+  return t;
 }
 
 export function useHeroSlides() {
-  const [slides, setSlides] = useState<HeroSlide[]>(PLACEHOLDER_HERO);
+  /** Start empty — ocean background only until admin heroSlides load (no banner flash). */
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const db = getDb();
     if (!db) {
-      setSlides(PLACEHOLDER_HERO);
+      setSlides([]);
       setLoading(false);
       return;
     }
@@ -37,20 +36,20 @@ export function useHeroSlides() {
         const snap = await getDocs(collection(db, "heroSlides"));
         if (cancelled) return;
         if (snap.empty) {
-          setSlides(PLACEHOLDER_HERO);
+          setSlides([]);
         } else {
           const rows = snap.docs.map((d) => {
             const x = d.data() as Record<string, unknown>;
             const videoUrl = String(
               x.videoUrl ?? x.videoURL ?? x.video_url ?? "",
             ).trim();
-            const videoThumbnailUrl = sanitizePublicImageUrl(
+            const videoThumbnailUrl = heroSafeSrc(
               String(x.videoThumbnailUrl ?? x.video_thumbnail_url ?? ""),
             );
             const bookingRaw = String(
               x.bookingOption ?? x.booking_option ?? "",
             ).trim();
-            const src = sanitizePublicImageUrl(String(x.imageUrl ?? ""));
+            const src = heroSafeSrc(String(x.imageUrl ?? ""));
             return {
               id: d.id,
               src,
@@ -68,17 +67,17 @@ export function useHeroSlides() {
           const list: HeroSlide[] = rows
             .filter((r) => r.src.length > 0 || r.videoUrl)
             .map((r) => ({
-              src: r.src.length > 0 ? r.src : cmsImageOrPlaceholder(),
+              src: r.src,
               alt: r.alt,
               videoUrl: r.videoUrl,
               videoThumbnailUrl: r.videoThumbnailUrl,
               useAmbientMusic: r.useAmbientMusic ? true : undefined,
               bookingOption: r.bookingOption,
             }));
-          setSlides(withHeroFallback(list));
+          setSlides(list);
         }
       } catch {
-        if (!cancelled) setSlides(PLACEHOLDER_HERO);
+        if (!cancelled) setSlides([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
