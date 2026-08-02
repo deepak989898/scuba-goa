@@ -86,6 +86,14 @@ export const CONTENT_SECURITY_POLICY = [
     "https://www.facebook.com",
     "https://www.googletagmanager.com",
     "https://*.firebaseapp.com",
+    // Google Maps office embed (Footer / contact)
+    "https://www.google.com",
+    "https://maps.google.com",
+    "https://www.google.co.in",
+    "https://maps.googleapis.com",
+    // Hero / marketing YouTube embeds
+    "https://www.youtube.com",
+    "https://www.youtube-nocookie.com",
   ].join(" "),
   "worker-src 'self' blob:",
   "media-src 'self' blob: https:",
