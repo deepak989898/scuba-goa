@@ -1,38 +1,48 @@
 import { getAdminDb } from "@/lib/firebase-admin";
+import { sanitizeServiceImages } from "@/lib/cms-image";
 import { docToService } from "@/lib/service-firestore";
 import { seedCatalogIfEmpty } from "@/lib/seed-default-catalog";
 import { fallbackServices, type ServiceItem } from "@/data/services";
 
+function publicFallbackServices(): ServiceItem[] {
+  return fallbackServices.map((s) => sanitizeServiceImages(s));
+}
+
 /** Server-only: metadata & SSR when FIREBASE_SERVICE_ACCOUNT_KEY is set */
 export async function getAllServicesServer(): Promise<ServiceItem[]> {
   const db = getAdminDb();
-  if (!db) return fallbackServices;
+  if (!db) return publicFallbackServices();
   try {
     let snap = await db.collection("services").get();
     if (snap.empty) {
       await seedCatalogIfEmpty(db);
       snap = await db.collection("services").get();
     }
-    if (snap.empty) return fallbackServices;
+    if (snap.empty) return publicFallbackServices();
     const list: ServiceItem[] = [];
     for (const d of snap.docs) {
       const s = docToService(d.id, d.data() as Record<string, unknown>);
-      if (s && s.active !== false) list.push(s);
+      if (s && s.active !== false) list.push(sanitizeServiceImages(s));
     }
     list.sort(
-      (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.slug.localeCompare(b.slug)
+      (a, b) =>
+        (a.sortOrder ?? 999) - (b.sortOrder ?? 999) ||
+        a.slug.localeCompare(b.slug),
     );
-    return list.length === 0 ? fallbackServices : list;
+    return list.length === 0 ? publicFallbackServices() : list;
   } catch {
-    return fallbackServices;
+    return publicFallbackServices();
   }
 }
 
 export async function getServiceBySlugServer(
-  slug: string
+  slug: string,
 ): Promise<ServiceItem | null> {
   const db = getAdminDb();
-  if (!db) return fallbackServices.find((s) => s.slug === slug) ?? null;
+  if (!db) {
+    const s = fallbackServices.find((x) => x.slug === slug);
+    return s ? sanitizeServiceImages(s) : null;
+  }
   try {
     const peek = await db.collection("services").limit(1).get();
     if (peek.empty) {
@@ -40,14 +50,17 @@ export async function getServiceBySlugServer(
     }
     const ref = await db.collection("services").doc(slug).get();
     if (!ref.exists) {
-      return fallbackServices.find((s) => s.slug === slug) ?? null;
+      const s = fallbackServices.find((x) => x.slug === slug);
+      return s ? sanitizeServiceImages(s) : null;
     }
     const s = docToService(ref.id, ref.data() as Record<string, unknown>);
     if (s && s.active === false) {
-      return fallbackServices.find((x) => x.slug === slug) ?? null;
+      const fb = fallbackServices.find((x) => x.slug === slug);
+      return fb ? sanitizeServiceImages(fb) : null;
     }
-    return s;
+    return s ? sanitizeServiceImages(s) : null;
   } catch {
-    return fallbackServices.find((s) => s.slug === slug) ?? null;
+    const s = fallbackServices.find((x) => x.slug === slug);
+    return s ? sanitizeServiceImages(s) : null;
   }
 }

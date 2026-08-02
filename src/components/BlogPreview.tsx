@@ -2,35 +2,9 @@ import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { blogPosts, HOMEPAGE_PACKAGE_GUIDES } from "@/data/blog-posts";
 import { getPublishedBlogPostBySlug } from "@/lib/blog-posts-server";
+import { cmsImageOrPlaceholder, pickCmsImage } from "@/lib/cms-image";
 import { getAllServicesServer } from "@/lib/get-services-server";
 import { serviceDetailImages } from "@/lib/service-images";
-
-const u = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=70`;
-
-/** Distinct package photos if service CMS image is missing. */
-const PACKAGE_FALLBACK_IMAGES: Record<string, { src: string; alt: string }> = {
-  "scuba-diving": {
-    src: u("photo-1544551763-46a013bb70d5"),
-    alt: "Scuba diving package in Goa",
-  },
-  "water-sports": {
-    src: u("photo-1530549387789-4c1017266635"),
-    alt: "Water sports package — jet ski and parasailing in Goa",
-  },
-  "dudhsagar-trip": {
-    src: u("photo-1432405972618-c60b0225b8f9"),
-    alt: "Dudhsagar Falls jeep safari day trip",
-  },
-  "north-goa-tour": {
-    src: u("photo-1512343879784-a960bf40e7f2"),
-    alt: "North Goa tour package — beaches and forts",
-  },
-  "dolphin-trip": {
-    src: u("photo-1568430462989-d4fbfabde15a"),
-    alt: "Dolphin trip boat package in Goa",
-  },
-};
 
 /**
  * Homepage package guides: one article per package type, with that package’s
@@ -49,21 +23,17 @@ export async function BlogPreview() {
         const fs = await getPublishedBlogPostBySlug(guide.slug);
         const service = bySlug.get(guide.serviceSlug);
         const serviceImage = service
-          ? serviceDetailImages(service).find(Boolean)
+          ? pickCmsImage(...serviceDetailImages(service))
           : "";
-        const fallback = PACKAGE_FALLBACK_IMAGES[guide.serviceSlug];
 
-        // Prefer live package/service photo so cards look different by product.
-        const imageUrl =
-          serviceImage ||
-          fallback?.src ||
-          fs?.featuredImageUrl?.trim() ||
-          fs?.ogImageUrl?.trim() ||
-          staticPost.imageUrl?.trim() ||
-          "";
+        const imageUrl = cmsImageOrPlaceholder(
+          serviceImage,
+          fs?.featuredImageUrl,
+          fs?.ogImageUrl,
+          staticPost.imageUrl,
+        );
 
         const imageAlt =
-          fallback?.alt ||
           (service ? `${service.title} package in Goa` : "") ||
           fs?.featuredImageAlt?.trim() ||
           staticPost.imageAlt ||

@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { cmsImageOrPlaceholder, pickCmsImage } from "@/lib/cms-image";
 import { getAllServicesServer } from "@/lib/get-services-server";
-
-const u = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=70`;
 
 const LINKS = [
   {
@@ -11,7 +9,6 @@ const LINKS = [
     slug: "scuba-diving",
     title: "Scuba diving in Goa",
     blurb: "Try dives, packages, gear & instructor — live starting prices.",
-    fallbackImage: u("photo-1544551763-46a013bb70d5"),
     imageAlt: "Scuba diving underwater in Goa",
   },
   {
@@ -19,7 +16,6 @@ const LINKS = [
     slug: "dudhsagar-trip",
     title: "Dudhsagar trip",
     blurb: "Jeep safari day trip with guide options and slot planning.",
-    fallbackImage: u("photo-1432405972618-c60b0225b8f9"),
     imageAlt: "Dudhsagar waterfall trip in Goa",
   },
   {
@@ -27,7 +23,6 @@ const LINKS = [
     slug: "water-sports",
     title: "Water sports in Goa",
     blurb: "Jet ski, parasailing and beach activity combos.",
-    fallbackImage: u("photo-1530549387789-4c1017266635"),
     imageAlt: "Water sports on a Goa beach",
   },
   {
@@ -35,7 +30,6 @@ const LINKS = [
     slug: null,
     title: "Travel guides",
     blurb: "Practical guides before you pay — safety, prices, itineraries.",
-    fallbackImage: u("photo-1488646953014-85cb44e25828"),
     imageAlt: "Travel guides for planning a Goa trip",
   },
 ] as const;
@@ -68,8 +62,10 @@ export async function HomeInternalLinksSection() {
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {LINKS.map((item) => {
             const fromCatalog =
-              item.slug != null ? bySlug.get(item.slug)?.image?.trim() : "";
-            const imageSrc = fromCatalog || item.fallbackImage;
+              item.slug != null
+                ? pickCmsImage(bySlug.get(item.slug)?.image)
+                : "";
+            const imageSrc = cmsImageOrPlaceholder(fromCatalog);
             return (
               <li key={item.href}>
                 <Link

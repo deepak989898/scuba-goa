@@ -1,5 +1,6 @@
 import type { Firestore } from "firebase-admin/firestore";
 import type { PackageDoc } from "@/lib/types";
+import { sanitizePackageImageUrl, sanitizeServiceImages } from "@/lib/cms-image";
 import { fallbackPackages } from "@/data/fallback-packages";
 import { fallbackServices, type ServiceItem } from "@/data/services";
 import { serviceToPayload } from "@/lib/service-firestore";
@@ -12,7 +13,8 @@ function packageToFirestore(p: PackageDoc) {
     duration: rest.duration,
     includes: rest.includes,
     rating: rest.rating,
-    imageUrl: rest.imageUrl ?? "",
+    // Never seed stock Unsplash into Firestore
+    imageUrl: sanitizePackageImageUrl(rest.imageUrl) ?? "",
     category: rest.category ?? "",
     isCombo: rest.isCombo ?? false,
     discountPct: rest.discountPct ?? 0,
@@ -50,10 +52,11 @@ export async function seedCatalogIfEmpty(db: Firestore): Promise<{
     const batch = db.batch();
     fallbackServices.forEach((s, index) => {
       const ref = db.collection("services").doc(s.slug);
+      const cleaned = sanitizeServiceImages(s);
       const item: ServiceItem & { sortOrder: number } = {
-        ...s,
-        sortOrder: s.sortOrder ?? index,
-        active: s.active !== false,
+        ...cleaned,
+        sortOrder: cleaned.sortOrder ?? index,
+        active: cleaned.active !== false,
       };
       batch.set(ref, serviceToPayload(item));
     });

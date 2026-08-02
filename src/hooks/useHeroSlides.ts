@@ -4,19 +4,30 @@ import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import {
-  DEFAULT_HERO_SLIDES,
-  type HeroSlide,
-} from "@/lib/hero-slides-default";
+  cmsImageOrPlaceholder,
+  sanitizePublicImageUrl,
+} from "@/lib/cms-image";
+import type { HeroSlide } from "@/lib/hero-slides-default";
+
+const PLACEHOLDER_HERO: HeroSlide[] = [
+  {
+    src: cmsImageOrPlaceholder(),
+    alt: "Book Scuba Goa",
+  },
+];
+
+function withHeroFallback(list: HeroSlide[]): HeroSlide[] {
+  return list.length > 0 ? list : PLACEHOLDER_HERO;
+}
 
 export function useHeroSlides() {
-  /** Start with defaults so the hero paints immediately (Firestore replaces when ready). */
-  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_HERO_SLIDES);
+  const [slides, setSlides] = useState<HeroSlide[]>(PLACEHOLDER_HERO);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const db = getDb();
     if (!db) {
-      setSlides(DEFAULT_HERO_SLIDES);
+      setSlides(PLACEHOLDER_HERO);
       setLoading(false);
       return;
     }
@@ -26,49 +37,48 @@ export function useHeroSlides() {
         const snap = await getDocs(collection(db, "heroSlides"));
         if (cancelled) return;
         if (snap.empty) {
-          setSlides(DEFAULT_HERO_SLIDES);
+          setSlides(PLACEHOLDER_HERO);
         } else {
           const rows = snap.docs.map((d) => {
             const x = d.data() as Record<string, unknown>;
             const videoUrl = String(
               x.videoUrl ?? x.videoURL ?? x.video_url ?? "",
             ).trim();
-            const videoThumbnailUrl = String(
-              x.videoThumbnailUrl ?? x.video_thumbnail_url ?? "",
-            ).trim();
+            const videoThumbnailUrl = sanitizePublicImageUrl(
+              String(x.videoThumbnailUrl ?? x.video_thumbnail_url ?? ""),
+            );
             const bookingRaw = String(
               x.bookingOption ?? x.booking_option ?? "",
             ).trim();
+            const src = sanitizePublicImageUrl(String(x.imageUrl ?? ""));
             return {
               id: d.id,
-              src: String(x.imageUrl ?? "").trim(),
+              src,
               alt: String(x.alt ?? "Hero image").trim() || "Hero image",
               sortOrder: Number(x.sortOrder ?? 0),
               videoUrl: videoUrl.length > 0 ? videoUrl : undefined,
-              videoThumbnailUrl:
-                videoThumbnailUrl.length > 0 ? videoThumbnailUrl : undefined,
+              videoThumbnailUrl: videoThumbnailUrl || undefined,
               useAmbientMusic: Boolean(x.useAmbientMusic),
               bookingOption: bookingRaw.length > 0 ? bookingRaw : undefined,
             };
           });
-          rows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+          rows.sort(
+            (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
+          );
           const list: HeroSlide[] = rows
             .filter((r) => r.src.length > 0 || r.videoUrl)
             .map((r) => ({
-              src:
-                r.src.length > 0
-                  ? r.src
-                  : "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=70",
+              src: r.src.length > 0 ? r.src : cmsImageOrPlaceholder(),
               alt: r.alt,
               videoUrl: r.videoUrl,
               videoThumbnailUrl: r.videoThumbnailUrl,
               useAmbientMusic: r.useAmbientMusic ? true : undefined,
               bookingOption: r.bookingOption,
             }));
-          setSlides(list.length ? list : DEFAULT_HERO_SLIDES);
+          setSlides(withHeroFallback(list));
         }
       } catch {
-        if (!cancelled) setSlides(DEFAULT_HERO_SLIDES);
+        if (!cancelled) setSlides(PLACEHOLDER_HERO);
       } finally {
         if (!cancelled) setLoading(false);
       }

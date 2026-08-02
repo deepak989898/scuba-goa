@@ -13,6 +13,10 @@ import { getDb } from "@/lib/firebase";
 import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
 import type { PackageDoc } from "@/lib/types";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
+import {
+  AdminSingleImagePreview,
+} from "@/components/admin/AdminMediaUrlPreview";
+import { AdminWebpUploadButton } from "@/components/admin/AdminWebpUploadButton";
 
 export default function AdminPackagesPage() {
   const db = getDb();
@@ -264,22 +268,23 @@ export default function AdminPackagesPage() {
               }
             />
           </label>
-          <label className="text-sm sm:col-span-2">
-            Image URL
-            <input
-              className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
+          <div className="sm:col-span-2">
+            <AdminSingleImagePreview
+              label="Package image"
               value={form.imageUrl}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, imageUrl: e.target.value }))
-              }
-              placeholder="https://… (direct image link; any host)"
+              onChange={(imageUrl) => setForm((f) => ({ ...f, imageUrl }))}
+              placeholder="Upload WebP below, or paste a Storage URL"
+              hint="Public site never shows Unsplash stock. Prefer Upload WebP."
             />
-            <span className="mt-1 block text-xs text-ocean-700">
-              Use a full <code className="text-[10px]">https://</code> link to the image
-              file. The homepage uses a flexible loader so hosts do not need to be
-              listed in Next.js config.
-            </span>
-          </label>
+            <AdminWebpUploadButton
+              className="mt-2"
+              folder={`packages/${editingId || "new"}`}
+              profile="card"
+              currentUrl={form.imageUrl}
+              onUploaded={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+              label="Upload package WebP"
+            />
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

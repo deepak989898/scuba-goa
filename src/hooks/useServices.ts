@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { sanitizeServiceImages } from "@/lib/cms-image";
 import { docToService } from "@/lib/service-firestore";
 import { fallbackServices, type ServiceItem } from "@/data/services";
+
+function publicFallbackServices(): ServiceItem[] {
+  return fallbackServices.map((s) => sanitizeServiceImages(s));
+}
 
 export function useServices() {
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -14,7 +19,7 @@ export function useServices() {
   useEffect(() => {
     const db = getDb();
     if (!db) {
-      setServices(fallbackServices);
+      setServices(publicFallbackServices());
       setLoading(false);
       return;
     }
@@ -37,21 +42,21 @@ export function useServices() {
         }
         if (cancelled) return;
         if (snap.empty) {
-          setServices(fallbackServices);
+          setServices(publicFallbackServices());
           setFromFirestore(false);
         } else {
           const list: ServiceItem[] = [];
           for (const d of snap.docs) {
             const s = docToService(d.id, d.data() as Record<string, unknown>);
-            if (s && s.active !== false) list.push(s);
+            if (s && s.active !== false) list.push(sanitizeServiceImages(s));
           }
           list.sort(
             (a, b) =>
               (a.sortOrder ?? 999) - (b.sortOrder ?? 999) ||
-              a.slug.localeCompare(b.slug)
+              a.slug.localeCompare(b.slug),
           );
           if (list.length === 0) {
-            setServices(fallbackServices);
+            setServices(publicFallbackServices());
             setFromFirestore(false);
           } else {
             setServices(list);
@@ -60,7 +65,7 @@ export function useServices() {
         }
       } catch {
         if (!cancelled) {
-          setServices(fallbackServices);
+          setServices(publicFallbackServices());
           setFromFirestore(false);
         }
       } finally {

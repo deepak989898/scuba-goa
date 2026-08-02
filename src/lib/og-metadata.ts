@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/constants";
+import {
+  SITE_IMAGE_PLACEHOLDER,
+  sanitizePublicImageUrl,
+} from "@/lib/cms-image";
 
-/** Default share image when a page has no product photo (not the site logo). */
-export const DEFAULT_OG_SHARE_IMAGE =
-  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&h=630&q=80";
+/** Default share image when a page has no product photo (local brand asset, not stock). */
+export const DEFAULT_OG_SHARE_IMAGE = SITE_IMAGE_PLACEHOLDER;
 
 export function toAbsoluteMediaUrl(pathOrUrl: string | undefined | null): string {
   const raw = String(pathOrUrl ?? "").trim();
@@ -17,7 +20,8 @@ export function pickShareImageUrl(
   primary: string | undefined | null,
   fallback = DEFAULT_OG_SHARE_IMAGE,
 ): string {
-  return toAbsoluteMediaUrl(primary) || fallback;
+  const safe = sanitizePublicImageUrl(primary);
+  return toAbsoluteMediaUrl(safe) || toAbsoluteMediaUrl(fallback) || toAbsoluteMediaUrl(SITE_IMAGE_PLACEHOLDER);
 }
 
 export function formatSharePriceInr(

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import {
   CONTACT_PHONE_HREF,
   CONTACT_PHONE_LABEL,
@@ -10,12 +10,11 @@ import {
   SITE_URL,
   whatsappLink,
 } from "@/lib/constants";
+import {
+  aboutPublicImages,
+  getAboutContentServer,
+} from "@/lib/about-content";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
-
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=70";
-const MID_IMAGE =
-  "https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=900&q=70";
 
 const waMessage =
   "Hi, I read your About page. I want to know more about scuba in Goa and booking.";
@@ -199,7 +198,8 @@ const STATS = [
   { label: "100% Safety Commitment", Icon: IconShield },
 ] as const;
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const aboutImages = aboutPublicImages(await getAboutContentServer());
   const site = SITE_URL.replace(/\/$/, "");
   const jsonLd = {
     "@context": "https://schema.org",
@@ -228,13 +228,12 @@ export default function AboutPage() {
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-ocean-950">
         <div className="absolute inset-0">
-          <Image
-            src={HERO_IMAGE}
+          <CmsRemoteImage
+            src={aboutImages.hero}
             alt="Scuba diver underwater with OK hand signal"
             fill
             className="object-cover object-center"
             sizes="100vw"
-            quality={70}
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-r from-ocean-950/90 via-ocean-950/65 to-ocean-900/35" />
@@ -321,13 +320,12 @@ export default function AboutPage() {
           </div>
 
           <div className="relative mx-auto aspect-[3/4] w-full max-w-xs overflow-hidden rounded-2xl border border-ocean-100 shadow-md lg:max-w-none">
-            <Image
-              src={MID_IMAGE}
+            <CmsRemoteImage
+              src={aboutImages.mid}
               alt="Tropical Goa coastline and turquoise water"
               fill
               className="object-cover"
               sizes="(max-width: 1024px) 80vw, 288px"
-              quality={65}
             />
           </div>
 

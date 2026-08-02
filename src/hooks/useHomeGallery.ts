@@ -1,6 +1,9 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { sanitizePublicImageUrl } from "@/lib/cms-image";
 import { normalizeGalleryCategory } from "@/lib/gallery-categories";
 import { dedupeHomeGalleryItems } from "@/lib/home-gallery-dedupe";
 import {
@@ -14,9 +17,17 @@ function normalizeRow(
 ): (HomeGalleryItem & { sortOrder: number; id: string }) | null {
   const typeRaw = String(x.type ?? "image").toLowerCase();
   const type: "image" | "video" = typeRaw === "video" ? "video" : "image";
-  const mediaUrl = String(x.mediaUrl ?? x.imageUrl ?? "").trim();
-  if (!mediaUrl) return null;
-  const posterUrl = String(x.posterUrl ?? "").trim() || undefined;
+  const mediaUrl = sanitizePublicImageUrl(
+    String(x.mediaUrl ?? x.imageUrl ?? ""),
+  );
+  if (!mediaUrl && type === "image") return null;
+  const rawMedia = String(x.mediaUrl ?? x.imageUrl ?? "").trim();
+  // Videos may use non-image hosts; keep video URL if present
+  const resolvedMedia =
+    type === "video" ? rawMedia || mediaUrl : mediaUrl;
+  if (!resolvedMedia) return null;
+  const posterUrl =
+    sanitizePublicImageUrl(String(x.posterUrl ?? "")) || undefined;
   const alt = String(x.alt ?? "Gallery").trim() || "Gallery";
   const sortOrder = Number(x.sortOrder ?? 0);
   const category = normalizeGalleryCategory(x.category);
@@ -27,7 +38,7 @@ function normalizeRow(
   return {
     id,
     type,
-    mediaUrl,
+    mediaUrl: resolvedMedia,
     posterUrl,
     alt,
     sortOrder,
@@ -62,7 +73,10 @@ export function useHomeGallery() {
         } else {
           const rows = snap.docs
             .map((docSnap) =>
-              normalizeRow(docSnap.id, docSnap.data() as Record<string, unknown>),
+              normalizeRow(
+                docSnap.id,
+                docSnap.data() as Record<string, unknown>,
+              ),
             )
             .filter((r): r is NonNullable<typeof r> => r != null);
           rows.sort(
@@ -93,9 +107,7 @@ export function useHomeGallery() {
               }),
             ),
           );
-          setItems(
-            list.length ? list : dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY),
-          );
+          setItems(list);
         }
       } catch {
         if (!cancelled) setItems(dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY));

@@ -18,6 +18,7 @@ import {
   AdminMediaUrlPreview,
   AdminSingleImagePreview,
 } from "@/components/admin/AdminMediaUrlPreview";
+import { AdminWebpUploadButton } from "@/components/admin/AdminWebpUploadButton";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 
 type SubServiceFormRow = {
@@ -583,12 +584,21 @@ export default function AdminServicesPage() {
             />
           </label>
           <AdminSingleImagePreview
-            label="Image URL"
+            label="Primary image"
             value={form.image}
             onChange={(image) => setForm((f) => ({ ...f, image }))}
-            placeholder="https://… (direct link to .jpg / .webp etc.)"
-            hint="Preview updates as you paste a URL. Use a full https:// link or a /public path."
+            placeholder="Upload WebP below, or paste a Storage URL"
+            hint="Public site never shows Unsplash. Prefer Upload WebP → Firebase Storage."
           />
+          <div className="sm:col-span-2">
+            <AdminWebpUploadButton
+              folder={`services/${form.slug.trim() || "draft"}`}
+              profile="featured"
+              currentUrl={form.image}
+              onUploaded={(url) => setForm((f) => ({ ...f, image: url }))}
+              label="Upload primary WebP"
+            />
+          </div>
           <div className="sm:col-span-2">
             <AdminMediaUrlPreview
               label="Extra images (detail slider)"
@@ -596,6 +606,25 @@ export default function AdminServicesPage() {
               onChange={(galleryUrls) => setForm((f) => ({ ...f, galleryUrls }))}
               kind="image"
               placeholder="One URL per line or comma-separated"
+            />
+            <AdminWebpUploadButton
+              className="mt-2"
+              folder={`services/${form.slug.trim() || "draft"}/gallery`}
+              profile="card"
+              protectExisting={false}
+              onUploaded={(url) =>
+                setForm((f) => {
+                  const existing = f.galleryUrls
+                    .split(/[\n,]+/)
+                    .map((x) => x.trim())
+                    .filter(Boolean);
+                  return {
+                    ...f,
+                    galleryUrls: [...existing, url].join("\n"),
+                  };
+                })
+              }
+              label="Add gallery WebP"
             />
           </div>
           <label className="text-sm">

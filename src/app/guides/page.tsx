@@ -4,6 +4,7 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { ListPagination } from "@/components/ListPagination";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
+import { cmsImageOrPlaceholder } from "@/lib/cms-image";
 import { getPageSlice } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
@@ -29,23 +30,6 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
 };
-
-const u = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=70`;
-
-const GUIDE_FALLBACKS = [
-  u("photo-1544551763-46a013bb70d5"),
-  u("photo-1559827260-dc66d52bef19"),
-  u("photo-1530549387789-4c1017266635"),
-  u("photo-1488646953014-85cb44e25828"),
-];
-
-const BLOG_FALLBACKS = [
-  u("photo-1682687220063-4742bd7fd538"),
-  u("photo-1582967788606-a171f1080dd0"),
-  u("photo-1432405972618-c60b0225b8f9"),
-  u("photo-1507525428034-b723cf961d3e"),
-];
 
 export default async function GuidesIndexPage({ searchParams }: Props) {
   const sp = await searchParams;
@@ -89,10 +73,8 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
           ) : (
             <>
               <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-                {pageGuides.map((g, index) => {
-                  const imageSrc =
-                    g.imageUrl?.trim() ||
-                    GUIDE_FALLBACKS[(slice.start + index) % GUIDE_FALLBACKS.length]!;
+                {pageGuides.map((g) => {
+                  const imageSrc = cmsImageOrPlaceholder(g.imageUrl);
                   return (
                     <li key={g.slug} className="h-full">
                       <Link
@@ -232,10 +214,8 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
             </div>
 
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              {sidebarBlogs.map((post, index) => {
-                const imageSrc =
-                  post.imageUrl?.trim() ||
-                  BLOG_FALLBACKS[index % BLOG_FALLBACKS.length]!;
+              {sidebarBlogs.map((post) => {
+                const imageSrc = cmsImageOrPlaceholder(post.imageUrl);
                 return (
                   <li key={post.slug}>
                     <Link

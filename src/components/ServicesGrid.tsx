@@ -56,7 +56,10 @@ export function ServicesGrid() {
                 ) : (
                   <div className="relative aspect-[16/10] overflow-hidden">
                     <CmsRemoteImage
-                      src={s.image}
+                      src={
+                        s.image?.trim() ||
+                        "/booking-header.png"
+                      }
                       alt={s.title}
                       fill
                       className="object-cover transition group-hover:scale-105"

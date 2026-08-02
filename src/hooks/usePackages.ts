@@ -3,9 +3,17 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { sanitizePackageImageUrl } from "@/lib/cms-image";
 import type { PackageDoc } from "@/lib/types";
 import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
 import { fallbackPackages } from "@/data/fallback-packages";
+
+function stripStockFromPackages(list: PackageDoc[]): PackageDoc[] {
+  return list.map((p) => ({
+    ...p,
+    imageUrl: sanitizePackageImageUrl(p.imageUrl),
+  }));
+}
 
 function mapDoc(id: string, data: Record<string, unknown>): PackageDoc {
   const imageRaw = data.imageUrl != null ? String(data.imageUrl).trim() : "";
@@ -20,7 +28,7 @@ function mapDoc(id: string, data: Record<string, unknown>): PackageDoc {
       data.slotsLeft !== undefined ? Number(data.slotsLeft) : undefined,
     bookedToday:
       data.bookedToday !== undefined ? Number(data.bookedToday) : undefined,
-    imageUrl: imageRaw || undefined,
+    imageUrl: sanitizePackageImageUrl(imageRaw),
     category: data.category ? String(data.category) : undefined,
     isCombo: Boolean(data.isCombo),
     discountPct:
@@ -38,7 +46,7 @@ export function usePackages() {
   useEffect(() => {
     const db = getDb();
     if (!db) {
-      setPackages(fallbackPackages);
+      setPackages(stripStockFromPackages(fallbackPackages));
       setLoading(false);
       return;
     }
@@ -61,7 +69,7 @@ export function usePackages() {
         }
         if (cancelled) return;
         if (snap.empty) {
-          setPackages(fallbackPackages);
+          setPackages(stripStockFromPackages(fallbackPackages));
           setFromFirestore(false);
         } else {
           const list = snap.docs
@@ -69,7 +77,7 @@ export function usePackages() {
             .filter((p) => p.active !== false);
           list.sort((a, b) => a.price - b.price);
           if (list.length === 0) {
-            setPackages(fallbackPackages);
+            setPackages(stripStockFromPackages(fallbackPackages));
             setFromFirestore(false);
           } else {
             setPackages(list);
@@ -78,7 +86,7 @@ export function usePackages() {
         }
       } catch {
         if (!cancelled) {
-          setPackages(fallbackPackages);
+          setPackages(stripStockFromPackages(fallbackPackages));
           setFromFirestore(false);
         }
       } finally {

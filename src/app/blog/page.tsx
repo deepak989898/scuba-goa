@@ -5,6 +5,7 @@ import { ListPagination } from "@/components/ListPagination";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
+import { cmsImageOrPlaceholder } from "@/lib/cms-image";
 import { getPageSlice, LIST_PAGE_SIZE } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
@@ -38,25 +39,6 @@ export const metadata: Metadata = {
     url: `${SITE_URL.replace(/\/$/, "")}/blog`,
   },
 };
-
-const u = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=70`;
-
-const BLOG_FALLBACKS = [
-  u("photo-1544551763-46a013bb70d5"),
-  u("photo-1682687220063-4742bd7fd538"),
-  u("photo-1559827260-dc66d52bef19"),
-  u("photo-1582967788606-a171f1080dd0"),
-  u("photo-1530549387789-4c1017266635"),
-  u("photo-1507525428034-b723cf961d3e"),
-];
-
-const GUIDE_FALLBACKS = [
-  u("photo-1488646953014-85cb44e25828"),
-  u("photo-1432405972618-c60b0225b8f9"),
-  u("photo-1544551763-46a013bb70d5"),
-  u("photo-1559827260-dc66d52bef19"),
-];
 
 export default async function BlogIndexPage({ searchParams }: Props) {
   const sp = await searchParams;
@@ -110,9 +92,7 @@ export default async function BlogIndexPage({ searchParams }: Props) {
 
           <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {pagePosts.map((p, index) => {
-              const imageSrc =
-                p.imageUrl?.trim() ||
-                BLOG_FALLBACKS[(slice.start + index) % BLOG_FALLBACKS.length]!;
+              const imageSrc = cmsImageOrPlaceholder(p.imageUrl);
               return (
                 <li key={p.slug} className="h-full">
                   <Link
@@ -262,10 +242,8 @@ export default async function BlogIndexPage({ searchParams }: Props) {
               </p>
             ) : (
               <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
-                {sidebarGuides.map((g, index) => {
-                  const imageSrc =
-                    g.imageUrl?.trim() ||
-                    GUIDE_FALLBACKS[index % GUIDE_FALLBACKS.length]!;
+                {sidebarGuides.map((g) => {
+                  const imageSrc = cmsImageOrPlaceholder(g.imageUrl);
                   return (
                     <li key={g.slug}>
                       <Link

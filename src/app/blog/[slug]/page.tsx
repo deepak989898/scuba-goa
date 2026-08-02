@@ -25,6 +25,7 @@ import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { encodeServiceBaseOption } from "@/lib/booking-selection";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
+import { cmsImageOrPlaceholder } from "@/lib/cms-image";
 
 const blogBookNowClass =
   "inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/70 transition hover:brightness-110 active:brightness-95";
@@ -33,37 +34,6 @@ type Props = { params: Promise<{ slug: string }> };
 
 export const dynamicParams = true;
 export const revalidate = 3600;
-
-const u = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&q=75`;
-
-const DETAIL_FALLBACKS = [
-  u("photo-1544551763-46a013bb70d5"),
-  u("photo-1682687220063-4742bd7fd538"),
-  u("photo-1559827260-dc66d52bef19"),
-  u("photo-1582967788606-a171f1080dd0"),
-  u("photo-1530549387789-4c1017266635"),
-  u("photo-1507525428034-b723cf961d3e"),
-];
-
-function blogDetailFallbackImage(slug: string, keywords: string[]): string {
-  const hay = `${slug} ${keywords.join(" ")}`.toLowerCase();
-  if (hay.includes("family") || hay.includes("beginner") || hay.includes("safe")) {
-    return DETAIL_FALLBACKS[1]!;
-  }
-  if (hay.includes("andaman") || hay.includes("island") || hay.includes("boat")) {
-    return DETAIL_FALLBACKS[2]!;
-  }
-  if (hay.includes("price") || hay.includes("cost") || hay.includes("budget")) {
-    return DETAIL_FALLBACKS[3]!;
-  }
-  if (hay.includes("water") || hay.includes("sport") || hay.includes("jet")) {
-    return DETAIL_FALLBACKS[4]!;
-  }
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = (h + slug.charCodeAt(i) * (i + 1)) % 997;
-  return DETAIL_FALLBACKS[h % DETAIL_FALLBACKS.length]!;
-}
 
 export async function generateStaticParams() {
   const staticSlugs = blogPosts.map((p) => p.slug);
@@ -90,11 +60,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     fs?.metaDescription?.trim() ||
     p.excerpt;
-  const ogImage =
-    fs?.ogImageUrl?.trim() ||
-    fs?.featuredImageUrl?.trim() ||
-    p.imageUrl?.trim() ||
-    blogDetailFallbackImage(p.slug, p.keywords);
+  const ogImage = cmsImageOrPlaceholder(
+    fs?.ogImageUrl,
+    fs?.featuredImageUrl,
+    p.imageUrl,
+  );
   const ogAlt = fs?.featuredImageAlt?.trim() || p.imageAlt?.trim() || p.title;
   const publishedTime = fs?.publishedAt?.slice(0, 10) || p.date;
   const modifiedTime = fs?.updatedAt?.slice(0, 10) || p.updatedAt || p.date;
@@ -243,11 +213,11 @@ export default async function BlogPostPage({ params }: Props) {
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const faqs = p.faqs ?? [];
-  const featuredImage =
-    fs?.featuredImageUrl?.trim() ||
-    fs?.ogImageUrl?.trim() ||
-    p.imageUrl?.trim() ||
-    blogDetailFallbackImage(p.slug, p.keywords);
+  const featuredImage = cmsImageOrPlaceholder(
+    fs?.featuredImageUrl,
+    fs?.ogImageUrl,
+    p.imageUrl,
+  );
   const featuredImageAlt =
     fs?.featuredImageAlt?.trim() || p.imageAlt?.trim() || p.title;
   const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.updatedAt ?? p.date;
@@ -435,9 +405,7 @@ export default async function BlogPostPage({ params }: Props) {
               </p>
               <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
                 {related.map((r) => {
-                  const cardImage =
-                    r.imageUrl ||
-                    blogDetailFallbackImage(r.slug, r.keywords);
+                  const cardImage = cmsImageOrPlaceholder(r.imageUrl);
                   return (
                     <li key={r.slug} className="h-full">
                       <Link

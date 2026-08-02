@@ -16,6 +16,7 @@ import {
   type GalleryCategoryId,
 } from "@/lib/gallery-categories";
 import { galleryMediaDedupeKey } from "@/lib/home-gallery-dedupe";
+import { AdminWebpUploadButton } from "@/components/admin/AdminWebpUploadButton";
 
 type Row = {
   id: string;
@@ -330,18 +331,42 @@ export default function AdminGalleryPage() {
               placeholder="https://…"
             />
           </label>
-          {form.type === "video" ? (
-            <label className="text-sm sm:col-span-2">
-              Poster image URL (for grid thumbnail)
-              <input
-                className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
-                value={form.posterUrl}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, posterUrl: e.target.value }))
+          {form.type === "image" ? (
+            <div className="sm:col-span-2">
+              <AdminWebpUploadButton
+                folder="gallery"
+                profile="card"
+                currentUrl={form.mediaUrl}
+                onUploaded={(url) =>
+                  setForm((f) => ({ ...f, mediaUrl: url }))
                 }
-                placeholder="https://… (recommended)"
+                label="Upload gallery WebP"
               />
-            </label>
+            </div>
+          ) : null}
+          {form.type === "video" ? (
+            <div className="sm:col-span-2 space-y-2">
+              <label className="block text-sm">
+                Poster image URL (for grid thumbnail)
+                <input
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-2 py-2"
+                  value={form.posterUrl}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, posterUrl: e.target.value }))
+                  }
+                  placeholder="https://… (recommended)"
+                />
+              </label>
+              <AdminWebpUploadButton
+                folder="gallery/posters"
+                profile="thumbnail"
+                currentUrl={form.posterUrl}
+                onUploaded={(url) =>
+                  setForm((f) => ({ ...f, posterUrl: url }))
+                }
+                label="Upload poster WebP"
+              />
+            </div>
           ) : null}
           <label className="text-sm">
             Category
