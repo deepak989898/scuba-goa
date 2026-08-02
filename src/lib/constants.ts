@@ -82,6 +82,11 @@ export function whatsappLink(message?: string): string {
   return `https://wa.me/${whatsappDigits()}?text=${text}`;
 }
 
+/** Same line as WhatsApp — used by the desktop Call FAB. */
+export const WHATSAPP_TEL_HREF = `tel:+${whatsappDigits()}`;
+
+export const WHATSAPP_TEL_LABEL = formatIndiaPhoneLabel(whatsappDigits());
+
 /** True when `href` opens a chat to this site’s configured WhatsApp line (`wa.me/<digits>`). */
 export function isBusinessWhatsAppHref(href: string): boolean {
   const target = whatsappDigits();
@@ -103,7 +108,8 @@ export function isBusinessTelHref(href: string): boolean {
   return (
     digits === primaryPhoneDigits() ||
     digits === secondPhoneDigits() ||
-    digits === missedCallDigits()
+    digits === missedCallDigits() ||
+    digits === whatsappDigits()
   );
 }
 

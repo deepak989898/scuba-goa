@@ -172,8 +172,11 @@ export default async function OffersPage() {
 
   return (
     <div className="relative overflow-x-hidden pb-2 md:pb-4">
-      {/* Intrinsic 1983×793 — full image, no crop / letterbox */}
-      <div className="relative w-full leading-none">
+      {/*
+        Compact banner: full artwork visible (object-contain), capped height so
+        the image does not dominate the viewport on wide screens.
+      */}
+      <div className="relative w-full bg-[#6eb8d8]">
         <Image
           src="/offer-header.webp"
           alt="Offers and promo codes — Book Scuba Goa"
@@ -181,7 +184,7 @@ export default async function OffersPage() {
           height={793}
           priority
           quality={80}
-          className="block h-auto w-full"
+          className="mx-auto block h-[11.5rem] w-auto max-w-full object-contain sm:h-[13.5rem] lg:h-[15.5rem]"
           sizes="100vw"
         />
         <h1 className="sr-only">Offers &amp; Promo Codes</h1>
