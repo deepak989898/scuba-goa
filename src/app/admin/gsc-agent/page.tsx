@@ -320,6 +320,65 @@ export default function GscIndexingAgentPage() {
     }
   }
 
+  /** Preview then confirm-delete seoUrls no longer on the live site. */
+  async function cleanStaleSeoUrls() {
+    setBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const preview = await adminFetch("/api/admin/gsc-agent/clean-stale", {
+        method: "POST",
+        body: JSON.stringify({ confirm: false }),
+      });
+      const d = preview.detail as {
+        tracked?: number;
+        live?: number;
+        stale?: number;
+        sample?: { path: string; pageType: string }[];
+      };
+      const stale = Number(d?.stale ?? 0);
+      const tracked = Number(d?.tracked ?? 0);
+      const live = Number(d?.live ?? 0);
+      if (stale <= 0) {
+        setOk(
+          `No stale URLs. Tracked ${tracked} · live site ≈ ${live}. Nothing to delete.`,
+        );
+        return;
+      }
+      const sample = (d.sample ?? [])
+        .slice(0, 8)
+        .map((s) => `${s.pageType}: ${s.path}`)
+        .join("\n");
+      const okConfirm = window.confirm(
+        `Clean stale seoUrls?\n\n` +
+          `Tracked: ${tracked}\n` +
+          `Live site URLs: ${live}\n` +
+          `Will DELETE from agent list: ${stale}\n\n` +
+          `This does NOT change Google Search Console — only the admin tracker.\n` +
+          `Live published pages are kept.\n\n` +
+          (sample ? `Examples:\n${sample}\n\n` : "") +
+          `Continue?`,
+      );
+      if (!okConfirm) {
+        setOk(`Cancelled. Preview: ${stale} stale of ${tracked} (live ≈ ${live}).`);
+        return;
+      }
+      const done = await adminFetch("/api/admin/gsc-agent/clean-stale", {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      });
+      const dd = done.detail as { deleted?: number; live?: number; tracked?: number };
+      setOk(
+        `Cleaned ${Number(dd?.deleted ?? 0)} stale seoUrls. Live kept ≈ ${Number(dd?.live ?? live)}. Refresh Blog posts inventory to see new GSC tracking count.`,
+      );
+      await load(tab, urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Clean stale failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function closeEditor() {
     setEditingSession(null);
     setEditingBlog(null);
@@ -788,7 +847,21 @@ export default function GscIndexingAgentPage() {
                 {label}
               </button>
             ))}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void cleanStaleSeoUrls()}
+              className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-900 hover:border-rose-500 disabled:opacity-50"
+              title="Delete agent seoUrls that are no longer on the live site (not Google Removals)"
+            >
+              Clean stale seoUrls
+            </button>
           </div>
+          <p className="text-[11px] text-ocean-600">
+            <strong>Clean stale seoUrls</strong> removes old/duplicate URLs from the
+            agent list only (e.g. 265 → ~live site count). It does not remove pages
+            from Google. Prefer <strong>Discover URLs</strong> first, then Clean.
+          </p>
         </div>
       ) : null}
 

@@ -9,7 +9,11 @@ export {
 export { gscOAuthConfigured, buildGscAuthUrl, getGscOAuthClientId, getGscOAuthClientSecret, getGscOAuthRedirectUri, exchangeGscAuthCode } from "./oauth";
 export { createGscOAuthState, consumeGscOAuthState } from "./oauth-state";
 export { listGscSites, inspectUrlInGsc, submitGscSitemap } from "./gsc-client";
-export { runUrlInventoryDiscovery } from "./inventory";
+export {
+  runUrlInventoryDiscovery,
+  collectLiveDiscoveredUrls,
+} from "./inventory";
+export { cleanStaleSeoUrls } from "./clean-stale";
 export { runTechnicalAuditForUrl, auditUrl } from "./audit";
 export { processInspectionQueue, enqueueInspection } from "./inspect-queue";
 export { processSafeAutoFixes, decideApproval } from "./auto-fix";

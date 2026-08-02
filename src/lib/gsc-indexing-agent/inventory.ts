@@ -98,10 +98,15 @@ function buildRecord(d: Discovered, existing?: SeoUrlRecord | null): SeoUrlRecor
   };
 }
 
-/** Discover canonical indexable URLs and upsert seoUrls. */
-export async function runUrlInventoryDiscovery(): Promise<{
-  discovered: number;
-  upserted: number;
+/**
+ * Live site URL candidates (same rules as inventory).
+ * Used by Discover URLs + Clean stale seoUrls.
+ */
+export async function collectLiveDiscoveredUrls(): Promise<{
+  items: Discovered[];
+  /** Normalized URL doc ids that should stay in seoUrls */
+  liveIds: Set<string>;
+  livePaths: string[];
 }> {
   const redirected = new Set(
     [...BLOG_PERMANENT_REDIRECTS, ...SITE_PERMANENT_REDIRECTS].map(
@@ -208,6 +213,29 @@ export async function runUrlInventoryDiscovery(): Promise<{
     });
   }
 
+  const liveIds = new Set<string>();
+  const livePaths: string[] = [];
+  for (const d of items) {
+    const rec = buildRecord(d);
+    if (!rec || liveIds.has(rec.id)) continue;
+    liveIds.add(rec.id);
+    try {
+      livePaths.push(new URL(rec.normalizedUrl).pathname);
+    } catch {
+      livePaths.push(d.path);
+    }
+  }
+
+  return { items, liveIds, livePaths };
+}
+
+/** Discover canonical indexable URLs and upsert seoUrls. */
+export async function runUrlInventoryDiscovery(): Promise<{
+  discovered: number;
+  upserted: number;
+}> {
+  const { items, liveIds } = await collectLiveDiscoveredUrls();
+
   let upserted = 0;
   const seen = new Set<string>();
   for (const d of items) {
@@ -221,7 +249,7 @@ export async function runUrlInventoryDiscovery(): Promise<{
   await saveSeoSettings({ lastInventoryAt: new Date().toISOString() });
   await logAction({
     action: "inventory_discovery",
-    detail: `Discovered ${items.length} candidates, upserted ${upserted}`,
+    detail: `Discovered ${items.length} candidates, upserted ${upserted} (liveIds=${liveIds.size})`,
     ok: true,
   });
 
