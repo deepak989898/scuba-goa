@@ -188,11 +188,111 @@ const EXPECT = [
   },
 ] as const;
 
+function StatIconDivers() {
+  return (
+    <svg className="h-7 w-7" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <circle cx="11" cy="10" r="4" fill="#38bdf8" />
+      <circle cx="21" cy="11" r="3.5" fill="#0ea5e9" />
+      <path
+        d="M4 26c0-4 3.2-7 7-7s7 3 7 7"
+        fill="#0284c7"
+      />
+      <path
+        d="M16 24.5c1.2-2.4 3.4-3.8 6-3.8 3.2 0 6 2.2 6 5.3V26"
+        fill="#0369a1"
+      />
+    </svg>
+  );
+}
+
+function StatIconRating() {
+  return (
+    <svg className="h-7 w-7" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <path
+        d="M16 4l3.2 6.6 7.3 1.1-5.3 5.1 1.2 7.2L16 20.6l-6.4 3.4 1.2-7.2-5.3-5.1 7.3-1.1L16 4z"
+        fill="#fbbf24"
+        stroke="#f59e0b"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function StatIconExperiences() {
+  return (
+    <svg className="h-7 w-7" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <ellipse cx="16" cy="14" rx="11" ry="7.5" fill="#22d3ee" />
+      <ellipse cx="16" cy="14" rx="11" ry="7.5" stroke="#0891b2" strokeWidth="1.4" />
+      <circle cx="11.5" cy="14" r="2.2" fill="#0f172a" />
+      <circle cx="20.5" cy="14" r="2.2" fill="#0f172a" />
+      <circle cx="12.2" cy="13.3" r="0.7" fill="#fff" />
+      <circle cx="21.2" cy="13.3" r="0.7" fill="#fff" />
+      <path
+        d="M10 22c1.8 2 3.8 3 6 3s4.2-1 6-3"
+        stroke="#14b8a6"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path d="M5 14c0 0 .5-2 2-2" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" opacity=".7" />
+    </svg>
+  );
+}
+
+function StatIconSafety() {
+  return (
+    <svg className="h-7 w-7" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <path
+        d="M16 3l10 4v7c0 6.2-3.9 11.5-10 13.5C9.9 25.5 6 20.2 6 14V7l10-4z"
+        fill="#34d399"
+        stroke="#059669"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.5 15.5l3 3 6.5-6.5"
+        stroke="#fff"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 const STATS = [
-  { label: "10,000+ Happy Divers", Icon: IconPeople },
-  { label: "4.9 / 5 Google Rating", Icon: IconStar },
-  { label: "50+ Daily Experiences", Icon: IconMask },
-  { label: "100% Safety Commitment", Icon: IconShield },
+  {
+    value: "10,000+",
+    label: "Happy Divers",
+    hint: "Guests who booked with us",
+    ring: "from-sky-400 to-blue-600",
+    bg: "bg-sky-50",
+    Icon: StatIconDivers,
+  },
+  {
+    value: "4.9 / 5",
+    label: "Google Rating",
+    hint: "Trusted by travellers",
+    ring: "from-amber-400 to-orange-500",
+    bg: "bg-amber-50",
+    Icon: StatIconRating,
+  },
+  {
+    value: "50+",
+    label: "Daily Experiences",
+    hint: "Scuba, sports & trips",
+    ring: "from-cyan-400 to-teal-600",
+    bg: "bg-cyan-50",
+    Icon: StatIconExperiences,
+  },
+  {
+    value: "100%",
+    label: "Safety Focus",
+    hint: "Briefings & certified crews",
+    ring: "from-emerald-400 to-green-600",
+    bg: "bg-emerald-50",
+    Icon: StatIconSafety,
+  },
 ] as const;
 
 export default async function AboutPage() {
@@ -419,17 +519,27 @@ export default async function AboutPage() {
 
       {/* Stats bar */}
       <section
-        className="border-t border-ocean-100 bg-sand/60 px-4 py-6 sm:px-6 sm:py-7 lg:px-8"
+        className="border-t border-ocean-100 bg-gradient-to-b from-sky-50/80 to-white px-4 py-7 sm:px-6 sm:py-8 lg:px-8"
         aria-label="Book Scuba Goa highlights"
       >
-        <ul className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-          {STATS.map(({ label, Icon }) => (
+        <ul className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+          {STATS.map(({ value, label, hint, ring, bg, Icon }) => (
             <li key={label} className="flex flex-col items-center text-center">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-cyan-700 shadow-sm ring-1 ring-ocean-100">
-                <Icon className="h-5 w-5" />
+              <span
+                className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${ring} p-[3px] shadow-md shadow-ocean-900/10`}
+              >
+                <span
+                  className={`flex h-full w-full items-center justify-center rounded-full ${bg}`}
+                >
+                  <Icon />
+                </span>
               </span>
-              <p className="mt-2 font-display text-sm font-bold text-ocean-900 sm:text-base">
-                {label}
+              <p className="mt-3 font-display text-xl font-black tracking-tight text-ocean-900 sm:text-2xl">
+                {value}
+              </p>
+              <p className="mt-0.5 text-sm font-bold text-ocean-800">{label}</p>
+              <p className="mt-0.5 max-w-[12rem] text-xs font-medium text-ocean-600">
+                {hint}
               </p>
             </li>
           ))}
