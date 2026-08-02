@@ -124,8 +124,14 @@ export function matchesUrlFilter(
     case "unknown":
       return UNKNOWN_STATUSES.has(u.indexStatus);
     case "awaiting_inspection":
+      // Never treat INDEXED (or hard not-indexed) as "awaiting" — even if
+      // lastInspectionAt is missing (common after inventory upsert).
+      if (u.indexStatus === "INDEXED") return false;
+      if (NOT_INDEXED_STATUSES.has(u.indexStatus)) return false;
       return (
         u.indexStatus === "PENDING_INSPECTION" ||
+        u.indexStatus === "UNKNOWN" ||
+        u.indexStatus === "API_ERROR" ||
         (!u.lastInspectionAt && u.eligibleForIndexing)
       );
     case "ranking_opportunity":

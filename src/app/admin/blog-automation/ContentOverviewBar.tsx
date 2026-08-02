@@ -186,8 +186,12 @@ export function ContentOverviewBar({ overview, loading }: Props) {
       {overview.notIndexedSample.length > 0 ? (
         <div className="rounded-lg border border-orange-200 bg-orange-50/50 px-3 py-2">
           <p className="text-xs font-bold text-orange-950">
-            Focus first — not indexed / awaiting inspection (
+            Focus first — not indexed / pending / awaiting inspection (
             {overview.notIndexedSample.length} shown)
+          </p>
+          <p className="mt-0.5 text-[11px] text-orange-900/80">
+            INDEXED pages are never listed here. Open GSC Indexing Agent → Inspect
+            queue for pending URLs.
           </p>
           <ul className="mt-1.5 max-h-48 space-y-1.5 overflow-y-auto text-xs">
             {overview.notIndexedSample.map((row) => (

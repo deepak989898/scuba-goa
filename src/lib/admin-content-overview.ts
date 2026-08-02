@@ -284,15 +284,23 @@ export async function buildContentOverview(): Promise<ContentOverview> {
   }
 
   const notIndexedSample: NotIndexedPage[] = seoUrls
-    .filter(
-      (u) =>
-        (u.pageType === "blog" ||
-          u.pageType === "service" ||
-          u.pageType === "static" ||
-          u.pageType === "guide") &&
-        (matchesUrlFilter(u, "not_indexed") ||
-          matchesUrlFilter(u, "awaiting_inspection")),
-    )
+    .filter((u) => {
+      if (u.indexStatus === "INDEXED") return false;
+      if (
+        u.pageType !== "blog" &&
+        u.pageType !== "service" &&
+        u.pageType !== "static" &&
+        u.pageType !== "guide"
+      ) {
+        return false;
+      }
+      // Focus list: real not-indexed, awaiting inspect, or unknown/pending
+      return (
+        matchesUrlFilter(u, "not_indexed") ||
+        matchesUrlFilter(u, "awaiting_inspection") ||
+        matchesUrlFilter(u, "unknown")
+      );
+    })
     .sort((a, b) => {
       const aHard = matchesUrlFilter(a, "not_indexed") ? 0 : 1;
       const bHard = matchesUrlFilter(b, "not_indexed") ? 0 : 1;
