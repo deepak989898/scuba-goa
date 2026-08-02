@@ -69,58 +69,47 @@ function gscForSlug(
 function GscIndexBadge({ row }: { row: BlogGscRow | null }) {
   if (!row) {
     return (
-      <span className="text-[11px] font-semibold text-slate-500" title="No GSC data yet — run inventory/inspect">
-        No GSC data
+      <span
+        className="text-[9px] font-semibold text-slate-500"
+        title="No GSC data yet — run inventory/inspect"
+      >
+        —
       </span>
     );
   }
   if (row.indexLabel === "indexed") {
     return (
       <span
-        className="inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800"
+        className="inline-flex rounded bg-emerald-100 px-1 py-px text-[9px] font-bold text-emerald-800"
         title={row.indexStatus}
       >
-        Indexed
+        Idx
       </span>
     );
   }
   if (row.indexLabel === "pending") {
     return (
       <span
-        className="inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-900"
+        className="inline-flex rounded bg-amber-100 px-1 py-px text-[9px] font-bold text-amber-900"
         title={row.indexStatus}
       >
-        Pending
+        Pend
       </span>
     );
   }
   return (
     <span
-      className="inline-flex rounded bg-rose-100 px-1.5 py-0.5 text-[11px] font-bold text-rose-800"
+      className="inline-flex rounded bg-rose-100 px-1 py-px text-[9px] font-bold text-rose-800"
       title={row.indexStatus}
     >
-      Not indexed
+      Not
     </span>
   );
 }
 
 function GscPositionCell({ row }: { row: BlogGscRow | null }) {
-  if (!row) {
-    return <span className="text-slate-400">—</span>;
-  }
-  if (row.position == null) {
-    return (
-      <span
-        className="text-slate-500"
-        title={
-          row.impressions
-            ? `${row.impressions} impressions · ${row.clicks} clicks`
-            : "No average position in last GSC sync"
-        }
-      >
-        —
-      </span>
-    );
+  if (!row || row.position == null) {
+    return <span className="text-[10px] text-slate-400">—</span>;
   }
   const n = row.position;
   const color =
@@ -133,7 +122,7 @@ function GscPositionCell({ row }: { row: BlogGscRow | null }) {
           : "text-orange-700";
   return (
     <span
-      className={`font-extrabold tabular-nums ${color}`}
+      className={`text-[10px] font-extrabold tabular-nums ${color}`}
       title={`Avg position ${n} · ${row.impressions} impressions · ${row.clicks} clicks`}
     >
       #{n}
@@ -141,27 +130,51 @@ function GscPositionCell({ row }: { row: BlogGscRow | null }) {
   );
 }
 
+function GscMetricCell({
+  value,
+  title,
+}: {
+  value: number | null | undefined;
+  title: string;
+}) {
+  if (value == null) {
+    return <span className="text-[10px] text-slate-400">—</span>;
+  }
+  return (
+    <span
+      className="text-[10px] font-semibold tabular-nums text-ocean-900"
+      title={title}
+    >
+      {value.toLocaleString("en-IN")}
+    </span>
+  );
+}
+
 function statusBadge(p: BlogPostFirestore) {
   if (p.published) {
     return (
-      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+      <span className="rounded bg-emerald-100 px-1 py-px text-[9px] font-bold text-emerald-800">
         Live
       </span>
     );
   }
   if (isBlogScheduled(p)) {
     return (
-      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900">
-        Scheduled
+      <span className="rounded bg-sky-100 px-1 py-px text-[9px] font-bold text-sky-900">
+        Sched
       </span>
     );
   }
   return (
-    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">
+    <span className="rounded bg-slate-200 px-1 py-px text-[9px] font-bold text-slate-700">
       Draft
     </span>
   );
 }
+
+const TH =
+  "px-1 py-1 text-[9px] font-bold uppercase tracking-wide text-ocean-700 whitespace-nowrap";
+const TD = "px-1 py-1 align-middle text-[10px] text-ocean-800";
 
 export function BlogPostsTable({
   posts,
@@ -364,10 +377,26 @@ export function BlogPostsTable({
         <p className="p-3 text-sm text-ocean-500">No Firestore blogs yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-ocean-100 text-ocean-800">
+          <table className="w-full table-fixed border-collapse text-left">
+            <colgroup>
+              <col className="w-[2%]" />
+              <col className="w-[4%]" />
+              <col className="w-[14%]" />
+              <col className="w-[16%]" />
+              <col className="w-[9%]" />
+              <col className="w-[4%]" />
+              <col className="w-[7%]" />
+              <col className="w-[8%]" />
+              <col className="w-[4%]" />
+              <col className="w-[4%]" />
+              <col className="w-[5%]" />
+              <col className="w-[4%]" />
+              <col className="w-[5%]" />
+              <col className="w-[14%]" />
+            </colgroup>
+            <thead className="border-b border-ocean-100 bg-ocean-50/80">
               <tr>
-                <th className="w-10 p-3">
+                <th className={TH}>
                   <input
                     type="checkbox"
                     checked={allVisibleSelected}
@@ -376,40 +405,52 @@ export function BlogPostsTable({
                     }}
                     onChange={toggleSelectAllVisible}
                     aria-label="Select all blogs"
-                    className="h-4 w-4 accent-cyan-700"
+                    className="h-3 w-3 accent-cyan-700"
                   />
                 </th>
-                <th className="p-3">Image</th>
-                <th className="p-3">Slug</th>
-                <th className="p-3">Title</th>
-                <th className="p-3">Service</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Scheduled (IST)</th>
-                <th className="p-3">Published (IST)</th>
-                <th className="p-3 text-right">Views</th>
-                <th className="p-3 whitespace-nowrap">GSC pos</th>
-                <th className="p-3 whitespace-nowrap">GSC index</th>
-                <th className="p-3">Actions</th>
+                <th className={TH}>Img</th>
+                <th className={TH}>Slug</th>
+                <th className={TH}>Title</th>
+                <th className={TH}>Service</th>
+                <th className={TH}>St</th>
+                <th className={TH}>Sched</th>
+                <th className={TH}>Pub</th>
+                <th className={`${TH} text-right`}>Views</th>
+                <th className={`${TH} text-right`} title="GSC impressions">
+                  Imp
+                </th>
+                <th className={`${TH} text-right`} title="GSC clicks">
+                  Clk
+                </th>
+                <th className={`${TH} text-right`} title="GSC average position">
+                  Pos
+                </th>
+                <th className={TH} title="GSC index status">
+                  Idx
+                </th>
+                <th className={TH}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {sortedPosts.map((p) => (
+              {sortedPosts.map((p) => {
+                const gsc = gscForSlug(p.slug, blogGscBySlug);
+                return (
                 <Fragment key={p.slug}>
                   <tr
-                    className={`border-b border-ocean-100 ${
+                    className={`border-b border-ocean-50 ${
                       selected.has(p.slug) ? "bg-cyan-50/60" : ""
                     }`}
                   >
-                    <td className="p-3 align-top">
+                    <td className={TD}>
                       <input
                         type="checkbox"
                         checked={selected.has(p.slug)}
                         onChange={() => toggleSlug(p.slug)}
                         aria-label={`Select ${p.title}`}
-                        className="h-4 w-4 accent-cyan-700"
+                        className="h-3 w-3 accent-cyan-700"
                       />
                     </td>
-                    <td className="p-3 align-top">
+                    <td className={TD}>
                       {p.featuredImageUrl || p.ogImageUrl ? (
                         <button
                           type="button"
@@ -419,7 +460,7 @@ export function BlogPostsTable({
                               alt: p.featuredImageAlt || p.title,
                             })
                           }
-                          className="group relative block h-14 w-20 overflow-hidden rounded-lg border border-ocean-200 bg-ocean-50 shadow-sm transition hover:scale-105 hover:border-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                          className="relative block h-7 w-10 overflow-hidden rounded border border-ocean-200 bg-ocean-50"
                           aria-label={`Zoom image for ${p.title}`}
                           title="Click to zoom"
                         >
@@ -427,63 +468,43 @@ export function BlogPostsTable({
                             src={p.featuredImageUrl || p.ogImageUrl}
                             alt={p.featuredImageAlt || p.title}
                             fill
-                            className="object-cover transition group-hover:brightness-90"
-                            sizes="80px"
+                            className="object-cover"
+                            sizes="40px"
                             loading="lazy"
                           />
-                          <span
-                            aria-hidden
-                            className="absolute bottom-1 right-1 rounded bg-slate-950/75 px-1 text-[10px] text-white"
-                          >
-                            ⤢
-                          </span>
                         </button>
                       ) : (
-                        <span className="flex h-14 w-20 items-center justify-center rounded-lg border border-dashed border-ocean-200 bg-ocean-50 text-[10px] text-ocean-500">
-                          No image
+                        <span className="flex h-7 w-10 items-center justify-center rounded border border-dashed border-ocean-200 bg-ocean-50 text-[8px] text-ocean-400">
+                          —
                         </span>
                       )}
                     </td>
-                    <td className="p-3 align-top font-mono text-xs">{p.slug}</td>
-                    <td className="max-w-[14rem] p-3 align-top text-ocean-900">
+                    <td className={`${TD} truncate font-mono`} title={p.slug}>
+                      {p.slug}
+                    </td>
+                    <td
+                      className={`${TD} max-w-0 truncate font-medium text-ocean-900`}
+                      title={p.title}
+                    >
                       {p.title}
                     </td>
-                    <td className="max-w-[9rem] p-3 align-top text-xs text-ocean-700">
+                    <td className={`${TD} max-w-0 truncate`} title={p.serviceSlug || "Unassigned"}>
                       {p.serviceSlug ? (
-                        <span
-                          className="line-clamp-2"
-                          title={p.serviceSlug}
-                        >
-                          {serviceTitleBySlug.get(p.serviceSlug) ||
-                            p.serviceSlug}
-                        </span>
+                        serviceTitleBySlug.get(p.serviceSlug) || p.serviceSlug
                       ) : (
-                        <span className="text-orange-700">Unassigned</span>
+                        <span className="text-orange-700">—</span>
                       )}
                     </td>
-                    <td className="p-3 align-top">{statusBadge(p)}</td>
-                    <td className="p-3 align-top text-xs text-ocean-700">
-                      {isBlogScheduled(p) ? (
-                        <>
-                          <span className="font-medium">
-                            {formatUtcInIst(p.scheduledPublishAt)}
-                          </span>
-                          {p.publishSlotIst ? (
-                            <span className="mt-0.5 block text-ocean-500">
-                              Slot {p.publishSlotIst} IST
-                            </span>
-                          ) : null}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="p-3 align-top text-xs text-ocean-700">
-                      {p.publishedAt
-                        ? formatUtcInIst(p.publishedAt, "long")
+                    <td className={TD}>{statusBadge(p)}</td>
+                    <td className={`${TD} truncate`} title={isBlogScheduled(p) ? formatUtcInIst(p.scheduledPublishAt) : ""}>
+                      {isBlogScheduled(p)
+                        ? formatUtcInIst(p.scheduledPublishAt)
                         : "—"}
                     </td>
-                    <td className="p-3 align-top text-right tabular-nums font-semibold text-ocean-900">
+                    <td className={`${TD} truncate`} title={p.publishedAt ? formatUtcInIst(p.publishedAt, "long") : ""}>
+                      {p.publishedAt ? formatUtcInIst(p.publishedAt) : "—"}
+                    </td>
+                    <td className={`${TD} text-right tabular-nums font-semibold`}>
                       {p.published
                         ? trafficLoading
                           ? "…"
@@ -492,16 +513,34 @@ export function BlogPostsTable({
                             )
                         : "—"}
                     </td>
-                    <td className="p-3 align-top text-sm">
-                      <GscPositionCell
-                        row={gscForSlug(p.slug, blogGscBySlug)}
+                    <td className={`${TD} text-right`}>
+                      <GscMetricCell
+                        value={gsc?.impressions}
+                        title={
+                          gsc
+                            ? `${gsc.impressions} GSC impressions (last sync)`
+                            : "No GSC data"
+                        }
                       />
                     </td>
-                    <td className="p-3 align-top">
-                      <GscIndexBadge row={gscForSlug(p.slug, blogGscBySlug)} />
+                    <td className={`${TD} text-right`}>
+                      <GscMetricCell
+                        value={gsc?.clicks}
+                        title={
+                          gsc
+                            ? `${gsc.clicks} GSC clicks (last sync)`
+                            : "No GSC data"
+                        }
+                      />
                     </td>
-                    <td className="p-3 align-top">
-                      <div className="flex flex-wrap gap-2">
+                    <td className={`${TD} text-right`}>
+                      <GscPositionCell row={gsc} />
+                    </td>
+                    <td className={TD}>
+                      <GscIndexBadge row={gsc} />
+                    </td>
+                    <td className={TD}>
+                      <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] font-semibold leading-tight">
                         {p.published ? (
                           <Link
                             href={`/blog/${p.slug}`}
@@ -525,16 +564,16 @@ export function BlogPostsTable({
                             disabled={busy === `post-${p.slug}` || busy === "bulk"}
                             onClick={() => onUnpublish(p.slug)}
                           >
-                            Unpublish
+                            Unpub
                           </button>
                         ) : isBlogScheduled(p) ? (
                           <button
                             type="button"
-                            className="font-semibold text-emerald-800 hover:underline"
+                            className="text-emerald-800 hover:underline"
                             disabled={busy === `save-${p.slug}` || busy === "bulk"}
                             onClick={() => onPublishNow(p.slug)}
                           >
-                            Publish now
+                            Pub
                           </button>
                         ) : null}
                         <button
@@ -543,7 +582,7 @@ export function BlogPostsTable({
                           disabled={busy === `del-${p.slug}` || busy === "bulk"}
                           onClick={() => onDelete(p.slug)}
                         >
-                          Delete
+                          Del
                         </button>
                       </div>
                     </td>
@@ -553,7 +592,7 @@ export function BlogPostsTable({
                       id={`blog-editor-${p.slug}`}
                       className="bg-ocean-50/50"
                     >
-                      <td colSpan={12} className="p-4">
+                      <td colSpan={14} className="p-2">
                         <BlogPostEditorPanel
                           editing={editing}
                           busy={busy}
@@ -570,7 +609,8 @@ export function BlogPostsTable({
                     </tr>
                   ) : null}
                 </Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
