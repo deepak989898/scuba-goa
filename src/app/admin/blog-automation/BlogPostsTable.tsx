@@ -70,7 +70,7 @@ function GscIndexBadge({ row }: { row: BlogGscRow | null }) {
   if (!row) {
     return (
       <span
-        className="text-[9px] font-semibold text-slate-500"
+        className="text-xs font-semibold text-slate-500"
         title="No GSC data yet — run inventory/inspect"
       >
         —
@@ -80,36 +80,36 @@ function GscIndexBadge({ row }: { row: BlogGscRow | null }) {
   if (row.indexLabel === "indexed") {
     return (
       <span
-        className="inline-flex rounded bg-emerald-100 px-1 py-px text-[9px] font-bold text-emerald-800"
+        className="inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-800"
         title={row.indexStatus}
       >
-        Idx
+        Indexed
       </span>
     );
   }
   if (row.indexLabel === "pending") {
     return (
       <span
-        className="inline-flex rounded bg-amber-100 px-1 py-px text-[9px] font-bold text-amber-900"
+        className="inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-900"
         title={row.indexStatus}
       >
-        Pend
+        Pending
       </span>
     );
   }
   return (
     <span
-      className="inline-flex rounded bg-rose-100 px-1 py-px text-[9px] font-bold text-rose-800"
+      className="inline-flex rounded bg-rose-100 px-1.5 py-0.5 text-xs font-bold text-rose-800"
       title={row.indexStatus}
     >
-      Not
+      Not idx
     </span>
   );
 }
 
 function GscPositionCell({ row }: { row: BlogGscRow | null }) {
   if (!row || row.position == null) {
-    return <span className="text-[10px] text-slate-400">—</span>;
+    return <span className="text-sm text-slate-400">—</span>;
   }
   const n = row.position;
   const color =
@@ -122,7 +122,7 @@ function GscPositionCell({ row }: { row: BlogGscRow | null }) {
           : "text-orange-700";
   return (
     <span
-      className={`text-[10px] font-extrabold tabular-nums ${color}`}
+      className={`text-sm font-extrabold tabular-nums ${color}`}
       title={`Avg position ${n} · ${row.impressions} impressions · ${row.clicks} clicks`}
     >
       #{n}
@@ -138,11 +138,11 @@ function GscMetricCell({
   title: string;
 }) {
   if (value == null) {
-    return <span className="text-[10px] text-slate-400">—</span>;
+    return <span className="text-sm text-slate-400">—</span>;
   }
   return (
     <span
-      className="text-[10px] font-semibold tabular-nums text-ocean-900"
+      className="text-sm font-semibold tabular-nums text-ocean-900"
       title={title}
     >
       {value.toLocaleString("en-IN")}
@@ -153,28 +153,28 @@ function GscMetricCell({
 function statusBadge(p: BlogPostFirestore) {
   if (p.published) {
     return (
-      <span className="rounded bg-emerald-100 px-1 py-px text-[9px] font-bold text-emerald-800">
+      <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-800">
         Live
       </span>
     );
   }
   if (isBlogScheduled(p)) {
     return (
-      <span className="rounded bg-sky-100 px-1 py-px text-[9px] font-bold text-sky-900">
+      <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-900">
         Sched
       </span>
     );
   }
   return (
-    <span className="rounded bg-slate-200 px-1 py-px text-[9px] font-bold text-slate-700">
+    <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-700">
       Draft
     </span>
   );
 }
 
 const TH =
-  "px-1 py-1 text-[9px] font-bold uppercase tracking-wide text-ocean-700 whitespace-nowrap";
-const TD = "px-1 py-1 align-middle text-[10px] text-ocean-800";
+  "px-1.5 py-1.5 text-xs font-bold uppercase tracking-wide text-ocean-700 whitespace-nowrap";
+const TD = "px-1.5 py-1.5 align-middle text-sm text-ocean-800";
 
 export function BlogPostsTable({
   posts,
@@ -405,7 +405,7 @@ export function BlogPostsTable({
                     }}
                     onChange={toggleSelectAllVisible}
                     aria-label="Select all blogs"
-                    className="h-3 w-3 accent-cyan-700"
+                    className="h-3.5 w-3.5 accent-cyan-700"
                   />
                 </th>
                 <th className={TH}>Img</th>
@@ -447,7 +447,7 @@ export function BlogPostsTable({
                         checked={selected.has(p.slug)}
                         onChange={() => toggleSlug(p.slug)}
                         aria-label={`Select ${p.title}`}
-                        className="h-3 w-3 accent-cyan-700"
+                        className="h-3.5 w-3.5 accent-cyan-700"
                       />
                     </td>
                     <td className={TD}>
@@ -460,7 +460,7 @@ export function BlogPostsTable({
                               alt: p.featuredImageAlt || p.title,
                             })
                           }
-                          className="relative block h-7 w-10 overflow-hidden rounded border border-ocean-200 bg-ocean-50"
+                          className="relative block h-9 w-12 overflow-hidden rounded border border-ocean-200 bg-ocean-50"
                           aria-label={`Zoom image for ${p.title}`}
                           title="Click to zoom"
                         >
@@ -469,17 +469,17 @@ export function BlogPostsTable({
                             alt={p.featuredImageAlt || p.title}
                             fill
                             className="object-cover"
-                            sizes="40px"
+                            sizes="48px"
                             loading="lazy"
                           />
                         </button>
                       ) : (
-                        <span className="flex h-7 w-10 items-center justify-center rounded border border-dashed border-ocean-200 bg-ocean-50 text-[8px] text-ocean-400">
+                        <span className="flex h-9 w-12 items-center justify-center rounded border border-dashed border-ocean-200 bg-ocean-50 text-xs text-ocean-400">
                           —
                         </span>
                       )}
                     </td>
-                    <td className={`${TD} truncate font-mono`} title={p.slug}>
+                    <td className={`${TD} truncate font-mono text-xs`} title={p.slug}>
                       {p.slug}
                     </td>
                     <td
@@ -540,7 +540,7 @@ export function BlogPostsTable({
                       <GscIndexBadge row={gsc} />
                     </td>
                     <td className={TD}>
-                      <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] font-semibold leading-tight">
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs font-semibold leading-snug">
                         {p.published ? (
                           <Link
                             href={`/blog/${p.slug}`}
