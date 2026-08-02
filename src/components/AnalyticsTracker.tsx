@@ -16,8 +16,11 @@ import {
 const TRACK_URL = "/api/t";
 /** Only collapse identical path views from React Strict Mode double-mount. */
 const VIEW_DEDUPE_MS = 400;
-/** Keep "Online" accurate in admin (was 3 minutes — too sparse). */
-const HEARTBEAT_MS = 25_000;
+/**
+ * Heartbeat for admin "Online". Keep sparse — each ping costs Firestore
+ * rate-limit + session writes. 25s was burning ~100k+ reads/day with few tabs.
+ */
+const HEARTBEAT_MS = 180_000;
 const TRACK_TIMEOUT_MS = 12_000;
 const CLICK_THROTTLE_MS = 600;
 
@@ -103,12 +106,16 @@ function track(
 ) {
   if (!isAnalyticsEnabled()) return;
 
-  const eventId = payload.eventId || newId("e");
+  // Heartbeats are merge-only session pings — skip eventId to avoid a Firestore txn read each time.
+  const eventId =
+    payload.eventType === "heartbeat"
+      ? undefined
+      : payload.eventId || newId("e");
   const visitorId = payload.visitorId || getVisitorId();
   const body = JSON.stringify({
     ...clientContextPayload(),
     ...payload,
-    eventId,
+    ...(eventId ? { eventId } : {}),
     visitorId,
     analyticsVersion: 2,
   });

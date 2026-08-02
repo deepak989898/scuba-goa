@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { cachedCmsFetch } from "@/lib/cms-client-cache";
 import { sanitizePublicImageUrl } from "@/lib/cms-image";
 import { normalizeGalleryCategory } from "@/lib/gallery-categories";
 import { dedupeHomeGalleryItems } from "@/lib/home-gallery-dedupe";
@@ -57,20 +58,14 @@ export function useHomeGallery() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const db = getDb();
-    if (!db) {
-      setItems(dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY));
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     (async () => {
       try {
-        const snap = await getDocs(collection(db, "homeGallery"));
-        if (cancelled) return;
-        if (snap.empty) {
-          setItems(dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY));
-        } else {
+        const list = await cachedCmsFetch("homeGallery", async () => {
+          const db = getDb();
+          if (!db) return dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY);
+          const snap = await getDocs(collection(db, "homeGallery"));
+          if (snap.empty) return dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY);
           const rows = snap.docs
             .map((docSnap) =>
               normalizeRow(
@@ -82,7 +77,7 @@ export function useHomeGallery() {
           rows.sort(
             (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
           );
-          const list: HomeGalleryItem[] = dedupeHomeGalleryItems(
+          return dedupeHomeGalleryItems(
             rows.map(
               ({
                 type,
@@ -107,8 +102,8 @@ export function useHomeGallery() {
               }),
             ),
           );
-          setItems(list);
-        }
+        });
+        if (!cancelled) setItems(list);
       } catch {
         if (!cancelled) setItems(dedupeHomeGalleryItems(DEFAULT_HOME_GALLERY));
       } finally {

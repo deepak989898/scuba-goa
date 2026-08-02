@@ -209,9 +209,12 @@ export async function POST(req: Request) {
   const ipSecret = process.env.ANALYTICS_IP_HASH_SECRET?.trim() || "";
   const ip = clientIpFromHeaders(req.headers);
   const ipHash = ipSecret ? hashIp(ip, ipSecret) : hashIp(ip, "bsg-analytics-fallback");
-  const allowed = await checkRateLimit(db, ipHash || sessionId);
-  if (!allowed) {
-    return new NextResponse(null, { status: 204 });
+  // Heartbeats are already sparse client-side; skip rate-limit txn (1 read each).
+  if (eventType !== "heartbeat") {
+    const allowed = await checkRateLimit(db, ipHash || sessionId);
+    if (!allowed) {
+      return new NextResponse(null, { status: 204 });
+    }
   }
 
   // Confirmed UA bots: store evidence but never inflate human/blog counters
@@ -304,6 +307,8 @@ export async function POST(req: Request) {
       const hbScroll = toFiniteNumber(body.maxScrollDepthPct);
       const hbDuration = toFiniteNumber(body.durationMs);
       const keepAlive = body.keepAliveSession !== false;
+      // Write-only merge — no sessionRef.get() (was +1 read per ping).
+      // Geo / traffic / firstSeenAt are set on view; do not re-read here.
       const hbPayload: Record<string, unknown> = {
         sessionId: sessionId || "anon",
         lastPath: path,
@@ -320,13 +325,11 @@ export async function POST(req: Request) {
         );
       }
       if (hbDuration != null && hbDuration >= 0) {
-        // Soft dwell snapshot while still on the page (for admin live view).
         hbPayload.currentPageActiveMs = Math.min(
           Math.round(hbDuration),
           1000 * 60 * 60 * 6,
         );
       }
-      // Engaged heartbeats confirm a human without waiting for leave.
       if (
         (hbInteraction != null && hbInteraction > 0) ||
         (hbScroll != null && hbScroll >= 10) ||
@@ -335,51 +338,6 @@ export async function POST(req: Request) {
         hbPayload.visitorType = "human";
         hbPayload.isEngagedSession = true;
         hbPayload.isBot = false;
-      }
-      // Backfill geo + traffic source if session still missing them
-      try {
-        const existing = await sessionRef.get();
-        const ex = existing.data() as Record<string, unknown> | undefined;
-        if (!ex?.firstSeenAt) {
-          hbPayload.firstSeenAt = FieldValue.serverTimestamp();
-        }
-        if (!ex?.geoCountry && !ex?.geoCity) {
-          const ip = clientIpFromHeaders(req.headers);
-          const geo = await resolveRequestGeo(req.headers, ip);
-          Object.assign(hbPayload, geo);
-        }
-        if (!ex?.trafficChannel) {
-          const attribution = classifyAttribution({
-            rawReferrer: sliceStr(body.rawReferrer, 500),
-            utmSource: sliceStr(body.utmSource, TRAFFIC_STR_MAX),
-            utmMedium: sliceStr(body.utmMedium, TRAFFIC_STR_MAX),
-            utmCampaign: sliceStr(body.utmCampaign, TRAFFIC_STR_MAX),
-            gclid: sliceStr(body.gclid, 128),
-            fbclid: sliceStr(body.fbclid, 128),
-            landingPath: sliceStr(body.landingPath, PATH_MAX) || path,
-          });
-          hbPayload.trafficChannel = attribution.channel;
-          hbPayload.trafficLabel = attribution.label;
-          hbPayload.trafficDetail = attribution.detail;
-          hbPayload.source = attribution.source;
-          hbPayload.medium = attribution.medium;
-          hbPayload.sourceConfidence = attribution.sourceConfidence;
-          hbPayload.attributionReason = attribution.attributionReason;
-          if (attribution.referrerHost) {
-            hbPayload.referrerHost = attribution.referrerHost;
-          }
-          if (attribution.utmSource) hbPayload.utmSource = attribution.utmSource;
-          if (attribution.utmMedium) hbPayload.utmMedium = attribution.utmMedium;
-          if (attribution.utmCampaign) {
-            hbPayload.utmCampaign = attribution.utmCampaign;
-          }
-          if (attribution.rawReferrer) {
-            hbPayload.rawReferrer = attribution.rawReferrer;
-          }
-          hbPayload.landingPath = attribution.landingUrl || path;
-        }
-      } catch {
-        /* ignore geo/traffic backfill errors */
       }
       await sessionRef.set(hbPayload, { merge: true });
     } catch (e) {

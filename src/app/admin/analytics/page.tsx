@@ -475,10 +475,12 @@ function buildVisitorSummary(
   };
 }
 
-const SAMPLE_LIMIT = 5000;
-const SESSION_LIMIT = 2000;
-/** Heartbeat is ~25s — allow two missed beats before going offline. */
-const ONLINE_WINDOW_MS = 70_000;
+/** Keep small — this page used to poll 5k+2k docs every 20s (~7k reads/poll). */
+const SAMPLE_LIMIT = 400;
+const SESSION_LIMIT = 150;
+/** Heartbeat is ~3 min — allow two missed beats before going offline. */
+const ONLINE_WINDOW_MS = 420_000;
+const ANALYTICS_POLL_MS = 120_000;
 const MAX_DAYS = 30;
 
 export default function AdminAnalyticsPage() {
@@ -649,10 +651,16 @@ export default function AdminAnalyticsPage() {
     };
 
     void load(true);
-    // Keep Online + page times fresh while the admin tab is open.
+    // Sparse poll — pause while the tab is hidden to stop runaway Firestore reads.
     const poll = window.setInterval(() => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
       void load(false);
-    }, 20_000);
+    }, ANALYTICS_POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(poll);
@@ -954,8 +962,14 @@ export default function AdminAnalyticsPage() {
     };
     void load();
     const poll = window.setInterval(() => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
       void load();
-    }, 12_000);
+    }, 60_000);
     return () => {
       cancelled = true;
       window.clearInterval(poll);

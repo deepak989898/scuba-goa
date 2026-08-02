@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { cachedCmsFetch } from "@/lib/cms-client-cache";
 import { sanitizePackageImageUrl } from "@/lib/cms-image";
 import type { PackageDoc } from "@/lib/types";
 import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
@@ -38,52 +39,53 @@ function mapDoc(id: string, data: Record<string, unknown>): PackageDoc {
   };
 }
 
+type PackagesCache = { list: PackageDoc[]; fromFirestore: boolean };
+
+async function loadPackages(): Promise<PackagesCache> {
+  const db = getDb();
+  if (!db) {
+    return { list: stripStockFromPackages(fallbackPackages), fromFirestore: false };
+  }
+
+  let snap = await getDocs(collection(db, "packages"));
+  if (snap.empty) {
+    try {
+      const seedRes = await fetch("/api/seed-catalog-if-empty", {
+        method: "POST",
+      });
+      if (seedRes.ok) {
+        snap = await getDocs(collection(db, "packages"));
+      }
+    } catch {
+      /* offline or seed unavailable */
+    }
+  }
+  if (snap.empty) {
+    return { list: stripStockFromPackages(fallbackPackages), fromFirestore: false };
+  }
+  const list = snap.docs
+    .map((d) => mapDoc(d.id, d.data() as Record<string, unknown>))
+    .filter((p) => p.active !== false);
+  list.sort((a, b) => a.price - b.price);
+  if (list.length === 0) {
+    return { list: stripStockFromPackages(fallbackPackages), fromFirestore: false };
+  }
+  return { list, fromFirestore: true };
+}
+
 export function usePackages() {
   const [packages, setPackages] = useState<PackageDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromFirestore, setFromFirestore] = useState(false);
 
   useEffect(() => {
-    const db = getDb();
-    if (!db) {
-      setPackages(stripStockFromPackages(fallbackPackages));
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     (async () => {
       try {
-        let snap = await getDocs(collection(db, "packages"));
+        const result = await cachedCmsFetch("packages", loadPackages);
         if (cancelled) return;
-        if (snap.empty) {
-          try {
-            const seedRes = await fetch("/api/seed-catalog-if-empty", {
-              method: "POST",
-            });
-            if (seedRes.ok && !cancelled) {
-              snap = await getDocs(collection(db, "packages"));
-            }
-          } catch {
-            /* offline or seed unavailable — use code defaults below */
-          }
-        }
-        if (cancelled) return;
-        if (snap.empty) {
-          setPackages(stripStockFromPackages(fallbackPackages));
-          setFromFirestore(false);
-        } else {
-          const list = snap.docs
-            .map((d) => mapDoc(d.id, d.data() as Record<string, unknown>))
-            .filter((p) => p.active !== false);
-          list.sort((a, b) => a.price - b.price);
-          if (list.length === 0) {
-            setPackages(stripStockFromPackages(fallbackPackages));
-            setFromFirestore(false);
-          } else {
-            setPackages(list);
-            setFromFirestore(true);
-          }
-        }
+        setPackages(result.list);
+        setFromFirestore(result.fromFirestore);
       } catch {
         if (!cancelled) {
           setPackages(stripStockFromPackages(fallbackPackages));

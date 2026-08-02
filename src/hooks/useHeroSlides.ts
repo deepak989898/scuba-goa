@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { cachedCmsFetch } from "@/lib/cms-client-cache";
 import {
   SITE_IMAGE_PLACEHOLDER,
   sanitizePublicImageUrl,
@@ -24,20 +25,14 @@ export function useHeroSlides() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const db = getDb();
-    if (!db) {
-      setSlides([]);
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     (async () => {
       try {
-        const snap = await getDocs(collection(db, "heroSlides"));
-        if (cancelled) return;
-        if (snap.empty) {
-          setSlides([]);
-        } else {
+        const list = await cachedCmsFetch("heroSlides", async () => {
+          const db = getDb();
+          if (!db) return [] as HeroSlide[];
+          const snap = await getDocs(collection(db, "heroSlides"));
+          if (snap.empty) return [];
           const rows = snap.docs.map((d) => {
             const x = d.data() as Record<string, unknown>;
             const videoUrl = String(
@@ -64,7 +59,7 @@ export function useHeroSlides() {
           rows.sort(
             (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
           );
-          const list: HeroSlide[] = rows
+          return rows
             .filter((r) => r.src.length > 0 || r.videoUrl)
             .map((r) => ({
               src: r.src,
@@ -74,8 +69,8 @@ export function useHeroSlides() {
               useAmbientMusic: r.useAmbientMusic ? true : undefined,
               bookingOption: r.bookingOption,
             }));
-          setSlides(list);
-        }
+        });
+        if (!cancelled) setSlides(list);
       } catch {
         if (!cancelled) setSlides([]);
       } finally {
