@@ -4,9 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { videoSrcForThumbnailFrame } from "@/components/HomeGalleryMedia";
 import { useHomeGallery } from "@/hooks/useHomeGallery";
-import {
-  galleryCategoryLabel,
-} from "@/lib/gallery-categories";
 import { dedupeHomeGalleryItems, galleryMediaDedupeKey } from "@/lib/home-gallery-dedupe";
 import type { HomeGalleryItem } from "@/lib/home-gallery-default";
 import Link from "next/link";
@@ -142,14 +139,11 @@ function GalleryLightbox({
             </div>
           )}
         </div>
-        <p className="mt-3 max-w-2xl px-2 text-center text-sm text-white/90">
-          {item.alt}
-          {count > 1 ? (
-            <span className="ml-2 text-white/60">
-              ({index + 1}/{count})
-            </span>
-          ) : null}
-        </p>
+        {count > 1 ? (
+          <p className="mt-2 text-center text-sm text-white/70">
+            {index + 1}/{count}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -174,14 +168,14 @@ function GalleryGridCard({
 
   return (
     <article
-      className="group flex flex-col overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm"
-      aria-label={isVideo ? `Reel: ${item.alt}` : item.alt}
+      className="group overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm"
+      aria-label={isVideo ? "Gallery reel" : "Gallery photo"}
     >
       <button
         type="button"
         onClick={onOpen}
         className="relative aspect-[4/3] w-full cursor-zoom-in bg-ocean-50 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-500"
-        aria-label={`Zoom ${item.alt}`}
+        aria-label={isVideo ? "Play gallery reel" : "Zoom gallery photo"}
       >
         {isVideo ? (
           <div
@@ -189,51 +183,31 @@ function GalleryGridCard({
             onContextMenu={(e) => e.preventDefault()}
           >
             <video
-              className="h-full w-full object-contain"
+              className="h-full w-full object-cover"
               src={mainVideoSrc}
               poster={poster || undefined}
               muted
               playsInline
               preload="metadata"
               onContextMenu={(e) => e.preventDefault()}
-            >
-              {item.alt}
-            </video>
+            />
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <span className="rounded-full bg-black/55 px-3 py-1.5 text-xs font-bold text-white">
-                Play / zoom
+                Play
               </span>
             </span>
           </div>
         ) : (
           <CmsRemoteImage
             src={item.mediaUrl}
-            alt={item.alt}
+            alt=""
             fill
-            className="object-contain transition duration-300 group-hover:scale-[1.02]"
+            className="object-cover transition duration-300 group-hover:scale-[1.02]"
             sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw"
             loading={index < 8 ? "eager" : "lazy"}
           />
         )}
-        {isVideo ? (
-          <span className="pointer-events-none absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-            Reel
-          </span>
-        ) : null}
-        {item.category ? (
-          <span className="pointer-events-none absolute left-1.5 top-1.5 max-w-[80%] truncate rounded bg-ocean-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-            {galleryCategoryLabel(item.category)}
-          </span>
-        ) : null}
-        {!isVideo ? (
-          <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
-            Click to zoom
-          </span>
-        ) : null}
       </button>
-      <p className="line-clamp-2 px-2.5 py-2 text-xs font-medium text-ocean-800 sm:text-sm">
-        {item.alt}
-      </p>
     </article>
   );
 }

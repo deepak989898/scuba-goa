@@ -40,15 +40,26 @@ export function galleryMediaDedupeKey(url: string): string {
     }
     path = path.replace(/\/{2,}/g, "/");
 
-    // Firebase Storage download URL → gs:bucket/object
+    // Firebase Storage download URL → gs:bucket/object (decode object path)
     const fb = path.match(/^\/v0\/b\/([^/]+)\/o\/(.+)$/i);
     if (host.includes("firebasestorage.googleapis.com") && fb) {
-      return `gs:${fb[1]}/${fb[2]}`.toLowerCase();
+      let objectPath = fb[2];
+      try {
+        objectPath = decodeURIComponent(objectPath);
+      } catch {
+        /* keep */
+      }
+      return `gs:${fb[1]}/${objectPath}`.toLowerCase();
     }
 
     // https://storage.googleapis.com/{bucket}/{object}
     if (host === "storage.googleapis.com") {
-      const rest = path.replace(/^\//, "");
+      let rest = path.replace(/^\//, "");
+      try {
+        rest = decodeURIComponent(rest);
+      } catch {
+        /* keep */
+      }
       if (rest.includes("/")) {
         return `gs:${rest}`.toLowerCase();
       }
@@ -79,7 +90,20 @@ function isNearDuplicatePhash(a: string, b: string): boolean {
   return hammingHex(aa, bb) <= PHASH_NEAR_DUP_MAX;
 }
 
-/** Keep first occurrence of each media file (caller should sort first). */
+/** Collect all media URLs that identify this item (main + poster). */
+function itemUrlKeys(item: DedupeCapable): string[] {
+  const keys: string[] = [];
+  const main = galleryMediaDedupeKey(item.mediaUrl || "");
+  if (main) keys.push(main);
+  const poster = galleryMediaDedupeKey(item.posterUrl || "");
+  if (poster) keys.push(poster);
+  return keys;
+}
+
+/**
+ * Keep first occurrence of each media file.
+ * Same Firestore/Storage link (or same poster as another image) → skip.
+ */
 export function dedupeHomeGalleryItems<T extends DedupeCapable>(items: T[]): T[] {
   const seenUrl = new Set<string>();
   const seenSha = new Set<string>();
@@ -87,15 +111,15 @@ export function dedupeHomeGalleryItems<T extends DedupeCapable>(items: T[]): T[]
   const out: T[] = [];
 
   for (const item of items) {
-    const urlKey = galleryMediaDedupeKey(item.mediaUrl);
+    const urlKeys = itemUrlKeys(item);
     const sha = item.sha256?.trim().toLowerCase() || "";
     const ph = item.perceptualHash?.trim().toLowerCase() || "";
 
-    if (urlKey && seenUrl.has(urlKey)) continue;
+    if (urlKeys.some((k) => seenUrl.has(k))) continue;
     if (sha && seenSha.has(sha)) continue;
     if (ph && keptPhash.some((prev) => isNearDuplicatePhash(prev, ph))) continue;
 
-    if (urlKey) seenUrl.add(urlKey);
+    for (const k of urlKeys) seenUrl.add(k);
     if (sha) seenSha.add(sha);
     if (ph) keptPhash.push(ph);
     out.push(item);
