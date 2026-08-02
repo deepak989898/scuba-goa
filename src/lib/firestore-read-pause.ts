@@ -1,16 +1,14 @@
 /**
- * Emergency Firestore READ pause.
+ * Optional emergency Firestore READ pause.
  *
- * Default: pause until 2026-08-03 00:00 Asia/Kolkata (tomorrow), then auto-resume.
- * Override:
+ * Off by default. Only activates when you explicitly set a future until-time:
  *   FIRESTORE_READ_PAUSE_UNTIL=2026-08-04T00:00:00+05:30
- *   FIRESTORE_READ_PAUSE_DISABLED=1   (force resume early)
- * Client mirrors via NEXT_PUBLIC_* of the same names.
+ *   NEXT_PUBLIC_FIRESTORE_READ_PAUSE_UNTIL=...  (same value — needed for client getDb)
+ *
+ * Force off even if until is set:
+ *   FIRESTORE_READ_PAUSE_DISABLED=1
+ *   NEXT_PUBLIC_FIRESTORE_READ_PAUSE_DISABLED=1
  */
-
-/** End of the burn day — resume at local midnight IST 3 Aug 2026. */
-export const DEFAULT_FIRESTORE_READ_PAUSE_UNTIL =
-  "2026-08-03T00:00:00+05:30";
 
 function envFlag(name: string): string {
   if (typeof process === "undefined") return "";
@@ -27,7 +25,7 @@ export function getFirestoreReadPauseUntilIso(): string {
   return (
     envFlag("FIRESTORE_READ_PAUSE_UNTIL") ||
     envFlag("NEXT_PUBLIC_FIRESTORE_READ_PAUSE_UNTIL") ||
-    DEFAULT_FIRESTORE_READ_PAUSE_UNTIL
+    ""
   );
 }
 
@@ -38,7 +36,7 @@ export function getFirestoreReadPauseUntilMs(): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 
-/** True while emergency pause is active (blocks heavy reads). */
+/** True only while an explicit until-time env is in the future. */
 export function isFirestoreReadPaused(): boolean {
   const until = getFirestoreReadPauseUntilMs();
   if (!until) return false;
@@ -46,6 +44,9 @@ export function isFirestoreReadPaused(): boolean {
 }
 
 export function firestoreReadPauseMessage(): string {
-  const until = getFirestoreReadPauseUntilIso() || DEFAULT_FIRESTORE_READ_PAUSE_UNTIL;
-  return `Firestore reads paused until ${until} (quota protection). Auto-resumes after that. Close admin tabs. Set FIRESTORE_READ_PAUSE_DISABLED=1 on Vercel to resume early.`;
+  const until = getFirestoreReadPauseUntilIso();
+  if (!until) {
+    return "Firestore reads are not paused.";
+  }
+  return `Firestore reads paused until ${until} (quota protection). Set FIRESTORE_READ_PAUSE_DISABLED=1 and NEXT_PUBLIC_FIRESTORE_READ_PAUSE_DISABLED=1 on Vercel, then redeploy, to resume.`;
 }

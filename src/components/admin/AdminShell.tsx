@@ -88,8 +88,8 @@ function AdminGate({ children }: { children: React.ReactNode }) {
           className="sticky top-0 z-[60] border-b border-amber-300 bg-amber-100 px-3 py-2 text-center text-xs font-semibold text-amber-950 sm:text-sm"
           role="status"
         >
-          Firestore READS paused until tomorrow 12:00 AM IST (quota protection).
-          Close extra admin tabs. Site bookings still work.{" "}
+          Firestore READS paused (quota protection). Close extra admin tabs.
+          Public pages may show fallback services until pause ends.{" "}
           <span className="font-normal text-amber-900">
             {firestoreReadPauseMessage()}
           </span>
