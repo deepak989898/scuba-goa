@@ -172,29 +172,22 @@ export default async function OffersPage() {
 
   return (
     <div className="relative overflow-x-hidden pb-2 md:pb-4">
-      {/* Full hero band — cards sit below so image + title stay clear */}
-      <div className="relative h-[13.5rem] w-full sm:h-[16rem] lg:h-[18rem]">
+      {/* Intrinsic 1983×793 — full image, no crop / letterbox */}
+      <div className="relative w-full leading-none">
         <Image
           src="/offer-header.webp"
-          alt=""
-          fill
+          alt="Offers and promo codes — Book Scuba Goa"
+          width={1983}
+          height={793}
           priority
-          quality={72}
-          className="object-cover object-[center_30%]"
+          quality={80}
+          className="block h-auto w-full"
           sizes="100vw"
         />
-        <div
-          className="absolute inset-0 bg-gradient-to-b from-sky-950/15 via-transparent to-[#dceef8]/90"
-          aria-hidden
-        />
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-5 pt-10 text-center sm:pb-6">
-          <h1 className="font-display text-2xl font-black uppercase tracking-tight text-[#0b3d66] drop-shadow-sm sm:text-3xl lg:text-[2.15rem]">
-            Offers &amp; Promo Codes
-          </h1>
-        </div>
+        <h1 className="sr-only">Offers &amp; Promo Codes</h1>
       </div>
 
-      <div className="relative z-10 mx-auto max-w-5xl px-2 pt-2 sm:px-4 sm:pt-3 lg:px-6">
+      <div className="relative z-10 mx-auto max-w-5xl px-2 pt-3 sm:px-4 sm:pt-4 lg:px-6">
         <div className="overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_12px_40px_rgba(8,40,80,0.14)] sm:rounded-[1.25rem]">
           <div className="px-2 py-2 sm:px-3 sm:py-2.5">
             {offers.length === 0 ? (
