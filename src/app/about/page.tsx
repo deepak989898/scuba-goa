@@ -10,10 +10,7 @@ import {
   SITE_URL,
   whatsappLink,
 } from "@/lib/constants";
-import {
-  aboutPublicImages,
-  getAboutContentServer,
-} from "@/lib/about-content";
+import { getAboutPublicImages } from "@/lib/about-content";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 
 const waMessage =
@@ -199,7 +196,7 @@ const STATS = [
 ] as const;
 
 export default async function AboutPage() {
-  const aboutImages = aboutPublicImages(await getAboutContentServer());
+  const aboutImages = await getAboutPublicImages();
   const site = SITE_URL.replace(/\/$/, "");
   const jsonLd = {
     "@context": "https://schema.org",
@@ -295,7 +292,7 @@ export default async function AboutPage() {
 
       {/* Mid: expect | image | visit */}
       <section className="bg-white px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_minmax(0,18rem)_1fr] lg:items-start lg:gap-6">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_minmax(14rem,22rem)_1fr] lg:items-stretch lg:gap-8">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
               What you can expect
@@ -319,14 +316,31 @@ export default async function AboutPage() {
             </ul>
           </div>
 
-          <div className="relative mx-auto aspect-[3/4] w-full max-w-xs overflow-hidden rounded-2xl border border-ocean-100 shadow-md lg:max-w-none">
-            <CmsRemoteImage
-              src={aboutImages.mid}
-              alt="Tropical Goa coastline and turquoise water"
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 80vw, 288px"
-            />
+          <div className="flex items-center justify-center">
+            <div
+              className={`relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-ocean-100 bg-ocean-50 shadow-md lg:max-w-none ${
+                aboutImages.midIsPlaceholder
+                  ? "aspect-[16/10]"
+                  : "aspect-[4/5] sm:aspect-[3/4]"
+              }`}
+            >
+              <CmsRemoteImage
+                src={aboutImages.mid}
+                alt={
+                  aboutImages.midIsPlaceholder
+                    ? "Book Scuba Goa — clear prices and small advance"
+                    : "Scuba diving experience in Goa"
+                }
+                fill
+                className={
+                  aboutImages.midIsPlaceholder
+                    ? "object-contain object-center p-2 sm:p-3"
+                    : "object-cover object-center"
+                }
+                sizes="(max-width: 1024px) 90vw, 352px"
+                quality={80}
+              />
+            </div>
           </div>
 
           <div>

@@ -1,8 +1,11 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
+  SITE_IMAGE_PLACEHOLDER,
   cmsImageOrPlaceholder,
+  pickCmsImage,
   sanitizePublicImageUrl,
 } from "@/lib/cms-image";
+import { getAllServicesServer } from "@/lib/get-services-server";
 
 export const ABOUT_CONTENT_DOC = "siteContent/about";
 
@@ -31,6 +34,43 @@ export async function getAboutContentServer(): Promise<AboutContent> {
   }
 }
 
+export type AboutPublicImages = {
+  hero: string;
+  mid: string;
+  /** True when mid is only the site placeholder (not a real photo). */
+  midIsPlaceholder: boolean;
+};
+
+/**
+ * Resolve About images. Prefer admin About fields, then scuba service photo,
+ * then local placeholder (never Unsplash).
+ */
+export async function getAboutPublicImages(): Promise<AboutPublicImages> {
+  const c = await getAboutContentServer();
+  let serviceImage = "";
+  try {
+    const services = await getAllServicesServer();
+    const scuba =
+      services.find((s) => s.slug === "scuba-diving") ??
+      services.find((s) => s.mostBooked) ??
+      services[0];
+    serviceImage = pickCmsImage(scuba?.image);
+  } catch {
+    serviceImage = "";
+  }
+
+  const hero = cmsImageOrPlaceholder(c.heroImageUrl, serviceImage);
+  const midPicked = pickCmsImage(c.midImageUrl, serviceImage);
+  const mid = midPicked || SITE_IMAGE_PLACEHOLDER;
+
+  return {
+    hero,
+    mid,
+    midIsPlaceholder: !midPicked,
+  };
+}
+
+/** @deprecated use getAboutPublicImages */
 export function aboutPublicImages(c: AboutContent): {
   hero: string;
   mid: string;
