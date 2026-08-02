@@ -81,6 +81,17 @@ export type ServiceOption = {
   blogCount: number;
 };
 
+/** Per-blog GSC snapshot for admin blog table (from seoUrls). */
+export type BlogGscRow = {
+  indexStatus: IndexStatusCode;
+  /** Short label: Indexed / Not indexed / Pending */
+  indexLabel: "indexed" | "not_indexed" | "pending";
+  /** Average Search Console position; null if no data */
+  position: number | null;
+  impressions: number;
+  clicks: number;
+};
+
 export type ContentOverview = {
   counts: {
     coreStaticPages: number;
@@ -102,6 +113,8 @@ export type ContentOverview = {
   extraLegalPages: { path: string; label: string }[];
   /** Code blogs not imported to Firestore yet — still from code. */
   codeBlogsStillFromCode: { slug: string; title: string }[];
+  /** slug → GSC index + position for blog table columns */
+  blogGscBySlug: Record<string, BlogGscRow>;
   gscByType: Record<string, PageTypeBucket>;
   gscTotals: PageTypeBucket;
   notIndexedSample: NotIndexedPage[];
@@ -109,6 +122,20 @@ export type ContentOverview = {
   gscConnected: boolean;
   disclaimer: string;
 };
+
+export function blogGscIndexLabel(
+  status: IndexStatusCode,
+): BlogGscRow["indexLabel"] {
+  if (status === "INDEXED") return "indexed";
+  if (
+    status === "PENDING_INSPECTION" ||
+    status === "UNKNOWN" ||
+    status === "API_ERROR"
+  ) {
+    return "pending";
+  }
+  return "not_indexed";
+}
 
 export function explainIndexStatus(
   status: IndexStatusCode,
@@ -221,8 +248,10 @@ export async function buildContentOverview(): Promise<ContentOverview> {
     getAllPackagesServer().catch(() => []),
     listPublishedSeoPagesServer().catch(() => []),
     listPublishedBlogPostsServer().catch(() => []),
-    // Cap reads — store hard-max is 2000
-    listSeoUrls({ limit: 800 }).catch(() => [] as SeoUrlRecord[]),
+    // Cap reads — store hard-max is 2000. ignoreReadPause: blog table GSC cols.
+    listSeoUrls({ limit: 800, ignoreReadPause: true }).catch(
+      () => [] as SeoUrlRecord[],
+    ),
   ]);
 
   const subPaths = listSubServicePaths(services);
@@ -323,6 +352,26 @@ export async function buildContentOverview(): Promise<ContentOverview> {
     .map((p) => ({ slug: p.slug, title: p.title }));
   const codeBlogsOverridden = staticCodeBlogs.length - codeBlogsStillFromCode.length;
 
+  const blogGscBySlug: Record<string, BlogGscRow> = {};
+  for (const u of seoUrls) {
+    if (u.pageType !== "blog") continue;
+    let slug = String(u.contentId || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^\/?blog\//, "");
+    if (!slug) {
+      try {
+        const path = new URL(u.normalizedUrl || u.url).pathname;
+        const m = /^\/blog\/([a-z0-9-]+)\/?$/i.exec(path);
+        if (m) slug = m[1].toLowerCase();
+      } catch {
+        /* skip */
+      }
+    }
+    if (!slug) continue;
+    blogGscBySlug[slug] = rowFromSeoUrl(u);
+  }
+
   return {
     counts: {
       coreStaticPages: CORE_STATIC_PATHS.length,
@@ -346,6 +395,7 @@ export async function buildContentOverview(): Promise<ContentOverview> {
       label: EXTRA_LEGAL_PAGE_LABELS[path],
     })),
     codeBlogsStillFromCode,
+    blogGscBySlug,
     gscByType,
     gscTotals,
     notIndexedSample,
@@ -353,5 +403,17 @@ export async function buildContentOverview(): Promise<ContentOverview> {
     gscConnected,
     disclaimer:
       "GSC status comes from the last inventory/inspection run — not a live Google guarantee. Improve not-indexed pages, then re-inspect in GSC Indexing Agent. Code blogs count = only posts still served from code (not yet in Firestore).",
+  };
+}
+
+function rowFromSeoUrl(u: SeoUrlRecord): BlogGscRow {
+  const pos = Number(u.averagePosition);
+  return {
+    indexStatus: u.indexStatus,
+    indexLabel: blogGscIndexLabel(u.indexStatus),
+    position:
+      Number.isFinite(pos) && pos > 0 ? Math.round(pos * 10) / 10 : null,
+    impressions: Math.max(0, Math.round(Number(u.impressions) || 0)),
+    clicks: Math.max(0, Math.round(Number(u.clicks) || 0)),
   };
 }

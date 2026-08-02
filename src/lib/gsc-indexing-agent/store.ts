@@ -54,9 +54,11 @@ export async function listSeoUrls(options?: {
     | "all";
   pageType?: string;
   severityIssue?: boolean;
+  /** Allow one capped read during emergency pause (blog table GSC columns). */
+  ignoreReadPause?: boolean;
 }): Promise<SeoUrlRecord[]> {
   const { isFirestoreReadPaused } = await import("@/lib/firestore-read-pause");
-  if (isFirestoreReadPaused()) return [];
+  if (isFirestoreReadPaused() && !options?.ignoreReadPause) return [];
   const db = getAdminDb();
   if (!db) return [];
   // Avoid composite index requirements — filter in memory for MVP scale

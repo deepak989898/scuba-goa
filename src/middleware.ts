@@ -37,7 +37,15 @@ function shouldBlockForReadPause(req: NextRequest): boolean {
   if (path === "/api/t" || path.startsWith("/api/analytics")) return true;
 
   // Admin list/dashboard GETs (heavy). Allow PATCH/POST so critical saves can still run.
-  if (path.startsWith("/api/admin") && method === "GET") return true;
+  // Allow content-overview (capped) so blog table GSC columns can load.
+  if (
+    path.startsWith("/api/admin") &&
+    method === "GET" &&
+    path !== "/api/admin/content-overview" &&
+    !path.startsWith("/api/admin/blog-posts")
+  ) {
+    return true;
+  }
 
   return false;
 }

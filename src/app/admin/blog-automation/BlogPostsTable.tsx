@@ -7,6 +7,7 @@ import type { BlogPostFirestore } from "@/lib/blog-firestore";
 import { isBlogScheduled } from "@/lib/blog-firestore";
 import { formatUtcInIst } from "@/lib/blog-automation/schedule-ist";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
+import type { BlogGscRow } from "@/lib/admin-content-overview";
 import { BlogPostEditorPanel } from "./BlogPostEditorPanel";
 
 type BlogTraffic = { views: number; visitors: number };
@@ -26,6 +27,7 @@ type Props = {
   trafficLoading: boolean;
   editing: BlogPostFirestore | null;
   busy: string | null;
+  blogGscBySlug?: Record<string, BlogGscRow>;
   services?: ServiceFilterOption[];
   serviceFilter?: string;
   onServiceFilterChange?: (slug: string) => void;
@@ -54,6 +56,89 @@ function viewCountForPost(
 ): number {
   const t = getContentTrafficForSlug(bySlug, p.slug);
   return Math.max(t?.views ?? 0, p.viewCount ?? 0);
+}
+
+function gscForSlug(
+  slug: string,
+  map: Record<string, BlogGscRow> | undefined,
+): BlogGscRow | null {
+  if (!map) return null;
+  return map[slug.trim().toLowerCase()] ?? null;
+}
+
+function GscIndexBadge({ row }: { row: BlogGscRow | null }) {
+  if (!row) {
+    return (
+      <span className="text-[11px] font-semibold text-slate-500" title="No GSC data yet — run inventory/inspect">
+        No GSC data
+      </span>
+    );
+  }
+  if (row.indexLabel === "indexed") {
+    return (
+      <span
+        className="inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800"
+        title={row.indexStatus}
+      >
+        Indexed
+      </span>
+    );
+  }
+  if (row.indexLabel === "pending") {
+    return (
+      <span
+        className="inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-900"
+        title={row.indexStatus}
+      >
+        Pending
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex rounded bg-rose-100 px-1.5 py-0.5 text-[11px] font-bold text-rose-800"
+      title={row.indexStatus}
+    >
+      Not indexed
+    </span>
+  );
+}
+
+function GscPositionCell({ row }: { row: BlogGscRow | null }) {
+  if (!row) {
+    return <span className="text-slate-400">—</span>;
+  }
+  if (row.position == null) {
+    return (
+      <span
+        className="text-slate-500"
+        title={
+          row.impressions
+            ? `${row.impressions} impressions · ${row.clicks} clicks`
+            : "No average position in last GSC sync"
+        }
+      >
+        —
+      </span>
+    );
+  }
+  const n = row.position;
+  const color =
+    n <= 3
+      ? "text-emerald-700"
+      : n <= 10
+        ? "text-teal-700"
+        : n <= 20
+          ? "text-amber-700"
+          : "text-orange-700";
+  return (
+    <span
+      className={`font-extrabold tabular-nums ${color}`}
+      title={`Avg position ${n} · ${row.impressions} impressions · ${row.clicks} clicks`}
+    >
+      #{n}
+    </span>
+  );
 }
 
 function statusBadge(p: BlogPostFirestore) {
@@ -87,6 +172,7 @@ export function BlogPostsTable({
   trafficLoading,
   editing,
   busy,
+  blogGscBySlug = {},
   services = [],
   serviceFilter = "",
   onServiceFilterChange,
@@ -301,6 +387,8 @@ export function BlogPostsTable({
                 <th className="p-3">Scheduled (IST)</th>
                 <th className="p-3">Published (IST)</th>
                 <th className="p-3 text-right">Views</th>
+                <th className="p-3 whitespace-nowrap">GSC pos</th>
+                <th className="p-3 whitespace-nowrap">GSC index</th>
                 <th className="p-3">Actions</th>
               </tr>
             </thead>
@@ -404,6 +492,14 @@ export function BlogPostsTable({
                             )
                         : "—"}
                     </td>
+                    <td className="p-3 align-top text-sm">
+                      <GscPositionCell
+                        row={gscForSlug(p.slug, blogGscBySlug)}
+                      />
+                    </td>
+                    <td className="p-3 align-top">
+                      <GscIndexBadge row={gscForSlug(p.slug, blogGscBySlug)} />
+                    </td>
                     <td className="p-3 align-top">
                       <div className="flex flex-wrap gap-2">
                         {p.published ? (
@@ -457,7 +553,7 @@ export function BlogPostsTable({
                       id={`blog-editor-${p.slug}`}
                       className="bg-ocean-50/50"
                     >
-                      <td colSpan={10} className="p-4">
+                      <td colSpan={12} className="p-4">
                         <BlogPostEditorPanel
                           editing={editing}
                           busy={busy}

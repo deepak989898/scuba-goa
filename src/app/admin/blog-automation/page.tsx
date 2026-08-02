@@ -132,7 +132,8 @@ export default function AdminBlogAutomationPage() {
         setBlogTrafficBySlug({});
         setBlogIndexTraffic({ views: 0, visitors: 0 });
       } finally {
-        if (!opts?.silent) setTrafficLoading(false);
+        // Always clear — silent loads were leaving Views stuck on "…"
+        setTrafficLoading(false);
       }
     },
     [],
@@ -1123,6 +1124,7 @@ export default function AdminBlogAutomationPage() {
             trafficLoading={trafficLoading}
             editing={editing}
             busy={busy}
+            blogGscBySlug={overview?.blogGscBySlug ?? {}}
             services={serviceOptions}
             serviceFilter={serviceFilter}
             onServiceFilterChange={setServiceFilter}
