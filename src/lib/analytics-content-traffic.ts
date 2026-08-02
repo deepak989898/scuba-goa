@@ -122,6 +122,16 @@ export async function loadContentTrafficWithBackfill(
   aggregatedDocs: number;
   backfilled: boolean;
 }> {
+  const { isFirestoreReadPaused } = await import("@/lib/firestore-read-pause");
+  if (isFirestoreReadPaused()) {
+    return {
+      bySlug: {},
+      index: { views: 0, visitors: 0 },
+      aggregatedDocs: 0,
+      backfilled: false,
+    };
+  }
+
   const bySlug: Record<string, ContentTraffic> = {};
   let index: ContentTraffic = { views: 0, visitors: 0 };
 
@@ -194,6 +204,9 @@ export async function countBlogViewsForSlugs(
   ].slice(0, 80);
   const out: Record<string, ContentTraffic> = {};
   if (unique.length === 0) return out;
+
+  const { isFirestoreReadPaused } = await import("@/lib/firestore-read-pause");
+  if (isFirestoreReadPaused()) return out;
 
   const includePageViews = opts?.includePageViews === true;
 

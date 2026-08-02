@@ -152,6 +152,12 @@ async function checkRateLimit(
  * Server re-classifies attribution — client trafficChannel is never trusted.
  */
 export async function POST(req: Request) {
+  const { isFirestoreReadPaused } = await import("@/lib/firestore-read-pause");
+  if (isFirestoreReadPaused()) {
+    // Quota protection — skip analytics Firestore reads/writes for today
+    return new NextResponse(null, { status: 204 });
+  }
+
   const db = getAdminDb();
   if (!db) {
     return new NextResponse(null, { status: 204 });

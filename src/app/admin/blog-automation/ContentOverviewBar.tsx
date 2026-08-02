@@ -78,7 +78,7 @@ export function ContentOverviewBar({ overview, loading }: Props) {
         <Chip
           label="Core static"
           value={c.coreStaticPages}
-          hint="Home, about, contact, booking, indexes, offers, gallery"
+          hint="Fixed website pages (home, about, contact…)"
         />
         <Chip
           label="Extra / legal"
@@ -92,17 +92,80 @@ export function ContentOverviewBar({ overview, loading }: Props) {
         />
         <Chip label="Packages" value={c.packagePages} />
         <Chip
-          label="Code blogs"
+          label="Code blogs (left)"
           value={c.staticCodeBlogs}
-          hint="Built into website code"
+          hint={`Repo has ${c.codeBlogsInRepo} code blogs; ${c.codeBlogsOverridden} already overridden in Firestore. This number = still from code only.`}
         />
         <Chip
           label="Firestore blogs"
           value={c.publishedBlogs}
-          hint="Published Firestore blog posts"
+          hint="Published Firestore blog posts (includes imported code blogs)"
         />
         <Chip label="Guides" value={c.guidePages} />
       </div>
+
+      <details className="rounded-lg border border-ocean-100 bg-white/90 px-3 py-2 text-xs text-ocean-800">
+        <summary className="cursor-pointer font-bold text-ocean-900">
+          Core static pages kya hain? ({c.coreStaticPages}) — list dekho
+        </summary>
+        <p className="mt-1.5 text-ocean-600">
+          Ye fixed marketing pages hain (blog/service detail nahi). Website ka
+          structure:
+        </p>
+        <ul className="mt-1.5 grid gap-1 sm:grid-cols-2">
+          {(overview.coreStaticPages ?? []).map((p) => (
+            <li key={p.path} className="font-mono text-[11px]">
+              <span className="font-semibold text-cyan-800">{p.path}</span>
+              <span className="text-ocean-600"> — {p.label}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 font-bold text-ocean-900">Extra / legal:</p>
+        <ul className="mt-1 grid gap-1 sm:grid-cols-2">
+          {(overview.extraLegalPages ?? []).map((p) => (
+            <li key={p.path} className="font-mono text-[11px]">
+              <span className="font-semibold text-cyan-800">{p.path}</span>
+              <span className="text-ocean-600"> — {p.label}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      <details className="rounded-lg border border-teal-100 bg-teal-50/40 px-3 py-2 text-xs text-ocean-800">
+        <summary className="cursor-pointer font-bold text-teal-950">
+          Code blogs vs Firestore — samjho ({c.codeBlogsOverridden}/
+          {c.codeBlogsInRepo} override ho chuke)
+        </summary>
+        <p className="mt-1.5 text-ocean-700">
+          Repo me <strong>{c.codeBlogsInRepo}</strong> code blogs hain. Agar
+          same slug Firestore me hai to site <strong>Firestore</strong> se
+          chalati hai (code override). Chip pe sirf woh count aata hai jo{" "}
+          <strong>abhi bhi code se</strong> aate hain.
+        </p>
+        <p className="mt-1 text-ocean-700">
+          Override ho chuke: <strong>{c.codeBlogsOverridden}</strong> · Abhi
+          code se bachi: <strong>{c.staticCodeBlogs}</strong>
+        </p>
+        {c.staticCodeBlogs > 0 ? (
+          <>
+            <p className="mt-2 font-bold text-orange-900">
+              Abhi bhi code se (Firestore me nahi) — import karo:
+            </p>
+            <ul className="mt-1 max-h-36 space-y-1 overflow-y-auto">
+              {(overview.codeBlogsStillFromCode ?? []).map((b) => (
+                <li key={b.slug} className="font-mono text-[11px]">
+                  <span className="text-cyan-800">/blog/{b.slug}</span>
+                  <span className="text-ocean-600"> — {b.title}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="mt-2 font-semibold text-emerald-800">
+            Sab code blogs Firestore me override ho chuke — chip 0 sahi hai.
+          </p>
+        )}
+      </details>
 
       <div className="rounded-lg border border-ocean-100 bg-white/80 px-3 py-2 text-xs text-ocean-800">
         <p className="font-bold text-ocean-900">

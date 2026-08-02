@@ -10,6 +10,10 @@ import {
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "@/lib/firebase";
+import {
+  firestoreReadPauseMessage,
+  isFirestoreReadPaused,
+} from "@/lib/firestore-read-pause";
 import { AdminNavDrawer } from "@/components/admin/AdminNavDrawer";
 import { adminNavCurrentLabel } from "@/components/admin/admin-nav";
 
@@ -29,7 +33,8 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    const db = getDb();
+    // Admin membership check must work even during read-pause
+    const db = getDb({ ignoreReadPause: true });
     if (!auth || !db) {
       setUser(null);
       return;
@@ -74,8 +79,22 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 
   const pageLabel = adminNavCurrentLabel(pathname);
 
+  const readPaused = isFirestoreReadPaused();
+
   return (
     <div className="min-h-screen bg-sand lg:pl-64">
+      {readPaused ? (
+        <div
+          className="sticky top-0 z-[60] border-b border-amber-300 bg-amber-100 px-3 py-2 text-center text-xs font-semibold text-amber-950 sm:text-sm"
+          role="status"
+        >
+          Firestore READS paused until tomorrow 12:00 AM IST (quota protection).
+          Close extra admin tabs. Site bookings still work.{" "}
+          <span className="font-normal text-amber-900">
+            {firestoreReadPauseMessage()}
+          </span>
+        </div>
+      ) : null}
       <AdminNavDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -148,7 +167,7 @@ export function AdminLoginForm() {
     e.preventDefault();
     setErr(null);
     const auth = getFirebaseAuth();
-    const db = getDb();
+    const db = getDb({ ignoreReadPause: true });
     if (!auth || !db) {
       setErr("Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars.");
       return;

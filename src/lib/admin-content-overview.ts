@@ -1,5 +1,7 @@
 import { blogPosts as staticCodeBlogs } from "@/data/blog-posts";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { isFirestoreReadPaused } from "@/lib/firestore-read-pause";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
 import { getAllServicesServer } from "@/lib/get-services-server";
 import {
@@ -23,12 +25,37 @@ export const CORE_STATIC_PATHS = [
   "/gallery",
 ] as const;
 
+/** Hindi labels for admin inventory (core static). */
+export const CORE_STATIC_PAGE_LABELS: Record<
+  (typeof CORE_STATIC_PATHS)[number],
+  string
+> = {
+  "/": "Home (होम)",
+  "/about": "About (हमारे बारे में)",
+  "/contact": "Contact (संपर्क)",
+  "/booking": "Booking (बुकिंग)",
+  "/services": "Services list (सेवाएँ सूची)",
+  "/blog": "Blog index (ब्लॉग सूची)",
+  "/guides": "Guides index (गाइड सूची)",
+  "/offers": "Offers (ऑफर)",
+  "/gallery": "Gallery (गैलरी)",
+};
+
 /** Legal / policy pages. */
 export const EXTRA_LEGAL_PATHS = [
   "/privacy-policy",
   "/terms-and-conditions",
   "/refund-cancellation",
 ] as const;
+
+export const EXTRA_LEGAL_PAGE_LABELS: Record<
+  (typeof EXTRA_LEGAL_PATHS)[number],
+  string
+> = {
+  "/privacy-policy": "Privacy Policy",
+  "/terms-and-conditions": "Terms & Conditions",
+  "/refund-cancellation": "Refund & Cancellation",
+};
 
 export type PageTypeBucket = {
   total: number;
@@ -60,12 +87,21 @@ export type ContentOverview = {
     extraLegalPages: number;
     servicePages: number;
     packagePages: number;
+    /** Code blogs still served from repo (NOT yet in Firestore). */
     staticCodeBlogs: number;
+    /** Code blog files in repo (always ~20). */
+    codeBlogsInRepo: number;
+    /** Code blog slugs that already have a Firestore doc (override). */
+    codeBlogsOverridden: number;
     firestoreBlogs: number;
     publishedBlogs: number;
     guidePages: number;
     totalTrackedInGsc: number;
   };
+  coreStaticPages: { path: string; label: string }[];
+  extraLegalPages: { path: string; label: string }[];
+  /** Code blogs not imported to Firestore yet — still from code. */
+  codeBlogsStillFromCode: { slug: string; title: string }[];
   gscByType: Record<string, PageTypeBucket>;
   gscTotals: PageTypeBucket;
   notIndexedSample: NotIndexedPage[];
@@ -259,24 +295,63 @@ export async function buildContentOverview(): Promise<ContentOverview> {
 
   const gscConnected = seoUrls.length > 0;
 
+  // Code blogs: only count those NOT yet overridden by a Firestore doc
+  const firestoreSlugs = new Set(
+    publishedFsBlogs.map((p) => p.slug.trim().toLowerCase()),
+  );
+  if (!isFirestoreReadPaused()) {
+    const db = getAdminDb();
+    if (db) {
+      try {
+        const snap = await db.collection("blogPosts").select("slug").get();
+        for (const doc of snap.docs) {
+          const slug = String(
+            (doc.data() as { slug?: string }).slug ?? doc.id,
+          )
+            .trim()
+            .toLowerCase();
+          if (slug) firestoreSlugs.add(slug);
+        }
+      } catch {
+        /* keep published set */
+      }
+    }
+  }
+
+  const codeBlogsStillFromCode = staticCodeBlogs
+    .filter((p) => !firestoreSlugs.has(p.slug.trim().toLowerCase()))
+    .map((p) => ({ slug: p.slug, title: p.title }));
+  const codeBlogsOverridden = staticCodeBlogs.length - codeBlogsStillFromCode.length;
+
   return {
     counts: {
       coreStaticPages: CORE_STATIC_PATHS.length,
       extraLegalPages: EXTRA_LEGAL_PATHS.length,
       servicePages: servicePageCount,
       packagePages: packages.length,
-      staticCodeBlogs: staticCodeBlogs.length,
+      staticCodeBlogs: codeBlogsStillFromCode.length,
+      codeBlogsInRepo: staticCodeBlogs.length,
+      codeBlogsOverridden,
       firestoreBlogs: firestoreBlogTotal,
       publishedBlogs: publishedFsBlogs.length,
       guidePages: guides.length,
       totalTrackedInGsc: seoUrls.length,
     },
+    coreStaticPages: CORE_STATIC_PATHS.map((path) => ({
+      path,
+      label: CORE_STATIC_PAGE_LABELS[path],
+    })),
+    extraLegalPages: EXTRA_LEGAL_PATHS.map((path) => ({
+      path,
+      label: EXTRA_LEGAL_PAGE_LABELS[path],
+    })),
+    codeBlogsStillFromCode,
     gscByType,
     gscTotals,
     notIndexedSample,
     services: serviceOptions,
     gscConnected,
     disclaimer:
-      "GSC status comes from the last inventory/inspection run — not a live Google guarantee. Improve not-indexed pages, then re-inspect in GSC Indexing Agent.",
+      "GSC status comes from the last inventory/inspection run — not a live Google guarantee. Improve not-indexed pages, then re-inspect in GSC Indexing Agent. Code blogs count = only posts still served from code (not yet in Firestore).",
   };
 }

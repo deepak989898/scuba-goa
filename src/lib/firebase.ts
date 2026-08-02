@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { isFirestoreReadPaused } from "@/lib/firestore-read-pause";
 
 function normalizeStorageBucket(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
@@ -40,7 +41,12 @@ export function getFirebaseApp(): FirebaseApp | null {
   return getClientApp();
 }
 
-export function getDb(): Firestore | null {
+/**
+ * Client Firestore.
+ * During emergency read-pause, returns null unless `ignoreReadPause` (admin auth only).
+ */
+export function getDb(opts?: { ignoreReadPause?: boolean }): Firestore | null {
+  if (isFirestoreReadPaused() && !opts?.ignoreReadPause) return null;
   const app = getClientApp();
   return app ? getFirestore(app) : null;
 }
