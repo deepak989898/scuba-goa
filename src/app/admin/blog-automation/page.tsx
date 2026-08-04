@@ -38,8 +38,14 @@ async function adminFetch(path: string, init?: RequestInit) {
         : {}),
     },
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+  const data = await res.json().catch(() => ({} as Record<string, unknown>));
+  if (!res.ok) {
+    const msg =
+      typeof data.error === "string" && data.error.trim()
+        ? data.error
+        : `Request failed (${res.status}) for ${path}`;
+    throw new Error(msg);
+  }
   return data;
 }
 
@@ -175,29 +181,84 @@ export default function AdminBlogAutomationPage() {
     if (!silent) setLoading(true);
     if (!silent) setErr(null);
     try {
-      const [s, q, p] = await Promise.all([
+      const results = await Promise.allSettled([
         adminFetch("/api/admin/blog-automation"),
         adminFetch("/api/admin/blog-queue"),
         adminFetch("/api/admin/blog-posts"),
       ]);
-      setSettings(s.settings);
-      setQueue(q.items ?? []);
-      const loadedPosts = (p.posts ?? []) as BlogPostFirestore[];
-      setPosts(loadedPosts);
-      // Keep the open editor on the same post with fresh server fields
-      setEditing((current) => {
-        if (!current) return current;
-        const match = loadedPosts.find((post) => post.slug === current.slug);
-        return match ?? current;
-      });
-      // Traffic every time (cheap). Overview only on full page load — not on
-      // every silent save/image refresh (seoUrls read was ~800–2000/load).
-      await loadBlogTraffic({ silent: true, posts: loadedPosts });
+
+      const errors: string[] = [];
+      const s =
+        results[0].status === "fulfilled" ? results[0].value : null;
+      const q =
+        results[1].status === "fulfilled" ? results[1].value : null;
+      const p =
+        results[2].status === "fulfilled" ? results[2].value : null;
+
+      if (results[0].status === "rejected") {
+        errors.push(
+          results[0].reason instanceof Error
+            ? results[0].reason.message
+            : "blog-automation failed",
+        );
+      }
+      if (results[1].status === "rejected") {
+        errors.push(
+          results[1].reason instanceof Error
+            ? results[1].reason.message
+            : "blog-queue failed",
+        );
+      }
+      if (results[2].status === "rejected") {
+        errors.push(
+          results[2].reason instanceof Error
+            ? results[2].reason.message
+            : "blog-posts failed",
+        );
+      }
+
+      if (s?.settings) {
+        setSettings(s.settings);
+      } else if (!silent) {
+        // Keep page usable — defaults so UI is not stuck on Loading…
+        setSettings((prev) =>
+          prev ??
+          ({
+            enabled: false,
+            postsPerDay: 1,
+            publishSlotsIst: ["09:00"],
+            defaultLanguage: "hinglish",
+            languageRotation: ["hinglish", "en", "hi"],
+            autoTopicIndex: 0,
+            lastRunAt: null,
+            lastRunStatus: null,
+            lastRunError: null,
+            updatedAt: new Date().toISOString(),
+          } as BlogAutomationSettings),
+        );
+      }
+
+      if (q) setQueue(q.items ?? []);
+      const loadedPosts = (p?.posts ?? []) as BlogPostFirestore[];
+      if (p) {
+        setPosts(loadedPosts);
+        setEditing((current) => {
+          if (!current) return current;
+          const match = loadedPosts.find((post) => post.slug === current.slug);
+          return match ?? current;
+        });
+        await loadBlogTraffic({ silent: true, posts: loadedPosts });
+      }
+
       if (!silent) {
         await loadOverview();
       }
 
-      if (!silent && typeof window !== "undefined") {
+      if (errors.length && !silent) {
+        setErr(errors.join(" · "));
+      }
+
+      if (!silent && typeof window !== "undefined" && p) {
         const params = new URLSearchParams(window.location.search);
         const editSlug = params.get("edit")?.trim();
         if (editSlug) {
@@ -219,6 +280,22 @@ export default function AdminBlogAutomationPage() {
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
+      // Avoid infinite Loading… when settings never arrived
+      setSettings((prev) =>
+        prev ??
+        ({
+          enabled: false,
+          postsPerDay: 1,
+          publishSlotsIst: ["09:00"],
+          defaultLanguage: "hinglish",
+          languageRotation: ["hinglish", "en", "hi"],
+          autoTopicIndex: 0,
+          lastRunAt: null,
+          lastRunStatus: null,
+          lastRunError: null,
+          updatedAt: new Date().toISOString(),
+        } as BlogAutomationSettings),
+      );
     } finally {
       if (!silent) setLoading(false);
     }

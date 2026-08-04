@@ -17,7 +17,7 @@ import {
 } from "@/lib/seo-page-firestore";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import type { BlogFaq } from "@/data/blog/post-types";
-import type { RankingStatus, SeoUrlRecord } from "./types";
+import type { SeoUrlRecord } from "./types";
 import { getSeoUrl, logAction, upsertSeoUrl } from "./store";
 import {
   normalizeSiteUrl,

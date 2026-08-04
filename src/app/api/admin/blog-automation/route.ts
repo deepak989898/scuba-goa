@@ -13,8 +13,21 @@ export async function GET(req: Request) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-  const settings = await getBlogAutomationSettings();
-  return NextResponse.json({ settings });
+  try {
+    const settings = await getBlogAutomationSettings();
+    return NextResponse.json({ settings });
+  } catch (e) {
+    console.error("[admin/blog-automation GET]", e);
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error
+            ? `Settings load failed: ${e.message}`
+            : "Settings load failed",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(req: Request) {

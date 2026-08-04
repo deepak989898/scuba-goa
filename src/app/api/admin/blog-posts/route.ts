@@ -29,20 +29,39 @@ export async function GET(req: Request) {
   if (!db) {
     return NextResponse.json({ error: "Server not configured" }, { status: 500 });
   }
-  const snap = await db.collection("blogPosts").get();
-  const posts = snap.docs
-    .map((d) =>
-      parseBlogPostFromFirestore(d.id, d.data() as Record<string, unknown>, {
-        requirePublished: false,
-      }),
-    )
-    .filter(Boolean)
-    .sort((a, b) => {
-      const sa = a?.scheduledPublishAt ?? a?.publishedAt ?? a?.updatedAt ?? "";
-      const sb = b?.scheduledPublishAt ?? b?.publishedAt ?? b?.updatedAt ?? "";
-      return sb.localeCompare(sa);
-    });
-  return NextResponse.json({ posts });
+  try {
+    const snap = await db.collection("blogPosts").get();
+    const posts = snap.docs
+      .map((d) => {
+        try {
+          return parseBlogPostFromFirestore(
+            d.id,
+            d.data() as Record<string, unknown>,
+            { requirePublished: false },
+          );
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const sa = a?.scheduledPublishAt ?? a?.publishedAt ?? a?.updatedAt ?? "";
+        const sb = b?.scheduledPublishAt ?? b?.publishedAt ?? b?.updatedAt ?? "";
+        return sb.localeCompare(sa);
+      });
+    return NextResponse.json({ posts });
+  } catch (e) {
+    console.error("[admin/blog-posts GET]", e);
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error
+            ? `Blog posts load failed: ${e.message}`
+            : "Blog posts load failed",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(req: Request) {
