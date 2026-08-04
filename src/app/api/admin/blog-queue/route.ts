@@ -15,21 +15,8 @@ export async function GET(req: Request) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-  try {
-    const items = await listBlogTopicQueue();
-    return NextResponse.json({ items });
-  } catch (e) {
-    console.error("[admin/blog-queue GET]", e);
-    return NextResponse.json(
-      {
-        error:
-          e instanceof Error
-            ? `Queue load failed: ${e.message}`
-            : "Queue load failed",
-      },
-      { status: 500 },
-    );
-  }
+  const items = await listBlogTopicQueue();
+  return NextResponse.json({ items });
 }
 
 export async function POST(req: Request) {

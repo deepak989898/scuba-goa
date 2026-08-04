@@ -9,8 +9,6 @@ import { formatUtcInIst } from "@/lib/blog-automation/schedule-ist";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 import type { BlogGscRow } from "@/lib/admin-content-overview";
 import { BlogPostEditorPanel } from "./BlogPostEditorPanel";
-import { BlogRankingUpdatePanel } from "@/components/admin/BlogRankingUpdatePanel";
-import type { RankingImproveMeta } from "@/lib/gsc-indexing-agent/ranking-improve";
 
 type BlogTraffic = { views: number; visitors: number };
 
@@ -50,8 +48,6 @@ type Props = {
   aiImageProgress?: number | null;
   onRefreshTraffic?: () => void;
   trafficRefreshing?: boolean;
-  /** Reload posts after a ranking update is applied */
-  onReloadPosts?: () => void;
 };
 
 function viewCountForPost(
@@ -206,12 +202,10 @@ export function BlogPostsTable({
   aiImageProgress = null,
   onRefreshTraffic,
   trafficRefreshing,
-  onReloadPosts,
 }: Props) {
   const scheduledCount = posts.filter((p) => isBlogScheduled(p)).length;
   const liveCount = posts.filter((p) => p.published).length;
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [updateSlug, setUpdateSlug] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<{
     src: string;
     alt: string;
@@ -558,28 +552,8 @@ export function BlogPostsTable({
                         ) : null}
                         <button
                           type="button"
-                          className="text-violet-700 hover:underline"
-                          title={
-                            gsc?.lastImprove
-                              ? `Last update ${gsc.lastImprove.at.slice(0, 10)} · ~${gsc.lastImprove.estimatedPct}%`
-                              : "Suggest GSC ranking improvements (review before apply)"
-                          }
-                          onClick={() => {
-                            onCancelEdit();
-                            setUpdateSlug(
-                              updateSlug === p.slug ? null : p.slug,
-                            );
-                          }}
-                        >
-                          Update
-                        </button>
-                        <button
-                          type="button"
                           className="text-ocean-800 hover:underline"
-                          onClick={() => {
-                            setUpdateSlug(null);
-                            onEdit({ ...p });
-                          }}
+                          onClick={() => onEdit({ ...p })}
                         >
                           Edit
                         </button>
@@ -613,24 +587,6 @@ export function BlogPostsTable({
                       </div>
                     </td>
                   </tr>
-                  {updateSlug === p.slug ? (
-                    <tr className="bg-violet-50/40">
-                      <td colSpan={14} className="p-2">
-                        <BlogRankingUpdatePanel
-                          slug={p.slug}
-                          lastImproveHint={
-                            (gsc?.lastImprove as RankingImproveMeta | null) ??
-                            null
-                          }
-                          onClose={() => setUpdateSlug(null)}
-                          onApplied={() => {
-                            setUpdateSlug(null);
-                            onReloadPosts?.();
-                          }}
-                        />
-                      </td>
-                    </tr>
-                  ) : null}
                   {editing?.slug === p.slug ? (
                     <tr
                       id={`blog-editor-${p.slug}`}
