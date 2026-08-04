@@ -293,18 +293,13 @@ export default async function BlogPostPage({ params }: Props) {
             </Link>
           </nav>
           <div className="mt-1 flex flex-wrap items-start justify-between gap-x-2 gap-y-0">
-            <h1 className="min-w-0 flex-1 bg-gradient-to-r from-cyan-600 via-teal-600 to-ocean-700 bg-clip-text font-display text-lg font-extrabold leading-snug text-transparent sm:text-xl lg:text-2xl">
+            <h1 className="min-w-0 flex-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 bg-clip-text font-display text-lg font-extrabold leading-snug text-transparent sm:text-xl lg:text-2xl">
               {p.title}
             </h1>
             <p className="shrink-0 pt-0.5 text-[11px] text-ocean-500 sm:text-xs sm:text-right">
               {p.date} · {p.readTime}
             </p>
           </div>
-
-          <BlogTrustBlock
-            publishedAt={publishedLabel || undefined}
-            updatedAt={dateModified}
-          />
 
           {featuredImage ? (
             <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100">
@@ -318,16 +313,24 @@ export default async function BlogPostPage({ params }: Props) {
             </figure>
           ) : null}
 
-          <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
-            <Link href={bookHref} className={blogBookNowClass}>
-              Book Now
-            </Link>
-            <Link
-              href="/services"
-              className="inline-flex min-h-10 items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-2 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50"
-            >
-              View services
-            </Link>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <BlogTrustBlock
+                publishedAt={publishedLabel || undefined}
+                updatedAt={dateModified}
+              />
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+              <Link href={bookHref} className={blogBookNowClass}>
+                Book Now
+              </Link>
+              <Link
+                href="/services"
+                className="inline-flex min-h-10 items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-2 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50"
+              >
+                View services
+              </Link>
+            </div>
           </div>
 
           <p className="mt-1.5 border-l-4 border-amber-400 bg-amber-50/60 py-1 pl-2 text-sm leading-snug text-ocean-800">

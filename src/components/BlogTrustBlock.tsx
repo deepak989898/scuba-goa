@@ -16,7 +16,7 @@ export function BlogTrustBlock({
 }: Props) {
   return (
     <aside
-      className="mt-1 rounded-md border border-ocean-100 bg-ocean-50/60 px-2 py-1.5 text-[11px] text-ocean-800 sm:text-xs"
+      className="rounded-md border border-ocean-100 bg-ocean-50/60 px-2 py-1.5 text-[11px] text-ocean-800 sm:text-xs"
       aria-label="Article information"
     >
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0">
