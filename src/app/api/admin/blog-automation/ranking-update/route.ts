@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         );
       }
       const result = await applyBlogRankingUpdate(slug, body.fields);
-      return NextResponse.json({ ok: true, ...result });
+      return NextResponse.json(result);
     }
     return NextResponse.json(
       { error: 'action must be "suggest" or "apply"' },

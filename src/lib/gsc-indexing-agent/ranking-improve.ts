@@ -18,7 +18,12 @@ import {
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import type { BlogFaq } from "@/data/blog/post-types";
 import type { RankingStatus, SeoUrlRecord } from "./types";
-import { getSeoUrl, logAction, upsertSeoUrl } from "./store";
+import { getSeoUrl, listSeoUrls, logAction, upsertSeoUrl } from "./store";
+import {
+  normalizeSiteUrl,
+  siteOrigin,
+  urlIdFromNormalized,
+} from "./normalize-url";
 
 export type RankingImproveFields = {
   title: string;
@@ -620,4 +625,175 @@ export async function saveManualRankingEdit(
 
   await persistFields(record, fields, meta);
   return loadEditablePage(urlId);
+}
+
+async function resolveBlogSeoRecord(slug: string): Promise<SeoUrlRecord | null> {
+  const normalized = normalizeSiteUrl(`${siteOrigin()}/blog/${slug}`);
+  if (normalized) {
+    const byId = await getSeoUrl(urlIdFromNormalized(normalized));
+    if (byId?.pageType === "blog" && byId.contentId === slug) return byId;
+  }
+  const urls = await listSeoUrls({ limit: 2000 });
+  return (
+    urls.find((u) => u.pageType === "blog" && u.contentId === slug) ?? null
+  );
+}
+
+/**
+ * Blog posts table — suggest ranking improvements (OpenAI) without writing.
+ */
+export async function suggestBlogRankingUpdate(slug: string): Promise<{
+  slug: string;
+  fields: RankingImproveFields;
+  current: RankingImproveFields;
+  improve: RankingImproveMeta;
+}> {
+  const s = slug.trim();
+  if (!s) throw new Error("slug required");
+
+  const db = getAdminDb();
+  if (!db) throw new Error("Server not configured");
+
+  const snap = await db.collection("blogPosts").doc(s).get();
+  if (!snap.exists) throw new Error(`Blog not found: ${s}`);
+  const post = parseBlogPostFromFirestore(
+    s,
+    snap.data() as Record<string, unknown>,
+    { requirePublished: false },
+  );
+  if (!post) throw new Error(`Could not parse blog: ${s}`);
+
+  const current: RankingImproveFields = {
+    title: post.title,
+    metaTitle: post.metaTitle || post.title,
+    metaDescription: post.metaDescription,
+    excerpt: post.excerpt,
+    keywords: post.keywords,
+    content: post.content,
+    faqs: post.faqs ?? [],
+  };
+
+  const record = await resolveBlogSeoRecord(s);
+  const rankingStatus = record?.rankingStatus ?? "UNKNOWN";
+  const averagePosition = Number(record?.averagePosition ?? 0);
+  const impressions = Number(record?.impressions ?? 0);
+  const clicks = Number(record?.clicks ?? 0);
+
+  const catalog = await buildBlogCatalogContext();
+  const improved = await callOpenAIImprove({
+    pageType: "blog",
+    slug: s,
+    url: record?.url ?? `${siteOrigin()}/blog/${s}`,
+    rankingStatus,
+    averagePosition,
+    impressions,
+    clicks,
+    current,
+    serviceSlug: post.serviceSlug,
+    language: post.language,
+    catalog: catalog.textBlock,
+  });
+
+  const est = estimateImprovementPct(rankingStatus, averagePosition);
+  const guidance = improvementGuidance(rankingStatus);
+  const improve: RankingImproveMeta = {
+    at: new Date().toISOString(),
+    estimatedPct: est.estimatedPct,
+    targetBand: est.targetBand,
+    checklist: guidance.bullets,
+    summary: est.summary,
+    rankingStatus,
+  };
+
+  return { slug: s, fields: improved, current, improve };
+}
+
+/**
+ * Blog posts table — apply confirmed ranking fields after admin review.
+ */
+export async function applyBlogRankingUpdate(
+  slug: string,
+  fieldsIn: RankingImproveFields,
+): Promise<{
+  slug: string;
+  ok: true;
+  improve: RankingImproveMeta;
+}> {
+  const s = slug.trim();
+  if (!s) throw new Error("slug required");
+
+  const fields: RankingImproveFields = {
+    title: String(fieldsIn.title ?? "").trim(),
+    metaTitle: String(fieldsIn.metaTitle ?? fieldsIn.title ?? "").trim(),
+    metaDescription: String(fieldsIn.metaDescription ?? "").trim(),
+    excerpt: String(fieldsIn.excerpt ?? "").trim(),
+    keywords: Array.isArray(fieldsIn.keywords)
+      ? fieldsIn.keywords.map((k) => String(k).trim()).filter(Boolean)
+      : [],
+    content: String(fieldsIn.content ?? ""),
+    faqs: Array.isArray(fieldsIn.faqs) ? fieldsIn.faqs : [],
+    headline: String(fieldsIn.headline ?? fieldsIn.title ?? "").trim(),
+    bodyContent: String(fieldsIn.bodyContent ?? fieldsIn.content ?? ""),
+  };
+
+  if (!fields.title || fields.content.trim().length < 50) {
+    throw new Error("Title and content are required");
+  }
+
+  const record = await resolveBlogSeoRecord(s);
+  const rankingStatus = record?.rankingStatus ?? "UNKNOWN";
+  const averagePosition = Number(record?.averagePosition ?? 0);
+  const est = estimateImprovementPct(rankingStatus, averagePosition);
+  const guidance = improvementGuidance(rankingStatus);
+  const improve: RankingImproveMeta = {
+    at: new Date().toISOString(),
+    estimatedPct: est.estimatedPct,
+    targetBand: est.targetBand,
+    checklist: guidance.bullets,
+    summary: est.summary,
+    rankingStatus,
+  };
+
+  if (record && (record.pageType === "blog" || record.pageType === "guide")) {
+    await persistFields(
+      record as SeoUrlRecord & { pageType: "blog" | "guide" },
+      fields,
+      improve,
+    );
+  } else {
+    // Inventory miss — still update the blog document directly.
+    const db = getAdminDb();
+    if (!db) throw new Error("Server not configured");
+    const ref = db.collection("blogPosts").doc(s);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error(`Blog not found: ${s}`);
+    const current = parseBlogPostFromFirestore(
+      s,
+      snap.data() as Record<string, unknown>,
+      { requirePublished: false },
+    );
+    if (!current) throw new Error(`Could not parse blog: ${s}`);
+    const now = new Date().toISOString();
+    const next: BlogPostFirestore = {
+      ...current,
+      title: fields.title,
+      metaTitle: fields.metaTitle,
+      metaDescription: fields.metaDescription,
+      excerpt: fields.excerpt || current.excerpt,
+      keywords: fields.keywords,
+      content: fields.content,
+      faqs: fields.faqs.length ? fields.faqs : current.faqs,
+      readTime: estimateReadTime(fields.content),
+      updatedAt: now,
+      featuredImageUrl: current.featuredImageUrl,
+      featuredImageAlt: current.featuredImageAlt,
+      ogImageUrl: current.ogImageUrl,
+      imageMeta: current.imageMeta,
+    };
+    await ref.set(blogPostToFirestorePayload(next), { merge: true });
+    revalidatePath(`/blog/${s}`);
+    revalidatePath("/blog");
+  }
+
+  return { slug: s, ok: true, improve };
 }

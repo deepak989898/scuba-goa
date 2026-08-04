@@ -26,6 +26,8 @@ export {
   loadEditablePage,
   generateAndApplyRankingImprove,
   saveManualRankingEdit,
+  suggestBlogRankingUpdate,
+  applyBlogRankingUpdate,
   estimateImprovementPct,
   improvementGuidance,
 } from "./ranking-improve";
