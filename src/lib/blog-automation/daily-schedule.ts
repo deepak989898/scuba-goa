@@ -28,28 +28,23 @@ export async function getBlogDailyScheduleOverrides(): Promise<
 > {
   const db = getAdminDb();
   if (!db) return {};
-  try {
-    const snap = await db.doc(DOC_PATH).get();
-    if (!snap.exists) return {};
-    const raw = snap.data()?.days as Record<string, unknown> | undefined;
-    if (!raw || typeof raw !== "object") return {};
-    const out: Record<string, BlogDayOverride> = {};
-    for (const [date, v] of Object.entries(raw)) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-      if (!v || typeof v !== "object") continue;
-      const o = v as Record<string, unknown>;
-      const postsPerDay = Math.min(5, Math.max(1, Number(o.postsPerDay) || 1));
-      const slots = normalizePublishSlotsIst(
-        postsPerDay,
-        o.publishSlotsIst ?? o.slots,
-      );
-      out[date] = { postsPerDay, publishSlotsIst: slots };
-    }
-    return out;
-  } catch (e) {
-    console.error("[daily-schedule overrides]", e);
-    return {};
+  const snap = await db.doc(DOC_PATH).get();
+  if (!snap.exists) return {};
+  const raw = snap.data()?.days as Record<string, unknown> | undefined;
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, BlogDayOverride> = {};
+  for (const [date, v] of Object.entries(raw)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    if (!v || typeof v !== "object") continue;
+    const o = v as Record<string, unknown>;
+    const postsPerDay = Math.min(5, Math.max(1, Number(o.postsPerDay) || 1));
+    const slots = normalizePublishSlotsIst(
+      postsPerDay,
+      o.publishSlotsIst ?? o.slots,
+    );
+    out[date] = { postsPerDay, publishSlotsIst: slots };
   }
+  return out;
 }
 
 export async function saveBlogDailyScheduleOverrides(

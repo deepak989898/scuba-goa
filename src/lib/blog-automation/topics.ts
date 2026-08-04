@@ -48,23 +48,16 @@ export async function listBlogTopicQueue(
 ): Promise<BlogTopicQueueItem[]> {
   const db = getAdminDb();
   if (!db) return [];
-  try {
-    const snap = await db.collection(QUEUE).get();
-    const items: BlogTopicQueueItem[] = [];
-    for (const d of snap.docs) {
-      const item = parseQueueItem(d.id, d.data() as Record<string, unknown>);
-      if (!item) continue;
-      if (status && item.status !== status) continue;
-      items.push(item);
-    }
-    items.sort(
-      (a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt),
-    );
-    return items;
-  } catch (e) {
-    console.error("[blog-topic-queue]", e);
-    return [];
+  const snap = await db.collection(QUEUE).get();
+  const items: BlogTopicQueueItem[] = [];
+  for (const d of snap.docs) {
+    const item = parseQueueItem(d.id, d.data() as Record<string, unknown>);
+    if (!item) continue;
+    if (status && item.status !== status) continue;
+    items.push(item);
   }
+  items.sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt));
+  return items;
 }
 
 export async function getNextPendingTopic(): Promise<BlogTopicQueueItem | null> {

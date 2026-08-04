@@ -90,14 +90,9 @@ export function parseBlogAutomationSettings(
 export async function getBlogAutomationSettings(): Promise<BlogAutomationSettings> {
   const db = getAdminDb();
   if (!db) return { ...DEFAULT_BLOG_AUTOMATION_SETTINGS };
-  try {
-    const ref = await db.doc(SETTINGS_DOC).get();
-    if (!ref.exists) return { ...DEFAULT_BLOG_AUTOMATION_SETTINGS };
-    return parseBlogAutomationSettings(ref.data() as Record<string, unknown>);
-  } catch (e) {
-    console.error("[blog-automation settings]", e);
-    return { ...DEFAULT_BLOG_AUTOMATION_SETTINGS };
-  }
+  const ref = await db.doc(SETTINGS_DOC).get();
+  if (!ref.exists) return { ...DEFAULT_BLOG_AUTOMATION_SETTINGS };
+  return parseBlogAutomationSettings(ref.data() as Record<string, unknown>);
 }
 
 export async function saveBlogAutomationSettings(

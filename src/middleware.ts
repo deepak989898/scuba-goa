@@ -45,8 +45,7 @@ function shouldBlockForReadPause(req: NextRequest): boolean {
     !path.startsWith("/api/admin/blog-posts") &&
     path !== "/api/admin/blog-automation" &&
     path !== "/api/admin/blog-queue" &&
-    path !== "/api/admin/blog-traffic" &&
-    path !== "/api/admin/blog-daily-schedule"
+    path !== "/api/admin/blog-traffic"
   ) {
     return true;
   }
