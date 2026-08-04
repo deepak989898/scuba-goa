@@ -1141,6 +1141,7 @@ export default function AdminBlogAutomationPage() {
             aiImageProgress={aiImageProgress}
             onRefreshTraffic={() => void refreshTrafficOnly()}
             trafficRefreshing={trafficRefreshing}
+            onReloadPosts={() => void refresh()}
           />
           </div>
         </>

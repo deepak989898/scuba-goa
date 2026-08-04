@@ -84,12 +84,23 @@ export type ServiceOption = {
 /** Per-blog GSC snapshot for admin blog table (from seoUrls). */
 export type BlogGscRow = {
   indexStatus: IndexStatusCode;
-  /** Short label: Indexed / Not indexed / Pending */
+  /** Short label: Indexed / Pending / Not indexed */
   indexLabel: "indexed" | "not_indexed" | "pending";
   /** Average Search Console position; null if no data */
   position: number | null;
   impressions: number;
   clicks: number;
+  /** seoUrls doc id when inventory has this blog */
+  urlId?: string;
+  /** Last ranking-improve apply meta (for Update button context) */
+  lastImprove?: {
+    at: string;
+    estimatedPct: number;
+    targetBand: string;
+    summary: string;
+    rankingStatus: string;
+    checklist?: string[];
+  } | null;
 };
 
 export type ContentOverview = {
@@ -416,6 +427,7 @@ export async function buildContentOverview(): Promise<ContentOverview> {
 
 function rowFromSeoUrl(u: SeoUrlRecord): BlogGscRow {
   const pos = Number(u.averagePosition);
+  const li = u.lastRankingImprove;
   return {
     indexStatus: u.indexStatus,
     indexLabel: blogGscIndexLabel(u.indexStatus),
@@ -423,5 +435,16 @@ function rowFromSeoUrl(u: SeoUrlRecord): BlogGscRow {
       Number.isFinite(pos) && pos > 0 ? Math.round(pos * 10) / 10 : null,
     impressions: Math.max(0, Math.round(Number(u.impressions) || 0)),
     clicks: Math.max(0, Math.round(Number(u.clicks) || 0)),
+    urlId: u.id,
+    lastImprove: li
+      ? {
+          at: li.at,
+          estimatedPct: li.estimatedPct,
+          targetBand: li.targetBand,
+          summary: li.summary,
+          rankingStatus: li.rankingStatus,
+          checklist: li.checklist,
+        }
+      : null,
   };
 }
