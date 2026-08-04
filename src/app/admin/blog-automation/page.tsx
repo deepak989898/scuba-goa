@@ -8,6 +8,7 @@ import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
 import { ContentOverviewBar } from "@/app/admin/blog-automation/ContentOverviewBar";
+import { PendingIndexOptimizerPanel } from "@/app/admin/blog-automation/PendingIndexOptimizerPanel";
 import { BlogDailySchedulePanel } from "@/app/admin/blog-automation/BlogDailySchedulePanel";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
@@ -843,6 +844,15 @@ export default function AdminBlogAutomationPage() {
             <ContentOverviewBar
               overview={overview}
               loading={overviewLoading}
+            />
+          </div>
+
+          <div className="mt-3">
+            <PendingIndexOptimizerPanel
+              onDone={() => {
+                void loadOverview();
+                void refresh({ silent: true });
+              }}
             />
           </div>
 

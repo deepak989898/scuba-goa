@@ -32,6 +32,14 @@ export {
   improvementGuidance,
 } from "./ranking-improve";
 export {
+  listPendingIndexBlogs,
+  diagnosePendingBlog,
+  suggestPendingBlogOptimize,
+  applyPendingBlogOptimize,
+  requestIndexRecheck,
+  autoOptimizePendingBlog,
+} from "./pending-index-optimize";
+export {
   getOverviewStats,
   listSeoUrls,
   listOpenIssues,
