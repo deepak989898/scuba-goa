@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { parseRequestDevice } from "@/lib/clientDevice";
-import { resolveRequestGeo } from "@/lib/analytics-geo";
+import { resolveRequestGeo, geoHasLocation, pickAnalyticsGeo, mergeGeo } from "@/lib/analytics-geo";
 import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 import { classifyAttribution } from "@/lib/analytics-attribution";
 import {
@@ -77,6 +77,32 @@ function parseBlogTrafficKey(path: string): { key: string; slug: string; path: s
 function pathStayKey(path: string): string {
   const raw = path.trim() || "/";
   return raw.replace(/[/.]/g, "_").replace(/_+/g, "_").slice(0, 180) || "_root";
+}
+
+/** Drop undefined keys — Firestore rejects them and was silently dropping sessions. */
+function omitUndefined(
+  obj: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+
+function compactGeo(geo: {
+  geoCountry?: string;
+  geoCountryName?: string;
+  geoCity?: string;
+  geoRegion?: string;
+  geoRegionName?: string;
+  geoTimezone?: string;
+}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(geo)) {
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  }
+  return out;
 }
 
 async function incrementContentTraffic(
@@ -363,7 +389,7 @@ export async function POST(req: Request) {
       : Math.max(0, Math.min(Math.round(durationMsRaw), 1000 * 60 * 60 * 6));
   const interactionCount = toFiniteNumber(body.interactionCount);
   const webdriver = body.webdriver === true;
-  const geo = await resolveRequestGeo(
+  let geo = await resolveRequestGeo(
     req.headers,
     clientIpFromHeaders(req.headers),
   );
@@ -375,7 +401,10 @@ export async function POST(req: Request) {
   const language = sliceStr(body.language, LANG_MAX);
   const timeZone = sliceStr(body.timeZone, TZ_MAX);
 
-  // Server-side attribution — ignore client trafficChannel
+  // Server-side attribution — ignore client trafficChannel; use rawReferrer/UTMs.
+  const landingPathRaw =
+    sliceStr(body.landingPath, PATH_MAX) || path;
+  const landingPathNorm = normalizeTrackPath(landingPathRaw);
   const attribution = classifyAttribution({
     rawReferrer: sliceStr(body.rawReferrer, 500),
     utmSource: sliceStr(body.utmSource, TRAFFIC_STR_MAX),
@@ -383,7 +412,7 @@ export async function POST(req: Request) {
     utmCampaign: sliceStr(body.utmCampaign, TRAFFIC_STR_MAX),
     gclid: sliceStr(body.gclid, 128),
     fbclid: sliceStr(body.fbclid, 128),
-    landingPath: sliceStr(body.landingPath, PATH_MAX) || path,
+    landingPath: landingPathNorm,
   });
 
   const suspicion = classifyEngagementSuspicion({
@@ -424,6 +453,84 @@ export async function POST(req: Request) {
     ? (sessionSnap.data() as Record<string, unknown>)
     : {};
 
+  // Returning visitor profile — visit count + last known geo reuse.
+  let visitorVisitCount: number | undefined;
+  if (visitorId && !sessionSnap.exists) {
+    try {
+      const visitorRef = db.collection("analyticsVisitors").doc(visitorId);
+      const visitCount = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(visitorRef);
+        const prev = snap.exists
+          ? Math.max(0, Math.round(Number(snap.data()?.visitCount) || 0))
+          : 0;
+        const next = prev + 1;
+        const payload: Record<string, unknown> = {
+          visitorId,
+          visitCount: next,
+          lastSessionId: sessionId || "anon",
+          lastSeenAt: FieldValue.serverTimestamp(),
+          lastPath: path,
+          deviceCategory: category,
+          deviceLabel: label,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (!snap.exists) {
+          payload.firstSeenAt = FieldValue.serverTimestamp();
+        }
+        if (geoHasLocation(geo)) {
+          Object.assign(payload, geo);
+        } else if (snap.exists) {
+          const prevGeo = pickAnalyticsGeo(
+            snap.data() as Record<string, unknown>,
+          );
+          if (geoHasLocation(prevGeo)) {
+            geo = mergeGeo(geo, prevGeo);
+            Object.assign(payload, prevGeo);
+          }
+        }
+        if (timeZone) payload.timeZone = timeZone;
+        if (language) payload.language = language;
+        tx.set(visitorRef, payload, { merge: true });
+        return next;
+      });
+      visitorVisitCount = visitCount;
+    } catch (e) {
+      console.error("analyticsVisitors upsert failed", e);
+    }
+  } else if (visitorId) {
+    // Existing session: reuse visit count + cached geo; refresh profile when we have geo.
+    try {
+      const visitorRef = db.collection("analyticsVisitors").doc(visitorId);
+      const snap = await visitorRef.get();
+      if (snap.exists) {
+        const data = snap.data() as Record<string, unknown>;
+        const vc = Math.max(0, Math.round(Number(data.visitCount) || 0));
+        if (vc > 0) visitorVisitCount = vc;
+        if (!geoHasLocation(geo)) {
+          const prevGeo = pickAnalyticsGeo(data);
+          if (geoHasLocation(prevGeo)) {
+            geo = mergeGeo(geo, prevGeo);
+          }
+        }
+      }
+      if (geoHasLocation(geo)) {
+        const refresh: Record<string, unknown> = {
+          ...geo,
+          lastSeenAt: FieldValue.serverTimestamp(),
+          lastPath: path,
+          deviceCategory: category,
+          deviceLabel: label,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (timeZone) refresh.timeZone = timeZone;
+        if (language) refresh.language = language;
+        await visitorRef.set(refresh, { merge: true });
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   const sessionPayload: Record<string, unknown> = {
     sessionId: sessionId || "anon",
     lastPath: path,
@@ -436,13 +543,12 @@ export async function POST(req: Request) {
     uaSnippet,
     analyticsVersion: ANALYTICS_DATA_VERSION,
     visitorType,
-    source: attribution.source,
-    medium: attribution.medium,
-    sourceConfidence: attribution.sourceConfidence,
-    attributionReason: attribution.attributionReason,
-    rawReferrer: attribution.rawReferrer || undefined,
   };
   if (visitorId) sessionPayload.visitorId = visitorId;
+  if (visitorVisitCount != null) {
+    sessionPayload.visitorVisitCount = visitorVisitCount;
+    sessionPayload.isReturningVisitor = visitorVisitCount > 1;
+  }
   if (ipHash) sessionPayload.ipHash = ipHash;
   if (screenWidth != null) sessionPayload.screenWidth = screenWidth;
   if (screenHeight != null) sessionPayload.screenHeight = screenHeight;
@@ -455,8 +561,9 @@ export async function POST(req: Request) {
     sessionPayload.maxScrollDepthPct = Math.min(100, Math.max(0, Math.round(maxScrollDepthPct)));
   }
   // Prefer new geo; never wipe an existing city/country with empty headers
-  if (geo.geoCity || geo.geoCountry || geo.geoRegion) {
-    Object.assign(sessionPayload, geo);
+  const geoCompact = compactGeo(geo);
+  if (Object.keys(geoCompact).length) {
+    Object.assign(sessionPayload, geoCompact);
   }
 
   // Compact activity trail for admin timeline (arrayUnion avoids lost clicks on race).
@@ -498,17 +605,49 @@ export async function POST(req: Request) {
     }
   }
 
-  // Only trafficChannel counts — `source` alone used to skip labels forever.
-  const hasTraffic = Boolean(existing.trafficChannel);
+  // First-touch traffic + landing — set once; backfill if an earlier heartbeat
+  // created the session without attribution.
+  const hasTraffic = Boolean(
+    existing.trafficChannel || existing.trafficLabel,
+  );
+  const landingForSession =
+    normalizeTrackPath(
+      String(attribution.landingUrl || landingPathNorm || path),
+    ) || path;
+
   if (!hasTraffic) {
     sessionPayload.trafficChannel = attribution.channel;
     sessionPayload.trafficLabel = attribution.label;
     sessionPayload.trafficDetail = attribution.detail;
-    sessionPayload.referrerHost = attribution.referrerHost || undefined;
-    sessionPayload.utmSource = attribution.utmSource || undefined;
-    sessionPayload.utmMedium = attribution.utmMedium || undefined;
-    sessionPayload.utmCampaign = attribution.utmCampaign || undefined;
-    sessionPayload.landingPath = attribution.landingUrl || path;
+    sessionPayload.source = attribution.source;
+    sessionPayload.medium = attribution.medium;
+    sessionPayload.sourceConfidence = attribution.sourceConfidence;
+    sessionPayload.attributionReason = attribution.attributionReason;
+    if (attribution.referrerHost) {
+      sessionPayload.referrerHost = attribution.referrerHost;
+    }
+    if (attribution.utmSource) sessionPayload.utmSource = attribution.utmSource;
+    if (attribution.utmMedium) sessionPayload.utmMedium = attribution.utmMedium;
+    if (attribution.utmCampaign) {
+      sessionPayload.utmCampaign = attribution.utmCampaign;
+    }
+    if (attribution.rawReferrer) {
+      sessionPayload.rawReferrer = attribution.rawReferrer;
+    }
+    sessionPayload.landingPath = landingForSession;
+  } else {
+    // Keep first-touch source; only fill gaps (esp. landingPath).
+    if (!existing.landingPath) {
+      sessionPayload.landingPath = landingForSession;
+    }
+    if (!existing.trafficLabel && existing.trafficChannel) {
+      sessionPayload.trafficLabel = attribution.label;
+    }
+    if (!existing.trafficDetail && attribution.detail) {
+      sessionPayload.trafficDetail = attribution.detail;
+    }
+    if (!existing.source) sessionPayload.source = attribution.source;
+    if (!existing.medium) sessionPayload.medium = attribution.medium;
   }
 
   // Denormalized page list so admin still shows pages if event sample is incomplete.
@@ -545,7 +684,7 @@ export async function POST(req: Request) {
     medium: attribution.medium,
     sourceConfidence: attribution.sourceConfidence,
     attributionReason: attribution.attributionReason,
-    ...geo,
+    ...geoCompact,
   };
   if (visitorId) pageViewPayload.visitorId = visitorId;
   if (eventIdRaw) pageViewPayload.eventId = eventIdRaw;
@@ -572,34 +711,65 @@ export async function POST(req: Request) {
   if (interactionCount != null) pageViewPayload.interactionCount = interactionCount;
   if (botSignals.length) pageViewPayload.botSignals = botSignals;
 
-  if (eventType === "view" && !hasTraffic) {
-    pageViewPayload.trafficChannel = attribution.channel;
-    pageViewPayload.trafficLabel = attribution.label;
-    pageViewPayload.trafficDetail = attribution.detail;
-    pageViewPayload.referrerHost = attribution.referrerHost || undefined;
-    pageViewPayload.utmSource = attribution.utmSource || undefined;
-    pageViewPayload.utmMedium = attribution.utmMedium || undefined;
-    pageViewPayload.utmCampaign = attribution.utmCampaign || undefined;
-    pageViewPayload.landingPath = attribution.landingUrl || path;
-    pageViewPayload.rawReferrer = attribution.rawReferrer || undefined;
+  // Stamp source + first page on every view (and first non-view if session had none)
+  // so admin sample rows stay readable even when the session doc was incomplete.
+  const stampTraffic =
+    eventType === "view" ||
+    !hasTraffic ||
+    !existing.landingPath;
+  if (stampTraffic) {
+    pageViewPayload.trafficChannel =
+      (typeof existing.trafficChannel === "string" && existing.trafficChannel) ||
+      attribution.channel;
+    pageViewPayload.trafficLabel =
+      (typeof existing.trafficLabel === "string" && existing.trafficLabel) ||
+      attribution.label;
+    pageViewPayload.trafficDetail =
+      (typeof existing.trafficDetail === "string" && existing.trafficDetail) ||
+      attribution.detail;
+    pageViewPayload.landingPath =
+      (typeof existing.landingPath === "string" && existing.landingPath) ||
+      landingForSession;
+    if (attribution.referrerHost || existing.referrerHost) {
+      pageViewPayload.referrerHost =
+        attribution.referrerHost ||
+        String(existing.referrerHost ?? "");
+    }
+    if (attribution.utmSource || existing.utmSource) {
+      pageViewPayload.utmSource =
+        attribution.utmSource || String(existing.utmSource ?? "");
+    }
+    if (attribution.utmMedium || existing.utmMedium) {
+      pageViewPayload.utmMedium =
+        attribution.utmMedium || String(existing.utmMedium ?? "");
+    }
+    if (attribution.utmCampaign || existing.utmCampaign) {
+      pageViewPayload.utmCampaign =
+        attribution.utmCampaign || String(existing.utmCampaign ?? "");
+    }
+    if (attribution.rawReferrer || existing.rawReferrer) {
+      pageViewPayload.rawReferrer =
+        attribution.rawReferrer || String(existing.rawReferrer ?? "");
+    }
   }
 
   try {
     // Session first — admin can still show paths/times if the event write fails.
-    await sessionRef.set(sessionPayload, { merge: true });
+    await sessionRef.set(omitUndefined(sessionPayload), { merge: true });
   } catch (e) {
     console.error("analyticsSessions write failed", e);
     return new NextResponse(null, { status: 204 });
   }
 
   try {
+    const cleanPageView = omitUndefined(pageViewPayload);
     if (eventIdRaw) {
       await db
         .collection("pageViews")
         .doc(eventIdRaw)
-        .set(pageViewPayload, { merge: true });
+        .set(cleanPageView, { merge: true });
     } else {
-      await db.collection("pageViews").add(pageViewPayload);
+      await db.collection("pageViews").add(cleanPageView);
     }
   } catch (e) {
     console.error("pageViews write failed", e);

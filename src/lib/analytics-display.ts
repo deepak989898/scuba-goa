@@ -36,6 +36,9 @@ export function formatGeoLine(parts: {
   geoRegionName?: string;
   geoCountry?: string;
   geoCountryName?: string;
+  geoTimezone?: string;
+  /** Client-reported IANA timezone — soft hint when IP geo failed */
+  timeZone?: string;
 }): string {
   const city = parts.geoCity?.trim();
   const region =
@@ -48,5 +51,8 @@ export function formatGeoLine(parts: {
   if (city) bits.push(city);
   if (region && region !== city) bits.push(region);
   if (country && country !== region && country !== city) bits.push(country);
-  return bits.length ? bits.join(", ") : "";
+  if (bits.length) return bits.join(", ");
+  const tz = parts.geoTimezone?.trim() || parts.timeZone?.trim();
+  if (tz) return `Timezone ${tz} (approx)`;
+  return "";
 }

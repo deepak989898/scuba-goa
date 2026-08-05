@@ -55,5 +55,14 @@ export function getAdminApp(): App | null {
 
 export function getAdminDb() {
   const app = getAdminApp();
-  return app ? getFirestore(app) : null;
+  if (!app) return null;
+  const db = getFirestore(app);
+  // Analytics payloads omit empty optional fields; this avoids write failures
+  // if any undefined slips through (geo / referrer / UTM).
+  try {
+    db.settings({ ignoreUndefinedProperties: true });
+  } catch {
+    /* settings may only be called once per app */
+  }
+  return db;
 }

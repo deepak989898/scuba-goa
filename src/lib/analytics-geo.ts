@@ -1,5 +1,5 @@
 /**
- * Geo from edge headers (Vercel / Cloudflare) + optional IP lookup fallback.
+ * Geo from edge headers (Vercel / Cloudflare) + IP lookup fallbacks.
  * Stores human-readable country/region when possible (Clarity-style).
  */
 
@@ -71,7 +71,10 @@ const IN_REGION_NAMES: Record<string, string> = {
   WB: "West Bengal",
 };
 
-function regionDisplayName(country: string | undefined, region: string | undefined): string | undefined {
+function regionDisplayName(
+  country: string | undefined,
+  region: string | undefined,
+): string | undefined {
   if (!region) return undefined;
   if (country?.toUpperCase() === "IN") {
     return IN_REGION_NAMES[region.toUpperCase()] ?? region;
@@ -115,42 +118,138 @@ function isPrivateOrLocalIp(ip: string): boolean {
 const ipGeoCache = new Map<string, { at: number; geo: AnalyticsGeo }>();
 const IP_GEO_TTL_MS = 1000 * 60 * 60 * 6;
 
+async function fetchJson(
+  url: string,
+  timeoutMs: number,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function geoFromIpApiCo(data: Record<string, unknown>): AnalyticsGeo {
+  if (data.error) return {};
+  const code = String(data.country_code ?? "").trim().toUpperCase();
+  const city = String(data.city ?? "").trim();
+  const region = String(data.region ?? data.region_code ?? "").trim();
+  return {
+    geoCountry: code || undefined,
+    geoCountryName:
+      String(data.country_name ?? "").trim() ||
+      (code ? countryNameFromCode(code) : undefined),
+    geoCity: city || undefined,
+    geoRegion: String(data.region_code ?? "").trim() || undefined,
+    geoRegionName: region || undefined,
+    geoTimezone: String(data.timezone ?? "").trim() || undefined,
+  };
+}
+
+function timezoneFromUnknown(v: unknown): string | undefined {
+  if (typeof v === "string" && v.trim()) return v.trim();
+  if (v && typeof v === "object") {
+    const id = (v as { id?: unknown; name?: unknown }).id ?? (v as { name?: unknown }).name;
+    if (typeof id === "string" && id.trim()) return id.trim();
+  }
+  return undefined;
+}
+
+function geoFromIpWho(data: Record<string, unknown>): AnalyticsGeo {
+  if (data.success === false) return {};
+  const code = String(data.country_code ?? "").trim().toUpperCase();
+  const city = String(data.city ?? "").trim();
+  const region = String(data.region ?? "").trim();
+  return {
+    geoCountry: code || undefined,
+    geoCountryName:
+      String(data.country ?? "").trim() ||
+      (code ? countryNameFromCode(code) : undefined),
+    geoCity: city || undefined,
+    geoRegion: region || undefined,
+    geoRegionName: region || undefined,
+    geoTimezone: timezoneFromUnknown(data.timezone),
+  };
+}
+
+function geoFromGeoJs(data: Record<string, unknown>): AnalyticsGeo {
+  const code = String(data.country_code ?? "")
+    .trim()
+    .toUpperCase()
+    .slice(0, 2);
+  const city = String(data.city ?? "").trim();
+  const region = String(data.region ?? "").trim();
+  return {
+    geoCountry: code || undefined,
+    geoCountryName:
+      String(data.country ?? "").trim() ||
+      (code ? countryNameFromCode(code) : undefined),
+    geoCity: city || undefined,
+    geoRegion: region || undefined,
+    geoRegionName: region || undefined,
+    geoTimezone: String(data.timezone ?? "").trim() || undefined,
+  };
+}
+
+function geoFromIpApiCom(data: Record<string, unknown>): AnalyticsGeo {
+  if (String(data.status ?? "") === "fail") return {};
+  const code = String(data.countryCode ?? "").trim().toUpperCase();
+  const city = String(data.city ?? "").trim();
+  const region = String(data.regionName ?? data.region ?? "").trim();
+  return {
+    geoCountry: code || undefined,
+    geoCountryName:
+      String(data.country ?? "").trim() ||
+      (code ? countryNameFromCode(code) : undefined),
+    geoCity: city || undefined,
+    geoRegion: String(data.region ?? "").trim() || undefined,
+    geoRegionName: region || undefined,
+    geoTimezone: String(data.timezone ?? "").trim() || undefined,
+  };
+}
+
 /**
- * Fallback when edge geo headers are empty (still on Vercel, but rare).
- * Uses ipapi.co — skip private/local IPs.
+ * Fallback when edge geo headers are empty.
+ * Tries ipapi.co → ipwho.is → ip-api.com (skip private/local IPs).
  */
 export async function geoFromIpFallback(ip: string): Promise<AnalyticsGeo> {
   if (isPrivateOrLocalIp(ip)) return {};
   const cached = ipGeoCache.get(ip);
   if (cached && Date.now() - cached.at < IP_GEO_TTL_MS) return cached.geo;
 
-  try {
-    const ctrl = AbortSignal.timeout(1800);
-    const res = await fetch(
-      `https://ipapi.co/${encodeURIComponent(ip)}/json/`,
-      { signal: ctrl, headers: { Accept: "application/json" } },
-    );
-    if (!res.ok) return {};
-    const data = (await res.json()) as Record<string, unknown>;
-    if (data.error) return {};
-    const code = String(data.country_code ?? "").trim().toUpperCase();
-    const city = String(data.city ?? "").trim();
-    const region = String(data.region ?? data.region_code ?? "").trim();
-    const geo: AnalyticsGeo = {
-      geoCountry: code || undefined,
-      geoCountryName:
-        String(data.country_name ?? "").trim() ||
-        (code ? countryNameFromCode(code) : undefined),
-      geoCity: city || undefined,
-      geoRegion: String(data.region_code ?? "").trim() || undefined,
-      geoRegionName: region || undefined,
-      geoTimezone: String(data.timezone ?? "").trim() || undefined,
-    };
-    ipGeoCache.set(ip, { at: Date.now(), geo });
-    return geo;
-  } catch {
-    return {};
+  const encoded = encodeURIComponent(ip);
+
+  const ipapi = await fetchJson(`https://ipapi.co/${encoded}/json/`, 1800);
+  let geo = ipapi ? geoFromIpApiCo(ipapi) : {};
+  if (!geoHasLocation(geo)) {
+    const ipwho = await fetchJson(`https://ipwho.is/${encoded}`, 1800);
+    geo = ipwho ? geoFromIpWho(ipwho) : {};
   }
+  if (!geoHasLocation(geo)) {
+    // HTTPS-friendly fallback (works better on serverless than http-only APIs).
+    const geojs = await fetchJson(
+      `https://get.geojs.io/v1/ip/geo/${encoded}.json`,
+      1800,
+    );
+    geo = geojs ? geoFromGeoJs(geojs) : {};
+  }
+  if (!geoHasLocation(geo)) {
+    const ipApi = await fetchJson(
+      `http://ip-api.com/json/${encoded}?fields=status,country,countryCode,region,regionName,city,timezone`,
+      1800,
+    );
+    geo = ipApi ? geoFromIpApiCom(ipApi) : {};
+  }
+
+  if (geoHasLocation(geo)) {
+    ipGeoCache.set(ip, { at: Date.now(), geo });
+  }
+  return geo;
 }
 
 export function mergeGeo(
@@ -171,7 +270,7 @@ export function geoHasLocation(g: AnalyticsGeo): boolean {
   return Boolean(g.geoCity || g.geoRegionName || g.geoRegion || g.geoCountry);
 }
 
-/** Resolve best geo: headers first, then IP API if needed. */
+/** Resolve best geo: headers first, then IP APIs if needed. */
 export async function resolveRequestGeo(
   headers: Headers,
   ip: string,
@@ -181,9 +280,27 @@ export async function resolveRequestGeo(
     return fromHeaders;
   }
   if (geoHasLocation(fromHeaders) && fromHeaders.geoCountry) {
-    // Have country but maybe missing city — try IP for richer detail
     const fromIp = await geoFromIpFallback(ip);
     return mergeGeo(fromHeaders, fromIp);
   }
   return mergeGeo(fromHeaders, await geoFromIpFallback(ip));
+}
+
+/** Pick geo fields from a Firestore-like record. */
+export function pickAnalyticsGeo(
+  data: Record<string, unknown> | undefined | null,
+): AnalyticsGeo {
+  if (!data) return {};
+  const str = (k: string) => {
+    const v = data[k];
+    return typeof v === "string" && v.trim() ? v.trim() : undefined;
+  };
+  return {
+    geoCountry: str("geoCountry"),
+    geoCountryName: str("geoCountryName"),
+    geoCity: str("geoCity"),
+    geoRegion: str("geoRegion"),
+    geoRegionName: str("geoRegionName"),
+    geoTimezone: str("geoTimezone"),
+  };
 }

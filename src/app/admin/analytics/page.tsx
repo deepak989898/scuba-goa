@@ -56,10 +56,22 @@ type Row = {
   geoCity?: string;
   geoRegion?: string;
   geoRegionName?: string;
+  geoTimezone?: string;
+  timeZone?: string;
+  language?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
   trafficChannel?: string;
   trafficLabel?: string;
   trafficDetail?: string;
   source?: string;
+  referrerHost?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  landingPath?: string;
 };
 
 type RecentEvent = {
@@ -92,6 +104,16 @@ type SessionDoc = {
   geoCity?: string;
   geoRegion?: string;
   geoRegionName?: string;
+  geoTimezone?: string;
+  timeZone?: string;
+  language?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  visitorId?: string;
+  visitorVisitCount?: number;
+  isReturningVisitor?: boolean;
   trafficChannel?: string;
   trafficLabel?: string;
   trafficDetail?: string;
@@ -138,7 +160,14 @@ type VisitorSummary = {
   lastPath: string;
   deviceCategory: DeviceCategory | "unknown";
   deviceLabel: string;
+  deviceLine: string;
   geoLine: string;
+  timeZone: string;
+  language: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  visitorVisitCount: number;
+  isReturningVisitor: boolean;
   trafficChannel: TrafficChannel | "";
   trafficLabel: string;
   trafficDetail: string;
@@ -272,7 +301,63 @@ function pickGeoFields(data: Record<string, unknown>) {
     geoCity: String(data.geoCity ?? "").trim() || undefined,
     geoRegion: String(data.geoRegion ?? "").trim() || undefined,
     geoRegionName: String(data.geoRegionName ?? "").trim() || undefined,
+    geoTimezone: String(data.geoTimezone ?? "").trim() || undefined,
   };
+}
+
+function pickDeviceMeta(data: Record<string, unknown>) {
+  const num = (k: string) => {
+    const v = data[k];
+    return typeof v === "number" && Number.isFinite(v) && v > 0
+      ? Math.round(v)
+      : undefined;
+  };
+  return {
+    timeZone: String(data.timeZone ?? "").trim() || undefined,
+    language: String(data.language ?? "").trim() || undefined,
+    screenWidth: num("screenWidth"),
+    screenHeight: num("screenHeight"),
+    viewportWidth: num("viewportWidth"),
+    viewportHeight: num("viewportHeight"),
+  };
+}
+
+function formatDeviceLine(parts: {
+  deviceCategory?: string;
+  deviceLabel?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  language?: string;
+  timeZone?: string;
+}): string {
+  const bits: string[] = [];
+  const label = parts.deviceLabel?.trim();
+  const cat = parts.deviceCategory?.trim();
+  if (label) bits.push(label);
+  else if (cat && cat !== "unknown") bits.push(cat);
+  if (parts.screenWidth && parts.screenHeight) {
+    bits.push(`${parts.screenWidth}×${parts.screenHeight}`);
+  } else if (parts.viewportWidth && parts.viewportHeight) {
+    bits.push(`viewport ${parts.viewportWidth}×${parts.viewportHeight}`);
+  }
+  if (parts.language) bits.push(parts.language);
+  if (parts.timeZone) bits.push(parts.timeZone);
+  return bits.join(" · ");
+}
+
+function deviceCategoryStyles(cat: string): string {
+  switch (cat) {
+    case "mobile":
+      return "bg-violet-100 text-violet-900 border-violet-200";
+    case "tablet":
+      return "bg-fuchsia-100 text-fuchsia-900 border-fuchsia-200";
+    case "desktop":
+      return "bg-sky-100 text-sky-900 border-sky-200";
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-200";
+  }
 }
 
 function pickTrafficFields(data: Record<string, unknown>) {
@@ -386,7 +471,13 @@ function buildVisitorSummary(
     .reduce((acc, r) => acc + (r.durationMs ?? 0), 0);
   const pages = buildPageStays(sorted, sess);
   const geoSource = sess ?? first;
-  const trafficSource = sess ?? sorted.find((r) => r.trafficChannel) ?? first;
+  const rowWithTraffic =
+    sorted.find((r) => r.trafficChannel || r.trafficLabel) ??
+    sorted.find((r) => r.source || r.referrerHost || r.utmSource);
+  const trafficSource =
+    sess?.trafficChannel || sess?.trafficLabel
+      ? sess
+      : rowWithTraffic ?? sess ?? first;
   const pageViewsFromEvents = sorted.filter((r) => r.eventType === "view").length;
   const pageViews = Math.max(
     pageViewsFromEvents,
@@ -420,6 +511,24 @@ function buildVisitorSummary(
     analyticsVersion: sess?.analyticsVersion,
   });
 
+  const deviceCategory = (first?.deviceCategory ||
+    sess?.deviceCategory ||
+    "unknown") as DeviceCategory | "unknown";
+  const deviceLabel = sess?.deviceLabel || first?.deviceLabel || "";
+  const timeZone =
+    sess?.timeZone || first?.timeZone || sess?.geoTimezone || "";
+  const language = sess?.language || first?.language || "";
+  const screenWidth = sess?.screenWidth ?? first?.screenWidth;
+  const screenHeight = sess?.screenHeight ?? first?.screenHeight;
+  const viewportWidth = sess?.viewportWidth ?? first?.viewportWidth;
+  const viewportHeight = sess?.viewportHeight ?? first?.viewportHeight;
+  const visitorVisitCount = Math.max(
+    0,
+    Math.round(Number(sess?.visitorVisitCount) || 0),
+  );
+  const isReturningVisitor =
+    sess?.isReturningVisitor === true || visitorVisitCount > 1;
+
   return {
     sessionId: sid,
     arrivedAt: sess?.firstSeenAt ?? first?.createdAt ?? sess?.lastSeenAt,
@@ -432,35 +541,80 @@ function buildVisitorSummary(
     uniquePages: Math.max(pages.length, sess?.visitedPaths?.length ?? 0),
     pages,
     lastPath: last?.path ?? sess?.lastPath ?? "—",
-    deviceCategory: (first?.deviceCategory ||
-      sess?.deviceCategory ||
-      "unknown") as DeviceCategory | "unknown",
-    deviceLabel: sess?.deviceLabel || first?.deviceLabel || "",
+    deviceCategory,
+    deviceLabel,
+    deviceLine: formatDeviceLine({
+      deviceCategory,
+      deviceLabel,
+      screenWidth,
+      screenHeight,
+      viewportWidth,
+      viewportHeight,
+      language,
+      timeZone,
+    }),
     geoLine: formatGeoLine({
       geoCity: geoSource?.geoCity,
       geoRegion: geoSource?.geoRegion,
       geoRegionName: geoSource?.geoRegionName,
       geoCountry: geoSource?.geoCountry,
       geoCountryName: geoSource?.geoCountryName,
+      geoTimezone: geoSource?.geoTimezone ?? sess?.geoTimezone,
+      timeZone: sess?.timeZone || first?.timeZone,
     }),
+    timeZone,
+    language,
+    screenWidth,
+    screenHeight,
+    visitorVisitCount,
+    isReturningVisitor,
     trafficChannel: normalizeTrafficChannel(
       trafficSource?.trafficChannel ?? sess?.trafficChannel
     ) ||
       trafficChannelFromLabel(
         trafficSource?.trafficLabel ?? sess?.trafficLabel,
       ),
-    trafficLabel:
-      trafficSource?.trafficLabel ||
-      sess?.trafficLabel ||
-      labelFromAttributionSource(
-        String(sess?.source ?? trafficSource?.source ?? ""),
-      ) ||
-      (sess?.trafficChannel || trafficSource?.trafficChannel
-        ? "Unknown source"
-        : "—"),
+    trafficLabel: (() => {
+      const labeled =
+        trafficSource?.trafficLabel ||
+        sess?.trafficLabel ||
+        labelFromAttributionSource(
+          String(sess?.source ?? trafficSource?.source ?? ""),
+        );
+      if (labeled) return labeled;
+      if (sess?.referrerHost || trafficSource?.referrerHost) {
+        return `Referral · ${sess?.referrerHost || trafficSource?.referrerHost}`;
+      }
+      if (sess?.utmSource || trafficSource?.utmSource) {
+        return `Campaign · ${sess?.utmSource || trafficSource?.utmSource}`;
+      }
+      if (sess?.trafficChannel || trafficSource?.trafficChannel) {
+        return "Unknown source";
+      }
+      return "—";
+    })(),
     trafficDetail:
-      trafficSource?.trafficDetail ?? sess?.trafficDetail ?? "",
-    landingPath: sess?.landingPath ?? first?.path ?? "—",
+      trafficSource?.trafficDetail ||
+      sess?.trafficDetail ||
+      sess?.referrerHost ||
+      trafficSource?.referrerHost ||
+      "",
+    landingPath: (() => {
+      const candidates = [
+        sess?.landingPath,
+        first?.landingPath,
+        sorted.find((r) => r.landingPath)?.landingPath,
+        sess?.visitedPaths?.[0],
+        pages[0]?.path,
+        first?.path,
+        sess?.lastPath,
+      ];
+      for (const c of candidates) {
+        const p = String(c ?? "").trim();
+        if (p && p !== "—") return p;
+      }
+      return "—";
+    })(),
     isOnline: onlineIdSet.has(sid),
     isBot,
     botLabel: botLabelFromUserAgent(
@@ -536,6 +690,7 @@ export default function AdminAnalyticsPage() {
           const data = d.data() as Record<string, unknown>;
           const geo = pickGeoFields(data);
           const traffic = pickTrafficFields(data);
+          const deviceMeta = pickDeviceMeta(data);
           return {
             id: d.id,
             path: String(data.path ?? ""),
@@ -562,6 +717,7 @@ export default function AdminAnalyticsPage() {
               typeof data.isBot === "boolean" ? data.isBot : undefined,
             createdAt: data.createdAt,
             ...geo,
+            ...deviceMeta,
             ...traffic,
           };
         });
@@ -583,6 +739,15 @@ export default function AdminAnalyticsPage() {
               typeof data.isBot === "boolean" ? data.isBot : undefined,
             lastSeenAt: data.lastSeenAt,
             firstSeenAt: data.firstSeenAt,
+            visitorId: String(data.visitorId ?? "").trim() || undefined,
+            visitorVisitCount:
+              typeof data.visitorVisitCount === "number"
+                ? data.visitorVisitCount
+                : undefined,
+            isReturningVisitor:
+              typeof data.isReturningVisitor === "boolean"
+                ? data.isReturningVisitor
+                : undefined,
             visitorType: String(data.visitorType ?? "") || undefined,
             sourceConfidence: String(data.sourceConfidence ?? "") || undefined,
             attributionReason: String(data.attributionReason ?? "") || undefined,
@@ -629,6 +794,7 @@ export default function AdminAnalyticsPage() {
               ? (data.recentEvents as RecentEvent[]).slice(-50)
               : undefined,
             ...pickGeoFields(data),
+            ...pickDeviceMeta(data),
             ...pickTrafficFields(data),
           };
         });
@@ -1299,29 +1465,39 @@ export default function AdminAnalyticsPage() {
                                     }
                                     className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                                       selectedSessionId === v.sessionId
-                                        ? "border-ocean-400 bg-ocean-50 ring-1 ring-ocean-200"
-                                        : "border-ocean-100 bg-sand/30 hover:border-ocean-200"
+                                        ? "border-teal-400 bg-gradient-to-br from-teal-50 via-cyan-50 to-sky-50 ring-1 ring-teal-200"
+                                        : "border-slate-200 bg-gradient-to-br from-white via-slate-50 to-cyan-50/40 hover:border-teal-200"
                                     }`}
                                   >
                                     <div className="flex flex-wrap items-start justify-between gap-2">
                                       <div className="flex flex-wrap items-center gap-1.5">
                                         {v.isOnline ? (
-                                          <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-800">
+                                          <span className="rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                             Online
                                           </span>
                                         ) : null}
+                                        {v.isReturningVisitor ? (
+                                          <span className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950">
+                                            Returning · visit #
+                                            {v.visitorVisitCount || "?"}
+                                          </span>
+                                        ) : v.visitorVisitCount === 1 ? (
+                                          <span className="rounded-md border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-900">
+                                            New visitor
+                                          </span>
+                                        ) : null}
                                         {v.visitorKind === "bot" ? (
-                                          <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800">
+                                          <span className="rounded-md bg-slate-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                             Bot · {v.botLabel}
                                           </span>
                                         ) : null}
                                         {v.visitorKind === "suspected" ? (
-                                          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                                          <span className="rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                             Suspected
                                           </span>
                                         ) : null}
                                         {v.analyticsVersion < 2 ? (
-                                          <span className="rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-800">
+                                          <span className="rounded-md bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-900">
                                             Legacy
                                           </span>
                                         ) : null}
@@ -1339,21 +1515,21 @@ export default function AdminAnalyticsPage() {
                                           </span>
                                         ) : null}
                                       </div>
-                                      <span className="text-xs text-ocean-500">
+                                      <span className="rounded-md bg-cyan-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                         {formatDurationMs(v.totalDurationMs)}{" "}
                                         on site
                                       </span>
                                     </div>
 
                                     <div className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
-                                      <p className="text-ocean-800">
-                                        <span className="font-medium text-ocean-900">
+                                      <p className="text-slate-700">
+                                        <span className="font-semibold text-teal-800">
                                           Arrived:
                                         </span>{" "}
                                         {formatTs(v.arrivedAt)}
                                       </p>
-                                      <p className="text-ocean-800">
-                                        <span className="font-medium text-ocean-900">
+                                      <p className="text-slate-700">
+                                        <span className="font-semibold text-rose-800">
                                           Left:
                                         </span>{" "}
                                         {v.isOnline
@@ -1363,35 +1539,65 @@ export default function AdminAnalyticsPage() {
                                     </div>
 
                                     {v.geoLine ? (
-                                      <p className="mt-1.5 text-xs text-ocean-700">
-                                        <span className="font-medium">
+                                      <p className="mt-1.5 inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-xs text-teal-950">
+                                        <span className="font-semibold">
                                           Location:
                                         </span>{" "}
-                                        {v.geoLine}
+                                        <span className="truncate">
+                                          {v.geoLine}
+                                        </span>
                                       </p>
                                     ) : (
-                                      <p className="mt-1.5 text-xs text-ocean-500">
-                                        Location: unavailable (waiting for geo
-                                        from next visit)
+                                      <p className="mt-1.5 rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs text-rose-800">
+                                        Location: unavailable (fills on next
+                                        visit with geo)
                                       </p>
                                     )}
 
+                                    {v.deviceLine ? (
+                                      <p
+                                        className={`mt-1.5 inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs ${deviceCategoryStyles(
+                                          v.deviceCategory,
+                                        )}`}
+                                      >
+                                        <span className="font-semibold">
+                                          Device:
+                                        </span>{" "}
+                                        <span className="truncate">
+                                          {v.deviceLine}
+                                        </span>
+                                      </p>
+                                    ) : null}
+
                                     {v.trafficDetail &&
                                     v.trafficDetail !== v.trafficLabel ? (
-                                      <p className="mt-0.5 text-xs text-ocean-600">
+                                      <p className="mt-0.5 text-xs text-slate-600">
                                         Source detail: {v.trafficDetail}
                                       </p>
                                     ) : null}
 
-                                    <p className="mt-1.5 text-xs text-ocean-700">
-                                      {v.uniquePages} page
-                                      {v.uniquePages === 1 ? "" : "s"} ·{" "}
-                                      {v.pageViews} page view
-                                      {v.pageViews === 1 ? "" : "s"} ·{" "}
-                                      {v.deviceCategory}
-                                      {v.deviceLabel ? ` · ${v.deviceLabel}` : ""}
+                                    <p className="mt-1.5 text-xs text-slate-700">
+                                      <span className="font-medium text-indigo-800">
+                                        {v.uniquePages} page
+                                        {v.uniquePages === 1 ? "" : "s"}
+                                      </span>
+                                      {" · "}
+                                      <span className="font-medium text-sky-800">
+                                        {v.pageViews} page view
+                                        {v.pageViews === 1 ? "" : "s"}
+                                      </span>
+                                      {v.isReturningVisitor &&
+                                      v.visitorVisitCount > 1 ? (
+                                        <>
+                                          {" · "}
+                                          <span className="font-semibold text-amber-800">
+                                            {v.visitorVisitCount} lifetime
+                                            visits
+                                          </span>
+                                        </>
+                                      ) : null}
                                     </p>
-                                    <div className="mt-1 space-y-0.5 font-mono text-[11px] leading-snug text-ocean-700">
+                                    <div className="mt-1 space-y-0.5 font-mono text-[11px] leading-snug text-slate-700">
                                       <p className="truncate">
                                         <span className="font-sans font-semibold text-cyan-800">
                                           First:
@@ -1408,7 +1614,7 @@ export default function AdminAnalyticsPage() {
                                         </span>
                                       </p>
                                       <p className="truncate">
-                                        <span className="font-sans font-semibold text-ocean-800">
+                                        <span className="font-sans font-semibold text-slate-800">
                                           Last:
                                         </span>{" "}
                                         <span title={v.lastPath}>
@@ -1421,25 +1627,40 @@ export default function AdminAnalyticsPage() {
                               ))}
                             </ul>
 
-                            <div className="rounded-xl border border-ocean-100 bg-sand/20 p-3">
+                            <div className="rounded-xl border border-cyan-200 bg-gradient-to-br from-white via-cyan-50/50 to-teal-50/40 p-3">
                               {!selectedVisitor ? (
-                                <p className="text-sm text-ocean-600">
+                                <p className="text-sm text-slate-600">
                                   Select a visitor to see page-by-page time.
                                 </p>
                               ) : (
                                 <>
-                                  <h3 className="font-semibold text-ocean-900">
+                                  <h3 className="font-semibold text-teal-950">
                                     Visit details
                                   </h3>
-                                  <dl className="mt-2 space-y-1.5 text-xs text-ocean-800">
+                                  <dl className="mt-2 space-y-1.5 text-xs text-slate-800">
                                     <div className="flex gap-2">
-                                      <dt className="w-24 shrink-0 font-medium text-ocean-900">
+                                      <dt className="w-28 shrink-0 font-semibold text-amber-900">
+                                        First page
+                                      </dt>
+                                      <dd className="min-w-0 break-all font-mono text-amber-950">
+                                        {selectedVisitor.landingPath &&
+                                        selectedVisitor.landingPath !== "—" ? (
+                                          selectedVisitor.landingPath
+                                        ) : (
+                                          <span className="font-sans text-rose-700">
+                                            Not recorded
+                                          </span>
+                                        )}
+                                      </dd>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <dt className="w-28 shrink-0 font-semibold text-teal-800">
                                         Arrived
                                       </dt>
                                       <dd>{formatTs(selectedVisitor.arrivedAt)}</dd>
                                     </div>
                                     <div className="flex gap-2">
-                                      <dt className="w-24 shrink-0 font-medium text-ocean-900">
+                                      <dt className="w-28 shrink-0 font-semibold text-rose-800">
                                         Left
                                       </dt>
                                       <dd>
@@ -1449,26 +1670,88 @@ export default function AdminAnalyticsPage() {
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">
-                                      <dt className="w-24 shrink-0 font-medium text-ocean-900">
+                                      <dt className="w-28 shrink-0 font-semibold text-cyan-800">
                                         Total time
                                       </dt>
-                                      <dd>
+                                      <dd className="font-semibold text-cyan-950">
                                         {formatDurationMs(
                                           selectedVisitor.totalDurationMs
                                         )}
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">
-                                      <dt className="w-24 shrink-0 font-medium text-ocean-900">
+                                      <dt className="w-28 shrink-0 font-semibold text-teal-800">
                                         Location
                                       </dt>
                                       <dd>
-                                        {selectedVisitor.geoLine ||
-                                          "Unavailable (will fill on next visit)"}
+                                        {selectedVisitor.geoLine ? (
+                                          <span className="rounded-md border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-teal-950">
+                                            {selectedVisitor.geoLine}
+                                          </span>
+                                        ) : (
+                                          <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-800">
+                                            Unavailable (fills on next visit
+                                            with geo)
+                                          </span>
+                                        )}
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">
-                                      <dt className="w-24 shrink-0 font-medium text-ocean-900">
+                                      <dt className="w-28 shrink-0 font-semibold text-violet-800">
+                                        Device
+                                      </dt>
+                                      <dd className="min-w-0">
+                                        {selectedVisitor.deviceLine ? (
+                                          <span
+                                            className={`inline-block rounded-md border px-1.5 py-0.5 ${deviceCategoryStyles(
+                                              selectedVisitor.deviceCategory,
+                                            )}`}
+                                          >
+                                            {selectedVisitor.deviceLine}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-500">
+                                            Not recorded
+                                          </span>
+                                        )}
+                                        {selectedVisitor.uaSnippet ? (
+                                          <p
+                                            className="mt-0.5 truncate text-[10px] text-slate-500"
+                                            title={selectedVisitor.uaSnippet}
+                                          >
+                                            UA: {selectedVisitor.uaSnippet}
+                                          </p>
+                                        ) : null}
+                                      </dd>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <dt className="w-28 shrink-0 font-semibold text-amber-800">
+                                        Visits
+                                      </dt>
+                                      <dd>
+                                        {selectedVisitor.visitorVisitCount >
+                                        0 ? (
+                                          selectedVisitor.isReturningVisitor ? (
+                                            <span className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950">
+                                              Returning · visit #
+                                              {selectedVisitor.visitorVisitCount}{" "}
+                                              (lifetime)
+                                            </span>
+                                          ) : (
+                                            <span className="rounded-md border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">
+                                              New visitor · first visit
+                                            </span>
+                                          )
+                                        ) : (
+                                          <span className="text-slate-500">
+                                            Count starts after deploy (next
+                                            visit)
+                                          </span>
+                                        )}
+                                      </dd>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <dt className="w-28 shrink-0 font-semibold text-slate-800">
                                         Visitor type
                                       </dt>
                                       <dd>
@@ -1489,7 +1772,7 @@ export default function AdminAnalyticsPage() {
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">
-                                      <dt className="w-24 shrink-0 font-medium text-ocean-900">
+                                      <dt className="w-28 shrink-0 font-semibold text-indigo-800">
                                         Came from
                                       </dt>
                                       <dd className="min-w-0">
@@ -1509,13 +1792,13 @@ export default function AdminAnalyticsPage() {
                                             {selectedVisitor.trafficDetail &&
                                             selectedVisitor.trafficDetail !==
                                               selectedVisitor.trafficLabel ? (
-                                              <span className="text-ocean-600">
+                                              <span className="text-slate-600">
                                                 {selectedVisitor.trafficDetail}
                                               </span>
                                             ) : null}
                                           </span>
                                         ) : (
-                                          <span className="text-ocean-500">
+                                          <span className="text-slate-500">
                                             Not recorded yet — new visits show
                                             Direct / Search / Facebook /
                                             Instagram etc.
@@ -1523,20 +1806,9 @@ export default function AdminAnalyticsPage() {
                                         )}
                                       </dd>
                                     </div>
-                                    {selectedVisitor.landingPath &&
-                                    selectedVisitor.landingPath !== "—" ? (
-                                      <div className="flex gap-2">
-                                        <dt className="w-24 shrink-0 font-medium text-ocean-900">
-                                          Landing page
-                                        </dt>
-                                        <dd className="break-all font-mono">
-                                          {selectedVisitor.landingPath}
-                                        </dd>
-                                      </div>
-                                    ) : null}
                                   </dl>
 
-                                  <h4 className="mt-4 text-sm font-semibold text-ocean-900">
+                                  <h4 className="mt-4 text-sm font-semibold text-indigo-950">
                                     Pages viewed & time on each
                                   </h4>
                                   {selectedVisitor.pages.length === 0 ? (
@@ -1548,22 +1820,22 @@ export default function AdminAnalyticsPage() {
                                       {selectedVisitor.pages.map((p) => (
                                         <li
                                           key={p.path}
-                                          className="rounded-lg border border-ocean-100 bg-white px-2.5 py-2 text-xs"
+                                          className="rounded-lg border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/60 px-2.5 py-2 text-xs"
                                         >
-                                          <p className="font-mono font-semibold text-ocean-900">
+                                          <p className="font-mono font-semibold text-indigo-950">
                                             {p.path}
                                           </p>
                                           {p.label && p.label !== p.path ? (
-                                            <p className="text-ocean-700">
+                                            <p className="text-slate-700">
                                               {p.label}
                                             </p>
                                           ) : null}
-                                          <p className="mt-0.5 text-ocean-600">
+                                          <p className="mt-0.5 text-slate-600">
                                             Time on page:{" "}
-                                            <span className="font-medium text-ocean-900">
+                                            <span className="font-semibold text-cyan-800">
                                               {formatDurationMs(p.durationMs)}
                                             </span>
-                                            <span className="text-ocean-500">
+                                            <span className="text-slate-500">
                                               {" "}
                                               (
                                               {Math.max(

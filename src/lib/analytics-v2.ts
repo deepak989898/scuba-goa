@@ -9,6 +9,8 @@ export function hashIp(ip: string, secret: string): string {
 
 /** Best-effort client IP from trusted platform headers only. */
 export function clientIpFromHeaders(headers: Headers): string {
+  const cf = headers.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
   const vercel = headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
   if (vercel) return vercel;
   const realIp = headers.get("x-real-ip")?.trim();

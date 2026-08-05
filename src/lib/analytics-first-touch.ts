@@ -94,5 +94,6 @@ export function getOrCaptureAnalyticsTraffic(
 /** Fire-and-forget capture on first paint (before deferred tracker arms). */
 export function captureAnalyticsFirstTouch(): void {
   if (typeof window === "undefined") return;
-  getOrCaptureAnalyticsTraffic();
+  const path = `${window.location.pathname}${window.location.search}` || "/";
+  getOrCaptureAnalyticsTraffic(path);
 }
