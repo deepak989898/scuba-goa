@@ -103,6 +103,15 @@ export function ServiceSubLandingView({
       },
     ],
   };
+  const productImages = (
+    heroImages.length > 0
+      ? heroImages.slice(0, 4)
+      : [`${baseUrl}/booking-header.png`]
+  ).map((src) =>
+    src.startsWith("http")
+      ? src
+      : `${baseUrl}${src.startsWith("/") ? src : `/${src}`}`,
+  );
   const productLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -110,7 +119,7 @@ export function ServiceSubLandingView({
     description:
       sub.description?.trim() ||
       `${sub.title} under ${parent.title} with ${SITE_NAME}`,
-    image: heroImages.slice(0, 4),
+    image: productImages,
     brand: { "@type": "Brand", name: SITE_NAME },
     offers: {
       "@type": "Offer",

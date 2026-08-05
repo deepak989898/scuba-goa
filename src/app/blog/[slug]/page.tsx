@@ -21,6 +21,7 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { relatedServicesForContent } from "@/lib/related-services-for-content";
 import { extractBlogToc } from "@/lib/blog-seo/headings";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
+import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { encodeServiceBaseOption } from "@/lib/booking-selection";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
@@ -226,6 +227,9 @@ export default async function BlogPostPage({ params }: Props) {
     4,
   );
   const toc = extractBlogToc(p.content);
+  const offerListLd = packageOfferCatalogJsonLd(catalog.packages, pageUrl, {
+    fallbackImageUrl: featuredImage,
+  });
 
   return (
     <article className="bg-white py-2 sm:py-3">
@@ -260,6 +264,14 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       )}
+      {offerListLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(offerListLd),
+          }}
+        />
+      ) : null}
       <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-4 lg:px-6">
         <div className="min-w-0">
           <nav
