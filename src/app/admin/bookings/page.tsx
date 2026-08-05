@@ -441,23 +441,28 @@ export default function AdminBookingsPage() {
     <div>
       <h1 className="font-display text-base font-bold text-ocean-900">Bookings</h1>
       {actionError ? (
-        <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800">
           {actionError}
         </p>
       ) : null}
       {actionSuccess ? (
-        <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+        <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-900">
           {actionSuccess}
         </p>
       ) : null}
       {loading ? (
-        <p className="mt-3 text-ocean-700">Loading…</p>
+        <p className="mt-2 text-sm text-ocean-700">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="mt-3 text-ocean-700">No bookings yet.</p>
+        <p className="mt-2 text-sm text-ocean-700">No bookings yet.</p>
       ) : (
-        <div className="mt-3 space-y-2.5">
-          <p className="text-xs text-ocean-600">
-            Click a date to show that day&apos;s bookings, then click a booking for full details.
+        <div className="mt-2 space-y-1.5">
+          <p className="text-[11px] text-ocean-600">
+            Click a date → bookings → details.{" "}
+            <span className="font-semibold text-teal-700">Date</span>
+            {" · "}
+            <span className="font-semibold text-amber-700">Service</span>
+            {" · "}
+            <span className="font-semibold text-emerald-700">Paid</span>
           </p>
           {groupedRows.map((group) => {
             const dayOpen = openDayKeys.has(group.key);
@@ -465,27 +470,27 @@ export default function AdminBookingsPage() {
               <section
                 key={group.key}
                 aria-labelledby={`booking-day-${group.key}`}
-                className="overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm"
+                className="overflow-hidden rounded-lg border border-teal-200 bg-white shadow-sm"
               >
                 <button
                   type="button"
                   id={`booking-day-${group.key}`}
                   aria-expanded={dayOpen}
                   onClick={() => toggleDay(group.key)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-ocean-50/80 sm:px-5"
+                  className="flex w-full items-center justify-between gap-2 bg-gradient-to-r from-teal-50 to-cyan-50 px-2.5 py-2 text-left transition hover:from-teal-100/80 hover:to-cyan-100/80 sm:px-3"
                 >
-                  <span className="font-display text-base font-bold text-ocean-900 sm:text-lg">
+                  <span className="font-display text-sm font-extrabold text-teal-900 sm:text-base">
                     {group.label}
                   </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800">
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <span className="rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold text-white">
                       {group.rows.length}{" "}
                       {group.rows.length === 1 ? "booking" : "bookings"}
                     </span>
                     <span
                       aria-hidden
-                      className={`flex h-8 w-8 items-center justify-center rounded-full bg-ocean-50 text-lg font-bold text-ocean-800 transition ${
-                        dayOpen ? "rotate-180 bg-cyan-100" : ""
+                      className={`flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-teal-800 shadow-sm transition ${
+                        dayOpen ? "rotate-180 bg-teal-100" : ""
                       }`}
                     >
                       ⌄
@@ -494,7 +499,7 @@ export default function AdminBookingsPage() {
                 </button>
 
                 {dayOpen ? (
-                  <ul className="space-y-3 border-t border-ocean-100 bg-sand/30 px-3 py-3 sm:px-4 sm:py-4">
+                  <ul className="space-y-1.5 border-t border-teal-100 bg-slate-50/80 px-1.5 py-1.5 sm:px-2">
                     {group.rows.map((r) => {
                       const people = Number(r.people ?? r.payUnits ?? 0);
                       const fullPaise = Number(r.fullAmountPaise ?? r.amountPaise ?? 0);
@@ -505,88 +510,92 @@ export default function AdminBookingsPage() {
 
                       return (
                         <li key={r.id}>
-                          <details className="group overflow-hidden rounded-xl border border-ocean-100 bg-white text-sm shadow-sm open:border-cyan-300 open:shadow-md">
-                            <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 p-4 marker:hidden transition hover:bg-ocean-50/70 sm:p-3">
+                          <details className="group overflow-hidden rounded-lg border border-ocean-100 bg-white text-xs shadow-sm open:border-amber-300 open:ring-1 open:ring-amber-100">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 marker:hidden transition hover:bg-amber-50/50 sm:px-3">
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                  <p className="truncate font-display text-base font-bold text-ocean-900 sm:text-lg">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                  <p className="truncate font-display text-sm font-extrabold text-amber-800 sm:text-[15px]">
                                     {String(r.packageName ?? "—")}
                                   </p>
-                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-emerald-800">
                                     Paid {rupeesFromPaise(r.amountPaise)}
                                   </span>
                                 </div>
-                                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ocean-700 sm:text-sm">
-                                  <span className="font-medium text-ocean-900">
+                                <div className="mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px]">
+                                  <span className="font-semibold text-ocean-900">
                                     {String(r.customerName ?? "Guest")}
                                   </span>
-                                  <span>Trip: {formatTripDate(r.date)}</span>
-                                  <span>Recorded: {formatDateTimeAmPm(r.createdAt)}</span>
+                                  <span className="font-medium text-violet-700">
+                                    Trip: {formatTripDate(r.date)}
+                                  </span>
+                                  <span className="font-medium text-teal-700">
+                                    Recorded: {formatDateTimeAmPm(r.createdAt)}
+                                  </span>
                                 </div>
                               </div>
-                              <div className="flex shrink-0 items-center gap-2">
-                                <span className="hidden text-xs font-semibold text-cyan-800 sm:inline group-open:hidden">
-                                  View details
+                              <div className="flex shrink-0 items-center gap-1">
+                                <span className="hidden text-[10px] font-bold text-amber-800 sm:inline group-open:hidden">
+                                  Details
                                 </span>
-                                <span className="hidden text-xs font-semibold text-cyan-800 group-open:sm:inline">
-                                  Hide details
+                                <span className="hidden text-[10px] font-bold text-amber-800 group-open:sm:inline">
+                                  Hide
                                 </span>
                                 <span
                                   aria-hidden
-                                  className="flex h-9 w-9 items-center justify-center rounded-full bg-ocean-50 text-xl font-bold text-ocean-800 transition group-open:rotate-180 group-open:bg-cyan-100"
+                                  className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-50 text-sm font-bold text-amber-900 transition group-open:rotate-180 group-open:bg-amber-100"
                                 >
                                   ⌄
                                 </span>
                               </div>
                             </summary>
 
-                            <div className="border-t border-ocean-100 px-4 pb-5 sm:px-5">
-                              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                                <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                            <div className="border-t border-amber-100 px-2.5 pb-2.5 pt-2 sm:px-3">
+                              <dl className="grid gap-x-3 gap-y-1.5 sm:grid-cols-2">
+                                <div className="rounded-md bg-sky-50/80 px-2 py-1">
+                                  <dt className="text-[10px] font-extrabold uppercase tracking-wide text-sky-700">
                                     Guest name
                                   </dt>
-                                  <dd className="mt-0.5 font-medium text-ocean-900">
+                                  <dd className="mt-0.5 text-xs font-semibold text-ocean-900">
                                     {String(r.customerName ?? "—")}
                                   </dd>
                                 </div>
-                                <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                <div className="rounded-md bg-sky-50/80 px-2 py-1">
+                                  <dt className="text-[10px] font-extrabold uppercase tracking-wide text-sky-700">
                                     Phone
                                   </dt>
-                                  <dd className="mt-0.5 text-ocean-800">
+                                  <dd className="mt-0.5 text-xs font-medium text-ocean-900">
                                     {String(r.phone ?? "—")}
                                   </dd>
                                 </div>
-                                <div className="sm:col-span-2">
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                <div className="rounded-md bg-violet-50/80 px-2 py-1 sm:col-span-2">
+                                  <dt className="text-[10px] font-extrabold uppercase tracking-wide text-violet-700">
                                     Email
                                   </dt>
-                                  <dd className="mt-0.5 break-all text-ocean-800">
+                                  <dd className="mt-0.5 break-all text-xs font-medium text-ocean-900">
                                     {String(r.email ?? "—")}
                                   </dd>
                                 </div>
-                                <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                <div className="rounded-md bg-violet-50/70 px-2 py-1">
+                                  <dt className="text-[10px] font-extrabold uppercase tracking-wide text-violet-700">
                                     Trip date
                                   </dt>
-                                  <dd className="mt-0.5 text-ocean-800">
+                                  <dd className="mt-0.5 text-xs font-bold text-violet-900">
                                     {formatTripDate(r.date)}
                                   </dd>
                                 </div>
-                                <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                <div className="rounded-md bg-cyan-50/80 px-2 py-1">
+                                  <dt className="text-[10px] font-extrabold uppercase tracking-wide text-cyan-700">
                                     Units / people
                                   </dt>
-                                  <dd className="mt-0.5 text-ocean-800">
+                                  <dd className="mt-0.5 text-xs font-semibold text-ocean-900">
                                     {Number.isFinite(people) && people > 0 ? people : "—"}
                                   </dd>
                                 </div>
-                                <div className="sm:col-span-2">
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                <div className="rounded-md bg-orange-50/70 px-2 py-1 sm:col-span-2">
+                                  <dt className="text-[10px] font-extrabold uppercase tracking-wide text-orange-700">
                                     Pickup / address
                                   </dt>
-                                  <dd className="mt-0.5 text-ocean-800">
+                                  <dd className="mt-0.5 text-xs font-medium text-ocean-900">
                                     {r.pickupLocation != null &&
                                     String(r.pickupLocation).trim()
                                       ? String(r.pickupLocation).trim()
@@ -595,49 +604,49 @@ export default function AdminBookingsPage() {
                                 </div>
                               </dl>
 
-                              <div className="mt-4 rounded-xl bg-ocean-50/80 p-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
+                              <div className="mt-1.5 rounded-md border border-emerald-200 bg-emerald-50/90 px-2 py-1.5">
+                                <p className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-800">
                                   Payment
                                 </p>
-                                <p className="mt-1 text-ocean-800">
-                                  <span className="font-medium">Paid:</span>{" "}
+                                <p className="mt-0.5 text-xs text-emerald-950">
+                                  <span className="font-bold">Paid:</span>{" "}
                                   {rupeesFromPaise(r.amountPaise)}
                                   {fullPaise > paidPaise ? (
                                     <>
                                       {" "}
-                                      <span className="text-ocean-700">
-                                        · Full order {rupeesFromPaise(r.fullAmountPaise)} ·
+                                      <span>
+                                        · Full {rupeesFromPaise(r.fullAmountPaise)} ·
                                         Balance {rupeesFromPaise(r.balancePaise)}
                                       </span>
                                     </>
                                   ) : null}
                                 </p>
-                                <p className="mt-1 text-xs text-ocean-700">
+                                <p className="mt-0.5 text-[10px] text-emerald-900/80">
                                   Mode: {String(r.paymentMode ?? "—")}
                                   {r.razorpayPaymentId ? (
-                                    <> · Payment ID {String(r.razorpayPaymentId)}</>
+                                    <> · Pay {String(r.razorpayPaymentId)}</>
                                   ) : null}
                                   {r.razorpayOrderId ? (
-                                    <> · Order {String(r.razorpayOrderId)}</>
+                                    <> · Ord {String(r.razorpayOrderId)}</>
                                   ) : null}
                                 </p>
                               </div>
 
                               {cartItems.length > 0 ? (
-                                <div className="mt-4 border-t border-ocean-100 pt-3">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-ocean-500">
+                                <div className="mt-1.5 border-t border-ocean-100 pt-1.5">
+                                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-amber-700">
                                     Cart lines
                                   </p>
-                                  <ul className="mt-2 space-y-1.5 text-xs text-ocean-800">
+                                  <ul className="mt-1 space-y-0.5 text-[11px] text-ocean-800">
                                     {cartItems.map((it, idx) => (
                                       <li
                                         key={idx}
-                                        className="flex flex-wrap justify-between gap-2 rounded-lg bg-sand/60 px-2 py-1.5"
+                                        className="flex flex-wrap justify-between gap-1 rounded bg-amber-50/80 px-1.5 py-1"
                                       >
-                                        <span className="font-medium">
+                                        <span className="font-semibold text-amber-900">
                                           {String(it.name ?? "")} × {String(it.quantity ?? "")}
                                         </span>
-                                        <span>
+                                        <span className="font-bold text-emerald-800">
                                           ₹
                                           {Number(it.lineTotal ?? 0).toLocaleString("en-IN")}
                                         </span>
@@ -647,36 +656,36 @@ export default function AdminBookingsPage() {
                                 </div>
                               ) : null}
 
-                              <div className="mt-4 flex flex-wrap gap-2 border-t border-ocean-100 pt-4">
+                              <div className="mt-1.5 flex flex-wrap gap-1.5 border-t border-ocean-100 pt-1.5">
                                 <button
                                   type="button"
                                   disabled={previewLoadingId === r.id}
                                   onClick={() => previewBill(r.id)}
-                                  className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-semibold text-ocean-800 shadow-sm hover:bg-ocean-50 disabled:opacity-50"
+                                  className="rounded-full border border-ocean-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
                                 >
                                   {previewLoadingId === r.id
-                                    ? "Loading bill…"
+                                    ? "Loading…"
                                     : "Preview bill"}
                                 </button>
                                 <button
                                   type="button"
                                   disabled={sendingEmailId === r.id}
                                   onClick={() => sendConfirmationEmail(r.id)}
-                                  className="rounded-full bg-ocean-800 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-ocean-900 disabled:opacity-50"
+                                  className="rounded-full bg-ocean-800 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-ocean-900 disabled:opacity-50"
                                 >
                                   {sendingEmailId === r.id
                                     ? "Sending…"
-                                    : "Send confirmation + bill (email)"}
+                                    : "Email bill"}
                                 </button>
                                 <button
                                   type="button"
                                   disabled={whatsAppLoadingId === r.id}
                                   onClick={() => openWhatsappGuestWithBill(r)}
-                                  className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                                  className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
                                 >
                                   {whatsAppLoadingId === r.id
-                                    ? "Preparing WhatsApp…"
-                                    : "WhatsApp guest + bill link"}
+                                    ? "Preparing…"
+                                    : "WhatsApp guest"}
                                 </button>
                               </div>
                             </div>
