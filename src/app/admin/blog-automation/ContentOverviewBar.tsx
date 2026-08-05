@@ -54,6 +54,13 @@ export function ContentOverviewBar({ overview, loading }: Props) {
 
   const c = overview.counts;
   const g = overview.gscTotals;
+  const totalPages =
+    c.coreStaticPages +
+    c.extraLegalPages +
+    c.servicePages +
+    c.packagePages +
+    c.publishedBlogs +
+    c.guidePages;
 
   return (
     <section className="space-y-2.5 rounded-xl border border-ocean-100 bg-gradient-to-r from-ocean-50/80 to-cyan-50/40 p-3 shadow-sm sm:p-4">
@@ -75,6 +82,11 @@ export function ContentOverviewBar({ overview, loading }: Props) {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <Chip
+          label="Total pages"
+          value={totalPages}
+          hint="Sum of core + legal + services + packages + published blogs + guides"
+        />
         <Chip
           label="Core static"
           value={c.coreStaticPages}
@@ -143,14 +155,28 @@ export function ContentOverviewBar({ overview, loading }: Props) {
       </div>
 
       {overview.notIndexedSample.length > 0 ? (
-        <div className="rounded-lg border border-orange-200 bg-orange-50/50 px-3 py-2">
-          <p className="text-xs font-bold text-orange-950">
-            Focus first — not indexed / pending / awaiting inspection (
-            {overview.notIndexedSample.length} shown)
-          </p>
-          <p className="mt-0.5 text-[11px] text-orange-900/80">
-            INDEXED pages are never listed here. Open GSC Indexing Agent → Inspect
-            queue for pending URLs.
+        <details className="group rounded-lg border border-orange-200 bg-orange-50/50 px-3 py-2">
+          <summary className="cursor-pointer list-none marker:hidden [&::-webkit-details-marker]:hidden">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-orange-950">
+                  Focus first — not indexed / pending / awaiting inspection (
+                  {overview.notIndexedSample.length} shown)
+                </p>
+                <p className="mt-0.5 text-[11px] text-orange-900/80">
+                  Click to expand · INDEXED pages are never listed here
+                </p>
+              </div>
+              <span
+                aria-hidden
+                className="mt-0.5 shrink-0 text-orange-800 transition duration-200 group-open:rotate-180"
+              >
+                ▾
+              </span>
+            </div>
+          </summary>
+          <p className="mt-1.5 text-[11px] text-orange-900/80">
+            Open GSC Indexing Agent → Inspect queue for pending URLs.
           </p>
           <ul className="mt-1.5 max-h-48 space-y-1.5 overflow-y-auto text-xs">
             {overview.notIndexedSample.map((row) => (
@@ -174,7 +200,7 @@ export function ContentOverviewBar({ overview, loading }: Props) {
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       ) : (
         <p className="text-xs text-emerald-800">
           No not-indexed / pending pages in the recent GSC sample

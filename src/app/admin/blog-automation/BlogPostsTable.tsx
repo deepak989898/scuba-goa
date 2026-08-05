@@ -176,6 +176,62 @@ const TH =
   "px-1.5 py-1.5 text-xs font-bold uppercase tracking-wide text-ocean-700 whitespace-nowrap";
 const TD = "px-1.5 py-1.5 align-middle text-sm text-ocean-800";
 
+type SortKey = "views" | "imp" | "clk" | "pos" | "idx";
+type SortDir = "asc" | "desc";
+
+const INDEX_SORT_RANK: Record<
+  BlogGscRow["indexLabel"] | "none",
+  number
+> = {
+  indexed: 0,
+  pending: 1,
+  not_indexed: 2,
+  none: 3,
+};
+
+function SortableTh({
+  label,
+  title,
+  sortKey,
+  activeKey,
+  dir,
+  align = "left",
+  onSort,
+}: {
+  label: string;
+  title?: string;
+  sortKey: SortKey;
+  activeKey: SortKey | null;
+  dir: SortDir;
+  align?: "left" | "right";
+  onSort: (key: SortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  const arrow = active ? (dir === "asc" ? " ↑" : " ↓") : "";
+  return (
+    <th
+      className={`${TH} ${align === "right" ? "text-right" : ""}`}
+      title={title}
+      aria-sort={
+        active ? (dir === "asc" ? "ascending" : "descending") : "none"
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-0.5 rounded px-0.5 py-0.5 font-bold uppercase tracking-wide transition hover:bg-ocean-100 hover:text-ocean-900 ${
+          active ? "text-cyan-800 underline decoration-cyan-400" : "text-ocean-700"
+        } ${align === "right" ? "ml-auto" : ""}`}
+      >
+        {label}
+        <span className="tabular-nums text-[10px]" aria-hidden>
+          {arrow || " ↕"}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 export function BlogPostsTable({
   posts,
   sortedPosts,
@@ -207,6 +263,8 @@ export function BlogPostsTable({
   const liveCount = posts.filter((p) => p.published).length;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [titleQuery, setTitleQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [zoomedImage, setZoomedImage] = useState<{
     src: string;
     alt: string;
@@ -225,13 +283,67 @@ export function BlogPostsTable({
 
   const filteredPosts = useMemo(() => {
     const q = titleQuery.trim().toLowerCase();
-    if (!q) return sortedPosts;
-    const tokens = q.split(/\s+/).filter(Boolean);
-    return sortedPosts.filter((p) => {
-      const hay = `${p.title} ${p.slug} ${p.metaTitle ?? ""}`.toLowerCase();
-      return tokens.every((t) => hay.includes(t));
+    let list = sortedPosts;
+    if (q) {
+      const tokens = q.split(/\s+/).filter(Boolean);
+      list = sortedPosts.filter((p) => {
+        const hay = `${p.title} ${p.slug} ${p.metaTitle ?? ""}`.toLowerCase();
+        return tokens.every((t) => hay.includes(t));
+      });
+    }
+    if (!sortKey) return list;
+
+    const metric = (p: BlogPostFirestore): number => {
+      const gsc = gscForSlug(p.slug, blogGscBySlug);
+      switch (sortKey) {
+        case "views":
+          return viewCountForPost(p, blogTrafficBySlug);
+        case "imp":
+          return gsc?.impressions ?? 0;
+        case "clk":
+          return gsc?.clicks ?? 0;
+        case "pos":
+          // Missing position sorts last in both directions via sentinel.
+          return gsc?.position != null ? gsc.position : Number.POSITIVE_INFINITY;
+        case "idx":
+          return INDEX_SORT_RANK[gsc?.indexLabel ?? "none"];
+        default:
+          return 0;
+      }
+    };
+
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      const av = metric(a);
+      const bv = metric(b);
+      // Keep missing positions at the bottom for Pos column.
+      if (sortKey === "pos") {
+        const aMiss = !Number.isFinite(av);
+        const bMiss = !Number.isFinite(bv);
+        if (aMiss !== bMiss) return aMiss ? 1 : -1;
+      }
+      if (av !== bv) return av < bv ? -1 * mul : 1 * mul;
+      return a.slug.localeCompare(b.slug);
     });
-  }, [sortedPosts, titleQuery]);
+  }, [
+    sortedPosts,
+    titleQuery,
+    sortKey,
+    sortDir,
+    blogGscBySlug,
+    blogTrafficBySlug,
+  ]);
+
+  function handleSort(key: SortKey) {
+    // Only one sort active: switching column replaces the previous sort.
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    // Sensible first click: metrics high→low; position best→worst; indexed first.
+    setSortDir(key === "pos" || key === "idx" ? "asc" : "desc");
+  }
 
   const visibleSlugs = useMemo(
     () => filteredPosts.map((p) => p.slug),
@@ -411,6 +523,25 @@ export function BlogPostsTable({
         ) : (
           <p className="mt-2 text-xs text-ocean-500">
             Select blogs with checkboxes to publish, unpublish, or delete together.
+            Click <strong>Views / Imp / Clk / Pos / Idx</strong> to sort (one at a
+            time; click again to reverse)
+            {sortKey ? (
+              <>
+                {" · "}
+                <strong className="text-cyan-800">
+                  {sortKey.toUpperCase()} {sortDir === "asc" ? "↑" : "↓"}
+                </strong>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => setSortKey(null)}
+                  className="font-semibold text-ocean-800 underline"
+                >
+                  Clear sort
+                </button>
+              </>
+            ) : null}
+            .
           </p>
         )}
       </div>
@@ -456,19 +587,50 @@ export function BlogPostsTable({
                 <th className={TH}>St</th>
                 <th className={TH}>Sched</th>
                 <th className={TH}>Pub</th>
-                <th className={`${TH} text-right`}>Views</th>
-                <th className={`${TH} text-right`} title="GSC impressions">
-                  Imp
-                </th>
-                <th className={`${TH} text-right`} title="GSC clicks">
-                  Clk
-                </th>
-                <th className={`${TH} text-right`} title="GSC average position">
-                  Pos
-                </th>
-                <th className={TH} title="GSC index status">
-                  Idx
-                </th>
+                <SortableTh
+                  label="Views"
+                  title="Sort by views (click again to reverse)"
+                  sortKey="views"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  align="right"
+                  onSort={handleSort}
+                />
+                <SortableTh
+                  label="Imp"
+                  title="Sort by GSC impressions"
+                  sortKey="imp"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  align="right"
+                  onSort={handleSort}
+                />
+                <SortableTh
+                  label="Clk"
+                  title="Sort by GSC clicks"
+                  sortKey="clk"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  align="right"
+                  onSort={handleSort}
+                />
+                <SortableTh
+                  label="Pos"
+                  title="Sort by GSC average position (best first on first click)"
+                  sortKey="pos"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  align="right"
+                  onSort={handleSort}
+                />
+                <SortableTh
+                  label="Idx"
+                  title="Sort by index status (Indexed → Pending → Not indexed)"
+                  sortKey="idx"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={handleSort}
+                />
                 <th className={TH}>Actions</th>
               </tr>
             </thead>
