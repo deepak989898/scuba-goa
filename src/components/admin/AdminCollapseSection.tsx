@@ -9,6 +9,8 @@ type Props = {
   badge?: ReactNode;
   defaultOpen?: boolean;
   className?: string;
+  /** Fires when the section is expanded or collapsed. */
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode;
 };
 
@@ -49,6 +51,7 @@ export function AdminCollapseSection({
   badge,
   defaultOpen = false,
   className = "",
+  onOpenChange,
   children,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
@@ -57,7 +60,11 @@ export function AdminCollapseSection({
     <details
       className={`mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm open:border-cyan-300 open:ring-1 open:ring-cyan-100 ${className}`}
       open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
+      onToggle={(e) => {
+        const next = e.currentTarget.open;
+        setOpen(next);
+        onOpenChange?.(next);
+      }}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 marker:hidden transition hover:bg-ocean-50/80 [&::-webkit-details-marker]:hidden">
         <div className="min-w-0 flex-1">

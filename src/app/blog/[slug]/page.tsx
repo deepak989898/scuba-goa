@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { blogPosts } from "@/data/blog-posts";
 import { BlogContent } from "@/components/BlogContent";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
@@ -36,14 +35,8 @@ export const dynamicParams = true;
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const staticSlugs = blogPosts.map((p) => p.slug);
   const fsSlugs = await listPublishedBlogSlugsServer();
-  const seen = new Set(staticSlugs);
-  const merged = [...staticSlugs];
-  for (const s of fsSlugs) {
-    if (!seen.has(s)) merged.push(s);
-  }
-  return merged.map((slug) => ({ slug }));
+  return fsSlugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

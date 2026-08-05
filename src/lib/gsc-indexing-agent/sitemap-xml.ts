@@ -1,4 +1,3 @@
-import { blogPosts } from "@/data/blog-posts";
 import {
   BLOG_PERMANENT_REDIRECTS,
   SITE_PERMANENT_REDIRECTS,
@@ -88,19 +87,10 @@ export async function buildSegmentEntries(
     return entries;
   }
 
-  // blog + guides
+  // blog + guides (Firestore published blogs only)
   const entries: Entry[] = [];
-  for (const p of blogPosts) {
-    if (redirected.has(`/blog/${p.slug}`)) continue;
-    entries.push({
-      loc: `${base}/blog/${p.slug}`,
-      lastmod: p.updatedAt ?? p.date,
-    });
-  }
-  const staticSlugs = new Set(blogPosts.map((p) => p.slug));
   const fsBlogs = await listPublishedBlogPostsServer();
   for (const p of fsBlogs) {
-    if (staticSlugs.has(p.slug)) continue;
     if (redirected.has(`/blog/${p.slug}`)) continue;
     entries.push({ loc: `${base}/blog/${p.slug}`, lastmod: p.updatedAt });
   }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
-import { blogPosts, HOMEPAGE_PACKAGE_GUIDES } from "@/data/blog-posts";
+import { HOMEPAGE_PACKAGE_GUIDES } from "@/data/blog-posts";
 import { getPublishedBlogPostBySlug } from "@/lib/blog-posts-server";
 import { cmsImageOrPlaceholder, pickCmsImage } from "@/lib/cms-image";
 import { getAllServicesServer } from "@/lib/get-services-server";
@@ -9,6 +9,7 @@ import { serviceDetailImages } from "@/lib/service-images";
 /**
  * Homepage package guides: one article per package type, with that package’s
  * own photo (not the same scuba blog graphics on every card).
+ * Content comes from published Firestore blogs.
  */
 export async function BlogPreview() {
   const services = await getAllServicesServer();
@@ -17,10 +18,9 @@ export async function BlogPreview() {
   const posts = (
     await Promise.all(
       HOMEPAGE_PACKAGE_GUIDES.map(async (guide) => {
-        const staticPost = blogPosts.find((p) => p.slug === guide.slug);
-        if (!staticPost) return null;
-
         const fs = await getPublishedBlogPostBySlug(guide.slug);
+        if (!fs) return null;
+
         const service = bySlug.get(guide.serviceSlug);
         const serviceImage = service
           ? pickCmsImage(...serviceDetailImages(service))
@@ -28,16 +28,14 @@ export async function BlogPreview() {
 
         const imageUrl = cmsImageOrPlaceholder(
           serviceImage,
-          fs?.featuredImageUrl,
-          fs?.ogImageUrl,
-          staticPost.imageUrl,
+          fs.featuredImageUrl,
+          fs.ogImageUrl,
         );
 
         const imageAlt =
           (service ? `${service.title} package in Goa` : "") ||
-          fs?.featuredImageAlt?.trim() ||
-          staticPost.imageAlt ||
-          staticPost.title;
+          fs.featuredImageAlt?.trim() ||
+          fs.title;
 
         const priceFrom =
           typeof service?.priceFrom === "number" && service.priceFrom > 0
@@ -45,7 +43,10 @@ export async function BlogPreview() {
             : null;
 
         return {
-          ...staticPost,
+          slug: fs.slug,
+          title: fs.title,
+          excerpt: fs.excerpt,
+          readTime: fs.readTime,
           imageUrl,
           imageAlt,
           packageLabel: guide.packageLabel,

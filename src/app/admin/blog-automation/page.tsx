@@ -14,7 +14,6 @@ import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-is
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
-import { StaticCodeBlogsPanel } from "@/components/admin/StaticCodeBlogsPanel";
 import type { ContentOverview } from "@/lib/admin-content-overview";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 
@@ -847,14 +846,12 @@ export default function AdminBlogAutomationPage() {
             />
           </div>
 
-          <div className="mt-3">
-            <PendingIndexOptimizerPanel
-              onDone={() => {
-                void loadOverview();
-                void refresh({ silent: true });
-              }}
-            />
-          </div>
+          <PendingIndexOptimizerPanel
+            onDone={() => {
+              void loadOverview();
+              void refresh({ silent: true });
+            }}
+          />
 
           <AdminCollapseSection title="Automation settings" hint={automationHint}>
             <div className="flex flex-wrap items-center gap-3">
@@ -1104,25 +1101,6 @@ export default function AdminBlogAutomationPage() {
               </ul>
             </details>
           </AdminCollapseSection>
-
-          <StaticCodeBlogsPanel
-            adminFetch={adminFetch}
-            onEdit={(post) => {
-              beginEdit(post);
-              window.setTimeout(() => {
-                document
-                  .getElementById(`blog-editor-${post.slug}`)
-                  ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-              }, 150);
-            }}
-            busy={busy}
-            setBusy={setBusy}
-            setErr={setErr}
-            setOkMsg={setOkMsg}
-            onImported={async () => {
-              await refresh();
-            }}
-          />
 
           <div data-blog-editor-panel>
           <BlogPostsTable

@@ -23,7 +23,7 @@ export const maxDuration = 300;
  * - apply { slug, fields }
  * - reinspect { slugs[], immediate? }
  * - auto { slug } — diagnose → AI apply → reinspect (quota-aware)
- * - autoBatch { max? } — up to N pending blogs auto (default 3)
+ * - autoBatch { max?, slugs? } — auto AI-fix up to N pending blogs (or selected slugs)
  */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -109,9 +109,24 @@ export async function POST(req: Request) {
     }
 
     if (action === "autoBatch") {
-      const max = Math.min(5, Math.max(1, Number(body.max) || 3));
-      const { items, inspectionQuota } = await listPendingIndexBlogs(40);
-      const targets = items.slice(0, max);
+      const selectedSlugs = Array.isArray(body.slugs)
+        ? body.slugs
+            .map((s) => String(s).trim())
+            .filter(Boolean)
+            .slice(0, 10)
+        : [];
+      const max = Math.min(
+        10,
+        Math.max(1, Number(body.max) || (selectedSlugs.length ? selectedSlugs.length : 3)),
+      );
+      const { items, inspectionQuota } = await listPendingIndexBlogs(50);
+      const statusBySlug = new Map(
+        items.map((i) => [i.slug, i.indexStatus] as const),
+      );
+      const targetSlugs =
+        selectedSlugs.length > 0
+          ? selectedSlugs.slice(0, max)
+          : items.slice(0, max).map((i) => i.slug);
       const results: Array<{
         slug: string;
         ok: boolean;
@@ -121,20 +136,22 @@ export async function POST(req: Request) {
         indexStatus?: string;
       }> = [];
 
-      for (const item of targets) {
+      for (const slug of targetSlugs) {
         try {
-          const r = await autoOptimizePendingBlog(item.slug);
+          const r = await autoOptimizePendingBlog(slug);
           results.push({
-            slug: item.slug,
+            slug,
             ok: true,
             seoBefore: r.diagnoseBefore.seo.score,
             seoAfter: r.diagnoseAfter.seo.score,
             indexStatus:
-              r.reinspect.inspected[0]?.indexStatus ?? item.indexStatus,
+              r.reinspect.inspected[0]?.indexStatus ??
+              statusBySlug.get(slug) ??
+              "",
           });
         } catch (e) {
           results.push({
-            slug: item.slug,
+            slug,
             ok: false,
             error: e instanceof Error ? e.message : "Failed",
           });
@@ -145,7 +162,9 @@ export async function POST(req: Request) {
         ok: true,
         results,
         inspectionQuota,
-        note: "Auto-batch applies AI content fixes then URL Inspection (status only — not Indexing API).",
+        note: selectedSlugs.length
+          ? "AI-fixed selected blogs (apply + URL Inspection). Cap 10 per run."
+          : "Auto-batch applies AI content fixes then URL Inspection (status only — not Indexing API).",
       });
     }
 

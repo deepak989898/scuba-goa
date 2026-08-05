@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { blogPosts } from "@/data/blog-posts";
 import { SITE_URL } from "@/lib/constants";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
@@ -83,20 +82,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.84,
     });
   }
-  const staticBlogSlugs = new Set(blogPosts.map((p) => p.slug));
-  for (const p of blogPosts) {
-    if (redirectedPaths.has(`/blog/${p.slug}`)) continue;
-    const modified = p.updatedAt ?? p.date;
-    entries.push({
-      url: `${base}/blog/${p.slug}`,
-      lastModified: new Date(modified),
-      changeFrequency: "monthly",
-      priority: 0.75,
-    });
-  }
   const fsBlogs = await listPublishedBlogPostsServer();
   for (const p of fsBlogs) {
-    if (staticBlogSlugs.has(p.slug)) continue;
     if (redirectedPaths.has(`/blog/${p.slug}`)) continue;
     entries.push({
       url: `${base}/blog/${p.slug}`,

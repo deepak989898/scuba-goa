@@ -1,5 +1,4 @@
 import { createHash } from "crypto";
-import { blogPosts } from "@/data/blog-posts";
 import {
   BLOG_PERMANENT_REDIRECTS,
   SITE_PERMANENT_REDIRECTS,
@@ -175,21 +174,8 @@ export async function collectLiveDiscoveredUrls(): Promise<{
     });
   }
 
-  for (const p of blogPosts) {
-    if (redirected.has(`/blog/${p.slug}`)) continue;
-    items.push({
-      path: `/blog/${p.slug}`,
-      pageType: "blog",
-      contentId: p.slug,
-      publishedAt: p.date,
-      contentUpdatedAt: p.updatedAt ?? p.date,
-    });
-  }
-
   const fsBlogs = await listPublishedBlogPostsServer();
-  const staticSlugs = new Set(blogPosts.map((p) => p.slug));
   for (const p of fsBlogs) {
-    if (staticSlugs.has(p.slug)) continue;
     if (redirected.has(`/blog/${p.slug}`)) continue;
     if (!p.published) continue;
     items.push({

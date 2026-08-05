@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import type { RankingImproveFields } from "@/lib/gsc-indexing-agent/ranking-improve";
 import type {
   PendingBlogItem,
@@ -37,13 +38,15 @@ type Props = {
 };
 
 export function PendingIndexOptimizerPanel({ onDone }: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [items, setItems] = useState<PendingBlogItem[]>([]);
   const [quota, setQuota] = useState<{
     used: number;
     daily: number;
     remaining: number;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -62,6 +65,7 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
       );
       setItems(data.items ?? []);
       setQuota(data.inspectionQuota ?? null);
+      setHasLoaded(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load pending blogs");
     } finally {
@@ -69,9 +73,12 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  function handleOpenChange(open: boolean) {
+    setExpanded(open);
+    if (open && !hasLoaded && !loading) {
+      void load();
+    }
+  }
 
   function toggle(slug: string) {
     setSelected((prev) => {
@@ -246,23 +253,86 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
     }
   }
 
+  async function runAiFixSelected(slugs: string[]) {
+    if (!slugs.length) return;
+    const capped = slugs.slice(0, 10);
+    setBusy("aiFixSelected");
+    setErr(null);
+    setMsg(null);
+    try {
+      const data = await adminFetch(
+        "/api/admin/blog-automation/pending-index",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "autoBatch",
+            slugs: capped,
+            max: capped.length,
+          }),
+        },
+      );
+      const results = (data.results ?? []) as Array<{
+        ok: boolean;
+        slug: string;
+        error?: string;
+      }>;
+      const okN = results.filter((r) => r.ok).length;
+      const failN = results.length - okN;
+      setMsg(
+        `AI fix selected: ${okN} ok${failN ? ` · ${failN} failed` : ""}${
+          slugs.length > 10 ? " (first 10 only)" : ""
+        }. ${data.note ?? ""}`,
+      );
+      if (failN) {
+        const failed = results
+          .filter((r) => !r.ok)
+          .map((r) => `${r.slug}: ${r.error ?? "failed"}`)
+          .slice(0, 3)
+          .join(" · ");
+        setErr(failed || "Some selected blogs failed AI fix");
+      }
+      setSelected(new Set());
+      onDone?.();
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "AI fix selected failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const selectedList = [...selected];
+  const collapseHint = hasLoaded
+    ? items.length === 0
+      ? "No pending / not-indexed blogs right now"
+      : `${items.length} need attention · select many → AI fix together`
+    : "SEO score, AI title/meta/FAQ, then URL Inspection — expand when needed";
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50/90 to-orange-50/40 p-3 shadow-sm sm:p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="font-display text-sm font-bold text-ocean-900 sm:text-base">
-            Pending Index Optimizer AI
-          </h2>
-          <p className="mt-0.5 max-w-2xl text-xs text-ocean-700">
-            Pending / not-indexed blogs: SEO score, internal links, title/meta/FAQ
-            AI, schema check, then <strong>URL Inspection</strong> refresh.
-            Google does <strong>not</strong> allow Indexing API for blogs — we
-            optimize crawl signals + re-check status (quota limited).
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
+    <AdminCollapseSection
+      title="Pending Index Optimizer AI"
+      hint={collapseHint}
+      defaultOpen={false}
+      onOpenChange={handleOpenChange}
+      className="border-amber-200 open:border-amber-300 open:ring-amber-100"
+      badge={
+        hasLoaded && items.length > 0 ? (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-amber-900">
+            {items.length}
+          </span>
+        ) : null
+      }
+    >
+      {!expanded ? null : (
+        <>
+      <p className="max-w-2xl text-xs text-ocean-700">
+        Pending / not-indexed blogs: SEO score, internal links, title/meta/FAQ
+        AI, schema check, then <strong>URL Inspection</strong> refresh.
+        Google does <strong>not</strong> allow Indexing API for blogs — we
+        optimize crawl signals + re-check status (quota limited). Select all or
+        multiple rows, then use <strong>AI fix selected</strong>.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => void load()}
@@ -270,6 +340,17 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
             className="rounded-full border border-ocean-200 bg-white px-3 py-1.5 text-xs font-bold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
           >
             Refresh
+          </button>
+          <button
+            type="button"
+            onClick={() => void runAiFixSelected(selectedList)}
+            disabled={!!busy || loading || selectedList.length === 0}
+            className="rounded-full bg-violet-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-violet-800 disabled:opacity-50"
+            title="Apply AI improvements to all selected blogs (up to 10)"
+          >
+            {busy === "aiFixSelected"
+              ? "AI fixing…"
+              : `AI fix selected (${selectedList.length})`}
           </button>
           <button
             type="button"
@@ -287,7 +368,6 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
           >
             Re-inspect selected ({selectedList.length})
           </button>
-        </div>
       </div>
 
       {quota ? (
@@ -334,7 +414,12 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
             >
               Clear
             </button>
-            <span className="text-ocean-500">{items.length} need attention</span>
+            <span className="text-ocean-500">
+              {items.length} need attention
+              {selectedList.length > 0
+                ? ` · ${selectedList.length} selected`
+                : ""}
+            </span>
           </div>
           <table className="min-w-full text-left text-xs">
             <thead className="bg-ocean-50/80 text-[10px] uppercase tracking-wide text-ocean-600">
@@ -526,6 +611,8 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
       {busy ? (
         <p className="mt-2 text-xs font-medium text-amber-800">Working: {busy}…</p>
       ) : null}
-    </section>
+        </>
+      )}
+    </AdminCollapseSection>
   );
 }

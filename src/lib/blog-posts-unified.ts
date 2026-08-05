@@ -1,4 +1,3 @@
-import { blogPosts, getPostBySlug as getStaticPostBySlug } from "@/data/blog-posts";
 import type { BlogPost } from "@/data/blog/post-types";
 import {
   blogFirestoreToBlogPost,
@@ -6,23 +5,10 @@ import {
   listPublishedBlogPostsServer,
 } from "@/lib/blog-posts-server";
 
-/** Static posts + Firestore published posts (Firestore wins on slug collision). */
+/** Published Firestore blogs (source of truth for the public site). */
 export async function getAllBlogPostsMerged(): Promise<BlogPost[]> {
   const fs = await listPublishedBlogPostsServer();
-  const fsMap = new Map(fs.map((p) => [p.slug, blogFirestoreToBlogPost(p)]));
-  const merged: BlogPost[] = [];
-  const seen = new Set<string>();
-
-  for (const [slug, post] of fsMap) {
-    merged.push(post);
-    seen.add(slug);
-  }
-  for (const post of blogPosts) {
-    if (seen.has(post.slug)) continue;
-    merged.push(post);
-    seen.add(post.slug);
-  }
-
+  const merged = fs.map((p) => blogFirestoreToBlogPost(p));
   merged.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
   return merged;
 }
@@ -32,7 +18,7 @@ export async function getBlogPostBySlugMerged(
 ): Promise<BlogPost | undefined> {
   const fs = await getPublishedBlogPostBySlug(slug);
   if (fs) return blogFirestoreToBlogPost(fs);
-  return getStaticPostBySlug(slug);
+  return undefined;
 }
 
 export async function getAllBlogSlugsMerged(): Promise<string[]> {

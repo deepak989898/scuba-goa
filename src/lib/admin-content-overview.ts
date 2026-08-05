@@ -1,7 +1,4 @@
-import { blogPosts as staticCodeBlogs } from "@/data/blog-posts";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
-import { getAdminDb } from "@/lib/firebase-admin";
-import { isFirestoreReadPaused } from "@/lib/firestore-read-pause";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
 import { getAllServicesServer } from "@/lib/get-services-server";
 import {
@@ -98,12 +95,6 @@ export type ContentOverview = {
     extraLegalPages: number;
     servicePages: number;
     packagePages: number;
-    /** Code blogs still served from repo (NOT yet in Firestore). */
-    staticCodeBlogs: number;
-    /** Code blog files in repo (always ~20). */
-    codeBlogsInRepo: number;
-    /** Code blog slugs that already have a Firestore doc (override). */
-    codeBlogsOverridden: number;
     firestoreBlogs: number;
     publishedBlogs: number;
     guidePages: number;
@@ -111,8 +102,6 @@ export type ContentOverview = {
   };
   coreStaticPages: { path: string; label: string }[];
   extraLegalPages: { path: string; label: string }[];
-  /** Code blogs not imported to Firestore yet — still from code. */
-  codeBlogsStillFromCode: { slug: string; title: string }[];
   /** slug → GSC index + position for blog table columns */
   blogGscBySlug: Record<string, BlogGscRow>;
   gscByType: Record<string, PageTypeBucket>;
@@ -332,34 +321,6 @@ export async function buildContentOverview(): Promise<ContentOverview> {
 
   const gscConnected = seoUrls.length > 0;
 
-  // Code blogs: only count those NOT yet overridden by a Firestore doc
-  const firestoreSlugs = new Set(
-    publishedFsBlogs.map((p) => p.slug.trim().toLowerCase()),
-  );
-  if (!isFirestoreReadPaused()) {
-    const db = getAdminDb();
-    if (db) {
-      try {
-        const snap = await db.collection("blogPosts").select("slug").get();
-        for (const doc of snap.docs) {
-          const slug = String(
-            (doc.data() as { slug?: string }).slug ?? doc.id,
-          )
-            .trim()
-            .toLowerCase();
-          if (slug) firestoreSlugs.add(slug);
-        }
-      } catch {
-        /* keep published set */
-      }
-    }
-  }
-
-  const codeBlogsStillFromCode = staticCodeBlogs
-    .filter((p) => !firestoreSlugs.has(p.slug.trim().toLowerCase()))
-    .map((p) => ({ slug: p.slug, title: p.title }));
-  const codeBlogsOverridden = staticCodeBlogs.length - codeBlogsStillFromCode.length;
-
   const blogGscBySlug: Record<string, BlogGscRow> = {};
   for (const u of seoUrls) {
     if (u.pageType !== "blog") continue;
@@ -386,9 +347,6 @@ export async function buildContentOverview(): Promise<ContentOverview> {
       extraLegalPages: EXTRA_LEGAL_PATHS.length,
       servicePages: servicePageCount,
       packagePages: packages.length,
-      staticCodeBlogs: codeBlogsStillFromCode.length,
-      codeBlogsInRepo: staticCodeBlogs.length,
-      codeBlogsOverridden,
       firestoreBlogs: firestoreBlogTotal,
       publishedBlogs: publishedFsBlogs.length,
       guidePages: guides.length,
@@ -402,7 +360,6 @@ export async function buildContentOverview(): Promise<ContentOverview> {
       path,
       label: EXTRA_LEGAL_PAGE_LABELS[path],
     })),
-    codeBlogsStillFromCode,
     blogGscBySlug,
     gscByType,
     gscTotals,
@@ -410,7 +367,7 @@ export async function buildContentOverview(): Promise<ContentOverview> {
     services: serviceOptions,
     gscConnected,
     disclaimer:
-      "GSC status comes from the last inventory/inspection run — not a live Google guarantee. Improve not-indexed pages, then re-inspect in GSC Indexing Agent. Code blogs count = only posts still served from code (not yet in Firestore).",
+      "GSC status comes from the last inventory/inspection run — not a live Google guarantee. Improve not-indexed pages, then re-inspect in GSC Indexing Agent. Public blogs are served from Firestore.",
   };
 }
 

@@ -92,14 +92,9 @@ export function ContentOverviewBar({ overview, loading }: Props) {
         />
         <Chip label="Packages" value={c.packagePages} />
         <Chip
-          label="Code blogs (left)"
-          value={c.staticCodeBlogs}
-          hint={`Repo has ${c.codeBlogsInRepo} code blogs; ${c.codeBlogsOverridden} already overridden in Firestore. This number = still from code only.`}
-        />
-        <Chip
           label="Firestore blogs"
           value={c.publishedBlogs}
-          hint="Published Firestore blog posts (includes imported code blogs)"
+          hint="Published blog posts from Firestore"
         />
         <Chip label="Guides" value={c.guidePages} />
       </div>
@@ -129,42 +124,6 @@ export function ContentOverviewBar({ overview, loading }: Props) {
             </li>
           ))}
         </ul>
-      </details>
-
-      <details className="rounded-lg border border-teal-100 bg-teal-50/40 px-3 py-2 text-xs text-ocean-800">
-        <summary className="cursor-pointer font-bold text-teal-950">
-          Code blogs vs Firestore — samjho ({c.codeBlogsOverridden}/
-          {c.codeBlogsInRepo} override ho chuke)
-        </summary>
-        <p className="mt-1.5 text-ocean-700">
-          Repo me <strong>{c.codeBlogsInRepo}</strong> code blogs hain. Agar
-          same slug Firestore me hai to site <strong>Firestore</strong> se
-          chalati hai (code override). Chip pe sirf woh count aata hai jo{" "}
-          <strong>abhi bhi code se</strong> aate hain.
-        </p>
-        <p className="mt-1 text-ocean-700">
-          Override ho chuke: <strong>{c.codeBlogsOverridden}</strong> · Abhi
-          code se bachi: <strong>{c.staticCodeBlogs}</strong>
-        </p>
-        {c.staticCodeBlogs > 0 ? (
-          <>
-            <p className="mt-2 font-bold text-orange-900">
-              Abhi bhi code se (Firestore me nahi) — import karo:
-            </p>
-            <ul className="mt-1 max-h-36 space-y-1 overflow-y-auto">
-              {(overview.codeBlogsStillFromCode ?? []).map((b) => (
-                <li key={b.slug} className="font-mono text-[11px]">
-                  <span className="text-cyan-800">/blog/{b.slug}</span>
-                  <span className="text-ocean-600"> — {b.title}</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <p className="mt-2 font-semibold text-emerald-800">
-            Sab code blogs Firestore me override ho chuke — chip 0 sahi hai.
-          </p>
-        )}
       </details>
 
       <div className="rounded-lg border border-ocean-100 bg-white/80 px-3 py-2 text-xs text-ocean-800">

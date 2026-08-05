@@ -87,7 +87,7 @@ export async function blogSlugExists(slug: string): Promise<boolean> {
 
 /**
  * True when a slug should not be used for a new published post:
- * static post OR an already-published Firestore doc.
+ * an already-published Firestore doc.
  * Unpublished drafts / redirect stubs do not block (avoids `-6` spam).
  */
 export async function blogSlugBlocksNewPost(slug: string): Promise<boolean> {
