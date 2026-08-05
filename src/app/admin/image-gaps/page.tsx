@@ -132,24 +132,6 @@ export default function AdminImageGapsPage() {
       }
     }
 
-    const about = await getDoc(doc(db, "siteContent", "about"));
-    const aboutData = about.exists()
-      ? (about.data() as Record<string, unknown>)
-      : {};
-    for (const field of ["heroImageUrl", "midImageUrl"] as const) {
-      const st = classify(String(aboutData[field] ?? ""));
-      if (st !== "ok") {
-        gaps.push({
-          area: "About",
-          id: "about",
-          title: field === "heroImageUrl" ? "Hero" : "Mid image",
-          field,
-          status: st,
-          href: "/admin/about",
-        });
-      }
-    }
-
     gaps.sort((a, b) =>
       a.area.localeCompare(b.area) || a.title.localeCompare(b.title),
     );

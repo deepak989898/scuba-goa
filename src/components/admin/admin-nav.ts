@@ -118,7 +118,6 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       { href: "/admin/offers", label: "Offers" },
       { href: "/admin/hero", label: "Hero slides" },
       { href: "/admin/gallery", label: "Gallery" },
-      { href: "/admin/about", label: "About images" },
       { href: "/admin/image-gaps", label: "Image gaps" },
     ],
   },
