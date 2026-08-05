@@ -32,14 +32,34 @@ function Chip({
   );
 }
 
-function gscLine(
-  overview: ContentOverview,
-  key: string,
-  label: string,
-): string {
-  const b = overview.gscByType[key];
-  if (!b || b.total === 0) return `${label}: —`;
-  return `${label}: ${b.indexed} indexed · ${b.notIndexed} not · ${b.pending} pending (${b.total})`;
+function GscTypeLine({
+  overview,
+  keyName,
+  label,
+}: {
+  overview: ContentOverview;
+  keyName: string;
+  label: string;
+}) {
+  const b = overview.gscByType[keyName];
+  if (!b || b.total === 0) {
+    return (
+      <span className="text-ocean-500">
+        <span className="font-semibold text-ocean-800">{label}:</span> —
+      </span>
+    );
+  }
+  return (
+    <span>
+      <span className="font-semibold text-ocean-900">{label}:</span>{" "}
+      <span className="font-bold text-emerald-700">{b.indexed} indexed</span>
+      {" · "}
+      <span className="font-bold text-rose-700">{b.notIndexed} not</span>
+      {" · "}
+      <span className="font-bold text-amber-700">{b.pending} pending</span>
+      <span className="text-ocean-500"> ({b.total})</span>
+    </span>
+  );
 }
 
 export function ContentOverviewBar({ overview, loading }: Props) {
@@ -138,20 +158,44 @@ export function ContentOverviewBar({ overview, loading }: Props) {
         </ul>
       </details>
 
-      <div className="rounded-lg border border-ocean-100 bg-white/80 px-3 py-2 text-xs text-ocean-800">
+      <div className="rounded-lg border border-cyan-200 bg-gradient-to-r from-white to-cyan-50/60 px-3 py-2.5 text-xs text-ocean-800 shadow-sm">
         <p className="font-bold text-ocean-900">
-          GSC tracking: {g.total} URLs ·{" "}
-          <span className="text-emerald-700">{g.indexed} indexed</span> ·{" "}
-          <span className="text-orange-700">{g.notIndexed} not indexed</span> ·{" "}
-          <span className="text-slate-600">{g.pending} pending/unknown</span>
+          GSC tracking:{" "}
+          <span className="tabular-nums text-ocean-800">{g.total} URLs</span>
+          {" · "}
+          <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-extrabold tabular-nums text-emerald-800">
+            {g.indexed} indexed
+          </span>
+          {" · "}
+          <span className="rounded bg-rose-100 px-1.5 py-0.5 font-extrabold tabular-nums text-rose-800">
+            {g.notIndexed} not indexed
+          </span>
+          {" · "}
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 font-extrabold tabular-nums text-amber-900">
+            {g.pending} pending/unknown
+          </span>
         </p>
-        <p className="mt-1 text-ocean-600">
-          {gscLine(overview, "blog", "Blogs")} ·{" "}
-          {gscLine(overview, "service", "Services")} ·{" "}
-          {gscLine(overview, "static", "Static")} ·{" "}
-          {gscLine(overview, "guide", "Guides")}
+        <p className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[11px] leading-relaxed">
+          <GscTypeLine overview={overview} keyName="blog" label="Blogs" />
+          <span className="text-ocean-300" aria-hidden>
+            ·
+          </span>
+          <GscTypeLine overview={overview} keyName="service" label="Services" />
+          <span className="text-ocean-300" aria-hidden>
+            ·
+          </span>
+          <GscTypeLine overview={overview} keyName="static" label="Static" />
+          <span className="text-ocean-300" aria-hidden>
+            ·
+          </span>
+          <GscTypeLine overview={overview} keyName="guide" label="Guides" />
         </p>
-        <p className="mt-1 text-[11px] text-ocean-500">{overview.disclaimer}</p>
+        <p className="mt-1.5 text-[11px] text-ocean-500">{overview.disclaimer}</p>
+        <p className="mt-1 flex flex-wrap gap-2 text-[10px] font-semibold">
+          <span className="text-emerald-700">● Indexed = good</span>
+          <span className="text-rose-700">● Not indexed = fix first</span>
+          <span className="text-amber-700">● Pending = wait / re-inspect</span>
+        </p>
       </div>
 
       {overview.notIndexedSample.length > 0 ? (
