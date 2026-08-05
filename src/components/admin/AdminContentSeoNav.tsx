@@ -12,12 +12,7 @@ const LINKS = [
   {
     href: "/admin/blog-automation",
     label: "Blog posts & schedule",
-    short: "Live blogs",
-  },
-  {
-    href: "/admin/seo-pages",
-    label: "SEO guide pages",
-    short: "Guides",
+    short: "Blogs + guides",
   },
   {
     href: "/admin/gsc-agent",

@@ -32,7 +32,7 @@ export function renderUrlset(entries: Entry[]): string {
 }
 
 export async function buildSegmentEntries(
-  segment: "blog" | "services" | "static",
+  segment: "blog" | "services" | "static" | "guides",
 ): Promise<Entry[]> {
   const base = SITE_URL.replace(/\/$/, "");
   const redirected = new Set(
@@ -87,16 +87,22 @@ export async function buildSegmentEntries(
     return entries;
   }
 
-  // blog + guides (Firestore published blogs only)
+  if (segment === "guides") {
+    const entries: Entry[] = [];
+    entries.push({ loc: `${base}/guides` });
+    const guides = await listPublishedSeoPagesServer();
+    for (const g of guides) {
+      entries.push({ loc: `${base}/guides/${g.slug}`, lastmod: g.updatedAt });
+    }
+    return entries;
+  }
+
+  // blog only (guides moved to /sitemaps/guides.xml)
   const entries: Entry[] = [];
   const fsBlogs = await listPublishedBlogPostsServer();
   for (const p of fsBlogs) {
     if (redirected.has(`/blog/${p.slug}`)) continue;
     entries.push({ loc: `${base}/blog/${p.slug}`, lastmod: p.updatedAt });
-  }
-  const guides = await listPublishedSeoPagesServer();
-  for (const g of guides) {
-    entries.push({ loc: `${base}/guides/${g.slug}`, lastmod: g.updatedAt });
   }
   return entries;
 }

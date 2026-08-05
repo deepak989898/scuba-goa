@@ -50,7 +50,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
     id: "blogs-guides",
     label: "2 · Blogs & guides",
-    hint: "AI create → live blogs → SEO guides — check these together",
+    hint: "AI create → blogs & guides on one screen — check these together",
     priority: true,
     items: [
       {
@@ -63,13 +63,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       {
         href: "/admin/blog-automation",
         label: "Blog posts & schedule",
-        description: "Edit, publish, IST schedule, GMB",
-        highlight: true,
-      },
-      {
-        href: "/admin/seo-pages",
-        label: "SEO guide pages",
-        description: "Landing pages at /guides/…",
+        description: "Blogs + guides, IST schedule, GSC metrics",
         highlight: true,
       },
       {

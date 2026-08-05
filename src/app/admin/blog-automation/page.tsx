@@ -7,6 +7,7 @@ import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
 import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
 import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
+import { GuidesScheduleTable } from "@/app/admin/blog-automation/GuidesScheduleTable";
 import { ContentOverviewBar } from "@/app/admin/blog-automation/ContentOverviewBar";
 import { PendingIndexOptimizerPanel } from "@/app/admin/blog-automation/PendingIndexOptimizerPanel";
 import { BlogDailySchedulePanel } from "@/app/admin/blog-automation/BlogDailySchedulePanel";
@@ -16,6 +17,7 @@ import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
 import type { ContentOverview } from "@/lib/admin-content-overview";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
+import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
 
 type BlogTraffic = { views: number; visitors: number };
 
@@ -54,6 +56,16 @@ export default function AdminBlogAutomationPage() {
     views: 0,
     visitors: 0,
   });
+  const [guidePages, setGuidePages] = useState<SeoPageFirestore[]>([]);
+  const [guideTrafficBySlug, setGuideTrafficBySlug] = useState<
+    Record<string, BlogTraffic>
+  >({});
+  const [guidesIndexTraffic, setGuidesIndexTraffic] = useState<BlogTraffic>({
+    views: 0,
+    visitors: 0,
+  });
+  const [guideTrafficLoading, setGuideTrafficLoading] = useState(true);
+  const [guideTrafficRefreshing, setGuideTrafficRefreshing] = useState(false);
   const [trafficLoading, setTrafficLoading] = useState(true);
   const [trafficRefreshing, setTrafficRefreshing] = useState(false);
   const [editing, setEditing] = useState<BlogPostFirestore | null>(null);
@@ -139,6 +151,25 @@ export default function AdminBlogAutomationPage() {
     [],
   );
 
+  const loadGuideTraffic = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setGuideTrafficLoading(true);
+    try {
+      const data = await adminFetch("/api/admin/guide-traffic");
+      setGuideTrafficBySlug(
+        (data.bySlug ?? {}) as Record<string, BlogTraffic>,
+      );
+      setGuidesIndexTraffic({
+        views: Math.max(0, Math.round(Number(data.index?.views) || 0)),
+        visitors: Math.max(0, Math.round(Number(data.index?.visitors) || 0)),
+      });
+    } catch {
+      setGuideTrafficBySlug({});
+      setGuidesIndexTraffic({ views: 0, visitors: 0 });
+    } finally {
+      setGuideTrafficLoading(false);
+    }
+  }, []);
+
   const loadOverview = useCallback(async () => {
     setOverviewLoading(true);
     try {
@@ -156,13 +187,24 @@ export default function AdminBlogAutomationPage() {
   async function refreshTrafficOnly() {
     setTrafficRefreshing(true);
     try {
-      // Aggregated only — avoid mode=full (scans up to 5k pageViews) unless empty.
       await loadBlogTraffic({ silent: true, posts: postsRef.current });
       setOkMsg("View counts updated (low-read mode).");
     } catch {
       setErr("Could not refresh view counts.");
     } finally {
       setTrafficRefreshing(false);
+    }
+  }
+
+  async function refreshGuideTrafficOnly() {
+    setGuideTrafficRefreshing(true);
+    try {
+      await loadGuideTraffic({ silent: true });
+      setOkMsg("Guide view counts updated.");
+    } catch {
+      setErr("Could not refresh guide views.");
+    } finally {
+      setGuideTrafficRefreshing(false);
     }
   }
 
@@ -175,15 +217,17 @@ export default function AdminBlogAutomationPage() {
     if (!silent) setLoading(true);
     if (!silent) setErr(null);
     try {
-      const [s, q, p] = await Promise.all([
+      const [s, q, p, guidesRes] = await Promise.all([
         adminFetch("/api/admin/blog-automation"),
         adminFetch("/api/admin/blog-queue"),
         adminFetch("/api/admin/blog-posts"),
+        adminFetch("/api/admin/seo-pages").catch(() => ({ pages: [] })),
       ]);
       setSettings(s.settings);
       setQueue(q.items ?? []);
       const loadedPosts = (p.posts ?? []) as BlogPostFirestore[];
       setPosts(loadedPosts);
+      setGuidePages((guidesRes.pages ?? []) as SeoPageFirestore[]);
       // Keep the open editor on the same post with fresh server fields
       setEditing((current) => {
         if (!current) return current;
@@ -192,7 +236,10 @@ export default function AdminBlogAutomationPage() {
       });
       // Traffic every time (cheap). Overview only on full page load — not on
       // every silent save/image refresh (seoUrls read was ~800–2000/load).
-      await loadBlogTraffic({ silent: true, posts: loadedPosts });
+      await Promise.all([
+        loadBlogTraffic({ silent: true, posts: loadedPosts }),
+        loadGuideTraffic({ silent: true }),
+      ]);
       if (!silent) {
         await loadOverview();
       }
@@ -222,7 +269,7 @@ export default function AdminBlogAutomationPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [loadBlogTraffic, loadOverview]);
+  }, [loadBlogTraffic, loadGuideTraffic, loadOverview]);
 
   useEffect(() => {
     void refresh();
@@ -1131,6 +1178,16 @@ export default function AdminBlogAutomationPage() {
             trafficRefreshing={trafficRefreshing}
           />
           </div>
+
+          <GuidesScheduleTable
+            pages={guidePages}
+            guideTrafficBySlug={guideTrafficBySlug}
+            guidesIndexTraffic={guidesIndexTraffic}
+            trafficLoading={guideTrafficLoading}
+            guideGscBySlug={overview?.guideGscBySlug ?? {}}
+            onRefreshTraffic={() => void refreshGuideTrafficOnly()}
+            trafficRefreshing={guideTrafficRefreshing}
+          />
         </>
       )}
     </div>

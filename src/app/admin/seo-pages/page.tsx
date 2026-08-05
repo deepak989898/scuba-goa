@@ -213,6 +213,34 @@ export default function AdminSeoPagesPage() {
     void loadBookingCatalog();
   }, [loadBookingCatalog]);
 
+  useEffect(() => {
+    if (loading || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const editSlug = params.get("edit")?.trim();
+    const wantNew = params.get("new") === "1";
+    if (editSlug) {
+      const match = list.find((p) => p.slug === editSlug);
+      if (match) {
+        setEditing(match);
+        setAddFormOpen(false);
+      }
+      params.delete("edit");
+    }
+    if (wantNew) {
+      setAddFormOpen(true);
+      setEditing(null);
+      params.delete("new");
+    }
+    if (editSlug || wantNew) {
+      const qs = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+      );
+    }
+  }, [loading, list]);
+
   const sortedList = useMemo(() => {
     return [...list].sort((a, b) => {
       const ta = guideTrafficBySlug[a.slug]?.views ?? 0;
@@ -472,6 +500,19 @@ export default function AdminSeoPagesPage() {
   return (
     <div>
       <AdminContentSeoNav />
+      <div className="mb-3 rounded-xl border border-teal-200 bg-teal-50/80 px-3 py-2.5 text-sm text-teal-950">
+        <p className="font-bold">Guides now live under Blog posts &amp; schedule</p>
+        <p className="mt-0.5 text-xs text-teal-900/90">
+          Metrics (views, impressions, clicks, index) are on that screen. This page is for
+          create/edit only — removed from the main admin menu.
+        </p>
+        <Link
+          href="/admin/blog-automation"
+          className="mt-1.5 inline-flex text-xs font-bold text-teal-800 underline"
+        >
+          ← Back to Blog posts &amp; schedule
+        </Link>
+      </div>
       <h1 className="font-display text-base font-bold text-ocean-900">SEO guide pages</h1>
       <p className="mt-2 max-w-3xl text-sm text-ocean-700">
         Create public URLs at{" "}

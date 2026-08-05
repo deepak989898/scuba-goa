@@ -104,6 +104,8 @@ export type ContentOverview = {
   extraLegalPages: { path: string; label: string }[];
   /** slug → GSC index + position for blog table columns */
   blogGscBySlug: Record<string, BlogGscRow>;
+  /** slug → GSC for /guides table columns */
+  guideGscBySlug: Record<string, BlogGscRow>;
   gscByType: Record<string, PageTypeBucket>;
   gscTotals: PageTypeBucket;
   notIndexedSample: NotIndexedPage[];
@@ -322,23 +324,41 @@ export async function buildContentOverview(): Promise<ContentOverview> {
   const gscConnected = seoUrls.length > 0;
 
   const blogGscBySlug: Record<string, BlogGscRow> = {};
+  const guideGscBySlug: Record<string, BlogGscRow> = {};
   for (const u of seoUrls) {
-    if (u.pageType !== "blog") continue;
-    let slug = String(u.contentId || "")
-      .trim()
-      .toLowerCase()
-      .replace(/^\/?blog\//, "");
-    if (!slug) {
-      try {
-        const path = new URL(u.normalizedUrl || u.url).pathname;
-        const m = /^\/blog\/([a-z0-9-]+)\/?$/i.exec(path);
-        if (m) slug = m[1].toLowerCase();
-      } catch {
-        /* skip */
+    if (u.pageType === "blog") {
+      let slug = String(u.contentId || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^\/?blog\//, "");
+      if (!slug) {
+        try {
+          const path = new URL(u.normalizedUrl || u.url).pathname;
+          const m = /^\/blog\/([a-z0-9-]+)\/?$/i.exec(path);
+          if (m) slug = m[1].toLowerCase();
+        } catch {
+          /* skip */
+        }
       }
+      if (slug) blogGscBySlug[slug] = rowFromSeoUrl(u);
+      continue;
     }
-    if (!slug) continue;
-    blogGscBySlug[slug] = rowFromSeoUrl(u);
+    if (u.pageType === "guide") {
+      let slug = String(u.contentId || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^\/?guides\//, "");
+      if (!slug) {
+        try {
+          const path = new URL(u.normalizedUrl || u.url).pathname;
+          const m = /^\/guides\/([a-z0-9-]+)\/?$/i.exec(path);
+          if (m) slug = m[1].toLowerCase();
+        } catch {
+          /* skip */
+        }
+      }
+      if (slug) guideGscBySlug[slug] = rowFromSeoUrl(u);
+    }
   }
 
   return {
@@ -361,13 +381,14 @@ export async function buildContentOverview(): Promise<ContentOverview> {
       label: EXTRA_LEGAL_PAGE_LABELS[path],
     })),
     blogGscBySlug,
+    guideGscBySlug,
     gscByType,
     gscTotals,
     notIndexedSample,
     services: serviceOptions,
     gscConnected,
     disclaimer:
-      "GSC status comes from the last inventory/inspection run — not a live Google guarantee. Improve not-indexed pages, then re-inspect in GSC Indexing Agent. Public blogs are served from Firestore.",
+      "GSC status comes from the last inventory/inspection run — not a live Google guarantee. Improve not-indexed pages, then re-inspect in GSC Indexing Agent. Blogs + guides are in /sitemap.xml; guides also at /sitemaps/guides.xml.",
   };
 }
 

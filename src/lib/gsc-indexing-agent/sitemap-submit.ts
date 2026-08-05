@@ -7,6 +7,7 @@ import { siteId } from "./normalize-url";
 const SITEMAP_PATHS = [
   { id: "root", path: "/sitemap.xml" },
   { id: "blog", path: "/sitemaps/blog.xml" },
+  { id: "guides", path: "/sitemaps/guides.xml" },
   { id: "services", path: "/sitemaps/services.xml" },
   { id: "static", path: "/sitemaps/static.xml" },
 ];
