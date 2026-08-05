@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import type { RankingImproveFields } from "@/lib/gsc-indexing-agent/ranking-improve";
@@ -40,7 +40,9 @@ type Props = {
 export function PendingIndexOptimizerPanel({ onDone }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [includeAiFixed, setIncludeAiFixed] = useState(false);
   const [items, setItems] = useState<PendingBlogItem[]>([]);
+  const [hiddenAiFixedCount, setHiddenAiFixedCount] = useState(0);
   const [quota, setQuota] = useState<{
     used: number;
     daily: number;
@@ -48,6 +50,7 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -61,17 +64,24 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
     try {
       const data = await adminFetch(
         "/api/admin/blog-automation/pending-index",
-        { method: "POST", body: JSON.stringify({ action: "list" }) },
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "list",
+            includeAiFixed,
+          }),
+        },
       );
       setItems(data.items ?? []);
       setQuota(data.inspectionQuota ?? null);
+      setHiddenAiFixedCount(Number(data.hiddenAiFixedCount) || 0);
       setHasLoaded(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load pending blogs");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [includeAiFixed]);
 
   function handleOpenChange(open: boolean) {
     setExpanded(open);
@@ -79,6 +89,13 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
       void load();
     }
   }
+
+  useEffect(() => {
+    if (!expanded) return;
+    void load();
+    // Reload when includeAiFixed toggles while panel is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only when filter changes
+  }, [includeAiFixed]);
 
   function toggle(slug: string) {
     setSelected((prev) => {
@@ -178,22 +195,43 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
 
   async function runReinspect(slugs: string[]) {
     if (!slugs.length) return;
+    const budget = Math.min(slugs.length, quota?.remaining ?? 0, 50);
+    if (budget <= 0) {
+      setErr(
+        "Aaj ka inspection quota khatam. Kal (IST midnight ke baad) remaining blogs inspect karo.",
+      );
+      return;
+    }
     setBusy("reinspect");
     setErr(null);
+    setMsg(null);
+    let inspected = 0;
     try {
-      const data = await adminFetch(
-        "/api/admin/blog-automation/pending-index",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            action: "reinspect",
-            slugs,
-            immediate: true,
-          }),
-        },
-      );
+      const targets = slugs.slice(0, budget);
+      for (let i = 0; i < targets.length; i += 3) {
+        const chunk = targets.slice(i, i + 3);
+        setProgress(
+          `Inspect ${i + 1}–${Math.min(i + 3, targets.length)}/${targets.length}`,
+        );
+        const data = await adminFetch(
+          "/api/admin/blog-automation/pending-index",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              action: "reinspect",
+              slugs: chunk,
+              immediate: true,
+            }),
+          },
+        );
+        inspected += data.inspected?.length ?? chunk.length;
+      }
       setMsg(
-        `Queued ${data.queued?.length ?? 0} · inspected ${data.inspected?.length ?? 0}. ${data.note ?? ""}`,
+        `Inspected ~${inspected} URLs. ${
+          slugs.length > budget
+            ? `Quota limit — ${slugs.length - budget} remaining kal inspect karo.`
+            : ""
+        }`,
       );
       onDone?.();
       await load();
@@ -201,6 +239,7 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
       setErr(e instanceof Error ? e.message : "Re-inspect failed");
     } finally {
       setBusy(null);
+      setProgress(null);
     }
   }
 
@@ -212,12 +251,16 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
         "/api/admin/blog-automation/pending-index",
         {
           method: "POST",
-          body: JSON.stringify({ action: "auto", slug }),
+          body: JSON.stringify({
+            action: "aiFix",
+            slug,
+            inspect: (quota?.remaining ?? 0) > 0,
+          }),
         },
       );
       setDiagnose(data.diagnoseAfter);
       setMsg(
-        `Auto done for ${slug}: SEO ${data.diagnoseBefore.seo.score} → ${data.diagnoseAfter.seo.score}. Index status refreshed via URL Inspection.`,
+        `Auto done for ${slug}: SEO ${data.diagnoseBefore.seo.score} → ${data.diagnoseAfter.seo.score}. Applied + published/updated.`,
       );
       onDone?.();
       await load();
@@ -229,75 +272,86 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
   }
 
   async function runAutoBatch() {
-    setBusy("autoBatch");
-    setErr(null);
-    try {
-      const data = await adminFetch(
-        "/api/admin/blog-automation/pending-index",
-        {
-          method: "POST",
-          body: JSON.stringify({ action: "autoBatch", max: 3 }),
-        },
-      );
-      const okN = (data.results ?? []).filter((r: { ok: boolean }) => r.ok)
-        .length;
-      setMsg(
-        `Auto-batch finished: ${okN}/${(data.results ?? []).length} blogs. ${data.note ?? ""}`,
-      );
-      onDone?.();
-      await load();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Auto-batch failed");
-    } finally {
-      setBusy(null);
-    }
+    const top = items.slice(0, 3).map((i) => i.slug);
+    await runAiFixSelected(top);
   }
 
   async function runAiFixSelected(slugs: string[]) {
     if (!slugs.length) return;
-    const capped = slugs.slice(0, 10);
+    // One-by-one avoids gateway 504 (bulk OpenAI+inspect times out).
     setBusy("aiFixSelected");
     setErr(null);
     setMsg(null);
+    let okN = 0;
+    let failN = 0;
+    const failures: string[] = [];
     try {
-      const data = await adminFetch(
-        "/api/admin/blog-automation/pending-index",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            action: "autoBatch",
-            slugs: capped,
-            max: capped.length,
-          }),
-        },
-      );
-      const results = (data.results ?? []) as Array<{
-        ok: boolean;
-        slug: string;
-        error?: string;
-      }>;
-      const okN = results.filter((r) => r.ok).length;
-      const failN = results.length - okN;
-      setMsg(
-        `AI fix selected: ${okN} ok${failN ? ` · ${failN} failed` : ""}${
-          slugs.length > 10 ? " (first 10 only)" : ""
-        }. ${data.note ?? ""}`,
-      );
-      if (failN) {
-        const failed = results
-          .filter((r) => !r.ok)
-          .map((r) => `${r.slug}: ${r.error ?? "failed"}`)
-          .slice(0, 3)
-          .join(" · ");
-        setErr(failed || "Some selected blogs failed AI fix");
+      for (let i = 0; i < slugs.length; i++) {
+        const slug = slugs[i]!;
+        setProgress(`AI fix + apply ${i + 1}/${slugs.length}: ${slug}`);
+        try {
+          await adminFetch("/api/admin/blog-automation/pending-index", {
+            method: "POST",
+            body: JSON.stringify({
+              action: "aiFix",
+              slug,
+              inspect: false,
+            }),
+          });
+          okN += 1;
+          setSelected((prev) => {
+            const next = new Set(prev);
+            next.delete(slug);
+            return next;
+          });
+        } catch (e) {
+          failN += 1;
+          failures.push(
+            `${slug}: ${e instanceof Error ? e.message : "failed"}`,
+          );
+        }
       }
-      setSelected(new Set());
+
+      const inspectBudget = Math.min(quota?.remaining ?? 0, okN, 20);
+      if (inspectBudget > 0) {
+        const toInspect = slugs.slice(0, inspectBudget);
+        for (let i = 0; i < toInspect.length; i += 3) {
+          const chunk = toInspect.slice(i, i + 3);
+          setProgress(
+            `Inspect ${i + 1}–${Math.min(i + 3, toInspect.length)}/${toInspect.length} (quota)`,
+          );
+          try {
+            await adminFetch("/api/admin/blog-automation/pending-index", {
+              method: "POST",
+              body: JSON.stringify({
+                action: "reinspect",
+                slugs: chunk,
+                immediate: true,
+              }),
+            });
+          } catch {
+            /* AI apply already saved */
+          }
+        }
+      }
+
+      setMsg(
+        `AI fix done: ${okN} applied/published${failN ? ` · ${failN} failed` : ""}. ` +
+          (inspectBudget > 0
+            ? `Inspected up to ${inspectBudget} (today’s quota). `
+            : "No inspect quota left today — AI fixes still saved. ") +
+          "Fixed blogs leave this list; remaining wait for tomorrow’s quota.",
+      );
+      if (failures.length) {
+        setErr(failures.slice(0, 3).join(" · "));
+      }
       onDone?.();
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "AI fix selected failed");
     } finally {
       setBusy(null);
+      setProgress(null);
     }
   }
 
@@ -326,12 +380,20 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
       {!expanded ? null : (
         <>
       <p className="max-w-2xl text-xs text-ocean-700">
-        Pending / not-indexed blogs: SEO score, internal links, title/meta/FAQ
-        AI, schema check, then <strong>URL Inspection</strong> refresh.
-        Google does <strong>not</strong> allow Indexing API for blogs — we
-        optimize crawl signals + re-check status (quota limited). Select all or
-        multiple rows, then use <strong>AI fix selected</strong>.
+        Pending / not-indexed blogs: AI title/meta/FAQ fix → <strong>apply + publish/update</strong>{" "}
+        automatically, then URL Inspection (status only). Google blogs ke liye
+        Indexing API allow nahi karta. <strong>1 din me max ~50 inspect</strong> —
+        isliye 150 blogs ko 3 din me batches me karo (50 + 50 + 50).
       </p>
+      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-2 text-[11px] text-amber-950">
+        <p className="font-bold">Inspection way (Hindi)</p>
+        <p className="mt-0.5">
+          Aaj 50 inspect/fix karo → ye list se hat jayenge (AI applied). Kal
+          wapas aao → next 50. Agle din remaining. Quota har din IST midnight pe
+          refresh hota hai. AI fix bina inspect ke bhi save ho jata hai; inspect
+          sirf Google status check ke liye hai.
+        </p>
+      </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
           <button
             type="button"
@@ -346,7 +408,7 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
             onClick={() => void runAiFixSelected(selectedList)}
             disabled={!!busy || loading || selectedList.length === 0}
             className="rounded-full bg-violet-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-violet-800 disabled:opacity-50"
-            title="Apply AI improvements to all selected blogs (up to 10)"
+            title="AI fix one-by-one (no 504). Applies + publishes, then inspects within quota."
           >
             {busy === "aiFixSelected"
               ? "AI fixing…"
@@ -377,6 +439,32 @@ export function PendingIndexOptimizerPanel({ onDone }: Props) {
             {quota.used}/{quota.daily}
           </strong>{" "}
           used · {quota.remaining} left
+          {hiddenAiFixedCount > 0 ? (
+            <>
+              {" · "}
+              <span className="text-violet-800">
+                {hiddenAiFixedCount} AI-fixed hidden
+              </span>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ocean-700">
+        <input
+          type="checkbox"
+          checked={includeAiFixed}
+          disabled={!!busy || loading}
+          onChange={(e) => {
+            setIncludeAiFixed(e.target.checked);
+          }}
+        />
+        Show AI-fixed still pending Google index
+      </label>
+
+      {progress ? (
+        <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-900">
+          {progress}
         </p>
       ) : null}
 

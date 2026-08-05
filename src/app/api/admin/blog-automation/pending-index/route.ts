@@ -3,7 +3,7 @@ import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import type { RankingImproveFields } from "@/lib/gsc-indexing-agent/ranking-improve";
 import {
   applyPendingBlogOptimize,
-  autoOptimizePendingBlog,
+  aiFixPendingBlog,
   diagnosePendingBlog,
   listPendingIndexBlogs,
   requestIndexRecheck,
@@ -17,13 +17,14 @@ export const maxDuration = 300;
  * Pending Index Optimizer AI
  *
  * POST actions:
- * - list
+ * - list { includeAiFixed? }
  * - diagnose { slug }
  * - suggest { slug }
  * - apply { slug, fields }
- * - reinspect { slugs[], immediate? }
- * - auto { slug } — diagnose → AI apply → reinspect (quota-aware)
- * - autoBatch { max?, slugs? } — auto AI-fix up to N pending blogs (or selected slugs)
+ * - reinspect { slugs[], immediate? } — max 5 immediate (avoid 504)
+ * - auto { slug, inspect? } — AI apply (+ optional inspect)
+ * - aiFix { slug, inspect? } — same as auto (explicit name)
+ * - autoBatch { max?, slugs?, inspect? } — small server batch (prefer client 1-by-1)
  */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -38,6 +39,8 @@ export async function POST(req: Request) {
     fields?: RankingImproveFields;
     immediate?: boolean;
     max?: number;
+    inspect?: boolean;
+    includeAiFixed?: boolean;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -49,7 +52,9 @@ export async function POST(req: Request) {
 
   try {
     if (action === "list") {
-      const result = await listPendingIndexBlogs(50);
+      const result = await listPendingIndexBlogs(50, {
+        includeAiFixed: body.includeAiFixed === true,
+      });
       return NextResponse.json({ ok: true, ...result });
     }
 
@@ -92,19 +97,23 @@ export async function POST(req: Request) {
       if (!slugs.length) {
         return NextResponse.json({ error: "slugs required" }, { status: 400 });
       }
-      const result = await requestIndexRecheck(slugs.slice(0, 15), {
+      // Keep small to avoid gateway 504 timeouts.
+      const capped = slugs.slice(0, 5);
+      const result = await requestIndexRecheck(capped, {
         immediate: body.immediate !== false,
-        maxImmediate: Math.min(8, slugs.length),
+        maxImmediate: Math.min(5, capped.length),
       });
       return NextResponse.json({ ok: true, ...result });
     }
 
-    if (action === "auto") {
+    if (action === "auto" || action === "aiFix") {
       const slug = String(body.slug ?? "").trim();
       if (!slug) {
         return NextResponse.json({ error: "slug required" }, { status: 400 });
       }
-      const result = await autoOptimizePendingBlog(slug);
+      const result = await aiFixPendingBlog(slug, {
+        inspect: body.inspect === true,
+      });
       return NextResponse.json({ ok: true, ...result });
     }
 
@@ -113,13 +122,15 @@ export async function POST(req: Request) {
         ? body.slugs
             .map((s) => String(s).trim())
             .filter(Boolean)
-            .slice(0, 10)
+            .slice(0, 3)
         : [];
       const max = Math.min(
-        10,
+        3,
         Math.max(1, Number(body.max) || (selectedSlugs.length ? selectedSlugs.length : 3)),
       );
-      const { items, inspectionQuota } = await listPendingIndexBlogs(50);
+      const { items, inspectionQuota } = await listPendingIndexBlogs(50, {
+        includeAiFixed: true,
+      });
       const statusBySlug = new Map(
         items.map((i) => [i.slug, i.indexStatus] as const),
       );
@@ -138,14 +149,16 @@ export async function POST(req: Request) {
 
       for (const slug of targetSlugs) {
         try {
-          const r = await autoOptimizePendingBlog(slug);
+          const r = await aiFixPendingBlog(slug, {
+            inspect: body.inspect === true,
+          });
           results.push({
             slug,
             ok: true,
             seoBefore: r.diagnoseBefore.seo.score,
             seoAfter: r.diagnoseAfter.seo.score,
             indexStatus:
-              r.reinspect.inspected[0]?.indexStatus ??
+              r.reinspect?.inspected[0]?.indexStatus ??
               statusBySlug.get(slug) ??
               "",
           });
@@ -162,16 +175,14 @@ export async function POST(req: Request) {
         ok: true,
         results,
         inspectionQuota,
-        note: selectedSlugs.length
-          ? "AI-fixed selected blogs (apply + URL Inspection). Cap 10 per run."
-          : "Auto-batch applies AI content fixes then URL Inspection (status only — not Indexing API).",
+        note: "AI fix applied + published/updated. Inspect separately within daily quota to avoid 504.",
       });
     }
 
     return NextResponse.json(
       {
         error:
-          'action must be list|diagnose|suggest|apply|reinspect|auto|autoBatch',
+          "action must be list|diagnose|suggest|apply|reinspect|auto|aiFix|autoBatch",
       },
       { status: 400 },
     );

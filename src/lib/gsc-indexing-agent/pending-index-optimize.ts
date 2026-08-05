@@ -269,9 +269,13 @@ function buildSeoScore(input: {
 }
 
 /** List blogs needing index attention (pending + not indexed). */
-export async function listPendingIndexBlogs(limit = 40): Promise<{
+export async function listPendingIndexBlogs(
+  limit = 40,
+  options?: { includeAiFixed?: boolean },
+): Promise<{
   items: PendingBlogItem[];
   inspectionQuota: { used: number; daily: number; remaining: number };
+  hiddenAiFixedCount: number;
 }> {
   const settings = await getSeoSettings();
   const day = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -288,9 +292,15 @@ export async function listPendingIndexBlogs(limit = 40): Promise<{
   );
 
   const items: PendingBlogItem[] = [];
+  let hiddenAiFixedCount = 0;
   for (const u of blogs) {
     const label = blogGscIndexLabel(u.indexStatus);
     if (label === "indexed") continue;
+    // After AI fix+apply, hide from default queue so admin can work the next batch.
+    if (!options?.includeAiFixed && u.autoFixStatus === "applied") {
+      hiddenAiFixedCount += 1;
+      continue;
+    }
     const { why, improveHint } = explainIndexStatus(
       u.indexStatus,
       u.coverageState ?? null,
@@ -333,6 +343,7 @@ export async function listPendingIndexBlogs(limit = 40): Promise<{
       daily: settings.inspectionDailyQuota,
       remaining,
     },
+    hiddenAiFixedCount,
   };
 }
 
@@ -557,24 +568,95 @@ export async function requestIndexRecheck(
  * Full auto pass for one pending blog: diagnose → AI suggest → apply → reinspect queue.
  * Use sparingly (OpenAI + GSC quota).
  */
-export async function autoOptimizePendingBlog(slug: string): Promise<{
+export async function autoOptimizePendingBlog(
+  slug: string,
+  options?: { inspect?: boolean },
+): Promise<{
   diagnoseBefore: PendingDiagnoseResult;
   diagnoseAfter: PendingDiagnoseResult;
   improve: RankingImproveMeta;
-  reinspect: Awaited<ReturnType<typeof requestIndexRecheck>>;
+  reinspect: Awaited<ReturnType<typeof requestIndexRecheck>> | null;
+  published: boolean;
+}> {
+  return aiFixPendingBlog(slug, { inspect: options?.inspect !== false });
+}
+
+/**
+ * AI fix + save/update live blog (keeps published). Optional URL Inspection.
+ * Prefer inspect:false for bulk runs — then inspect separately within daily quota.
+ */
+export async function aiFixPendingBlog(
+  slug: string,
+  options?: { inspect?: boolean },
+): Promise<{
+  diagnoseBefore: PendingDiagnoseResult;
+  diagnoseAfter: PendingDiagnoseResult;
+  improve: RankingImproveMeta;
+  reinspect: Awaited<ReturnType<typeof requestIndexRecheck>> | null;
+  published: boolean;
 }> {
   const diagnoseBefore = await diagnosePendingBlog(slug);
   const suggested = await suggestBlogRankingUpdate(slug);
   const applied = await applyBlogRankingUpdate(slug, suggested.fields);
+
+  // Ensure the updated post stays live on the site.
+  const db = getAdminDb();
+  if (!db) throw new Error("Server not configured");
+  const ref = db.collection("blogPosts").doc(slug);
+  const snap = await ref.get();
+  const post = snap.exists
+    ? parseBlogPostFromFirestore(slug, snap.data() as Record<string, unknown>, {
+        requirePublished: false,
+      })
+    : null;
+  const now = new Date().toISOString();
+  if (post && !post.published) {
+    await ref.set(
+      {
+        published: true,
+        publishedAt: post.publishedAt || now,
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+  } else if (post) {
+    await ref.set({ updatedAt: now }, { merge: true });
+  }
+
+  const record = await resolveBlogRecord(slug);
+  if (record) {
+    await upsertSeoUrl({
+      ...record,
+      autoFixStatus: "applied",
+      contentUpdatedAt: now,
+      lastActionAt: now,
+      updatedAt: now,
+    });
+  }
+
   const diagnoseAfter = await diagnosePendingBlog(slug);
-  const reinspect = await requestIndexRecheck([slug], {
-    immediate: true,
-    maxImmediate: 1,
-  });
+  let reinspect: Awaited<ReturnType<typeof requestIndexRecheck>> | null = null;
+  if (options?.inspect !== false) {
+    const settings = await getSeoSettings();
+    const day = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata",
+    });
+    const used =
+      settings.inspectionsQuotaDate === day ? settings.inspectionsUsedToday : 0;
+    const remaining = Math.max(0, settings.inspectionDailyQuota - used);
+    if (remaining > 0) {
+      reinspect = await requestIndexRecheck([slug], {
+        immediate: true,
+        maxImmediate: 1,
+      });
+    }
+  }
+
   return {
     diagnoseBefore,
     diagnoseAfter,
     improve: applied.improve,
     reinspect,
+    published: true,
   };
 }

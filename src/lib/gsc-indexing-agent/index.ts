@@ -38,6 +38,7 @@ export {
   applyPendingBlogOptimize,
   requestIndexRecheck,
   autoOptimizePendingBlog,
+  aiFixPendingBlog,
 } from "./pending-index-optimize";
 export {
   getOverviewStats,
