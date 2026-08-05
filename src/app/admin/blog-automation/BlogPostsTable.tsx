@@ -206,6 +206,7 @@ export function BlogPostsTable({
   const scheduledCount = posts.filter((p) => isBlogScheduled(p)).length;
   const liveCount = posts.filter((p) => p.published).length;
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [titleQuery, setTitleQuery] = useState("");
   const [zoomedImage, setZoomedImage] = useState<{
     src: string;
     alt: string;
@@ -222,9 +223,19 @@ export function BlogPostsTable({
     [posts],
   );
 
+  const filteredPosts = useMemo(() => {
+    const q = titleQuery.trim().toLowerCase();
+    if (!q) return sortedPosts;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return sortedPosts.filter((p) => {
+      const hay = `${p.title} ${p.slug} ${p.metaTitle ?? ""}`.toLowerCase();
+      return tokens.every((t) => hay.includes(t));
+    });
+  }, [sortedPosts, titleQuery]);
+
   const visibleSlugs = useMemo(
-    () => sortedPosts.map((p) => p.slug),
-    [sortedPosts],
+    () => filteredPosts.map((p) => p.slug),
+    [filteredPosts],
   );
   const allVisibleSelected =
     visibleSlugs.length > 0 && visibleSlugs.every((s) => selected.has(s));
@@ -286,8 +297,11 @@ export function BlogPostsTable({
     <section className="mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
       <div className="border-b border-ocean-100 px-3 py-4">
         <h2 className="font-display text-lg font-bold text-ocean-900">
-          All blogs ({sortedPosts.length}
-          {serviceFilter ? ` of ${posts.length}` : ` · ${posts.length} total`})
+          All blogs ({filteredPosts.length}
+          {titleQuery.trim() || serviceFilter
+            ? ` of ${sortedPosts.length}`
+            : ` · ${posts.length} total`}
+          )
         </h2>
         <p className="mt-1 text-sm text-ocean-600">
           {liveCount} live · {scheduledCount} scheduled · review and edit before
@@ -297,6 +311,17 @@ export function BlogPostsTable({
             : `${blogIndexTraffic.views.toLocaleString("en-IN")} views · ${blogIndexTraffic.visitors.toLocaleString("en-IN")} visitors`}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          <label className="flex min-w-[12rem] flex-1 items-center gap-1.5 text-xs font-semibold text-ocean-800 sm:max-w-sm">
+            <span className="sr-only">Search blogs by title</span>
+            <input
+              type="search"
+              value={titleQuery}
+              onChange={(e) => setTitleQuery(e.target.value)}
+              placeholder="Search by title or slug…"
+              className="w-full rounded-lg border border-ocean-200 bg-white px-2.5 py-1.5 text-xs font-medium text-ocean-900 placeholder:text-ocean-400"
+              aria-label="Search blogs by title or slug"
+            />
+          </label>
           {onServiceFilterChange ? (
             <label className="flex items-center gap-1.5 text-xs font-semibold text-ocean-800">
               <span className="whitespace-nowrap">Service</span>
@@ -328,7 +353,23 @@ export function BlogPostsTable({
               {trafficLoading || trafficRefreshing ? "Refreshing…" : "Refresh view counts"}
             </button>
           ) : null}
+          {titleQuery.trim() ? (
+            <button
+              type="button"
+              onClick={() => setTitleQuery("")}
+              className="rounded-full border border-ocean-200 px-3 py-1 text-xs font-semibold text-ocean-700 hover:bg-ocean-50"
+            >
+              Clear search
+            </button>
+          ) : null}
         </div>
+        {titleQuery.trim() ? (
+          <p className="mt-1.5 text-xs font-medium text-ocean-700">
+            {filteredPosts.length === 0
+              ? "No blogs match this title/slug."
+              : `${filteredPosts.length} related blog${filteredPosts.length === 1 ? "" : "s"} found — review duplicates here.`}
+          </p>
+        ) : null}
         {selected.size > 0 ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2.5">
             <span className="text-xs font-semibold text-cyan-950 sm:text-sm">
@@ -432,7 +473,7 @@ export function BlogPostsTable({
               </tr>
             </thead>
             <tbody>
-              {sortedPosts.map((p) => {
+              {filteredPosts.map((p) => {
                 const gsc = gscForSlug(p.slug, blogGscBySlug);
                 return (
                 <Fragment key={p.slug}>
