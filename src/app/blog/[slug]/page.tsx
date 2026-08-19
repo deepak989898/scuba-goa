@@ -4,7 +4,6 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { BlogContent } from "@/components/BlogContent";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
-import { BlogTableOfContents } from "@/components/BlogTableOfContents";
 import { BlogTrustBlock } from "@/components/BlogTrustBlock";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
@@ -19,7 +18,6 @@ import {
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { relatedServicesForContent } from "@/lib/related-services-for-content";
-import { extractBlogToc } from "@/lib/blog-seo/headings";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
@@ -226,7 +224,6 @@ export default async function BlogPostPage({ params }: Props) {
     focusServiceSlug,
     4,
   );
-  const toc = extractBlogToc(p.content);
   const offerListLd = packageOfferCatalogJsonLd(catalog.packages, pageUrl, {
     fallbackImageUrl: featuredImage,
   });
@@ -272,7 +269,7 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       ) : null}
-      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-4 lg:px-6">
+      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-5 xl:grid-cols-[minmax(0,1fr)_28rem] lg:px-6">
         <div className="min-w-0">
           <nav
             className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-xs text-ocean-700"
@@ -307,12 +304,14 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
 
           {featuredImage ? (
-            <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100">
+            <figure
+              className="mt-1.5 flex items-center justify-center rounded-lg border border-ocean-100 bg-gradient-to-b from-slate-50/90 to-white p-2 sm:p-2.5"
+            >
               <CmsRemoteImage
                 src={featuredImage}
                 alt={featuredImageAlt}
                 showFull
-                className="block h-auto w-full"
+                className="block h-auto max-h-[200px] w-auto max-w-full object-contain sm:max-h-[240px] md:max-h-[260px] lg:max-h-[280px]"
                 priority
               />
             </figure>
@@ -342,9 +341,7 @@ export default async function BlogPostPage({ params }: Props) {
             {p.excerpt}
           </p>
 
-          <BlogTableOfContents items={toc} />
-
-          <div className="prose prose-ocean mt-2 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">
+          <div className="mt-2 max-w-none">
             <BlogContent content={p.content} />
           </div>
 
@@ -509,11 +506,10 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         </div>
 
-        <aside className="hidden min-w-0 lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-4">
+        <aside className="hidden min-w-0 lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:w-full lg:overflow-y-auto lg:overscroll-contain lg:pb-4">
           <RelatedServicesSidebar
             services={relatedServices}
             showScarcity={false}
-            compact
           />
         </aside>
       </div>
