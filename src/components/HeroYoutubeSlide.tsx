@@ -26,6 +26,7 @@ export function HeroYoutubeSlide({
   ambientMusicSrc,
   useAmbientMusic,
   heroSoundEnabled,
+  mobileFitMedia = false,
 }: {
   videoId: string;
   posterSrc: string;
@@ -35,6 +36,7 @@ export function HeroYoutubeSlide({
   ambientMusicSrc?: string;
   useAmbientMusic?: boolean;
   heroSoundEnabled: boolean;
+  mobileFitMedia?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -230,6 +232,13 @@ export function HeroYoutubeSlide({
     shouldLoop,
   ]);
 
+  const posterObjectClass = mobileFitMedia
+    ? "object-contain object-top sm:object-cover sm:object-center"
+    : "object-cover object-center";
+  const iframeScaleClass = mobileFitMedia
+    ? "[&_iframe]:scale-100"
+    : "[&_iframe]:scale-[1.15]";
+
   return (
     <div className="absolute inset-0 overflow-hidden">
       {posterSrc.trim() ? (
@@ -240,14 +249,14 @@ export function HeroYoutubeSlide({
             fill
             priority
             quality={65}
-            className="object-cover object-center"
+            className={posterObjectClass}
             sizes="100vw"
           />
         </div>
       ) : null}
       <div
         ref={hostRef}
-        className="absolute inset-0 z-[1] [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:min-h-full [&_iframe]:w-full [&_iframe]:min-w-full [&_iframe]:scale-[1.15]"
+        className={`absolute inset-0 z-[1] [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:min-h-full [&_iframe]:w-full [&_iframe]:min-w-full ${iframeScaleClass}`}
       />
       {useAmbientMusic && effectiveAmbientSrc ? (
         <audio

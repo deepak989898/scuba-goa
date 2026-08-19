@@ -24,6 +24,8 @@ export function HeroSlideBackground({
   onVideoEnded,
   shouldLoopWhenSingleSlide,
   heroSoundEnabled,
+  mobileFitMedia = false,
+  onNativeVideoMetrics,
 }: {
   slide: HeroSlide;
   slideKey: string;
@@ -31,6 +33,9 @@ export function HeroSlideBackground({
   shouldLoopWhenSingleSlide: boolean;
   /** User toggle: when false, hero video (and site music) stay muted. */
   heroSoundEnabled: boolean;
+  /** Mobile: hero height matches video aspect — avoid letterbox gap below media. */
+  mobileFitMedia?: boolean;
+  onNativeVideoMetrics?: (width: number, height: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -125,6 +130,9 @@ export function HeroSlideBackground({
   ]);
 
   const posterSrc = videoPosterSrc || heroMediaSafe(slide.src);
+  const mediaObjectClass = mobileFitMedia
+    ? "object-contain object-top sm:object-cover sm:object-center"
+    : "object-cover object-center";
 
   // Poster first for LCP; empty src → solid ocean (never booking-header flash).
   const poster = posterSrc ? (
@@ -134,7 +142,7 @@ export function HeroSlideBackground({
       fill
       priority
       quality={65}
-      className="object-cover object-center"
+      className={mediaObjectClass}
       sizes="100vw"
     />
   ) : (
@@ -156,6 +164,7 @@ export function HeroSlideBackground({
         ambientMusicSrc={ambientSrc}
         useAmbientMusic={slide.useAmbientMusic === true}
         heroSoundEnabled={heroSoundEnabled}
+        mobileFitMedia={mobileFitMedia}
       />
     );
   }
@@ -170,7 +179,7 @@ export function HeroSlideBackground({
       <video
         ref={videoRef}
         key={slideKey}
-        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ${
+        className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${mediaObjectClass} ${
           videoReady ? "opacity-100" : "opacity-0"
         }`}
         poster={videoPosterSrc}
@@ -180,6 +189,16 @@ export function HeroSlideBackground({
         playsInline
         preload="metadata"
         loop={shouldLoopWhenSingleSlide}
+        onLoadedMetadata={(e) => {
+          const v = e.currentTarget;
+          if (
+            onNativeVideoMetrics &&
+            v.videoWidth > 0 &&
+            v.videoHeight > 0
+          ) {
+            onNativeVideoMetrics(v.videoWidth, v.videoHeight);
+          }
+        }}
         onLoadedData={() => setVideoReady(true)}
         onPlaying={() => setVideoReady(true)}
         onEnded={shouldLoopWhenSingleSlide ? undefined : onVideoEnded}
