@@ -807,9 +807,9 @@ export default function AdminAnalyticsPage() {
             ? `${String((e as { code?: string }).code)}: ${String((e as { message?: string }).message ?? e)}`
             : String(e);
         if (isInitial) {
-        setLoadError(msg);
-        setRows([]);
-        setSessions([]);
+          setLoadError(msg);
+          setRows([]);
+          setSessions([]);
         }
       } finally {
         if (!cancelled && isInitial) setLoading(false);
@@ -1281,7 +1281,7 @@ export default function AdminAnalyticsPage() {
               </p>
             </div>
             <div className="rounded-xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
                 Humans today
               </p>
               <p className="mt-1 font-display text-base font-bold text-ocean-900">
@@ -1309,15 +1309,15 @@ export default function AdminAnalyticsPage() {
                   tab.
                 </p>
               ) : null}
-              </div>
+            </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
                 Suspected today
               </p>
               <p className="mt-1 font-display text-base font-bold text-amber-950">
                 {analytics.todaySuspected}
-                </p>
-              </div>
+              </p>
+            </div>
             <div className="rounded-xl border border-ocean-200 bg-ocean-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-ocean-700">
                 Page views (filtered)
@@ -1327,8 +1327,8 @@ export default function AdminAnalyticsPage() {
               </p>
               <p className="mt-1 text-xs text-ocean-600">
                 High-confidence Google organic: {analytics.googleHighConfidence}
-                </p>
-              </div>
+              </p>
+            </div>
           </div>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1346,7 +1346,7 @@ export default function AdminAnalyticsPage() {
                   ["suspected", "Suspected"],
                   ["bot", "Bots"],
                   ["all", "All"],
-                    ] as const
+                ] as const
               ).map(([value, label]) => (
                 <button
                   key={value}
@@ -1407,13 +1407,13 @@ export default function AdminAnalyticsPage() {
                           aria-hidden
                         >
                           ›
-                      </span>
+                        </span>
                         <div>
                           <p className="font-semibold text-ocean-900">
                             {day.label}
                           </p>
                           <p className="text-xs text-ocean-500">{day.date}</p>
-                    </div>
+                        </div>
                       </div>
                       <div className="shrink-0 text-right text-sm">
                         <p className="font-semibold text-ocean-900">
@@ -1428,8 +1428,8 @@ export default function AdminAnalyticsPage() {
                           <p className="text-[10px] text-ocean-500">
                             {day.totalBots} bot{day.totalBots === 1 ? "" : "s"}{" "}
                             on this day
-                      </p>
-                    ) : null}
+                          </p>
+                        ) : null}
                         {visitorFilter === "bot" &&
                         day.totalVisitors > day.totalBots ? (
                           <p className="text-[10px] text-ocean-500">
@@ -1438,9 +1438,9 @@ export default function AdminAnalyticsPage() {
                               ? ""
                               : "s"}{" "}
                             on this day
-                      </p>
-                    ) : null}
-          </div>
+                          </p>
+                        ) : null}
+                      </div>
                     </button>
 
                     {isOpen ? (
@@ -1458,8 +1458,8 @@ export default function AdminAnalyticsPage() {
                             <ul className="max-h-[36rem] space-y-2 overflow-y-auto">
                               {day.visitors.map((v) => (
                                 <li key={v.sessionId}>
-                      <button
-                        type="button"
+                                  <button
+                                    type="button"
                                     onClick={() =>
                                       setSelectedSessionId(v.sessionId)
                                     }
@@ -1470,17 +1470,17 @@ export default function AdminAnalyticsPage() {
                                     }`}
                                   >
                                     <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="flex flex-wrap items-center gap-1.5">
+                                      <div className="flex flex-wrap items-center gap-1.5">
                                         {v.isOnline ? (
                                           <span className="rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                                Online
-                              </span>
-                            ) : null}
+                                            Online
+                                          </span>
+                                        ) : null}
                                         {v.isReturningVisitor ? (
                                           <span className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950">
                                             Returning · visit #
                                             {v.visitorVisitCount || "?"}
-                            </span>
+                                          </span>
                                         ) : v.visitorVisitCount === 1 ? (
                                           <span className="rounded-md border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-900">
                                             New visitor
@@ -1514,12 +1514,12 @@ export default function AdminAnalyticsPage() {
                                             {v.trafficLabel}
                                           </span>
                                         ) : null}
-                          </div>
+                                      </div>
                                       <span className="rounded-md bg-cyan-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                         {formatDurationMs(v.totalDurationMs)}{" "}
                                         on site
                                       </span>
-                        </div>
+                                    </div>
 
                                     <div className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
                                       <p className="text-slate-700">
@@ -1566,15 +1566,15 @@ export default function AdminAnalyticsPage() {
                                         <span className="truncate">
                                           {v.deviceLine}
                                         </span>
-                          </p>
-                        ) : null}
+                                      </p>
+                                    ) : null}
 
                                     {v.trafficDetail &&
                                     v.trafficDetail !== v.trafficLabel ? (
                                       <p className="mt-0.5 text-xs text-slate-600">
                                         Source detail: {v.trafficDetail}
                                       </p>
-                        ) : null}
+                                    ) : null}
 
                                     <p className="mt-1.5 text-xs text-slate-700">
                                       <span className="font-medium text-indigo-800">
@@ -1622,17 +1622,17 @@ export default function AdminAnalyticsPage() {
                                         </span>
                                       </p>
                                     </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
 
                             <div className="rounded-xl border border-cyan-200 bg-gradient-to-br from-white via-cyan-50/50 to-teal-50/40 p-3">
                               {!selectedVisitor ? (
                                 <p className="text-sm text-slate-600">
                                   Select a visitor to see page-by-page time.
-                    </p>
-                  ) : (
+                                </p>
+                              ) : (
                                 <>
                                   <h3 className="font-semibold text-teal-950">
                                     Visit details
@@ -1649,7 +1649,7 @@ export default function AdminAnalyticsPage() {
                                         ) : (
                                           <span className="font-sans text-rose-700">
                                             Not recorded
-                            </span>
+                                          </span>
                                         )}
                                       </dd>
                                     </div>
@@ -1687,15 +1687,15 @@ export default function AdminAnalyticsPage() {
                                         {selectedVisitor.geoLine ? (
                                           <span className="rounded-md border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-teal-950">
                                             {selectedVisitor.geoLine}
-                            </span>
+                                          </span>
                                         ) : (
                                           <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-800">
                                             Unavailable (fills on next visit
                                             with geo)
-                              </span>
+                                          </span>
                                         )}
                                       </dd>
-                          </div>
+                                    </div>
                                     <div className="flex gap-2">
                                       <dt className="w-28 shrink-0 font-semibold text-violet-800">
                                         Device
@@ -1708,7 +1708,7 @@ export default function AdminAnalyticsPage() {
                                             )}`}
                                           >
                                             {selectedVisitor.deviceLine}
-                              </span>
+                                          </span>
                                         ) : (
                                           <span className="text-slate-500">
                                             Not recorded
@@ -1720,8 +1720,8 @@ export default function AdminAnalyticsPage() {
                                             title={selectedVisitor.uaSnippet}
                                           >
                                             UA: {selectedVisitor.uaSnippet}
-                            </p>
-                          ) : null}
+                                          </p>
+                                        ) : null}
                                       </dd>
                                     </div>
                                     <div className="flex gap-2">
@@ -1736,7 +1736,7 @@ export default function AdminAnalyticsPage() {
                                               Returning · visit #
                                               {selectedVisitor.visitorVisitCount}{" "}
                                               (lifetime)
-                            </span>
+                                            </span>
                                           ) : (
                                             <span className="rounded-md border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">
                                               New visitor · first visit
@@ -1828,8 +1828,8 @@ export default function AdminAnalyticsPage() {
                                           {p.label && p.label !== p.path ? (
                                             <p className="text-slate-700">
                                               {p.label}
-                            </p>
-                          ) : null}
+                                            </p>
+                                          ) : null}
                                           <p className="mt-0.5 text-slate-600">
                                             Time on page:{" "}
                                             <span className="font-semibold text-cyan-800">
@@ -1848,10 +1848,10 @@ export default function AdminAnalyticsPage() {
                                               ? ` · opened ${p.views}×`
                                               : ""}
                                           </p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
 
                                   <h4 className="mt-4 text-sm font-semibold text-ocean-900">
                                     Activity timeline
@@ -1872,8 +1872,8 @@ export default function AdminAnalyticsPage() {
                                       visit yet. Open the site in a new tab,
                                       click menu/buttons, then refresh — clicks
                                       appear here within a few seconds.
-              </p>
-            ) : (
+                                    </p>
+                                  ) : (
                                     <ul className="mt-2 max-h-64 space-y-1.5 overflow-y-auto text-xs">
                                       {selectedTimeline.map((r) => {
                                         const kind =
@@ -1901,30 +1901,30 @@ export default function AdminAnalyticsPage() {
                                                 ? "Opened page"
                                                 : r.eventType;
                                         return (
-                  <li
-                    key={r.id}
+                                          <li
+                                            key={r.id}
                                             className="rounded-lg border border-ocean-50 bg-white px-2 py-1.5"
                                           >
                                             <div className="flex flex-wrap items-center gap-1.5">
                                               <span className="text-ocean-600">
                                                 {formatMsIst(r.atMs)}
-                      </span>
+                                              </span>
                                               <span
                                                 className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${kindClass}`}
                                               >
                                                 {kindLabel}
-                      </span>
-                      {r.durationMs ? (
+                                              </span>
+                                              {r.durationMs ? (
                                                 <span className="text-ocean-600">
                                                   {formatDurationMs(r.durationMs)}
-                        </span>
-                      ) : null}
-                    </div>
+                                                </span>
+                                              ) : null}
+                                            </div>
                                             {r.path ? (
                                               <p className="mt-0.5 truncate font-mono text-ocean-800">
                                                 {r.path}
-                      </p>
-                    ) : null}
+                                              </p>
+                                            ) : null}
                                             {r.eventType === "click" ? (
                                               <p className="mt-0.5 text-ocean-700">
                                                 {r.clickLabel
@@ -1936,16 +1936,16 @@ export default function AdminAnalyticsPage() {
                                                 {r.clickHref
                                                   ? ` → ${r.clickHref}`
                                                   : ""}
-                      </p>
-                    ) : null}
-                  </li>
+                                              </p>
+                                            ) : null}
+                                          </li>
                                         );
                                       })}
-              </ul>
+                                    </ul>
                                   )}
                                 </>
-            )}
-          </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

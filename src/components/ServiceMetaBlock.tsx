@@ -8,10 +8,13 @@ export function ServiceMetaBlock({
   s,
   variant = "default",
   showScarcity = true,
+  /** Homepage service cards: +1px text on mobile only */
+  homeMobile = false,
 }: {
   s: ServiceItem;
   variant?: Variant;
   showScarcity?: boolean;
+  homeMobile?: boolean;
 }) {
   const { slotsLeft, bookedToday, fromSubServices } =
     getAggregatedServiceSlots(s);
@@ -30,7 +33,9 @@ export function ServiceMetaBlock({
           title={inc}
           className={
             variant === "cardGrid"
-              ? "min-w-0 max-w-[min(100%,8.75rem)] shrink-0 truncate rounded-full bg-ocean-50 px-1.5 py-0.5 text-left text-[10px] text-ocean-800 sm:max-w-[min(100%,11rem)] sm:px-2 sm:text-xs"
+              ? homeMobile
+                ? "min-w-0 max-w-[min(100%,8.75rem)] shrink-0 truncate rounded-full bg-ocean-50 px-1.5 py-0.5 text-left text-[11px] text-ocean-800 sm:max-w-[min(100%,11rem)] sm:px-2 sm:text-xs"
+                : "min-w-0 max-w-[min(100%,8.75rem)] shrink-0 truncate rounded-full bg-ocean-50 px-1.5 py-0.5 text-left text-[10px] text-ocean-800 sm:max-w-[min(100%,11rem)] sm:px-2 sm:text-xs"
               : "rounded-full bg-ocean-50 px-1.5 py-0.5 text-[10px] text-ocean-800 sm:px-2 sm:text-xs"
           }
         >
@@ -45,7 +50,9 @@ export function ServiceMetaBlock({
       <p
         className={
           variant === "cardGrid"
-            ? "truncate text-[10px] font-medium leading-tight text-ocean-700 sm:text-xs"
+            ? homeMobile
+              ? "truncate text-[11px] font-medium leading-tight text-ocean-700 sm:text-xs"
+              : "truncate text-[10px] font-medium leading-tight text-ocean-700 sm:text-xs"
             : "text-xs font-medium text-ocean-700"
         }
       >
@@ -54,7 +61,9 @@ export function ServiceMetaBlock({
       <p
         className={
           variant === "cardGrid"
-            ? "text-[10px] font-medium leading-tight text-amber-700 sm:text-xs"
+            ? homeMobile
+              ? "text-[11px] font-medium leading-tight text-amber-700 sm:text-xs"
+              : "text-[10px] font-medium leading-tight text-amber-700 sm:text-xs"
             : "text-xs font-medium text-amber-700"
         }
       >
@@ -71,7 +80,9 @@ export function ServiceMetaBlock({
         <div
           className={
             variant === "cardGrid"
-              ? "mt-0.5 text-[9px] font-medium leading-tight text-ocean-700 sm:text-xs"
+              ? homeMobile
+                ? "mt-0.5 text-[10px] font-medium leading-tight text-ocean-700 sm:text-xs"
+                : "mt-0.5 text-[9px] font-medium leading-tight text-ocean-700 sm:text-xs"
               : "flex flex-col gap-0.5 text-[10px] font-medium text-ocean-700 sm:text-xs"
           }
         >
