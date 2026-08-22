@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
 import { BlogContent } from "@/components/BlogContent";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
-
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import { parseBookingOption } from "@/lib/booking-selection";
@@ -21,204 +19,96 @@ import {
   getRelatedSeoGuides,
 } from "@/lib/seo-pages-server";
 
-type Props = {
-  params: Promise<{ slug: string }>;
-};
+type Props = { params: Promise<{ slug: string }> };
 
 export const dynamic = "force-dynamic";
 
 function absAssetUrl(url: string): string {
-  const value = url.trim();
-
-  if (!value) return "";
-
-  if (
-    value.startsWith("http://") ||
-    value.startsWith("https://")
-  ) {
-    return value;
-  }
-
+  const t = url.trim();
+  if (!t) return "";
+  if (t.startsWith("http://") || t.startsWith("https://")) return t;
   const base = SITE_URL.replace(/\/$/, "");
-
-  return `${base}${value.startsWith("/") ? value : `/${value}`}`;
+  return `${base}${t.startsWith("/") ? t : `/${t}`}`;
 }
 
-function focusSlugFromBookingOption(
-  bookingOption: string,
-): string | undefined {
+function focusSlugFromBookingOption(bookingOption: string): string | undefined {
   const parsed = parseBookingOption(bookingOption.trim());
-
   if (!parsed) return undefined;
-
-  if (
-    parsed.kind === "service" ||
-    parsed.kind === "serviceSub"
-  ) {
-    return parsed.slug;
-  }
-
+  if (parsed.kind === "service" || parsed.kind === "serviceSub") return parsed.slug;
   return undefined;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Metadata                                                                   */
-/* -------------------------------------------------------------------------- */
-
-export async function generateMetadata({
-  params,
-}: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-
   const page = await getPublishedSeoPageBySlug(slug);
-
-  if (!page) {
-    return {
-      title: "Guide",
-      robots: {
-        index: false,
-        follow: false,
-      },
-    };
-  }
+  if (!page) return { title: "Guide", robots: { index: false, follow: false } };
 
   const base = SITE_URL.replace(/\/$/, "");
-
   const canonical = `${base}/guides/${page.slug}`;
-
   const title =
     page.metaTitle.trim() ||
     `${page.headline} | ${SITE_NAME}`;
-
-  const description = page.metaDescription
-    .trim()
-    .slice(0, 320);
-
-  const ogImage = absAssetUrl(page.ogImageUrl);
+  const desc = page.metaDescription.trim().slice(0, 320);
+  const og = absAssetUrl(page.ogImageUrl);
 
   return {
     title,
-    description,
-
-    keywords:
-      page.keywords.length > 0
-        ? page.keywords
-        : undefined,
-
-    alternates: {
-      canonical,
-    },
-
+    description: desc,
+    keywords: page.keywords.length ? page.keywords : undefined,
+    alternates: { canonical },
     openGraph: {
-      title:
-        page.metaTitle.trim() ||
-        page.headline,
-
-      description: description.slice(0, 200),
-
+      title: page.metaTitle.trim() || page.headline,
+      description: desc.slice(0, 200),
       type: "article",
-
       url: canonical,
-
       siteName: SITE_NAME,
-
-      ...(ogImage
+      ...(og
         ? {
             images: [
               {
-                url: ogImage,
+                url: og,
                 alt: page.headline,
               },
             ],
           }
         : {}),
     },
-
     twitter: {
-      card: ogImage
-        ? "summary_large_image"
-        : "summary",
-
-      title:
-        page.metaTitle.trim() ||
-        page.headline,
-
-      description: description.slice(0, 200),
-
-      ...(ogImage
-        ? {
-            images: [ogImage],
-          }
-        : {}),
+      card: og ? "summary_large_image" : "summary",
+      title: page.metaTitle.trim() || page.headline,
+      description: desc.slice(0, 200),
+      ...(og ? { images: [og] } : {}),
     },
-
-    robots: {
-      index: true,
-      follow: true,
-    },
+    robots: { index: true, follow: true },
   };
 }
-
-/* -------------------------------------------------------------------------- */
-/* WebPage JSON-LD                                                            */
-/* -------------------------------------------------------------------------- */
 
 function webPageJsonLd(page: {
   headline: string;
   metaDescription: string;
   slug: string;
   ogImageUrl: string;
-  updatedAt: string;
 }) {
   const base = SITE_URL.replace(/\/$/, "");
-
   const url = `${base}/guides/${page.slug}`;
-
   return {
     "@context": "https://schema.org",
-
     "@type": "WebPage",
-
     name: page.headline,
-
     description: page.metaDescription,
-
     url,
-
-    dateModified: page.updatedAt,
-
-    isPartOf: {
-      "@type": "WebSite",
-      name: SITE_NAME,
-      url: `${base}/`,
-    },
-
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: `${base}/` },
     ...(page.ogImageUrl.trim()
-      ? {
-          primaryImageOfPage: {
-            "@type": "ImageObject",
-            url: absAssetUrl(page.ogImageUrl),
-          },
-        }
+      ? { primaryImageOfPage: { "@type": "ImageObject", url: absAssetUrl(page.ogImageUrl) } }
       : {}),
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* Breadcrumb JSON-LD                                                         */
-/* -------------------------------------------------------------------------- */
-
-function breadcrumbJsonLd(page: {
-  headline: string;
-  slug: string;
-}) {
+function breadcrumbJsonLd(page: { headline: string; slug: string }) {
   const base = SITE_URL.replace(/\/$/, "");
-
   return {
     "@context": "https://schema.org",
-
     "@type": "BreadcrumbList",
-
     itemListElement: [
       {
         "@type": "ListItem",
@@ -226,14 +116,12 @@ function breadcrumbJsonLd(page: {
         name: "Home",
         item: `${base}/`,
       },
-
       {
         "@type": "ListItem",
         position: 2,
         name: "Guides",
         item: `${base}/guides`,
       },
-
       {
         "@type": "ListItem",
         position: 3,
@@ -244,51 +132,29 @@ function breadcrumbJsonLd(page: {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* FAQ JSON-LD                                                                */
-/* -------------------------------------------------------------------------- */
-
 function faqJsonLd(
-  faqs: {
-    question: string;
-    answer: string;
-  }[],
+  faqs: { question: string; answer: string }[],
   pageUrl: string,
 ) {
   return {
     "@context": "https://schema.org",
-
     "@type": "FAQPage",
-
-    mainEntity: faqs.map((faq) => ({
+    mainEntity: faqs.map((f) => ({
       "@type": "Question",
-
-      name: faq.question,
-
+      name: f.question,
       acceptedAnswer: {
         "@type": "Answer",
-        text: faq.answer,
+        text: f.answer,
       },
     })),
-
     url: pageUrl,
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* Page                                                                       */
-/* -------------------------------------------------------------------------- */
-
-export default async function SeoGuidePage({
-  params,
-}: Props) {
+export default async function SeoGuidePage({ params }: Props) {
   const { slug } = await params;
-
   const page = await getPublishedSeoPageBySlug(slug);
-
-  if (!page) {
-    notFound();
-  }
+  if (!page) notFound();
 
   const [catalog, related] = await Promise.all([
     buildBlogCatalogContext(),
@@ -296,824 +162,280 @@ export default async function SeoGuidePage({
   ]);
 
   const bookHref = buildHeroBookingHref(
-    page.bookingOption.trim()
-      ? page.bookingOption
-      : undefined,
+    page.bookingOption.trim() ? page.bookingOption : undefined,
   );
-
-  const heroSrc =
-    page.heroImageUrl.trim() ||
-    page.ogImageUrl.trim();
-
-  const focusServiceSlug =
-    focusSlugFromBookingOption(
-      page.bookingOption,
-    );
-
-  const relatedServices =
-    relatedServicesForContent(
-      catalog.services,
-      {
-        title: page.headline,
-        keywords: page.keywords,
-      },
-      focusServiceSlug,
-    );
-
+  const heroSrc = page.heroImageUrl.trim() || page.ogImageUrl.trim();
+  const focusServiceSlug = focusSlugFromBookingOption(page.bookingOption);
+  const relatedServices = relatedServicesForContent(
+    catalog.services,
+    { title: page.headline, keywords: page.keywords },
+    focusServiceSlug,
+  );
   const faqs = buildGuideFaqs({
     headline: page.headline,
     metaDescription: page.metaDescription,
     keywords: page.keywords,
   });
-
-  const pageUrl =
-    `${SITE_URL.replace(/\/$/, "")}/guides/${page.slug}`;
-
-  const updatedLabel =
-    page.updatedAt.slice(0, 10);
+  const pageUrl = `${SITE_URL.replace(/\/$/, "")}/guides/${page.slug}`;
+  const updatedLabel = page.updatedAt.slice(0, 10);
 
   return (
     <article className="bg-white py-5 sm:py-7">
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Structured Data                                                    */}
-      {/* ------------------------------------------------------------------ */}
-
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            webPageJsonLd(page),
-          ),
+          __html: JSON.stringify(webPageJsonLd(page)),
         }}
       />
-
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            breadcrumbJsonLd(page),
-          ),
+          __html: JSON.stringify(breadcrumbJsonLd(page)),
         }}
       />
-
       {faqs.length > 0 ? (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(
-              faqJsonLd(faqs, pageUrl),
-            ),
+            __html: JSON.stringify(faqJsonLd(faqs, pageUrl)),
           }}
         />
       ) : null}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Main Layout                                                        */}
-      {/* ------------------------------------------------------------------ */}
-
-      <div
-        className="
-          mx-auto
-          grid
-          max-w-7xl
-          gap-6
-          px-4
-          sm:px-6
-          lg:grid-cols-[minmax(0,1fr)_20rem]
-          lg:items-start
-          lg:gap-7
-          lg:px-8
-        "
-      >
-
-        {/* ================================================================= */}
-        {/* MAIN CONTENT                                                      */}
-        {/* ================================================================= */}
-
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-7 lg:px-8">
         <div className="min-w-0">
-
-          {/* --------------------------------------------------------------- */}
-          {/* Breadcrumb                                                      */}
-          {/* --------------------------------------------------------------- */}
-
-          <nav
-            className="text-sm text-ocean-700"
-            aria-label="Breadcrumb"
-          >
-            <Link
-              href="/"
-              className="hover:text-ocean-800"
-            >
+          <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-ocean-800">
               Home
             </Link>
-
-            <span
-              className="mx-2 text-ocean-400"
-              aria-hidden="true"
-            >
-              /
-            </span>
-
-            <Link
-              href="/guides"
-              className="hover:text-ocean-800"
-            >
+            <span className="mx-2 text-ocean-400">/</span>
+            <Link href="/guides" className="hover:text-ocean-800">
               Guides
             </Link>
-
-            <span
-              className="mx-2 text-ocean-400"
-              aria-hidden="true"
-            >
-              /
-            </span>
-
-            <span className="text-ocean-500">
-              {page.headline}
-            </span>
+            <span className="mx-2 text-ocean-400">/</span>
+            <span className="text-ocean-500">{page.headline}</span>
           </nav>
 
-          {/* --------------------------------------------------------------- */}
-          {/* Guide Navigation + Share                                        */}
-          {/* --------------------------------------------------------------- */}
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <Link
               href="/guides"
-              className="
-                inline-flex
-                items-center
-                text-sm
-                font-semibold
-                text-ocean-700
-                hover:text-ocean-900
-              "
+              className="inline-block text-sm font-semibold text-ocean-700 hover:text-ocean-800"
             >
               ← All guides
             </Link>
-
             <SocialShareButtons
-              title={
-                page.metaTitle.trim() ||
-                page.headline
-              }
+              title={page.metaTitle.trim() || page.headline}
               path={`/guides/${page.slug}`}
               compact
               className="sm:justify-end"
             />
-
           </div>
 
-          {/* --------------------------------------------------------------- */}
-          {/* Article Header                                                   */}
-          {/* --------------------------------------------------------------- */}
+          <div className="mt-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+            <h1 className="min-w-0 flex-1 font-display text-2xl font-extrabold leading-snug text-ocean-900 sm:text-3xl">
+              {page.headline}
+            </h1>
+            <p className="shrink-0 pt-1 text-sm text-ocean-500 sm:pt-1.5 sm:text-right">
+              Updated {updatedLabel}
+            </p>
+          </div>
 
-          <header className="mt-4">
-
-            <div className="flex flex-col gap-2">
-
-              <h1
-                className="
-                  font-display
-                  text-2xl
-                  font-extrabold
-                  leading-tight
-                  text-ocean-900
-                  sm:text-3xl
-                  lg:text-4xl
-                "
-              >
-                {page.headline}
-              </h1>
-
-              <p className="text-sm text-ocean-500">
-                Updated {updatedLabel}
-              </p>
-
+          {heroSrc ? (
+            <div className="relative mt-3 aspect-[16/9] max-h-[min(280px,36vh)] w-full overflow-hidden rounded-xl border border-ocean-100 bg-ocean-50 sm:max-h-[320px]">
+              <Image
+                src={heroSrc}
+                alt={page.headline}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 720px"
+                priority
+              />
             </div>
+          ) : null}
 
-            {/* Hero Image */}
-            {heroSrc ? (
-              <figure className="mt-4">
-
-                <div
-                  className="
-                    relative
-                    aspect-[16/9]
-                    max-h-[420px]
-                    w-full
-                    overflow-hidden
-                    rounded-xl
-                    border
-                    border-ocean-100
-                    bg-ocean-50
-                  "
-                >
-                  <Image
-                    src={heroSrc}
-                    alt={page.headline}
-                    fill
-                    className="object-cover"
-                    sizes="
-                      (max-width: 768px) 100vw,
-                      (max-width: 1280px) 70vw,
-                      850px
-                    "
-                    priority
-                  />
-                </div>
-
-                <figcaption className="mt-2 text-xs text-ocean-500">
-                  {page.headline}
-                </figcaption>
-
-              </figure>
-            ) : null}
-
-            {/* Short Answer / Summary */}
-            {page.metaDescription.trim() ? (
-              <div
-                className="
-                  mt-4
-                  rounded-xl
-                  border-l-4
-                  border-amber-400
-                  bg-amber-50
-                  px-4
-                  py-3
-                  sm:px-5
-                "
-              >
-                <p className="text-sm font-semibold text-ocean-900">
-                  Quick answer
-                </p>
-
-                <p className="mt-1 text-sm leading-6 text-ocean-800 sm:text-base">
-                  {page.metaDescription}
-                </p>
-              </div>
-            ) : null}
-
-          </header>
-
-          {/* --------------------------------------------------------------- */}
-          {/* Main Guide Content                                               */}
-          {/* --------------------------------------------------------------- */}
+          <p className="mt-3 border-l-4 border-amber-400 bg-amber-50/60 py-2 pl-3 text-base leading-relaxed text-ocean-800">
+            {page.metaDescription}
+          </p>
 
           {page.bodyContent.trim() ? (
-            <section
-              aria-labelledby="guide-content-heading"
-              className="mt-7"
-            >
-
-              <h2
-                id="guide-content-heading"
-                className="sr-only"
-              >
-                {page.headline} guide
-              </h2>
-
-              <div
-                className="
-                  prose
-                  prose-ocean
-                  max-w-none
-                  text-ocean-800
-                  prose-headings:font-display
-                  prose-headings:font-bold
-                  prose-headings:text-ocean-900
-                  prose-h2:mt-8
-                  prose-h2:text-2xl
-                  prose-h3:mt-6
-                  prose-h3:text-xl
-                  prose-p:leading-7
-                  prose-li:leading-7
-                  prose-a:font-semibold
-                  prose-a:text-ocean-700
-                  prose-a:no-underline
-                  hover:prose-a:underline
-                "
-              >
-                <BlogContent
-                  content={page.bodyContent}
-                />
-              </div>
-
-            </section>
-          ) : (
-            <div
-              className="
-                mt-6
-                rounded-xl
-                border
-                border-ocean-100
-                bg-sand
-                p-5
-                text-sm
-                text-ocean-700
-              "
-            >
-              This guide is being updated. Please check back soon
-              for the latest information.
+            <div className="prose prose-ocean mt-5 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700">
+              <BlogContent content={page.bodyContent} />
             </div>
-          )}
+          ) : null}
 
-          {/* --------------------------------------------------------------- */}
-          {/* Live Pricing                                                     */}
-          {/* --------------------------------------------------------------- */}
+          <BlogLivePricing focusServiceSlug={focusServiceSlug} />
 
-          <section
-            aria-label="Current activity pricing"
-            className="mt-8"
-          >
-            <BlogLivePricing
-              focusServiceSlug={
-                focusServiceSlug
-              }
-            />
-          </section>
-
-          {/* --------------------------------------------------------------- */}
-          {/* Why Choose Us                                                    */}
-          {/* --------------------------------------------------------------- */}
-
-          <section
-            aria-label="Why book with us"
-            className="mt-8"
-          >
-            <BlogWhyChooseSection />
-          </section>
-
-          {/* --------------------------------------------------------------- */}
-          {/* FAQ                                                              */}
-          {/* --------------------------------------------------------------- */}
+          <BlogWhyChooseSection />
 
           {faqs.length > 0 ? (
             <section
-              className="
-                mt-10
-                border-t
-                border-ocean-100
-                pt-8
-              "
+              className="mt-8 border-t border-ocean-100 pt-8"
               aria-labelledby="guide-faq-heading"
             >
-
-              <p
-                className="
-                  text-xs
-                  font-extrabold
-                  uppercase
-                  tracking-[0.16em]
-                  text-cyan-700
-                "
-              >
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
                 Helpful answers
               </p>
-
               <h2
                 id="guide-faq-heading"
-                className="
-                  mt-1
-                  font-display
-                  text-xl
-                  font-bold
-                  text-ocean-900
-                  sm:text-2xl
-                "
+                className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl"
               >
-                Frequently Asked Questions
+                Frequently asked questions
               </h2>
-
-              <p className="mt-2 text-sm leading-6 text-ocean-700">
-                Find quick answers about pricing, location,
-                booking, safety and other important details
-                related to this activity.
+              <p className="mt-1.5 text-sm leading-relaxed text-ocean-700">
+                Quick answers before you plan or book.
               </p>
-
-              <div className="mt-5 space-y-3">
-
-                {faqs.map((faq, index) => (
+              <div className="mt-4 space-y-2.5">
+                {faqs.map((f, index) => (
                   <details
-                    key={faq.question}
-                    className="
-                      group
-                      rounded-xl
-                      border
-                      border-ocean-100
-                      bg-sand
-                      px-4
-                      shadow-sm
-                      open:border-cyan-300
-                      open:bg-cyan-50/40
-                      sm:px-5
-                    "
+                    key={f.question}
+                    className="group rounded-xl border border-ocean-100 bg-sand px-4 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-5"
                     open={index === 0}
                   >
-
-                    <summary
-                      className="
-                        flex
-                        min-h-12
-                        cursor-pointer
-                        list-none
-                        items-center
-                        justify-between
-                        gap-4
-                        py-3
-                        font-semibold
-                        text-ocean-900
-                        marker:hidden
-                      "
-                    >
-
-                      <span>
-                        {faq.question}
-                      </span>
-
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-semibold text-ocean-900 marker:hidden">
+                      <span>{f.question}</span>
                       <span
-                        aria-hidden="true"
-                        className="
-                          flex
-                          h-7
-                          w-7
-                          shrink-0
-                          items-center
-                          justify-center
-                          rounded-full
-                          bg-white
-                          text-lg
-                          text-ocean-700
-                          shadow-sm
-                          transition
-                          group-open:rotate-45
-                        "
+                        aria-hidden
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-lg text-ocean-700 shadow-sm transition group-open:rotate-45"
                       >
                         +
                       </span>
-
                     </summary>
-
-                    <div
-                      className="
-                        border-t
-                        border-ocean-100
-                        pb-4
-                        pt-3
-                      "
-                    >
-                      <p className="text-sm leading-6 text-ocean-800">
-                        {faq.answer}
-                      </p>
-                    </div>
-
+                    <p className="border-t border-ocean-100 pb-4 pt-3 text-sm leading-6 text-ocean-800">
+                      {f.answer}
+                    </p>
                   </details>
                 ))}
-
               </div>
-
             </section>
           ) : null}
 
-          {/* --------------------------------------------------------------- */}
-          {/* Related Guides                                                   */}
-          {/* --------------------------------------------------------------- */}
-
           {related.length > 0 ? (
             <section
-              className="
-                mt-10
-                border-t
-                border-ocean-100
-                pt-8
-              "
+              className="mt-8 border-t border-ocean-100 pt-8"
               aria-labelledby="related-guides-heading"
             >
-
-              <p
-                className="
-                  text-xs
-                  font-extrabold
-                  uppercase
-                  tracking-[0.16em]
-                  text-amber-700
-                "
-              >
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-amber-700">
                 Continue exploring
               </p>
-
               <h2
                 id="related-guides-heading"
-                className="
-                  mt-1
-                  font-display
-                  text-xl
-                  font-bold
-                  text-ocean-900
-                  sm:text-2xl
-                "
+                className="mt-1 font-display text-xl font-bold text-ocean-900 sm:text-2xl"
               >
-                Related Goa Guides
+                Related guides
               </h2>
-
-              <p className="mt-2 text-sm text-ocean-700">
-                Explore more Goa activities, travel tips and
-                booking guides.
+              <p className="mt-1.5 text-sm text-ocean-700">
+                Keep reading before you book.
               </p>
-
-              <ul className="mt-5 grid gap-4 sm:grid-cols-2">
-
-                {related.map((guide, index) => {
-
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                {related.map((r, index) => {
                   const fallbackImage =
-                    relatedServices[
-                      index %
-                        Math.max(
-                          relatedServices.length,
-                          1,
-                        )
-                    ]?.image ||
-                    catalog.services[
-                      index %
-                        Math.max(
-                          catalog.services.length,
-                          1,
-                        )
-                    ]?.image ||
+                    relatedServices[index % relatedServices.length]?.image ||
+                    catalog.services[index % catalog.services.length]?.image ||
                     "";
-
-                  const cardImage =
-                    guide.imageUrl ||
-                    fallbackImage;
-
+                  const cardImage = r.imageUrl || fallbackImage;
                   return (
-                    <li
-                      key={guide.slug}
-                      className="h-full"
-                    >
-
+                    <li key={r.slug} className="h-full">
                       <Link
-                        href={`/guides/${guide.slug}`}
-                        className="
-                          group
-                          flex
-                          h-full
-                          flex-col
-                          overflow-hidden
-                          rounded-xl
-                          border
-                          border-ocean-100
-                          bg-sand
-                          shadow-sm
-                          transition
-                          hover:-translate-y-0.5
-                          hover:border-cyan-300
-                          hover:shadow-md
-                          focus-visible:outline-none
-                          focus-visible:ring-2
-                          focus-visible:ring-cyan-500
-                        "
+                        href={`/guides/${r.slug}`}
+                        className="group flex h-full flex-col overflow-hidden rounded-xl border border-ocean-100 bg-sand shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                       >
-
                         {cardImage ? (
-                          <div
-                            className="
-                              relative
-                              aspect-[16/9]
-                              overflow-hidden
-                              bg-ocean-100
-                            "
-                          >
+                          <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
                             <CmsRemoteImage
                               src={cardImage}
-                              alt={guide.headline}
+                              alt={r.headline}
                               fill
-                              className="
-                                object-cover
-                                transition
-                                duration-500
-                                group-hover:scale-105
-                              "
-                              sizes="
-                                (max-width: 640px) 100vw,
-                                (max-width: 1024px) 50vw,
-                                360px
-                              "
+                              className="object-cover transition duration-500 group-hover:scale-105"
+                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
                               loading="lazy"
                             />
                           </div>
                         ) : null}
-
-                        <div className="flex flex-1 flex-col p-4">
-
+                        <div className="flex flex-1 flex-col p-3.5">
                           <p className="text-[11px] font-medium text-cyan-700">
-                            Updated{" "}
-                            {guide.updatedAt.slice(0, 10)}
+                            Updated {r.updatedAt.slice(0, 10)}
                           </p>
-
-                          <h3
-                            className="
-                              mt-1
-                              font-display
-                              text-base
-                              font-bold
-                              leading-snug
-                              text-ocean-900
-                              transition
-                              group-hover:text-cyan-700
-                              sm:text-lg
-                            "
-                          >
-                            {guide.headline}
+                          <h3 className="mt-1 font-display text-base font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-700 sm:text-lg">
+                            {r.headline}
                           </h3>
-
-                          {guide.metaDescription ? (
-                            <p
-                              className="
-                                mt-1.5
-                                line-clamp-3
-                                text-sm
-                                leading-relaxed
-                                text-ocean-700
-                              "
-                            >
-                              {guide.metaDescription}
+                          {r.metaDescription ? (
+                            <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-ocean-700">
+                              {r.metaDescription}
                             </p>
                           ) : null}
-
-                          <span
-                            className="
-                              mt-3
-                              inline-flex
-                              items-center
-                              gap-1
-                              text-sm
-                              font-bold
-                              text-amber-700
-                            "
-                          >
-                            Read guide
-                            <span aria-hidden="true">
-                              →
-                            </span>
+                          <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-amber-700">
+                            Read guide <span aria-hidden>→</span>
                           </span>
-
                         </div>
-
                       </Link>
-
                     </li>
                   );
                 })}
-
               </ul>
-
             </section>
           ) : null}
 
-          {/* --------------------------------------------------------------- */}
-          {/* Booking CTA                                                      */}
-          {/* --------------------------------------------------------------- */}
-
           <section
-            className="
-              mt-10
-              rounded-2xl
-              border
-              border-cyan-100
-              bg-ocean-50
-              p-5
-              sm:p-6
-            "
+            className="mt-8 rounded-xl border border-ocean-100 bg-ocean-50/50 p-5 sm:p-6"
             aria-labelledby="guide-book-heading"
           >
-
-            <p
-              className="
-                text-xs
-                font-extrabold
-                uppercase
-                tracking-[0.16em]
-                text-cyan-700
-              "
-            >
-              Ready to plan?
-            </p>
-
             <h2
               id="guide-book-heading"
-              className="
-                mt-1
-                font-display
-                text-xl
-                font-bold
-                text-ocean-900
-                sm:text-2xl
-              "
+              className="font-display text-lg font-bold text-ocean-900 sm:text-xl"
             >
-              Book your Goa experience
+              Book & explore more
             </h2>
-
-            <p
-              className="
-                mt-2
-                max-w-2xl
-                text-sm
-                leading-6
-                text-ocean-700
-              "
-            >
-              Check available packages, current prices and
-              booking options before you choose your activity.
+            <p className="mt-1.5 text-sm leading-relaxed text-ocean-700">
+              Secure checkout with Razorpay, WhatsApp confirmation, and live slots when
+              available.
             </p>
-
-            <div className="mt-5 flex flex-wrap gap-2.5">
-
-              <Link
-                href={bookHref}
-                className="
-                  inline-flex
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-ocean-gradient
-                  px-5
-                  py-2.5
-                  text-sm
-                  font-bold
-                  text-white
-                  shadow-sm
-                  hover:opacity-95
-                "
-              >
-                Book now
-              </Link>
-
-              <Link
-                href="/services"
-                className="
-                  inline-flex
-                  items-center
-                  justify-center
-                  rounded-full
-                  border
-                  border-ocean-300
-                  bg-white
-                  px-5
-                  py-2.5
-                  text-sm
-                  font-semibold
-                  text-ocean-800
-                  hover:border-ocean-400
-                "
-              >
-                All activities
-              </Link>
-
-              <Link
-                href="/contact"
-                className="
-                  inline-flex
-                  items-center
-                  justify-center
-                  rounded-full
-                  border
-                  border-ocean-200
-                  bg-white
-                  px-5
-                  py-2.5
-                  text-sm
-                  font-semibold
-                  text-ocean-700
-                  hover:border-ocean-400
-                "
-              >
-                Contact us
-              </Link>
-
-            </div>
-
+            <ul className="mt-4 flex flex-wrap gap-2.5 text-sm font-semibold">
+              <li>
+                <Link
+                  href={bookHref}
+                  className="inline-flex rounded-full bg-ocean-gradient px-5 py-2.5 text-white hover:opacity-95"
+                >
+                  Book now — live rates
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/services"
+                  className="inline-flex rounded-full border border-ocean-300 bg-white px-5 py-2.5 text-ocean-800 hover:border-ocean-400"
+                >
+                  All services
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/services/scuba-diving"
+                  className="inline-flex rounded-full border border-ocean-200 bg-white px-5 py-2.5 text-ocean-700 hover:border-ocean-400"
+                >
+                  Scuba diving
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/services/water-sports"
+                  className="inline-flex rounded-full border border-ocean-200 bg-white px-5 py-2.5 text-ocean-700 hover:border-ocean-400"
+                >
+                  Water sports
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="inline-flex rounded-full border border-ocean-200 bg-white px-5 py-2.5 text-ocean-700 hover:border-ocean-400"
+                >
+                  Contact
+                </Link>
+              </li>
+            </ul>
           </section>
-
         </div>
 
-        {/* ================================================================= */}
-        {/* SIDEBAR                                                           */}
-        {/* ================================================================= */}
-
-        <aside
-          aria-label="Related activities"
-          className="min-w-0"
-        >
-          <RelatedServicesSidebar
-            services={relatedServices}
-          />
-        </aside>
-
+        <RelatedServicesSidebar services={relatedServices} />
       </div>
-
     </article>
   );
 }
