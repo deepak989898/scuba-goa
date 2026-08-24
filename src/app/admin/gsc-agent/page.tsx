@@ -8,6 +8,9 @@ import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { BlogPostEditorPanel } from "@/app/admin/blog-automation/BlogPostEditorPanel";
 import { GuideEditorPanel } from "@/app/admin/gsc-agent/GuideEditorPanel";
+import {
+  RANKING_IMPROVE_HIDE_MS,
+} from "@/lib/gsc-indexing-agent/ranking-opportunity-ui";
 
 type Overview = {
   totalUrls: number;
@@ -96,6 +99,18 @@ function improvePctClass(pct: number): string {
   if (pct >= 28) return "bg-emerald-600 text-white";
   if (pct >= 18) return "bg-amber-500 text-amber-950";
   return "bg-cyan-700 text-white";
+}
+
+function urlRecentlyImproved(
+  u: Record<string, unknown>,
+  improveByUrl: Record<string, ImproveMeta>,
+): boolean {
+  const id = String(u.id ?? "");
+  const improve =
+    improveByUrl[id] || (u.lastRankingImprove as ImproveMeta | undefined);
+  if (!improve?.at) return false;
+  const age = Date.now() - new Date(improve.at).getTime();
+  return age >= 0 && age < RANKING_IMPROVE_HIDE_MS;
 }
 
 /** Urgency for Generate — red = most needed ranking improve. */
@@ -406,7 +421,7 @@ export default function GscIndexingAgentPage() {
       };
       setImproveByUrl((prev) => ({ ...prev, [urlId]: improve }));
       setOk(
-        `Content updated (text only). Est. ~${improve.estimatedPct}% toward ${improve.targetBand}.`,
+        `Content updated — removed from ranking opportunities for ${Math.round(RANKING_IMPROVE_HIDE_MS / (24 * 60 * 60 * 1000))} days. Est. ~${improve.estimatedPct}% toward ${improve.targetBand}.`,
       );
       if (editingSession?.urlId === urlId) {
         setEditingSession({
@@ -938,6 +953,7 @@ export default function GscIndexingAgentPage() {
                   const improve =
                     improveByUrl[id] ||
                     (u.lastRankingImprove as ImproveMeta | undefined);
+                  const recentlyImproved = urlRecentlyImproved(u, improveByUrl);
                   const isGen = generatingId === id;
                   const isEditing = editingSession?.urlId === id;
                   const genPri = generatePriority(ranking);
@@ -946,7 +962,7 @@ export default function GscIndexingAgentPage() {
                       <tr
                         className={`border-t border-ocean-50 align-top ${
                           isEditing ? "bg-ocean-50/40" : ""
-                        }`}
+                        } ${recentlyImproved ? "bg-emerald-50/70" : ""}`}
                       >
                         <td className="min-w-[220px] max-w-[360px] p-2">
                           <a
@@ -984,19 +1000,28 @@ export default function GscIndexingAgentPage() {
                           {editable ? (
                             <div className="flex min-w-[140px] flex-col gap-1.5">
                               <div className="flex flex-wrap gap-1">
-                                <button
-                                  type="button"
-                                  disabled={
-                                    busy ||
-                                    Boolean(generatingId) ||
-                                    Boolean(editBusy)
-                                  }
-                                  onClick={() => void generateImprove(id)}
-                                  title={`${genPri.label} — ${ranking}`}
-                                  className={`rounded-md px-2 py-1 text-[10px] font-bold disabled:opacity-50 ${genPri.buttonClass}`}
-                                >
-                                  {isGen ? "Generating…" : "Generate"}
-                                </button>
+                                {recentlyImproved ? (
+                                  <span
+                                    className="rounded-md bg-emerald-700 px-2 py-1 text-[10px] font-bold text-white"
+                                    title={`Improved ${improve?.at ? new Date(improve.at).toLocaleString("en-IN") : ""}`}
+                                  >
+                                    Improved ✓
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      busy ||
+                                      Boolean(generatingId) ||
+                                      Boolean(editBusy)
+                                    }
+                                    onClick={() => void generateImprove(id)}
+                                    title={`${genPri.label} — ${ranking}`}
+                                    className={`rounded-md px-2 py-1 text-[10px] font-bold disabled:opacity-50 ${genPri.buttonClass}`}
+                                  >
+                                    {isGen ? "Generating…" : "Generate"}
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   disabled={
@@ -1023,16 +1048,28 @@ export default function GscIndexingAgentPage() {
                                 </button>
                               </div>
                               <p
-                                className={`text-[10px] font-bold leading-snug ${genPri.hintClass}`}
+                                className={`text-[10px] font-bold leading-snug ${
+                                  recentlyImproved
+                                    ? "text-emerald-800"
+                                    : genPri.hintClass
+                                }`}
                               >
-                                {genPri.label}
+                                {recentlyImproved
+                                  ? "Content improved — hidden from this list"
+                                  : genPri.label}
                               </p>
                               {improve ? (
                                 <div className="space-y-0.5">
                                   <span
-                                    className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${improvePctClass(improve.estimatedPct)}`}
+                                    className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                                      recentlyImproved
+                                        ? "bg-emerald-700 text-white"
+                                        : improvePctClass(improve.estimatedPct)
+                                    }`}
                                   >
-                                    ~{improve.estimatedPct}% improve
+                                    {recentlyImproved
+                                      ? "Done"
+                                      : `~${improve.estimatedPct}% improve`}
                                   </span>
                                   <p className="text-[10px] leading-snug text-ocean-700">
                                     Target: {improve.targetBand}

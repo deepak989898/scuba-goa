@@ -8,6 +8,10 @@ import type {
   SeoSitemapRecord,
   SeoUrlRecord,
 } from "./types";
+import {
+  hasRecentRankingContentImprove,
+  RANKING_IMPROVE_HIDE_MS,
+} from "./ranking-opportunity-ui";
 import { getSeoSettings } from "./settings";
 import { getGscConnectionPublic } from "./connection";
 import { siteId } from "./normalize-url";
@@ -67,7 +71,7 @@ export async function listSeoUrls(options?: {
     .limit(Math.min(2000, options?.limit ?? 500))
     .get();
   let rows = snap.docs.map(
-    (d) => ({ id: d.id, ...d.data() }) as SeoUrlRecord,
+    (d) => ({ ...d.data(), id: d.id }) as SeoUrlRecord,
   );
   if (options?.indexStatus) {
     rows = rows.filter((r) => r.indexStatus === options.indexStatus);
@@ -106,6 +110,8 @@ const RANKING_OPPORTUNITY = new Set([
   "IMPRESSIONS_NO_CLICKS",
 ]);
 
+export { RANKING_IMPROVE_HIDE_MS, hasRecentRankingContentImprove };
+
 export function matchesUrlFilter(
   u: SeoUrlRecord,
   filter:
@@ -135,7 +141,10 @@ export function matchesUrlFilter(
         (!u.lastInspectionAt && u.eligibleForIndexing)
       );
     case "ranking_opportunity":
-      return RANKING_OPPORTUNITY.has(u.rankingStatus);
+      return (
+        RANKING_OPPORTUNITY.has(u.rankingStatus) &&
+        !hasRecentRankingContentImprove(u)
+      );
     case "declining":
       return ["DECLINING", "LOST_TRAFFIC"].includes(u.rankingStatus);
     default:

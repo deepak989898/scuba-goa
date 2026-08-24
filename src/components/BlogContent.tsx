@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { slugifyHeading } from "@/lib/blog-seo/headings";
+import { normalizeRankingMarkdown } from "@/lib/blog-markdown-normalize";
 
 function parseInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -108,8 +109,20 @@ function parseTableBlock(raw: string): string[][] | null {
   return rows.length >= 2 ? rows : null;
 }
 
+function listItemText(line: string): string | null {
+  const m = line.trim().match(/^(?:-|\*|•|\d+\.)\s+(.*)$/);
+  return m ? m[1] : null;
+}
+
+function isBulletBlock(lines: string[]): boolean {
+  const nonEmpty = lines.filter(Boolean);
+  if (!nonEmpty.length) return false;
+  return nonEmpty.every((l) => listItemText(l) !== null);
+}
+
 export function BlogContent({ content }: { content: string }) {
-  const blocks = content.split(/\n\n+/);
+  const normalized = normalizeRankingMarkdown(content);
+  const blocks = normalized.split(/\n\n+/);
   const out: React.ReactNode[] = [];
   const seenIds = new Map<string, number>();
   let i = 0;
@@ -184,8 +197,25 @@ export function BlogContent({ content }: { content: string }) {
     }
 
     const lines = raw.split("\n").map((l) => l.trim());
-    const isList = lines.every((l) => !l || l.startsWith("- "));
-    if (isList && lines.some((l) => l.startsWith("- "))) {
+    if (isBulletBlock(lines)) {
+      out.push(
+        <ul key={i} className="mt-2 list-disc space-y-1 pl-5 text-ocean-800">
+          {lines
+            .filter(Boolean)
+            .map((l, j) => (
+              <li key={j} className="leading-snug">
+                {parseInline(listItemText(l) ?? l)}
+              </li>
+            ))}
+        </ul>,
+      );
+      i += 1;
+      continue;
+    }
+    const isDashList =
+      lines.every((l) => !l || l.startsWith("- ")) &&
+      lines.some((l) => l.startsWith("- "));
+    if (isDashList) {
       out.push(
         <ul key={i} className="mt-2 list-disc space-y-1 pl-5 text-ocean-800">
           {lines

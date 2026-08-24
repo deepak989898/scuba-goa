@@ -79,6 +79,8 @@ function estimateReadTime(content: string): string {
   return `${mins} min read`;
 }
 
+import { normalizeRankingMarkdown } from "@/lib/blog-markdown-normalize";
+
 /** Heuristic SEO upside estimate — not a Google guarantee. */
 export function estimateImprovementPct(
   rankingStatus: string,
@@ -313,8 +315,10 @@ Improve for ranking status ${input.rankingStatus} (avg position ${input.averageP
 3) Update outdated / thin sections; keep useful original facts that remain true
 4) Add 5–8 internal markdown links using ONLY paths like [/booking](/booking), [/services/${serviceHint}](/services/${serviceHint}), [/blog](/blog), [/guides](/guides)
 5) Keep the same public slug: ${input.slug} (do not change URL slug)
-6) Markdown with ## / ### ; start with a 2–3 sentence direct answer
-7) Year reference: ${year}
+6) Markdown with ## / ### for section headings — do NOT use **bold** alone as section titles
+7) Bullet lists must use "- " prefix (never * or •)
+8) Start with a 2–3 sentence direct answer paragraph (no heading on first line)
+9) Year reference: ${year}
 
 ${input.catalog}
 
@@ -377,7 +381,7 @@ ${input.current.content.slice(0, 12000)}`;
     throw new Error("Invalid JSON from OpenAI");
   }
 
-  const content = String(parsed.content ?? "").trim();
+  const content = normalizeRankingMarkdown(String(parsed.content ?? "").trim());
   if (!content || content.length < 400) {
     throw new Error("Generated content too short — try again");
   }
@@ -415,6 +419,10 @@ async function persistFields(
   fields: RankingImproveFields,
   meta: RankingImproveMeta,
 ): Promise<void> {
+  fields.content = normalizeRankingMarkdown(fields.content);
+  if (fields.bodyContent) {
+    fields.bodyContent = normalizeRankingMarkdown(fields.bodyContent);
+  }
   const db = getAdminDb();
   if (!db) throw new Error("Server not configured");
   const slug = record.contentId.trim();
@@ -450,8 +458,8 @@ async function persistFields(
     };
 
     await ref.set(blogPostToFirestorePayload(next), { merge: true });
-    revalidatePath(`/blog/${slug}`);
-    revalidatePath("/blog");
+    revalidatePath(`/blog/${slug}`, "page");
+    revalidatePath("/blog", "page");
   } else {
     const ref = db.collection("seoPages").doc(slug);
     const snap = await ref.get();
@@ -486,8 +494,8 @@ async function persistFields(
     };
 
     await ref.set(seoPageToFirestorePayload(next), { merge: true });
-    revalidatePath(`/guides/${slug}`);
-    revalidatePath("/guides");
+    revalidatePath(`/guides/${slug}`, "page");
+    revalidatePath("/guides", "page");
   }
 
   await upsertSeoUrl({
