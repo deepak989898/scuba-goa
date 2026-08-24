@@ -573,6 +573,55 @@ export async function generateAndApplyRankingImprove(urlId: string): Promise<{
   return { page, improve: meta };
 }
 
+export type BulkRankingImproveResult = {
+  urlId: string;
+  ok: boolean;
+  improve?: RankingImproveMeta;
+  error?: string;
+};
+
+/** Generate + save ranking improve for multiple blog/guide URLs (sequential). */
+export async function generateAndApplyRankingImproveBulk(
+  urlIds: string[],
+  maxJobs = 8,
+): Promise<{
+  succeeded: number;
+  failed: number;
+  results: BulkRankingImproveResult[];
+}> {
+  const unique = [...new Set(urlIds.map((id) => id.trim()).filter(Boolean))].slice(
+    0,
+    maxJobs,
+  );
+  const results: BulkRankingImproveResult[] = [];
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const urlId of unique) {
+    try {
+      const { improve } = await generateAndApplyRankingImprove(urlId);
+      results.push({ urlId, ok: true, improve });
+      succeeded += 1;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Generate failed";
+      results.push({ urlId, ok: false, error: message });
+      failed += 1;
+    }
+  }
+
+  if (unique.length > 0) {
+    await logAction({
+      urlId: unique[0],
+      url: unique.length > 1 ? `bulk:${unique.length}` : unique[0],
+      action: "ranking_content_improve",
+      detail: `Bulk improve: ${succeeded} ok, ${failed} failed (${unique.length} selected)`,
+      ok: failed === 0,
+    });
+  }
+
+  return { succeeded, failed, results };
+}
+
 export async function saveManualRankingEdit(
   urlId: string,
   patch: Partial<RankingImproveFields>,

@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
   generateAndApplyRankingImprove,
+  generateAndApplyRankingImproveBulk,
   loadEditablePage,
   saveManualRankingEdit,
   type RankingImproveFields,
 } from "@/lib/gsc-indexing-agent/ranking-improve";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
+
+const BULK_MAX = 8;
 
 /** GET ?urlId= — load editable blog/guide fields */
 export async function GET(req: Request) {
@@ -33,31 +36,45 @@ export async function GET(req: Request) {
   }
 }
 
-/** POST { urlId } — OpenAI content generate + auto-save (no images) */
+/** POST { urlId } or { urlIds: string[] } — OpenAI content generate + auto-save */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  let body: { urlId?: string } = {};
+  let body: { urlId?: string; urlIds?: string[] } = {};
   try {
     body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const urlId = String(body.urlId ?? "").trim();
-  if (!urlId) {
-    return NextResponse.json({ error: "urlId required" }, { status: 400 });
+  const urlIds = Array.isArray(body.urlIds)
+    ? body.urlIds.map(String).filter(Boolean)
+    : String(body.urlId ?? "").trim()
+      ? [String(body.urlId).trim()]
+      : [];
+
+  if (urlIds.length === 0) {
+    return NextResponse.json({ error: "urlId or urlIds required" }, { status: 400 });
   }
 
   try {
-    const result = await generateAndApplyRankingImprove(urlId);
+    if (urlIds.length === 1) {
+      const result = await generateAndApplyRankingImprove(urlIds[0]!);
+      return NextResponse.json({
+        ok: true,
+        page: result.page,
+        improve: result.improve,
+      });
+    }
+
+    const bulk = await generateAndApplyRankingImproveBulk(urlIds, BULK_MAX);
     return NextResponse.json({
       ok: true,
-      page: result.page,
-      improve: result.improve,
+      bulk: true,
+      ...bulk,
     });
   } catch (e) {
     return NextResponse.json(

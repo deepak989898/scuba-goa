@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getFirebaseAuth } from "@/lib/firebase";
 import type { BlogPostFirestore } from "@/lib/blog-firestore";
@@ -194,6 +194,13 @@ type ImproveMeta = {
   rankingStatus: string;
 };
 
+type BulkRankingImproveRow = {
+  urlId: string;
+  ok: boolean;
+  improve?: ImproveMeta;
+  error?: string;
+};
+
 type EditingSession = {
   urlId: string;
   pageType: "blog" | "guide";
@@ -235,6 +242,25 @@ export default function GscIndexingAgentPage() {
   const [improveByUrl, setImproveByUrl] = useState<Record<string, ImproveMeta>>(
     {},
   );
+  const [selectedUrlIds, setSelectedUrlIds] = useState<Set<string>>(new Set());
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+
+  const bulkEligibleUrls = useMemo(() => {
+    return urls.filter((u) => {
+      const pageType = String(u.pageType);
+      if (!isContentEditableType(pageType)) return false;
+      return !urlRecentlyImproved(u, improveByUrl);
+    });
+  }, [urls, improveByUrl]);
+
+  const bulkEligibleIds = useMemo(
+    () => bulkEligibleUrls.map((u) => String(u.id)),
+    [bulkEligibleUrls],
+  );
+
+  const allBulkEligibleSelected =
+    bulkEligibleIds.length > 0 &&
+    bulkEligibleIds.every((id) => selectedUrlIds.has(id));
 
   const load = useCallback(
     async (view: Tab = tab, filter: UrlFilter = urlFilter, severity = issueSeverity) => {
@@ -444,6 +470,77 @@ export default function GscIndexingAgentPage() {
     } finally {
       setGeneratingId(null);
     }
+  }
+
+  const BULK_CHUNK = 8;
+
+  async function generateImproveBulk() {
+    const ids = [...selectedUrlIds];
+    if (!ids.length) return;
+    setBulkGenerating(true);
+    setErr(null);
+    setOk(null);
+    let succeeded = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    try {
+      for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+        const chunk = ids.slice(i, i + BULK_CHUNK);
+        const data = await adminFetch("/api/admin/gsc-agent/improve", {
+          method: "POST",
+          body: JSON.stringify({ urlIds: chunk }),
+        });
+        if (data.bulk && Array.isArray(data.results)) {
+          for (const r of data.results as BulkRankingImproveRow[]) {
+            if (r.ok && r.improve) {
+              succeeded += 1;
+              setImproveByUrl((prev) => ({ ...prev, [r.urlId]: r.improve! }));
+            } else {
+              failed += 1;
+              if (r.error) errors.push(`${r.urlId}: ${r.error}`);
+            }
+          }
+        } else if (data.improve) {
+          succeeded += 1;
+          const urlId = chunk[0]!;
+          setImproveByUrl((prev) => ({
+            ...prev,
+            [urlId]: data.improve as ImproveMeta,
+          }));
+        }
+      }
+      setSelectedUrlIds(new Set());
+      const hideDays = Math.round(RANKING_IMPROVE_HIDE_MS / (24 * 60 * 60 * 1000));
+      setOk(
+        `Improved ${succeeded} page(s)${failed ? ` · ${failed} failed` : ""}. Removed from ranking opportunities for ${hideDays} days.`,
+      );
+      if (errors.length) {
+        setErr(errors.slice(0, 3).join(" · "));
+      }
+      await load("urls", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Bulk generate failed");
+    } finally {
+      setBulkGenerating(false);
+    }
+  }
+
+  function toggleUrlSelection(urlId: string, eligible: boolean) {
+    if (!eligible) return;
+    setSelectedUrlIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(urlId)) next.delete(urlId);
+      else next.add(urlId);
+      return next;
+    });
+  }
+
+  function toggleSelectAllBulkEligible() {
+    if (allBulkEligibleSelected) {
+      setSelectedUrlIds(new Set());
+      return;
+    }
+    setSelectedUrlIds(new Set(bulkEligibleIds));
   }
 
   async function openEdit(urlId: string) {
@@ -930,10 +1027,48 @@ export default function GscIndexingAgentPage() {
               </p>
             </div>
           ) : null}
+          {bulkEligibleIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-ocean-200 bg-ocean-50 px-3 py-2">
+              <label className="flex items-center gap-2 text-xs font-semibold text-ocean-900">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-cyan-700"
+                  checked={allBulkEligibleSelected}
+                  onChange={() => toggleSelectAllBulkEligible()}
+                  disabled={bulkGenerating || Boolean(generatingId)}
+                />
+                Select all improvable ({bulkEligibleIds.length})
+              </label>
+              <span className="text-xs font-semibold text-ocean-700">
+                {selectedUrlIds.size} selected
+              </span>
+              <button
+                type="button"
+                disabled={
+                  selectedUrlIds.size === 0 ||
+                  bulkGenerating ||
+                  Boolean(generatingId) ||
+                  Boolean(editBusy)
+                }
+                onClick={() => void generateImproveBulk()}
+                className="rounded-full bg-ocean-800 px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {bulkGenerating
+                  ? `Generating ${selectedUrlIds.size}…`
+                  : `Generate selected (${selectedUrlIds.size})`}
+              </button>
+              {selectedUrlIds.size > BULK_CHUNK ? (
+                <span className="text-[10px] text-ocean-600">
+                  Max {BULK_CHUNK} per batch — larger selections run in sequence
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="overflow-x-auto rounded-xl border border-ocean-100 bg-white">
             <table className="min-w-full text-left text-xs">
               <thead className="bg-ocean-50 text-ocean-800">
                 <tr>
+                  <th className="p-2 w-8" aria-label="Select" />
                   <th className="p-2">URL</th>
                   <th className="p-2">Type</th>
                   <th className="p-2">Index</th>
@@ -957,13 +1092,33 @@ export default function GscIndexingAgentPage() {
                   const isGen = generatingId === id;
                   const isEditing = editingSession?.urlId === id;
                   const genPri = generatePriority(ranking);
+                  const bulkEligible =
+                    editable && !recentlyImproved && !isGen;
                   return (
                     <Fragment key={id}>
                       <tr
                         className={`border-t border-ocean-50 align-top ${
                           isEditing ? "bg-ocean-50/40" : ""
-                        } ${recentlyImproved ? "bg-emerald-50/70" : ""}`}
+                        } ${recentlyImproved ? "bg-emerald-50/70" : ""} ${
+                          selectedUrlIds.has(id) ? "bg-cyan-50/50" : ""
+                        }`}
                       >
+                        <td className="p-2 align-top">
+                          {bulkEligible ? (
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-cyan-700"
+                              checked={selectedUrlIds.has(id)}
+                              disabled={
+                                bulkGenerating ||
+                                Boolean(generatingId) ||
+                                Boolean(editBusy)
+                              }
+                              onChange={() => toggleUrlSelection(id, bulkEligible)}
+                              aria-label={`Select ${String(u.url)}`}
+                            />
+                          ) : null}
+                        </td>
                         <td className="min-w-[220px] max-w-[360px] p-2">
                           <a
                             href={String(u.url)}
@@ -1091,7 +1246,7 @@ export default function GscIndexingAgentPage() {
                       </tr>
                       {isEditing && editingSession ? (
                         <tr className="bg-ocean-50/50">
-                          <td colSpan={8} className="p-4">
+                          <td colSpan={9} className="p-4">
                             <div
                               className={`mb-3 rounded-xl border px-3 py-2 text-xs ${
                                 editingSession.rankingStatus ===
