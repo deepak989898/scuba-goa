@@ -18,63 +18,100 @@ import {
   saveMeta,
   SEO_BLOG_COLLECTIONS,
 } from "@/lib/seo-blog-center/store";
-import { PROMPT_VERSION, type AiBlogGenerationJob } from "@/lib/seo-blog-center/types";
+import {
+  PROMPT_VERSION,
+  type AiBlogGenerationJob,
+  type GenerationJobStatus,
+} from "@/lib/seo-blog-center/types";
 import { blogPostToFirestorePayload } from "@/lib/blog-firestore";
 import { revalidatePath } from "next/cache";
 
 const LEASE_MS = 4 * 60 * 1000;
 
+const GENERATING_STATUSES: GenerationJobStatus[] = [
+  "generating-outline",
+  "generating-content",
+  "generating-image",
+  "validating",
+];
+
 function workerId(): string {
   return `worker_${process.env.VERCEL_REGION || "local"}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function todayIst(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+function isGeneratingStatus(status: GenerationJobStatus): boolean {
+  return GENERATING_STATUSES.includes(status);
+}
+
+/** Job stuck in a generating step (expired lease or missing lease). */
+export function isStuckGeneratingJob(
+  job: AiBlogGenerationJob,
+  nowMs = Date.now(),
+): boolean {
+  if (!isGeneratingStatus(job.status)) return false;
+  if (!job.leaseExpiresAt) return true;
+  return new Date(job.leaseExpiresAt).getTime() < nowMs;
+}
+
 /**
- * Claim next waiting job with Firestore transaction lease.
+ * Reset jobs left in generating-* after a timeout/crash back to waiting.
  */
-export async function claimNextGenerationJob(): Promise<AiBlogGenerationJob | null> {
+export async function reconcileStuckGenerationJobs(): Promise<number> {
+  const now = Date.now();
+  const jobs = await listGenerationJobs(undefined, 150);
+  let reset = 0;
+  for (const job of jobs) {
+    if (!isStuckGeneratingJob(job, now)) continue;
+    await saveGenerationJob({
+      ...job,
+      status: "waiting",
+      lockedBy: null,
+      lockedAt: null,
+      leaseExpiresAt: null,
+      errorMessage:
+        job.errorMessage ||
+        "Reset from stuck generating state — will retry",
+    });
+    reset += 1;
+  }
+  if (reset > 0) {
+    await addSeoBlogLog({
+      type: "pipeline_run",
+      message: `Reconciled ${reset} stuck generation job(s) back to waiting`,
+    });
+  }
+  return reset;
+}
+
+async function tryClaimGenerationJob(
+  jobId: string,
+  worker: string,
+): Promise<AiBlogGenerationJob | null> {
   const db = getAdminDb();
   if (!db) return null;
-  const settings = await getSeoBlogSettings();
-  if (settings.pauseGenerationQueue) return null;
-
-  const waiting = await listGenerationJobs("waiting", 20);
-  const now = Date.now();
-  const stale = (await listGenerationJobs(undefined, 50)).filter(
-    (j) =>
-      j.leaseExpiresAt &&
-      new Date(j.leaseExpiresAt).getTime() < now &&
-      (j.status === "generating-content" ||
-        j.status === "generating-image" ||
-        j.status === "validating"),
-  );
-  const candidates = [...stale, ...waiting];
-  if (candidates.length === 0) return null;
-
-  const target = candidates[0]!;
-  const ref = db.collection(SEO_BLOG_COLLECTIONS.jobs).doc(target.id);
-  const wid = workerId();
+  const ref = db.collection(SEO_BLOG_COLLECTIONS.jobs).doc(jobId);
 
   try {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new Error("missing");
-      const data = snap.data() as AiBlogGenerationJob;
+      const data = { ...snap.data(), id: snap.id } as AiBlogGenerationJob;
       const leaseOk =
-        !data.leaseExpiresAt || new Date(data.leaseExpiresAt).getTime() < Date.now();
+        !data.leaseExpiresAt ||
+        new Date(data.leaseExpiresAt).getTime() < Date.now();
       if (
         data.status !== "waiting" &&
-        !(
-          leaseOk &&
-          (data.status === "generating-content" ||
-            data.status === "generating-image" ||
-            data.status === "validating")
-        )
+        !(leaseOk && isGeneratingStatus(data.status))
       ) {
         throw new Error("busy");
       }
       const locked: Partial<AiBlogGenerationJob> = {
         status: "generating-content",
-        lockedBy: wid,
+        lockedBy: worker,
         lockedAt: new Date().toISOString(),
         leaseExpiresAt: new Date(Date.now() + LEASE_MS).toISOString(),
         startedAt: data.startedAt || new Date().toISOString(),
@@ -82,17 +119,48 @@ export async function claimNextGenerationJob(): Promise<AiBlogGenerationJob | nu
       };
       tx.set(ref, stripUndefinedDeep(locked), { merge: true });
     });
-    return getGenerationJobById(target.id);
+    return getGenerationJobById(jobId);
   } catch {
     return null;
   }
+}
+
+/**
+ * Claim next waiting job with Firestore transaction lease.
+ */
+export async function claimNextGenerationJob(opts?: {
+  skipPauseCheck?: boolean;
+}): Promise<AiBlogGenerationJob | null> {
+  const db = getAdminDb();
+  if (!db) return null;
+  const settings = await getSeoBlogSettings();
+  if (!opts?.skipPauseCheck && settings.pauseGenerationQueue === true) {
+    return null;
+  }
+
+  const now = Date.now();
+  const allRecent = await listGenerationJobs(undefined, 150);
+  const stale = allRecent.filter((j) => isStuckGeneratingJob(j, now));
+  const waiting = allRecent
+    .filter((j) => j.status === "waiting")
+    .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
+
+  const candidates = [...stale, ...waiting];
+  if (candidates.length === 0) return null;
+
+  const worker = workerId();
+  for (const target of candidates) {
+    const claimed = await tryClaimGenerationJob(target.id, worker);
+    if (claimed) return claimed;
+  }
+  return null;
 }
 
 export async function processGenerationJob(
   job: AiBlogGenerationJob,
 ): Promise<{ ok: boolean; error?: string }> {
   const settings = await getSeoBlogSettings();
-  const day = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const day = todayIst();
   if (
     settings.blogsGeneratedDate === day &&
     (settings.blogsGeneratedToday ?? 0) >= settings.maxBlogsGeneratedPerDay
@@ -264,18 +332,86 @@ export async function processGenerationJob(
   }
 }
 
-export async function processGenerationQueue(maxJobs = 2): Promise<{
+export type ProcessGenerationQueueResult = {
   processed: number;
   errors: string[];
-}> {
+  reconciled: number;
+  waitingCount: number;
+  skippedReason?: string;
+};
+
+export async function processGenerationQueue(
+  maxJobs = 2,
+  opts?: { skipPauseCheck?: boolean },
+): Promise<ProcessGenerationQueueResult> {
+  const settings = await getSeoBlogSettings();
+  const reconciled = await reconcileStuckGenerationJobs();
+  const waitingCount = (await listGenerationJobs("waiting", 200)).length;
+
+  if (!opts?.skipPauseCheck && settings.pauseGenerationQueue === true) {
+    return {
+      processed: 0,
+      errors: ["Generation queue is paused — click Resume queue first"],
+      reconciled,
+      waitingCount,
+      skippedReason: "queue_paused",
+    };
+  }
+
+  const day = todayIst();
+  const generatedToday =
+    settings.blogsGeneratedDate === day
+      ? (settings.blogsGeneratedToday ?? 0)
+      : 0;
+  if (generatedToday >= settings.maxBlogsGeneratedPerDay) {
+    return {
+      processed: 0,
+      errors: [
+        `Daily generation cap reached (${generatedToday}/${settings.maxBlogsGeneratedPerDay} today IST)`,
+      ],
+      reconciled,
+      waitingCount,
+      skippedReason: "daily_cap",
+    };
+  }
+
+  if (!getAdminDb()) {
+    return {
+      processed: 0,
+      errors: ["Firebase Admin is not configured on the server"],
+      reconciled,
+      waitingCount,
+      skippedReason: "no_admin_db",
+    };
+  }
+
   const errors: string[] = [];
   let processed = 0;
-  for (let i = 0; i < maxJobs; i++) {
-    const job = await claimNextGenerationJob();
-    if (!job) break;
+  const remainingCap = settings.maxBlogsGeneratedPerDay - generatedToday;
+
+  for (let i = 0; i < maxJobs && processed < remainingCap; i++) {
+    const job = await claimNextGenerationJob(opts);
+    if (!job) {
+      if (processed === 0 && waitingCount > 0) {
+        errors.push(
+          "Could not claim a waiting job — try again or delete stuck rows",
+        );
+      }
+      break;
+    }
     const result = await processGenerationJob(job);
     processed += 1;
     if (!result.ok && result.error) errors.push(result.error);
   }
-  return { processed, errors };
+
+  return {
+    processed,
+    errors,
+    reconciled,
+    waitingCount,
+    skippedReason:
+      processed === 0 && waitingCount > 0 && errors.length === 0
+        ? "claim_failed"
+        : undefined,
+  };
 }

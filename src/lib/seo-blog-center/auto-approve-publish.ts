@@ -260,6 +260,7 @@ export async function runAutoApprovePublishAutomation(actorId = "system-auto"): 
       );
       const gen = await processGenerationQueue(
         Math.min(Math.max(result.jobsCreated, 1), 3),
+        { skipPauseCheck: true },
       );
       processed = gen.processed;
     } catch (e) {

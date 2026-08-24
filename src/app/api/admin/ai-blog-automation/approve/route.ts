@@ -164,6 +164,7 @@ export async function POST(req: Request) {
     try {
       const gen = await processGenerationQueue(
         Math.min(Math.max(result.jobsCreated, 1), 3),
+        { skipPauseCheck: true },
       );
       processed = gen.processed;
       processErrors = gen.errors;

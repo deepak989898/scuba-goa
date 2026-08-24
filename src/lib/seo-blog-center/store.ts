@@ -190,7 +190,9 @@ export async function listGenerationJobs(
   const db = getAdminDb();
   if (!db) return [];
   const snap = await db.collection(COL.jobs).limit(Math.min(300, limit * 2)).get();
-  let all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AiBlogGenerationJob);
+  let all = snap.docs.map(
+    (d) => ({ ...d.data(), id: d.id }) as AiBlogGenerationJob,
+  );
   if (status) all = all.filter((j) => j.status === status);
   return all
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))

@@ -544,9 +544,27 @@ export default function AiBlogAutomationPage() {
     try {
       const data = await adminFetch("/api/admin/ai-blog-automation", {
         method: "PATCH",
-        body: JSON.stringify({ action: "processQueue", maxJobs: 2 }),
+        body: JSON.stringify({ action: "processQueue", maxJobs: 3 }),
       });
-      setOk(`Processed ${data.processed} job(s)`);
+      const processed = Number(data.processed ?? 0);
+      const reconciled = Number(data.reconciled ?? 0);
+      const waitingCount = Number(data.waitingCount ?? 0);
+      const errors = Array.isArray(data.errors)
+        ? data.errors.filter(Boolean).map(String)
+        : [];
+      if (processed > 0) {
+        setOk(
+          `Processed ${processed} job(s)${reconciled > 0 ? ` · reset ${reconciled} stuck` : ""}`,
+        );
+      } else if (errors.length > 0) {
+        setErr(errors.join(" · "));
+      } else if (waitingCount > 0) {
+        setErr(
+          `No jobs could be claimed (${waitingCount} still waiting). Try again in a minute or delete broken rows.`,
+        );
+      } else {
+        setOk("No waiting jobs in the queue");
+      }
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Queue process failed");

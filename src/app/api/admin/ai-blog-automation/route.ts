@@ -125,7 +125,9 @@ export async function PATCH(req: Request) {
   }
 
   if (body.action === "processQueue") {
-    const result = await processGenerationQueue(Number(body.maxJobs) || 2);
+    const maxJobs = Math.min(5, Math.max(1, Number(body.maxJobs) || 3));
+    // Manual admin trigger — run even if queue was paused.
+    const result = await processGenerationQueue(maxJobs, { skipPauseCheck: true });
     return NextResponse.json({ ok: true, ...result });
   }
 
