@@ -9,7 +9,7 @@ import {
 import type { AgentJob } from "@/lib/gsc-indexing-agent/pipeline";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  let body: { job?: string; forceSitemap?: boolean } = {};
+  let body: { job?: string; forceSitemap?: boolean; max?: number } = {};
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -51,6 +51,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid job" }, { status: 400 });
   }
 
-  const result = await runGscAgentJob(job as AgentJob);
+  const result = await runGscAgentJob(job as AgentJob, {
+    inspectMax:
+      job === "inspect"
+        ? Math.min(12, Math.max(1, Number(body.max) || 8))
+        : undefined,
+  });
   return NextResponse.json(result);
 }

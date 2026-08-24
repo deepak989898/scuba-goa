@@ -36,13 +36,13 @@ export async function POST(req: Request) {
   }
 
   if (body.processQueue) {
-    const max = Math.min(50, Math.max(1, Number(body.max) || 25));
+    const max = Math.min(12, Math.max(1, Number(body.max) || 8));
     const detail = await processInspectionQueue(max);
     return NextResponse.json({ ok: true, detail });
   }
 
   if (body.refreshPending) {
-    const max = Math.min(30, Math.max(1, Number(body.max) || 20));
+    const max = Math.min(12, Math.max(1, Number(body.max) || 8));
     const urls = await listSeoUrls({ limit: 500, filter: "unknown" });
     const ids = urls
       .filter(
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     ? body.urlIds.map(String).filter(Boolean)
     : [];
   if (urlIds.length > 1) {
-    const max = Math.min(30, Math.max(1, Number(body.max) || 20));
+    const max = Math.min(12, Math.max(1, Number(body.max) || 8));
     const detail = await refreshSeoUrlInspectionBulk(urlIds, max);
     return NextResponse.json({ ok: true, detail });
   }

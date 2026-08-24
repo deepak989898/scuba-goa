@@ -23,6 +23,7 @@ export type AgentJob =
 
 export async function runGscAgentJob(
   job: AgentJob,
+  opts?: { inspectMax?: number },
 ): Promise<{ ok: boolean; job: AgentJob; detail: Record<string, unknown> }> {
   const settings = await getSeoSettings();
   const started = new Date().toISOString();
@@ -43,7 +44,7 @@ export async function runGscAgentJob(
         detail = await runUrlInventoryDiscovery();
         break;
       case "inspect":
-        detail = await processInspectionQueue(25);
+        detail = await processInspectionQueue(opts?.inspectMax ?? 8);
         break;
       case "audit": {
         const urls = (await listSeoUrls({ limit: 400 }))

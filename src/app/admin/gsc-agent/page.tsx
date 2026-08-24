@@ -345,11 +345,32 @@ export default function GscIndexingAgentPage() {
     setErr(null);
     setOk(null);
     try {
-      const data = await adminFetch("/api/admin/gsc-agent/run", {
-        method: "POST",
-        body: JSON.stringify({ job }),
-      });
-      setOk(`${job} finished: ${JSON.stringify(data.detail || data).slice(0, 180)}`);
+      if (job === "inspect") {
+        const data = await adminFetch("/api/admin/gsc-agent/inspect", {
+          method: "POST",
+          body: JSON.stringify({ processQueue: true, max: 8 }),
+        });
+        const d = data.detail as {
+          processed?: number;
+          skippedQuota?: number;
+          errors?: number;
+        };
+        const processed = Number(d?.processed ?? 0);
+        const skipped = Number(d?.skippedQuota ?? 0);
+        const errors = Number(d?.errors ?? 0);
+        setOk(
+          `Inspect queue: ${processed} URL(s) checked` +
+            (errors ? ` · ${errors} failed` : "") +
+            (skipped ? ` · ${skipped} skipped (daily quota)` : "") +
+            ". Runs 8 per click (~50/day GSC quota) — click again for more.",
+        );
+      } else {
+        const data = await adminFetch("/api/admin/gsc-agent/run", {
+          method: "POST",
+          body: JSON.stringify({ job }),
+        });
+        setOk(`${job} finished: ${JSON.stringify(data.detail || data).slice(0, 180)}`);
+      }
       await load(tab, urlFilter, issueSeverity);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Run failed");
@@ -548,7 +569,7 @@ export default function GscIndexingAgentPage() {
     try {
       const data = await adminFetch("/api/admin/gsc-agent/inspect", {
         method: "POST",
-        body: JSON.stringify({ urlIds, max: 20 }),
+        body: JSON.stringify({ urlIds, max: 8 }),
       });
       const detail = data.detail as {
         processed?: number;
@@ -576,7 +597,7 @@ export default function GscIndexingAgentPage() {
     try {
       const data = await adminFetch("/api/admin/gsc-agent/inspect", {
         method: "POST",
-        body: JSON.stringify({ refreshPending: true, max: 20 }),
+        body: JSON.stringify({ refreshPending: true, max: 8 }),
       });
       const detail = data.detail as {
         processed?: number;
@@ -1136,7 +1157,7 @@ export default function GscIndexingAgentPage() {
                   onClick={() => void refreshPendingIndexStatus()}
                   className="rounded-full border border-amber-600 bg-amber-50 px-4 py-1.5 text-xs font-bold text-amber-950 disabled:opacity-50"
                 >
-                  Refresh all pending (20)
+                  Refresh all pending (8)
                 </button>
               )}
               {selectedUrlIds.size > BULK_CHUNK ? (

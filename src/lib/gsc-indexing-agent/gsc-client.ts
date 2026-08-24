@@ -159,86 +159,105 @@ async function inspectWithToken(
   siteUrl: string,
   inspectionUrl: string,
 ): Promise<{ ok: true; result: UrlInspectionResult } | { ok: false; error: string }> {
-  const res = await fetch(
-    "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 22000);
+  try {
+    const res = await fetch(
+      "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inspectionUrl,
+          siteUrl,
+          languageCode: "en-US",
+        }),
+        signal: controller.signal,
       },
-      body: JSON.stringify({
-        inspectionUrl,
-        siteUrl,
-        languageCode: "en-US",
-      }),
-    },
-  );
-  const data = (await res.json().catch(() => ({}))) as {
-    error?: { message?: string };
-    inspectionResult?: {
-      indexStatusResult?: {
-        verdict?: string;
-        coverageState?: string;
-        robotsTxtState?: string;
-        indexingState?: string;
-        lastCrawlTime?: string;
-        pageFetchState?: string;
-        googleCanonical?: string;
-        userCanonical?: string;
+    );
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string };
+      inspectionResult?: {
+        indexStatusResult?: {
+          verdict?: string;
+          coverageState?: string;
+          robotsTxtState?: string;
+          indexingState?: string;
+          lastCrawlTime?: string;
+          pageFetchState?: string;
+          googleCanonical?: string;
+          userCanonical?: string;
+        };
       };
     };
-  };
 
-  if (!res.ok) {
-    return {
-      ok: false,
-      error: data.error?.message ?? `URL Inspection failed (${res.status})`,
-    };
-  }
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: data.error?.message ?? `URL Inspection failed (${res.status})`,
+      };
+    }
 
-  const idx = data.inspectionResult?.indexStatusResult;
-  if (!idx) {
+    const idx = data.inspectionResult?.indexStatusResult;
+    if (!idx) {
+      return {
+        ok: true,
+        result: {
+          indexStatus: "UNKNOWN",
+          coverageState: null,
+          crawlState: null,
+          googleCanonical: null,
+          userCanonical: null,
+          lastCrawlTime: null,
+          robotsTxtState: null,
+          indexingState: null,
+          pageFetchState: null,
+          rawVerdict: null,
+        },
+      };
+    }
+
+    const indexStatus = mapInspectionToStatus({
+      indexingState: idx.indexingState,
+      pageFetchState: idx.pageFetchState,
+      robotsTxtState: idx.robotsTxtState,
+      verdict: idx.verdict,
+      coverageState: idx.coverageState,
+    });
+
     return {
       ok: true,
       result: {
-        indexStatus: "UNKNOWN",
-        coverageState: null,
-        crawlState: null,
-        googleCanonical: null,
-        userCanonical: null,
-        lastCrawlTime: null,
-        robotsTxtState: null,
-        indexingState: null,
-        pageFetchState: null,
-        rawVerdict: null,
+        indexStatus,
+        coverageState: idx.coverageState ?? null,
+        crawlState: idx.pageFetchState ?? null,
+        googleCanonical: idx.googleCanonical ?? null,
+        userCanonical: idx.userCanonical ?? null,
+        lastCrawlTime: idx.lastCrawlTime ?? null,
+        robotsTxtState: idx.robotsTxtState ?? null,
+        indexingState: idx.indexingState ?? null,
+        pageFetchState: idx.pageFetchState ?? null,
+        rawVerdict: idx.verdict ?? null,
       },
     };
+  } catch (e) {
+    const aborted =
+      e instanceof Error &&
+      (e.name === "AbortError" || e.message.includes("aborted"));
+    return {
+      ok: false,
+      error: aborted
+        ? "GSC URL Inspection timed out (22s) — try again"
+        : e instanceof Error
+          ? e.message
+          : "URL Inspection failed",
+    };
+  } finally {
+    clearTimeout(timer);
   }
-
-  const indexStatus = mapInspectionToStatus({
-    indexingState: idx.indexingState,
-    pageFetchState: idx.pageFetchState,
-    robotsTxtState: idx.robotsTxtState,
-    verdict: idx.verdict,
-    coverageState: idx.coverageState,
-  });
-
-  return {
-    ok: true,
-    result: {
-      indexStatus,
-      coverageState: idx.coverageState ?? null,
-      crawlState: idx.pageFetchState ?? null,
-      googleCanonical: idx.googleCanonical ?? null,
-      userCanonical: idx.userCanonical ?? null,
-      lastCrawlTime: idx.lastCrawlTime ?? null,
-      robotsTxtState: idx.robotsTxtState ?? null,
-      indexingState: idx.indexingState ?? null,
-      pageFetchState: idx.pageFetchState ?? null,
-      rawVerdict: idx.verdict ?? null,
-    },
-  };
 }
 
 export async function querySearchAnalytics(input: {

@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "src/app/api/admin/gsc-agent/run/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/admin/gsc-agent/inspect/route.ts": {
+      "maxDuration": 300
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/analytics-daily",

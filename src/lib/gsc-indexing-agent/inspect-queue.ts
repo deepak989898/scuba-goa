@@ -1,5 +1,3 @@
-import { getAdminDb } from "@/lib/firebase-admin";
-import { stripUndefinedDeep } from "@/lib/firestore-json";
 import { inspectUrlInGsc, type UrlInspectionResult } from "./gsc-client";
 import { getSeoSettings, saveSeoSettings } from "./settings";
 import {
@@ -7,7 +5,6 @@ import {
   listSeoUrls,
   logAction,
   upsertSeoUrl,
-  SEO_INSPECTIONS,
 } from "./store";
 import type { SeoUrlRecord } from "./types";
 
@@ -16,17 +13,26 @@ function todayIst(): string {
 }
 
 async function reserveInspectionSlot(): Promise<boolean> {
+  const granted = await reserveInspectionSlots(1);
+  return granted > 0;
+}
+
+/** Reserve up to `max` inspection slots in one settings write (faster than per-URL). */
+async function reserveInspectionSlots(max: number): Promise<number> {
   const settings = await getSeoSettings();
-  if (settings.paused) return false;
+  if (settings.paused) return 0;
   const day = todayIst();
   let used = settings.inspectionsUsedToday;
   if (settings.inspectionsQuotaDate !== day) used = 0;
-  if (used >= settings.inspectionDailyQuota) return false;
-  await saveSeoSettings({
-    inspectionsUsedToday: used + 1,
-    inspectionsQuotaDate: day,
-  });
-  return true;
+  const remaining = Math.max(0, settings.inspectionDailyQuota - used);
+  const granted = Math.min(Math.max(0, max), remaining);
+  if (granted > 0) {
+    await saveSeoSettings({
+      inspectionsUsedToday: used + granted,
+      inspectionsQuotaDate: day,
+    });
+  }
+  return granted;
 }
 
 function inspectionSortScore(u: SeoUrlRecord): number {
@@ -154,12 +160,12 @@ export async function refreshSeoUrlInspectionBulk(
   let processed = 0;
   let skippedQuota = 0;
 
-  for (const urlId of unique) {
-    const slot = await reserveInspectionSlot();
-    if (!slot) {
-      skippedQuota += unique.length - results.length;
-      break;
-    }
+  const slots = await reserveInspectionSlots(unique.length);
+  if (slots === 0) {
+    return { processed: 0, skippedQuota: unique.length, results: [] };
+  }
+
+  for (const urlId of unique.slice(0, slots)) {
     const r = await refreshSeoUrlInspection(urlId, { skipQuotaReserve: true });
     results.push({
       urlId,
@@ -168,14 +174,16 @@ export async function refreshSeoUrlInspectionBulk(
       error: r.error,
     });
     if (r.ok) processed += 1;
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
+
+  skippedQuota = unique.length - results.length;
 
   return { processed, skippedQuota, results };
 }
 
 /** Process due URL Inspection jobs within quota (read status only). */
-export async function processInspectionQueue(max = 10): Promise<{
+export async function processInspectionQueue(max = 8): Promise<{
   processed: number;
   skippedQuota: number;
   errors: number;
@@ -183,6 +191,12 @@ export async function processInspectionQueue(max = 10): Promise<{
   const settings = await getSeoSettings();
   if (settings.paused) {
     return { processed: 0, skippedQuota: 0, errors: 0 };
+  }
+
+  const batchMax = Math.min(15, Math.max(1, max));
+  const slots = await reserveInspectionSlots(batchMax);
+  if (slots === 0) {
+    return { processed: 0, skippedQuota: batchMax, errors: 0 };
   }
 
   const urls = await listSeoUrls({ limit: 800 });
@@ -195,22 +209,15 @@ export async function processInspectionQueue(max = 10): Promise<{
         (!u.nextInspectionAt || new Date(u.nextInspectionAt).getTime() <= now),
     )
     .sort((a, b) => inspectionSortScore(a) - inspectionSortScore(b))
-    .slice(0, max);
+    .slice(0, slots);
 
   let processed = 0;
-  let skippedQuota = 0;
+  let skippedQuota = batchMax - slots;
   let errors = 0;
 
   for (const url of due) {
-    const ok = await reserveInspectionSlot();
-    if (!ok) {
-      skippedQuota += 1;
-      break;
-    }
-
     const result = await inspectUrlInGsc(url.url);
     const inspectedAt = new Date().toISOString();
-    const db = getAdminDb();
 
     if (!result.ok) {
       errors += 1;
@@ -236,18 +243,6 @@ export async function processInspectionQueue(max = 10): Promise<{
     const r = result.result;
     await applyInspectionResult(url, r, inspectedAt);
 
-    if (db) {
-      await db.collection(SEO_INSPECTIONS).doc(`${url.id}_${Date.now()}`).set(
-        stripUndefinedDeep({
-          urlId: url.id,
-          url: url.url,
-          result: r,
-          createdAt: inspectedAt,
-          siteId: url.siteId,
-        }),
-      );
-    }
-
     await logAction({
       urlId: url.id,
       url: url.url,
@@ -257,7 +252,7 @@ export async function processInspectionQueue(max = 10): Promise<{
     });
     processed += 1;
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   return { processed, skippedQuota, errors };
