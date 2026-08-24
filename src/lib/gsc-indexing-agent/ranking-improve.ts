@@ -503,6 +503,8 @@ async function persistFields(
     contentUpdatedAt: now,
     lastActionAt: now,
     updatedAt: now,
+    nextInspectionAt: now,
+    inspectionPriority: 1,
     recommendationCodes: Array.from(
       new Set([...(record.recommendationCodes || []), "RANKING_CONTENT_IMPROVED"]),
     ),

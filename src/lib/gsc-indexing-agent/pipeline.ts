@@ -43,7 +43,7 @@ export async function runGscAgentJob(
         detail = await runUrlInventoryDiscovery();
         break;
       case "inspect":
-        detail = await processInspectionQueue(8);
+        detail = await processInspectionQueue(25);
         break;
       case "audit": {
         const urls = (await listSeoUrls({ limit: 400 }))

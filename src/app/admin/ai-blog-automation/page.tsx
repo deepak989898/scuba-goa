@@ -116,6 +116,11 @@ function clusterConflictsList(c: SeoKeywordCluster): ClusterConflict[] {
   return [];
 }
 
+/** Clusters awaiting admin review — approved/queued items live in Generation queue. */
+function clusterAwaitingApproval(c: SeoKeywordCluster): boolean {
+  return c.status === "pending";
+}
+
 async function adminToken(): Promise<string> {
   const auth = getFirebaseAuth();
   if (!auth?.currentUser) throw new Error("Sign in at /admin/login first.");
@@ -278,7 +283,11 @@ export default function AiBlogAutomationPage() {
         );
       }
       setKeywords(data.keywords ?? []);
-      setClusters(data.clusters ?? []);
+      setClusters(
+        (data.clusters ?? []).filter((c: SeoKeywordCluster) =>
+          clusterAwaitingApproval(c),
+        ),
+      );
       setJobs(data.jobs ?? []);
       setDrafts(data.drafts ?? []);
       setLogs(data.logs ?? []);
@@ -368,12 +377,29 @@ export default function AiBlogAutomationPage() {
 
   const filteredClusters = useMemo(() => {
     return clusters.filter((c) => {
+      if (!clusterAwaitingApproval(c)) return false;
       const hasConflict = clusterConflictsList(c).length > 0;
       if (clusterFilter === "conflicts") return hasConflict;
       // Default / "all" / "no_conflicts": never show conflict keywords in the main list
       return !hasConflict;
     });
   }, [clusters, clusterFilter]);
+
+  const pendingReadyCount = useMemo(
+    () =>
+      clusters.filter(
+        (c) => clusterAwaitingApproval(c) && clusterConflictsList(c).length === 0,
+      ).length,
+    [clusters],
+  );
+
+  const pendingConflictCount = useMemo(
+    () =>
+      clusters.filter(
+        (c) => clusterAwaitingApproval(c) && clusterConflictsList(c).length > 0,
+      ).length,
+    [clusters],
+  );
 
   async function runResearch() {
     setBusy("research");
@@ -464,6 +490,7 @@ export default function AiBlogAutomationPage() {
           `Queued ${data.jobsCreated} job(s). Images: ${generateAiImage ? "AI" : "free stock"}. Est. cost ~$${data.estimatedCostUsd}`,
         );
       }
+      setClusters((prev) => prev.filter((c) => !ids.includes(c.id)));
       setSelectedClusters(new Set());
       setTab("queue");
       await load();
@@ -487,7 +514,7 @@ export default function AiBlogAutomationPage() {
       setErr("Select at least one cluster");
       return;
     }
-    if (!confirm(`Reject ${ids.length} selected cluster(s)? They stay in the list as rejected.`)) {
+    if (!confirm(`Reject ${ids.length} selected cluster(s)? They will be removed from this list.`)) {
       return;
     }
     setBusy("reject");
@@ -499,6 +526,7 @@ export default function AiBlogAutomationPage() {
         body: JSON.stringify({ clusterIds: ids, action: "reject" }),
       });
       setOk(`Rejected ${data.rejected ?? ids.length} cluster(s)`);
+      setClusters((prev) => prev.filter((c) => !ids.includes(c.id)));
       setSelectedClusters(new Set());
       await load();
     } catch (e) {
@@ -530,6 +558,7 @@ export default function AiBlogAutomationPage() {
         body: JSON.stringify({ clusterIds: ids, action: "delete" }),
       });
       setOk(`Deleted ${data.deleted ?? ids.length} cluster(s)`);
+      setClusters((prev) => prev.filter((c) => !ids.includes(c.id)));
       setSelectedClusters(new Set());
       await load();
     } catch (e) {
@@ -1001,7 +1030,7 @@ export default function AiBlogAutomationPage() {
           {[
             ["Keywords", stats.keywords],
             ["Pending keywords", stats.pendingKeywords],
-            ["Clusters", stats.clusters],
+            ["Clusters", stats.pendingClusters ?? stats.clusters],
             ["Waiting jobs", stats.waitingJobs],
             ["Failed jobs", stats.failedJobs],
             ["Drafts", stats.drafts],
@@ -1245,6 +1274,10 @@ export default function AiBlogAutomationPage() {
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2 border-b border-ocean-100 p-3">
+            <p className="text-xs text-ocean-600">
+              Only <strong>pending</strong> clusters appear here. After approve, they move to{" "}
+              <strong>Generation queue</strong> and won&apos;t show again.
+            </p>
             <div className="flex flex-wrap items-center gap-1 rounded-full border border-ocean-200 bg-white p-0.5 text-xs font-semibold">
               {(
                 [
@@ -1286,28 +1319,13 @@ export default function AiBlogAutomationPage() {
               />
               Select all shown ({filteredClusters.length}
               {clusterFilter === "conflicts"
-                ? ` conflicts`
-                : ` · ${clusters.filter((c) => clusterConflictsList(c).length === 0).length} ready`}
+                ? ` conflicts · ${pendingConflictCount} total`
+                : ` ready · ${pendingReadyCount} total`}
               )
             </label>
             <p className="text-sm font-semibold text-ocean-900">
               {selectedClusters.size} selected
             </p>
-            <button
-              type="button"
-              className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold"
-              onClick={() =>
-                setSelectedClusters(
-                  new Set(
-                    filteredClusters
-                      .filter((c) => c.status === "pending")
-                      .map((c) => c.id),
-                  ),
-                )
-              }
-            >
-              Select pending shown
-            </button>
             <button
               type="button"
               className="rounded-full border border-ocean-200 px-3 py-1.5 text-xs font-semibold"
@@ -1393,7 +1411,9 @@ export default function AiBlogAutomationPage() {
                 {filteredClusters.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="p-4 text-center text-ocean-500">
-                      No clusters match this filter.
+                      {clusterFilter === "conflicts"
+                        ? "No pending conflict clusters. Run research or switch to Without conflict."
+                        : "No clusters awaiting approval. Run research or check Generation queue for approved jobs."}
                     </td>
                   </tr>
                 ) : null}

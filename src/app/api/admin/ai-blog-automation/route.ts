@@ -55,7 +55,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ keywords: await listKeywords(undefined, 300) });
   }
   if (view === "clusters") {
-    return NextResponse.json({ clusters: await listClusters(150) });
+    const clusters = (await listClusters(150)).filter((c) => c.status === "pending");
+    return NextResponse.json({ clusters });
   }
   if (view === "jobs") {
     return NextResponse.json({ jobs: await listGenerationJobs(undefined, 150) });
@@ -105,7 +106,7 @@ export async function GET(req: Request) {
       publishedDrafts: drafts.filter((d) => d.status === "published").length,
     },
     keywords,
-    clusters,
+    clusters: clusters.filter((c) => c.status === "pending"),
     jobs: jobs.slice(0, 50),
     drafts: drafts.slice(0, 40),
     logs,

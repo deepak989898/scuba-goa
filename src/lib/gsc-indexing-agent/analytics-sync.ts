@@ -1,11 +1,10 @@
 import { querySearchAnalytics } from "./gsc-client";
-import { listSeoUrls, logAction, upsertSeoUrl } from "./store";
+import { listSeoUrls, logAction, upsertSeoUrl, SEO_ANALYTICS_DAILY } from "./store";
 import { saveSeoSettings } from "./settings";
 import { normalizeSiteUrl, urlIdFromNormalized } from "./normalize-url";
 import type { RankingStatus, SeoUrlRecord } from "./types";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { stripUndefinedDeep } from "@/lib/firestore-json";
-import { SEO_ANALYTICS_DAILY } from "./store";
 
 /** Don't override a recent inspection that clearly says not indexed. */
 const NOT_INDEXED_FROM_INSPECTION = new Set([
@@ -20,6 +19,41 @@ const NOT_INDEXED_FROM_INSPECTION = new Set([
   "REDIRECT_ERROR",
 ]);
 
+function pathnameKey(url: string): string | null {
+  try {
+    const p = new URL(url).pathname;
+    return p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p || "/";
+  } catch {
+    return null;
+  }
+}
+
+function resolveUrlRecord(
+  page: string,
+  byNorm: Map<string, SeoUrlRecord>,
+  byPath: Map<string, SeoUrlRecord>,
+): SeoUrlRecord | undefined {
+  const norm = normalizeSiteUrl(page);
+  if (norm && byNorm.has(norm)) return byNorm.get(norm);
+  const path = pathnameKey(page);
+  if (path && byPath.has(path)) return byPath.get(path);
+  if (norm) {
+    try {
+      const u = new URL(norm);
+      const alt = new URL(norm);
+      if (u.hostname.startsWith("www.")) {
+        alt.hostname = u.hostname.replace(/^www\./, "");
+      } else {
+        alt.hostname = `www.${u.hostname}`;
+      }
+      const altNorm = normalizeSiteUrl(alt.toString());
+      if (altNorm && byNorm.has(altNorm)) return byNorm.get(altNorm);
+    } catch {
+      /* ignore */
+    }
+  }
+  return undefined;
+}
 function istDateOffset(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
@@ -71,16 +105,18 @@ export async function syncSearchAnalytics(): Promise<{
 
   const urls = await listSeoUrls({ limit: 2000 });
   const byNorm = new Map(urls.map((u) => [u.normalizedUrl, u]));
+  const byPath = new Map<string, SeoUrlRecord>();
+  for (const u of urls) {
+    const path = pathnameKey(u.normalizedUrl);
+    if (path && !byPath.has(path)) byPath.set(path, u);
+  }
   let pagesUpdated = 0;
   const now = new Date().toISOString();
 
   for (const row of result.rows) {
     const page = row.keys[0];
     if (!page) continue;
-    const norm = normalizeSiteUrl(page);
-    if (!norm) continue;
-    const existing = byNorm.get(norm);
-    const base: SeoUrlRecord | undefined = existing;
+    const base = resolveUrlRecord(page, byNorm, byPath);
     if (!base) continue;
 
     const rankingStatus = rankingFromMetrics({
@@ -97,12 +133,10 @@ export async function syncSearchAnalytics(): Promise<{
       ctr: row.ctr,
       averagePosition: row.position,
       rankingStatus,
-      // Search Analytics impressions/clicks ⇒ Google has the URL in search index.
       // Don't overwrite a fresh URL Inspection that says not indexed.
       indexStatus: (() => {
         const hasSearchPresence = row.impressions > 0 || row.clicks > 0;
-        if (!hasSearchPresence) return base.indexStatus;
-        const inspectedRecently =
+        if (!hasSearchPresence) return base.indexStatus;        const inspectedRecently =
           Boolean(base.lastInspectionAt) &&
           Date.now() - new Date(base.lastInspectionAt!).getTime() <
             14 * 24 * 60 * 60 * 1000;

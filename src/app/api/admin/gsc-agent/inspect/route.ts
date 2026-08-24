@@ -5,14 +5,14 @@ import {
   listSeoUrls,
   runTechnicalAuditForUrl,
   processInspectionQueue,
+  refreshSeoUrlInspection,
+  refreshSeoUrlInspectionBulk,
 } from "@/lib/gsc-indexing-agent";
-import { inspectUrlInGsc } from "@/lib/gsc-indexing-agent/gsc-client";
-import { upsertSeoUrl, logAction } from "@/lib/gsc-indexing-agent/store";
 import { urlIdFromNormalized } from "@/lib/gsc-indexing-agent/normalize-url";
 import { assertSafeAuditUrl } from "@/lib/gsc-indexing-agent/ssrf";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -20,8 +20,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  let body: { url?: string; urlId?: string; audit?: boolean; processQueue?: boolean } =
-    {};
+  let body: {
+    url?: string;
+    urlId?: string;
+    urlIds?: string[];
+    audit?: boolean;
+    processQueue?: boolean;
+    refreshPending?: boolean;
+    max?: number;
+  } = {};
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -29,7 +36,34 @@ export async function POST(req: Request) {
   }
 
   if (body.processQueue) {
-    const detail = await processInspectionQueue(5);
+    const max = Math.min(50, Math.max(1, Number(body.max) || 25));
+    const detail = await processInspectionQueue(max);
+    return NextResponse.json({ ok: true, detail });
+  }
+
+  if (body.refreshPending) {
+    const max = Math.min(30, Math.max(1, Number(body.max) || 20));
+    const urls = await listSeoUrls({ limit: 500, filter: "unknown" });
+    const ids = urls
+      .filter(
+        (u) =>
+          u.indexStatus === "PENDING_INSPECTION" ||
+          u.indexStatus === "UNKNOWN" ||
+          u.indexStatus === "API_ERROR" ||
+          !u.lastInspectionAt,
+      )
+      .map((u) => u.id)
+      .slice(0, max);
+    const detail = await refreshSeoUrlInspectionBulk(ids, max);
+    return NextResponse.json({ ok: true, detail });
+  }
+
+  const urlIds = Array.isArray(body.urlIds)
+    ? body.urlIds.map(String).filter(Boolean)
+    : [];
+  if (urlIds.length > 1) {
+    const max = Math.min(30, Math.max(1, Number(body.max) || 20));
+    const detail = await refreshSeoUrlInspectionBulk(urlIds, max);
     return NextResponse.json({ ok: true, detail });
   }
 
@@ -53,8 +87,13 @@ export async function POST(req: Request) {
     }
   }
 
+  const singleId = urlIds[0] || body.urlId;
+  if (!record && singleId) {
+    record = await getSeoUrl(String(singleId));
+  }
+
   if (!record) {
-    return NextResponse.json({ error: "url or urlId required" }, { status: 400 });
+    return NextResponse.json({ error: "url, urlId, or urlIds required" }, { status: 400 });
   }
 
   if (body.audit) {
@@ -62,38 +101,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, audit });
   }
 
-  // Read-only URL Inspection — never claims to request indexing
-  const result = await inspectUrlInGsc(record.url);
+  const result = await refreshSeoUrlInspection(record.id);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 502 });
+    return NextResponse.json({ error: result.error ?? "Inspection failed" }, { status: 502 });
   }
-
-  const now = new Date().toISOString();
-  const r = result.result;
-  await upsertSeoUrl({
-    ...record,
-    indexStatus: r.indexStatus,
-    coverageState: r.coverageState,
-    crawlState: r.crawlState,
-    googleCanonical: r.googleCanonical,
-    userCanonical: r.userCanonical || record.userCanonical,
-    lastCrawlTime: r.lastCrawlTime,
-    lastInspectionAt: now,
-    nextInspectionAt: new Date(Date.now() + 7 * 86400_000).toISOString(),
-    updatedAt: now,
-    lastActionAt: now,
-  });
-  await logAction({
-    urlId: record.id,
-    url: record.url,
-    action: "manual_url_inspection",
-    detail: `Status ${r.indexStatus} (read-only; not a request-to-index)`,
-    ok: true,
-  });
 
   return NextResponse.json({
     ok: true,
-    result: r,
+    indexStatus: result.indexStatus,
     note: "URL Inspection API reports index status only. It does not submit indexing requests.",
   });
 }

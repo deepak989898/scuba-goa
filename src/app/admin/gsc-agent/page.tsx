@@ -244,14 +244,11 @@ export default function GscIndexingAgentPage() {
   );
   const [selectedUrlIds, setSelectedUrlIds] = useState<Set<string>>(new Set());
   const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkInspecting, setBulkInspecting] = useState(false);
 
   const bulkEligibleUrls = useMemo(() => {
-    return urls.filter((u) => {
-      const pageType = String(u.pageType);
-      if (!isContentEditableType(pageType)) return false;
-      return !urlRecentlyImproved(u, improveByUrl);
-    });
-  }, [urls, improveByUrl]);
+    return urls.filter((u) => isContentEditableType(String(u.pageType)));
+  }, [urls]);
 
   const bulkEligibleIds = useMemo(
     () => bulkEligibleUrls.map((u) => String(u.id)),
@@ -541,6 +538,59 @@ export default function GscIndexingAgentPage() {
       return;
     }
     setSelectedUrlIds(new Set(bulkEligibleIds));
+  }
+
+  async function refreshIndexBulk(urlIds: string[]) {
+    if (!urlIds.length) return;
+    setBulkInspecting(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/inspect", {
+        method: "POST",
+        body: JSON.stringify({ urlIds, max: 20 }),
+      });
+      const detail = data.detail as {
+        processed?: number;
+        skippedQuota?: number;
+        results?: Array<{ urlId: string; ok: boolean; indexStatus?: string; error?: string }>;
+      };
+      const processed = Number(detail?.processed ?? 0);
+      const skipped = Number(detail?.skippedQuota ?? 0);
+      setOk(
+        `Index status refreshed for ${processed} URL(s)${skipped ? ` · ${skipped} skipped (quota)` : ""}`,
+      );
+      setSelectedUrlIds(new Set());
+      await load("urls", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Index refresh failed");
+    } finally {
+      setBulkInspecting(false);
+    }
+  }
+
+  async function refreshPendingIndexStatus() {
+    setBulkInspecting(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/inspect", {
+        method: "POST",
+        body: JSON.stringify({ refreshPending: true, max: 20 }),
+      });
+      const detail = data.detail as {
+        processed?: number;
+        skippedQuota?: number;
+      };
+      setOk(
+        `Refreshed index for ${Number(detail?.processed ?? 0)} pending URL(s)${detail?.skippedQuota ? ` · quota limit reached` : ""}`,
+      );
+      await load("urls", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Pending index refresh failed");
+    } finally {
+      setBulkInspecting(false);
+    }
   }
 
   async function openEdit(urlId: string) {
@@ -909,9 +959,11 @@ export default function GscIndexingAgentPage() {
       {tab === "overview" && overview ? (
         <div className="space-y-4">
           <p className="text-xs text-ocean-600">
-            Tip: click any metric card to open the matching page list. GSC may show ~18
-            Indexed overall; this agent fills counts after{" "}
-            <strong>Sync analytics</strong> + <strong>Inspect queue</strong> (quota-limited).
+            Tip: click any metric card to open the matching page list. Status
+            comes from <strong>URL Inspection API</strong> (quota ~50/day) and
+            impressions from <strong>Sync analytics</strong>. If GSC UI shows
+            indexed but here says pending, click <strong>Refresh index</strong> or
+            <strong>Inspect queue</strong> on Overview.
           </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {metricCards.map((card) => (
@@ -1035,9 +1087,11 @@ export default function GscIndexingAgentPage() {
                   className="h-4 w-4 accent-cyan-700"
                   checked={allBulkEligibleSelected}
                   onChange={() => toggleSelectAllBulkEligible()}
-                  disabled={bulkGenerating || Boolean(generatingId)}
+                  disabled={
+                    bulkGenerating || bulkInspecting || Boolean(generatingId)
+                  }
                 />
-                Select all improvable ({bulkEligibleIds.length})
+                Select all blog/guide ({bulkEligibleIds.length})
               </label>
               <span className="text-xs font-semibold text-ocean-700">
                 {selectedUrlIds.size} selected
@@ -1047,6 +1101,7 @@ export default function GscIndexingAgentPage() {
                 disabled={
                   selectedUrlIds.size === 0 ||
                   bulkGenerating ||
+                  bulkInspecting ||
                   Boolean(generatingId) ||
                   Boolean(editBusy)
                 }
@@ -1057,9 +1112,37 @@ export default function GscIndexingAgentPage() {
                   ? `Generating ${selectedUrlIds.size}…`
                   : `Generate selected (${selectedUrlIds.size})`}
               </button>
+              <button
+                type="button"
+                disabled={
+                  selectedUrlIds.size === 0 ||
+                  bulkGenerating ||
+                  bulkInspecting ||
+                  Boolean(generatingId) ||
+                  Boolean(editBusy)
+                }
+                onClick={() => void refreshIndexBulk([...selectedUrlIds])}
+                className="rounded-full border border-cyan-700 bg-white px-4 py-1.5 text-xs font-bold text-cyan-900 disabled:opacity-50"
+              >
+                {bulkInspecting
+                  ? "Refreshing index…"
+                  : `Refresh index (${selectedUrlIds.size})`}
+              </button>
+              {(urlFilter === "unknown" ||
+                urlFilter === "awaiting_inspection") && (
+                <button
+                  type="button"
+                  disabled={bulkGenerating || bulkInspecting || busy}
+                  onClick={() => void refreshPendingIndexStatus()}
+                  className="rounded-full border border-amber-600 bg-amber-50 px-4 py-1.5 text-xs font-bold text-amber-950 disabled:opacity-50"
+                >
+                  Refresh all pending (20)
+                </button>
+              )}
               {selectedUrlIds.size > BULK_CHUNK ? (
                 <span className="text-[10px] text-ocean-600">
-                  Max {BULK_CHUNK} per batch — larger selections run in sequence
+                  Max {BULK_CHUNK} per generate batch — larger selections run in
+                  sequence
                 </span>
               ) : null}
             </div>
@@ -1092,8 +1175,8 @@ export default function GscIndexingAgentPage() {
                   const isGen = generatingId === id;
                   const isEditing = editingSession?.urlId === id;
                   const genPri = generatePriority(ranking);
-                  const bulkEligible =
-                    editable && !recentlyImproved && !isGen;
+                  const selectable = editable;
+                  const canGenerate = editable && !recentlyImproved;
                   return (
                     <Fragment key={id}>
                       <tr
@@ -1104,17 +1187,18 @@ export default function GscIndexingAgentPage() {
                         }`}
                       >
                         <td className="p-2 align-top">
-                          {bulkEligible ? (
+                          {selectable ? (
                             <input
                               type="checkbox"
                               className="h-4 w-4 accent-cyan-700"
                               checked={selectedUrlIds.has(id)}
                               disabled={
                                 bulkGenerating ||
+                                bulkInspecting ||
                                 Boolean(generatingId) ||
                                 Boolean(editBusy)
                               }
-                              onChange={() => toggleUrlSelection(id, bulkEligible)}
+                              onChange={() => toggleUrlSelection(id, selectable)}
                               aria-label={`Select ${String(u.url)}`}
                             />
                           ) : null}
@@ -1166,9 +1250,12 @@ export default function GscIndexingAgentPage() {
                                   <button
                                     type="button"
                                     disabled={
+                                      !canGenerate ||
                                       busy ||
                                       Boolean(generatingId) ||
-                                      Boolean(editBusy)
+                                      Boolean(editBusy) ||
+                                      bulkGenerating ||
+                                      bulkInspecting
                                     }
                                     onClick={() => void generateImprove(id)}
                                     title={`${genPri.label} — ${ranking}`}

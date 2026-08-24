@@ -15,7 +15,7 @@ export {
 } from "./inventory";
 export { cleanStaleSeoUrls } from "./clean-stale";
 export { runTechnicalAuditForUrl, auditUrl } from "./audit";
-export { processInspectionQueue, enqueueInspection } from "./inspect-queue";
+export { processInspectionQueue, enqueueInspection, refreshSeoUrlInspection, refreshSeoUrlInspectionBulk } from "./inspect-queue";
 export { processSafeAutoFixes, decideApproval } from "./auto-fix";
 export { syncSearchAnalytics } from "./analytics-sync";
 export { submitSitemapsIfDue } from "./sitemap-submit";

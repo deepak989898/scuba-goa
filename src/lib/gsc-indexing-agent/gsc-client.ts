@@ -101,7 +101,8 @@ export function mapInspectionToStatus(result: {
   const indexing = (result.indexingState || "").toUpperCase();
   const fetch = (result.pageFetchState || "").toUpperCase();
   const robots = (result.robotsTxtState || "").toUpperCase();
-  const coverage = (result.coverageState || result.verdict || "").toUpperCase();
+  const coverage = (result.coverageState || "").toUpperCase();
+  const verdict = (result.verdict || "").toUpperCase();
 
   if (robots.includes("DISALLOWED")) return "BLOCKED_BY_ROBOTS";
   if (fetch.includes("NOT_FOUND") || fetch.includes("SOFT_404")) {
@@ -111,14 +112,26 @@ export function mapInspectionToStatus(result: {
     return "SERVER_ERROR";
   }
   if (fetch.includes("REDIRECT")) return "REDIRECT_ERROR";
-  if (indexing.includes("INDEXING_ALLOWED") || coverage.includes("SUBMITTED") || coverage.includes("INDEXED")) {
+
+  // GSC UI "URL is on Google" → verdict PASS and/or coverage mentions indexed.
+  // Check INDEXED before CRAWLED — "Crawled - currently indexed" contains both.
+  if (verdict === "PASS" || coverage.includes("INDEXED")) {
     if (coverage.includes("DUPLICATE")) return "DUPLICATE_GOOGLE_CANONICAL";
     if (coverage.includes("ALTERNATE")) return "ALTERNATE_WITH_CANONICAL";
-    if (coverage.includes("CRAWLED")) return "CRAWLED_NOT_INDEXED";
-    if (coverage.includes("DISCOVERED")) return "DISCOVERED_NOT_INDEXED";
-    if (coverage.includes("BLOCKED") && coverage.includes("NOINDEX")) return "BLOCKED_BY_NOINDEX";
     return "INDEXED";
   }
+
+  if (indexing.includes("INDEXING_ALLOWED")) {
+    if (coverage.includes("DUPLICATE")) return "DUPLICATE_GOOGLE_CANONICAL";
+    if (coverage.includes("ALTERNATE")) return "ALTERNATE_WITH_CANONICAL";
+    if (coverage.includes("NOT INDEXED") || coverage.includes("NOT_INDEXED")) {
+      if (coverage.includes("DISCOVERED")) return "DISCOVERED_NOT_INDEXED";
+      if (coverage.includes("CRAWLED")) return "CRAWLED_NOT_INDEXED";
+    }
+    if (coverage.includes("SUBMITTED")) return "INDEXED";
+    return "INDEXED";
+  }
+
   if (coverage.includes("CRAWLED")) return "CRAWLED_NOT_INDEXED";
   if (coverage.includes("DISCOVERED")) return "DISCOVERED_NOT_INDEXED";
   if (coverage.includes("NOINDEX")) return "BLOCKED_BY_NOINDEX";
