@@ -866,6 +866,90 @@ export default function AiBlogAutomationPage() {
     }
   }
 
+  async function generateQueueBlogStockImage(slug?: string, title?: string) {
+    const targetSlug = slug || editingPost?.slug;
+    const targetTitle = title || editingPost?.title?.trim();
+    if (!targetSlug || !targetTitle) {
+      setErr("Blog slug and title required to regenerate image.");
+      return;
+    }
+    setBusy(`stock-img-${targetSlug}`);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-image-generate", {
+        method: "POST",
+        body: JSON.stringify({
+          slug: targetSlug,
+          title: targetTitle,
+          useStock: true,
+        }),
+      });
+      if (editingPost?.slug === targetSlug) {
+        setEditingPost((e) =>
+          e
+            ? {
+                ...e,
+                featuredImageUrl:
+                  (data.featuredImageUrl as string) ?? e.featuredImageUrl,
+                ogImageUrl:
+                  (data.ogImageUrl as string) ??
+                  (data.featuredImageUrl as string) ??
+                  e.ogImageUrl,
+                featuredImageAlt:
+                  (data.featuredImageAlt as string) ?? e.featuredImageAlt,
+              }
+            : e,
+        );
+      }
+      setOk(
+        `Stock image regenerated for /blog/${targetSlug} (source: ${String(data.source || "stock")}).`,
+      );
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Stock image regenerate failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function regenerateMissingBlogImages() {
+    if (
+      !confirm(
+        "Regenerate featured images for all blogs missing a valid image?\n\nUses free stock (Pexels → Pixabay → Wikimedia). Processes up to 15 posts per click.",
+      )
+    ) {
+      return;
+    }
+    setBusy("regen-missing");
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-image-regenerate", {
+        method: "POST",
+        body: JSON.stringify({ missingOnly: true, useStock: true, max: 15 }),
+      });
+      const processed = Number(data.processed ?? 0);
+      const failed = Number(data.failed ?? 0);
+      setOk(
+        `Regenerated ${processed} blog image(s)${failed ? ` · ${failed} failed` : ""}. Refresh live blog pages to verify.`,
+      );
+      if (failed > 0 && Array.isArray(data.results)) {
+        const msg = (data.results as Array<{ slug: string; error?: string }>)
+          .filter((r) => r.error)
+          .slice(0, 3)
+          .map((r) => `${r.slug}: ${r.error}`)
+          .join(" · ");
+        if (msg) setErr(msg);
+      }
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Bulk image regenerate failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function runImageAudit() {
     setBusy("image-audit");
     setErr(null);
@@ -1060,6 +1144,35 @@ export default function AiBlogAutomationPage() {
                 {providers.googleAds ? "configured" : "not configured (optional)"}
               </li>
             </ul>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 shadow-sm sm:col-span-2 lg:col-span-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+              Blog images
+            </p>
+            <p className="mt-1 text-xs text-ocean-700">
+              Fix broken or missing hero images on published blogs. Uses free stock
+              sources (no OpenAI cost).
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy === "regen-missing"}
+                onClick={() => void regenerateMissingBlogImages()}
+                className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {busy === "regen-missing"
+                  ? "Regenerating…"
+                  : "Regenerate missing images (stock)"}
+              </button>
+              <button
+                type="button"
+                disabled={busy === "image-audit"}
+                onClick={() => void runImageAudit()}
+                className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-bold text-ocean-800 disabled:opacity-50"
+              >
+                {busy === "image-audit" ? "Auditing…" : "Image audit"}
+              </button>
+            </div>
           </div>
         </section>
       ) : null}
@@ -1743,6 +1856,21 @@ export default function AiBlogAutomationPage() {
                                 {isEditing ? "Editing…" : "Edit"}
                               </button>
                             ) : null}
+                            {slug && j.primaryKeyword ? (
+                              <button
+                                type="button"
+                                disabled={busy === `stock-img-${slug}`}
+                                onClick={() =>
+                                  void generateQueueBlogStockImage(
+                                    slug,
+                                    post?.title || String(j.primaryKeyword),
+                                  )
+                                }
+                                className="rounded-full border border-emerald-600 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-900 disabled:opacity-50"
+                              >
+                                {busy === `stock-img-${slug}` ? "…" : "Regen image"}
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               disabled={busy === "queue-delete"}
@@ -1770,6 +1898,9 @@ export default function AiBlogAutomationPage() {
                               }
                               onGenerateAiImage={() =>
                                 void generateQueueBlogImageWithAi()
+                              }
+                              onGenerateStockImage={() =>
+                                void generateQueueBlogStockImage()
                               }
                             />
                           </td>

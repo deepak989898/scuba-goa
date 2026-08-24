@@ -19,6 +19,7 @@ type Props = {
   onCancelEdit: () => void;
   onUploadImage: (file: File | null) => void;
   onGenerateAiImage: () => void;
+  onGenerateStockImage?: () => void;
 };
 
 export function BlogPostEditorPanel({
@@ -32,6 +33,7 @@ export function BlogPostEditorPanel({
   onCancelEdit,
   onUploadImage,
   onGenerateAiImage,
+  onGenerateStockImage,
 }: Props) {
   return (
     <div>
@@ -273,7 +275,8 @@ export function BlogPostEditorPanel({
               disabled={
                 !editing.title.trim() ||
                 busy === `img-${editing.slug}` ||
-                busy === `ai-img-${editing.slug}`
+                busy === `ai-img-${editing.slug}` ||
+                busy === `stock-img-${editing.slug}`
               }
               onClick={onGenerateAiImage}
               className="shrink-0 rounded-full bg-cyan-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-800 disabled:opacity-50 sm:text-sm"
@@ -284,6 +287,23 @@ export function BlogPostEditorPanel({
                   ? "Generating AI image…"
                   : "Generate with AI"}
             </button>
+            {onGenerateStockImage ? (
+              <button
+                type="button"
+                disabled={
+                  !editing.title.trim() ||
+                  busy === `img-${editing.slug}` ||
+                  busy === `ai-img-${editing.slug}` ||
+                  busy === `stock-img-${editing.slug}`
+                }
+                onClick={onGenerateStockImage}
+                className="shrink-0 rounded-full border border-emerald-600 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-100 disabled:opacity-50 sm:text-sm"
+              >
+                {busy === `stock-img-${editing.slug}`
+                  ? "Fetching stock…"
+                  : "Regenerate (free stock)"}
+              </button>
+            ) : null}
           </div>
           {busy === `ai-img-${editing.slug}` && aiImageProgress != null ? (
             <div className="mt-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2.5">
@@ -303,8 +323,8 @@ export function BlogPostEditorPanel({
             </div>
           ) : null}
           <p className="mt-1.5 text-xs text-ocean-500">
-            Upload a file, or generate from the blog title with OpenAI (saved as
-            WebP with transparent logo top-left).
+            Upload a file, regenerate with free stock (Pexels/Pixabay/Wikimedia), or
+            generate with OpenAI (WebP + logo).
           </p>
         </div>
         {editing.publishedAt ? (

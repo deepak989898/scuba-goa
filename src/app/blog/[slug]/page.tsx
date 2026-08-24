@@ -25,7 +25,11 @@ import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { encodeServiceBaseOption } from "@/lib/booking-selection";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
-import { blogFeaturedImageOrPlaceholder } from "@/lib/cms-image";
+import { BlogFeaturedImage } from "@/components/BlogFeaturedImage";
+import {
+  blogFeaturedImageOrPlaceholder,
+  resolveBlogFeaturedImages,
+} from "@/lib/cms-image";
 
 const blogBookNowClass =
   "inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/70 transition hover:brightness-110 active:brightness-95";
@@ -209,13 +213,15 @@ export default async function BlogPostPage({ params }: Props) {
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const faqs = p.faqs ?? [];
-  const featuredImage = blogFeaturedImageOrPlaceholder(
+  const featuredImages = resolveBlogFeaturedImages(
     p.slug,
     p.title,
     fs?.featuredImageUrl,
     fs?.ogImageUrl,
     p.imageUrl,
   );
+  const featuredImage =
+    featuredImages.primary || featuredImages.fallback;
   const featuredImageAlt =
     fs?.featuredImageAlt?.trim() || p.imageAlt?.trim() || p.title;
   const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.updatedAt ?? p.date;
@@ -310,17 +316,12 @@ export default async function BlogPostPage({ params }: Props) {
             </p>
           </div>
 
-          {featuredImage ? (
-            <figure className="mt-1.5 w-full overflow-hidden rounded-md border border-ocean-100">
-              <CmsRemoteImage
-                src={featuredImage}
-                alt={featuredImageAlt}
-                showFull
-                className="block h-auto w-full"
-                priority
-              />
-            </figure>
-          ) : null}
+          <BlogFeaturedImage
+            src={featuredImages.primary}
+            fallbackSrc={featuredImages.fallback}
+            alt={featuredImageAlt}
+            priority
+          />
 
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="min-w-0 flex-1">

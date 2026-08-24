@@ -20,6 +20,7 @@ type Props = {
   loading?: "lazy" | "eager";
   /** next/image quality 1–100; lower = smaller files (default 78) */
   quality?: number;
+  onError?: () => void;
 };
 
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px";
@@ -43,6 +44,7 @@ export function CmsRemoteImage({
   priority,
   loading,
   quality = DEFAULT_QUALITY,
+  onError,
 }: Props) {
   const trimmed = src?.trim() ?? "";
   if (!trimmed) {
@@ -64,6 +66,7 @@ export function CmsRemoteImage({
         decoding="async"
         fetchPriority={priority ? "high" : "low"}
         referrerPolicy="no-referrer-when-downgrade"
+        onError={onError}
       />
     );
   }
@@ -85,6 +88,7 @@ export function CmsRemoteImage({
           fetchPriority={priority ? "high" : undefined}
           quality={quality}
           loading={priority ? undefined : loading ?? "lazy"}
+          onError={onError}
         />
       );
     }
@@ -101,6 +105,7 @@ export function CmsRemoteImage({
         quality={quality}
         loading={priority ? undefined : loading ?? "lazy"}
         style={{ width: "100%", height: "auto" }}
+        onError={onError}
       />
     );
   }
@@ -115,6 +120,7 @@ export function CmsRemoteImage({
         decoding="async"
         fetchPriority={priority ? "high" : "low"}
         referrerPolicy="no-referrer-when-downgrade"
+        onError={onError}
       />
     );
   }
@@ -130,6 +136,7 @@ export function CmsRemoteImage({
       decoding="async"
       fetchPriority={priority ? "high" : "low"}
       referrerPolicy="no-referrer-when-downgrade"
+      onError={onError}
     />
   );
 }

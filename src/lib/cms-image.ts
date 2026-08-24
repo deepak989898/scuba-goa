@@ -13,6 +13,42 @@ export const SITE_IMAGE_PLACEHOLDER = "/booking-header.png";
 export const BLOG_FEATURED_PLACEHOLDER =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg";
 
+function isUsableBlogFeaturedCandidate(url: string): boolean {
+  const t = url.trim();
+  if (!t) return false;
+  if (t === SITE_IMAGE_PLACEHOLDER || t.includes("booking-header")) return false;
+  if (!t.startsWith("/") && !/^https?:\/\//i.test(t)) return false;
+  // Reject plain text accidentally stored as URL (shows broken icon + alt).
+  if (
+    !t.startsWith("/") &&
+    !t.includes("storage.googleapis") &&
+    !t.includes("firebasestorage") &&
+    !t.includes("wikimedia.org") &&
+    !t.includes(".")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/** First valid blog hero URL among candidates (never booking promo banner). */
+export function pickBlogFeaturedImage(
+  ...candidates: Array<string | undefined | null>
+): string {
+  for (const c of candidates) {
+    const t = String(c ?? "").trim();
+    if (!isUsableBlogFeaturedCandidate(t)) continue;
+    const sanitized = sanitizePublicImageUrl(t);
+    if (sanitized) return sanitized;
+    if (/^https:\/\/upload\.wikimedia\.org/i.test(t)) return t;
+  }
+  return "";
+}
+
+export function blogFeaturedFallbackUrl(slug: string, title: string): string {
+  return pickCuratedBlogFallbackUrl(title, "", slug) || BLOG_FEATURED_PLACEHOLDER;
+}
+
 const ADMIN_PATH_MARKERS = [
   "/services/",
   "/hero/",
@@ -121,11 +157,20 @@ export function blogFeaturedImageOrPlaceholder(
   title: string,
   ...candidates: Array<string | undefined | null>
 ): string {
-  const cms = pickCmsImage(...candidates);
+  const cms = pickBlogFeaturedImage(...candidates);
   if (cms) return cms;
-  const topicUrl = pickCuratedBlogFallbackUrl(title, "", slug);
-  if (topicUrl) return topicUrl;
-  return BLOG_FEATURED_PLACEHOLDER;
+  return blogFeaturedFallbackUrl(slug, title);
+}
+
+/** Primary hero URL + topic fallback for client-side onError recovery. */
+export function resolveBlogFeaturedImages(
+  slug: string,
+  title: string,
+  ...candidates: Array<string | undefined | null>
+): { primary: string; fallback: string } {
+  const fallback = blogFeaturedFallbackUrl(slug, title);
+  const primary = pickBlogFeaturedImage(...candidates);
+  return { primary, fallback };
 }
 
 /** Strip stock image URLs from a service-like object for public display. */

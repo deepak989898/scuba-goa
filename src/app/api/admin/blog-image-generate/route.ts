@@ -10,13 +10,14 @@ import {
   parseBlogPostFromFirestore,
 } from "@/lib/blog-firestore";
 import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
+import { regenerateBlogPostFeaturedImage } from "@/lib/blog-automation/regenerate-blog-image";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 /**
- * Generate a topic-specific featured image (classify → brief → OpenAI →
- * dedupe → unique Storage path) and update the blog post.
+ * Generate a topic-specific featured image and update the blog post.
+ * useStock=true → Pexels/Pixabay/Unsplash/Wikimedia (no OpenAI cost).
  */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     title?: string;
     brandingEnabled?: boolean;
     allowPexelsFallback?: boolean;
+    useStock?: boolean;
   } = {};
   try {
     body = (await req.json()) as typeof body;
@@ -39,6 +41,29 @@ export async function POST(req: Request) {
   const slug = normalizeBlogSlugInput(String(body.slug ?? "").trim());
   if (!isValidBlogSlug(slug)) {
     return NextResponse.json({ error: "Valid slug required" }, { status: 400 });
+  }
+
+  if (body.useStock === true) {
+    const result = await regenerateBlogPostFeaturedImage(slug, {
+      title: body.title,
+      useStock: true,
+    });
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error || "Stock image failed" }, {
+        status: 500,
+      });
+    }
+    revalidatePath(`/blog/${slug}`);
+    revalidatePath("/blog");
+    revalidatePath("/admin/blog-automation");
+    revalidatePath("/admin/ai-blog-automation");
+    return NextResponse.json({
+      ok: true,
+      featuredImageUrl: result.featuredImageUrl,
+      ogImageUrl: result.ogImageUrl,
+      featuredImageAlt: result.featuredImageAlt,
+      source: result.source,
+    });
   }
 
   const db = getAdminDb();
