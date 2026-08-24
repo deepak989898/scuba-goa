@@ -5,7 +5,7 @@ import { ListPagination } from "@/components/ListPagination";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
-import { cmsImageOrPlaceholder } from "@/lib/cms-image";
+import { blogFeaturedImageOrPlaceholder } from "@/lib/cms-image";
 import { getPageSlice, LIST_PAGE_SIZE } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
@@ -92,7 +92,7 @@ export default async function BlogIndexPage({ searchParams }: Props) {
 
           <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {pagePosts.map((p, index) => {
-              const imageSrc = cmsImageOrPlaceholder(p.imageUrl);
+              const imageSrc = blogFeaturedImageOrPlaceholder(p.slug, p.title, p.imageUrl);
               return (
                 <li key={p.slug} className="h-full">
                   <Link
@@ -243,7 +243,7 @@ export default async function BlogIndexPage({ searchParams }: Props) {
             ) : (
               <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
                 {sidebarGuides.map((g) => {
-                  const imageSrc = cmsImageOrPlaceholder(g.imageUrl);
+                  const imageSrc = blogFeaturedImageOrPlaceholder(g.slug, g.headline, g.imageUrl);
                   return (
                     <li key={g.slug}>
                       <Link

@@ -25,7 +25,7 @@ import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { encodeServiceBaseOption } from "@/lib/booking-selection";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
-import { cmsImageOrPlaceholder } from "@/lib/cms-image";
+import { blogFeaturedImageOrPlaceholder } from "@/lib/cms-image";
 
 const blogBookNowClass =
   "inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/70 transition hover:brightness-110 active:brightness-95";
@@ -54,7 +54,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     fs?.metaDescription?.trim() ||
     p.excerpt;
-  const ogImage = cmsImageOrPlaceholder(
+  const ogImage = blogFeaturedImageOrPlaceholder(
+    slug,
+    p.title,
     fs?.ogImageUrl,
     fs?.featuredImageUrl,
     p.imageUrl,
@@ -207,7 +209,9 @@ export default async function BlogPostPage({ params }: Props) {
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
   const faqs = p.faqs ?? [];
-  const featuredImage = cmsImageOrPlaceholder(
+  const featuredImage = blogFeaturedImageOrPlaceholder(
+    p.slug,
+    p.title,
     fs?.featuredImageUrl,
     fs?.ogImageUrl,
     p.imageUrl,
@@ -413,7 +417,7 @@ export default async function BlogPostPage({ params }: Props) {
               </p>
               <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
                 {related.map((r) => {
-                  const cardImage = cmsImageOrPlaceholder(r.imageUrl);
+                  const cardImage = blogFeaturedImageOrPlaceholder(r.slug, r.title, r.imageUrl);
                   return (
                     <li key={r.slug} className="h-full">
                       <Link

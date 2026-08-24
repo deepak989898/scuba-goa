@@ -1,3 +1,5 @@
+import { blogImageVarietySeed } from "@/lib/blog-automation/blog-image-topic";
+
 export type PexelsPhoto = {
   id: number;
   url: string;
@@ -129,13 +131,16 @@ export function buildPexelsQueries(input: {
   return [derived, "goa tourism beach"];
 }
 
-export async function searchPexelsPhoto(query: string): Promise<PexelsPhoto | null> {
+export async function searchPexelsPhoto(
+  query: string,
+  pickSeed = "",
+): Promise<PexelsPhoto | null> {
   const key = process.env.PEXELS_API_KEY?.trim();
   if (!key) return null;
 
   const q = encodeURIComponent(query.slice(0, 80));
   const res = await fetch(
-    `https://api.pexels.com/v1/search?query=${q}&per_page=8&orientation=landscape`,
+    `https://api.pexels.com/v1/search?query=${q}&per_page=15&orientation=landscape`,
     {
       headers: { Authorization: key },
       next: { revalidate: 0 },
@@ -150,7 +155,10 @@ export async function searchPexelsPhoto(query: string): Promise<PexelsPhoto | nu
       src?: { large2x?: string; large?: string; original?: string };
     }>;
   };
-  const photo = data.photos?.[0];
+  const photos = data.photos ?? [];
+  if (!photos.length) return null;
+  const idx = blogImageVarietySeed(`${pickSeed}:${query}`) % photos.length;
+  const photo = photos[idx] ?? photos[0];
   if (!photo?.src) return null;
   const url =
     photo.src.large2x ?? photo.src.large ?? photo.src.original ?? "";
@@ -171,7 +179,7 @@ export async function searchPexelsPhotoForPost(input: {
 }): Promise<PexelsPhoto | null> {
   const queries = buildPexelsQueries(input);
   for (const query of queries) {
-    const photo = await searchPexelsPhoto(query);
+    const photo = await searchPexelsPhoto(query, `${input.title}:${input.serviceSlug}`);
     if (photo) return { ...photo, alt: `${input.title} (${query})` };
   }
   return null;

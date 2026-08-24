@@ -155,7 +155,7 @@ export async function generateSeoBlogDraft(input: {
       primaryKeyword: input.keyword.keyword,
       serviceSlug,
       serviceName,
-      brandingEnabled: true,
+      brandingEnabled: false,
     });
     if (stock.meta) {
       featuredImageUrl = stock.meta.imageUrl;

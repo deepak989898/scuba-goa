@@ -2,8 +2,16 @@
  * Prefer admin / CMS images; never treat Unsplash/stock as valid public media.
  */
 
-/** Local brand asset when a UI needs an src and no CMS image exists. */
+import {
+  pickCuratedBlogFallbackUrl,
+} from "@/lib/blog-automation/blog-image-topic";
+
+/** Local brand asset when a UI needs an src and no CMS image exists (booking flows). */
 export const SITE_IMAGE_PLACEHOLDER = "/booking-header.png";
+
+/** Default blog hero when no featured image — Goa beach (not booking promo banner). */
+export const BLOG_FEATURED_PLACEHOLDER =
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg";
 
 const ADMIN_PATH_MARKERS = [
   "/services/",
@@ -102,6 +110,22 @@ export function cmsImageOrPlaceholder(
   ...candidates: Array<string | undefined | null>
 ): string {
   return pickCmsImage(...candidates) || SITE_IMAGE_PLACEHOLDER;
+}
+
+/**
+ * Blog hero: CMS/Firebase image → topic Wikimedia fallback → Goa beach default.
+ * Never uses the booking promo banner.
+ */
+export function blogFeaturedImageOrPlaceholder(
+  slug: string,
+  title: string,
+  ...candidates: Array<string | undefined | null>
+): string {
+  const cms = pickCmsImage(...candidates);
+  if (cms) return cms;
+  const topicUrl = pickCuratedBlogFallbackUrl(title, "", slug);
+  if (topicUrl) return topicUrl;
+  return BLOG_FEATURED_PLACEHOLDER;
 }
 
 /** Strip stock image URLs from a service-like object for public display. */

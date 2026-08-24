@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { HOMEPAGE_PACKAGE_GUIDES } from "@/data/blog-posts";
 import { getPublishedBlogPostBySlug } from "@/lib/blog-posts-server";
-import { cmsImageOrPlaceholder, pickCmsImage } from "@/lib/cms-image";
+import { cmsImageOrPlaceholder, blogFeaturedImageOrPlaceholder, pickCmsImage } from "@/lib/cms-image";
 import { getAllServicesServer } from "@/lib/get-services-server";
 import { serviceDetailImages } from "@/lib/service-images";
 
@@ -26,10 +26,12 @@ export async function BlogPreview() {
           ? pickCmsImage(...serviceDetailImages(service))
           : "";
 
-        const imageUrl = cmsImageOrPlaceholder(
-          serviceImage,
+        const imageUrl = blogFeaturedImageOrPlaceholder(
+          fs.slug,
+          fs.title,
           fs.featuredImageUrl,
           fs.ogImageUrl,
+          serviceImage,
         );
 
         const imageAlt =
