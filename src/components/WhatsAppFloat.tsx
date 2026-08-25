@@ -15,7 +15,7 @@ export const ASK_PACKAGES_TOGGLE_EVENT = "ask-packages-toggle";
  */
 export function WhatsAppFloat() {
   return (
-    <div className="fixed bottom-8 right-8 z-[60] hidden flex-col items-center gap-3 md:flex">
+    <div className="fixed bottom-8 right-4 z-[60] hidden flex-col items-end gap-3 md:flex">
       <a
         href={CONTACT_PHONE_HREF}
         className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-600 text-white shadow-lg shadow-sky-900/30 transition hover:scale-105 hover:bg-sky-500"

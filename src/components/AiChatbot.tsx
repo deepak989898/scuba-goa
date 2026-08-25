@@ -318,7 +318,7 @@ export function AiChatbot() {
       </button>
       {open ? (
         <div
-          className={`fixed right-4 z-[55] flex max-h-[min(85vh,640px)] w-[min(100vw-2.5rem,400px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-[13.5rem] md:right-8 ${helpPanelBottom}`}
+          className={`fixed right-4 z-[55] flex max-h-[min(85vh,640px)] w-[min(100vw-2.5rem,400px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-[13.5rem] md:right-4 ${helpPanelBottom}`}
         >
           <div className="flex items-center justify-between gap-2 border-b border-ocean-100 bg-ocean-50 px-3 py-2.5">
             <p className="shrink-0 text-sm font-semibold text-ocean-900">
