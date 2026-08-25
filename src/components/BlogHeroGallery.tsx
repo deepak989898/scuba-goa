@@ -39,26 +39,30 @@ export function BlogHeroGallery({
 
   return (
     <figure className="mt-1.5 w-full">
-      <div className="relative overflow-hidden rounded-lg border border-ocean-100 bg-ocean-50">
-        <CmsRemoteImage
-          src={resolvedMain}
-          alt={displayAlt}
-          showFull
-          className="block h-auto w-full"
-          priority={priority}
-          onError={() => {
-            if (!failedToFallback && mainFallback) {
-              setFailedToFallback(true);
-            }
-          }}
-        />
-        {showCounter ? (
-          <span
-            className="absolute bottom-2 right-2 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white"
-          >
-            {thumbIndex + 1}/{thumbs.length}
-          </span>
-        ) : null}
+      <div className="flex w-full justify-center">
+        <div
+          className="relative inline-block max-w-full overflow-hidden rounded-lg border border-ocean-100 leading-[0]"
+        >
+          <CmsRemoteImage
+            src={resolvedMain}
+            alt={displayAlt}
+            showFull
+            className="block h-auto w-auto max-h-[min(36vh,280px)] max-w-full sm:max-h-[min(38vh,340px)] lg:max-h-[min(40vh,400px)]"
+            priority={priority}
+            onError={() => {
+              if (!failedToFallback && mainFallback) {
+                setFailedToFallback(true);
+              }
+            }}
+          />
+          {showCounter ? (
+            <span
+              className="absolute bottom-2 right-2 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white"
+            >
+              {thumbIndex + 1}/{thumbs.length}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {thumbs.length > 0 ? (
