@@ -24,7 +24,7 @@ import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { encodeServiceBaseOption } from "@/lib/booking-selection";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
 import { BlogHeroGallery } from "@/components/BlogHeroGallery";
-import { buildBlogHeroGallerySlides } from "@/lib/blog-hero-gallery";
+import { buildBlogHeroGalleryData, resolveBlogFocusService } from "@/lib/blog-hero-gallery";
 import {
   blogFeaturedImageOrPlaceholder,
   resolveBlogFeaturedImages,
@@ -235,12 +235,17 @@ export default async function BlogPostPage({ params }: Props) {
     focusServiceSlug,
     4,
   );
-  const heroGallerySlides = buildBlogHeroGallerySlides({
+  const focusService = resolveBlogFocusService(
+    catalog.services,
+    relatedServices,
+    focusServiceSlug,
+    { title: p.title, keywords: p.keywords },
+  );
+  const heroGallery = buildBlogHeroGalleryData({
     title: p.title,
     featuredPrimary: featuredImages.primary,
     featuredFallback: featuredImages.fallback,
-    relatedServices,
-    focusServiceSlug,
+    focusService,
   });
   const offerListLd = packageOfferCatalogJsonLd(catalog.packages, pageUrl, {
     fallbackImageUrl: featuredImage,
@@ -321,7 +326,13 @@ export default async function BlogPostPage({ params }: Props) {
             </p>
           </div>
 
-          <BlogHeroGallery slides={heroGallerySlides} priority />
+          <BlogHeroGallery
+            mainUrl={heroGallery.mainUrl}
+            mainFallback={heroGallery.mainFallback}
+            mainAlt={heroGallery.mainAlt}
+            serviceThumbs={heroGallery.serviceThumbs}
+            priority
+          />
 
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="min-w-0 flex-1">
