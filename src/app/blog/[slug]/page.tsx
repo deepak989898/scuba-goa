@@ -4,7 +4,6 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { BlogContent } from "@/components/BlogContent";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
-import { BlogTableOfContents } from "@/components/BlogTableOfContents";
 import { BlogTrustBlock } from "@/components/BlogTrustBlock";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
@@ -19,13 +18,13 @@ import {
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { relatedServicesForContent } from "@/lib/related-services-for-content";
-import { extractBlogToc } from "@/lib/blog-seo/headings";
-import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
+import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { encodeServiceBaseOption } from "@/lib/booking-selection";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
-import { BlogFeaturedImage } from "@/components/BlogFeaturedImage";
+import { BlogHeroGallery } from "@/components/BlogHeroGallery";
+import { buildBlogHeroGallerySlides } from "@/lib/blog-hero-gallery";
 import {
   blogFeaturedImageOrPlaceholder,
   resolveBlogFeaturedImages,
@@ -236,7 +235,13 @@ export default async function BlogPostPage({ params }: Props) {
     focusServiceSlug,
     4,
   );
-  const toc = extractBlogToc(p.content);
+  const heroGallerySlides = buildBlogHeroGallerySlides({
+    title: p.title,
+    featuredPrimary: featuredImages.primary,
+    featuredFallback: featuredImages.fallback,
+    relatedServices,
+    focusServiceSlug,
+  });
   const offerListLd = packageOfferCatalogJsonLd(catalog.packages, pageUrl, {
     fallbackImageUrl: featuredImage,
   });
@@ -316,12 +321,7 @@ export default async function BlogPostPage({ params }: Props) {
             </p>
           </div>
 
-          <BlogFeaturedImage
-            src={featuredImages.primary}
-            fallbackSrc={featuredImages.fallback}
-            alt={featuredImageAlt}
-            priority
-          />
+          <BlogHeroGallery slides={heroGallerySlides} priority />
 
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="min-w-0 flex-1">
@@ -346,8 +346,6 @@ export default async function BlogPostPage({ params }: Props) {
           <p className="mt-1.5 border-l-4 border-amber-400 bg-amber-50/60 py-1 pl-2 text-sm leading-snug text-ocean-800">
             {p.excerpt}
           </p>
-
-          <BlogTableOfContents items={toc} />
 
           <div className="prose prose-ocean mt-2 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">
             <BlogContent content={p.content} />
