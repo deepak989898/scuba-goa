@@ -25,6 +25,8 @@ import { encodeServiceBaseOption } from "@/lib/booking-selection";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
 import { BlogHeroGallery } from "@/components/BlogHeroGallery";
 import { buildBlogHeroGalleryData, resolveBlogFocusService } from "@/lib/blog-hero-gallery";
+import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
+import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 import {
   blogFeaturedImageOrPlaceholder,
   resolveBlogFeaturedImages,
@@ -54,9 +56,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     fs?.metaTitle?.trim() ||
     p.metaTitle?.trim() ||
     p.title;
-  const description =
-    fs?.metaDescription?.trim() ||
-    p.excerpt;
+  const description = buildMetaDescriptionWithContact(
+    fs?.metaDescription?.trim() || p.excerpt,
+  );
   const ogImage = blogFeaturedImageOrPlaceholder(
     slug,
     p.title,
@@ -223,6 +225,9 @@ export default async function BlogPostPage({ params }: Props) {
     featuredImages.primary || featuredImages.fallback;
   const featuredImageAlt =
     fs?.featuredImageAlt?.trim() || p.imageAlt?.trim() || p.title;
+  const seoDescription = buildMetaDescriptionWithContact(
+    fs?.metaDescription?.trim() || p.excerpt,
+  );
   const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.updatedAt ?? p.date;
   const publishedLabel = (fs?.publishedAt || p.date || "").slice(0, 10);
   const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
@@ -259,7 +264,7 @@ export default async function BlogPostPage({ params }: Props) {
           __html: JSON.stringify(
             blogPostingJsonLd({
               title: p.title,
-              excerpt: p.excerpt,
+              excerpt: seoDescription,
               date: publishedLabel || p.date,
               dateModified,
               slug: p.slug,
@@ -355,7 +360,7 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
 
           <p className="mt-1.5 border-l-4 border-amber-400 bg-amber-50/60 py-1 pl-2 text-sm leading-snug text-ocean-800">
-            {p.excerpt}
+            <SeoDescriptionWithPhone description={seoDescription} />
           </p>
 
           <div className="prose prose-ocean mt-2 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">
@@ -452,7 +457,11 @@ export default async function BlogPostPage({ params }: Props) {
                             {r.title}
                           </h3>
                           <p className="mt-1 line-clamp-2 text-xs leading-snug text-ocean-700 sm:text-sm">
-                            {r.excerpt}
+                            <SeoDescriptionWithPhone
+                              description={buildMetaDescriptionWithContact(
+                                r.excerpt,
+                              )}
+                            />
                           </p>
                           <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 sm:text-sm">
                             Read article <span aria-hidden>→</span>

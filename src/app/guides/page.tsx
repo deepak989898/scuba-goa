@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { ListPagination } from "@/components/ListPagination";
+import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
 import { cmsImageOrPlaceholder } from "@/lib/cms-image";
 import { getPageSlice } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +103,11 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
                           </h2>
                           {g.metaDescription ? (
                             <p className="mt-1.5 line-clamp-2 text-sm text-ocean-700">
-                              {g.metaDescription}
+                              <SeoDescriptionWithPhone
+                                description={buildMetaDescriptionWithContact(
+                                  g.metaDescription,
+                                )}
+                              />
                             </p>
                           ) : null}
                           <span className="mt-2.5 text-sm font-bold text-amber-700">

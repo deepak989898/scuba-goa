@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { ListPagination } from "@/components/ListPagination";
+import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
 import { PRIMARY_SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/constants";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
@@ -9,6 +10,7 @@ import { blogFeaturedImageOrPlaceholder } from "@/lib/cms-image";
 import { getPageSlice, LIST_PAGE_SIZE } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 /** Public /blog index: only 3 pages of highest-view posts. */
 const BLOG_LIST_MAX_PAGES = 3;
@@ -119,7 +121,9 @@ export default async function BlogIndexPage({ searchParams }: Props) {
                         </p>
                       </div>
                       <p className="mt-1 line-clamp-2 text-xs text-ocean-700 sm:text-sm">
-                        {p.excerpt}
+                        <SeoDescriptionWithPhone
+                          description={buildMetaDescriptionWithContact(p.excerpt)}
+                        />
                       </p>
                       {p.keywords.length > 0 ? (
                         <p className="mt-1 line-clamp-1 text-[10px] text-ocean-500">
@@ -269,7 +273,11 @@ export default async function BlogIndexPage({ searchParams }: Props) {
                           </h3>
                           {g.metaDescription ? (
                             <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-ocean-700">
-                              {g.metaDescription}
+                              <SeoDescriptionWithPhone
+                                description={buildMetaDescriptionWithContact(
+                                  g.metaDescription,
+                                )}
+                              />
                             </p>
                           ) : null}
                           <span className="mt-1.5 inline-flex text-xs font-bold text-amber-700 sm:text-sm">

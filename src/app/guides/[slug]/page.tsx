@@ -9,6 +9,7 @@ import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
+import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
 
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
@@ -20,6 +21,7 @@ import {
   getPublishedSeoPageBySlug,
   getRelatedSeoGuides,
 } from "@/lib/seo-pages-server";
+import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -90,9 +92,9 @@ export async function generateMetadata({
     page.metaTitle.trim() ||
     `${page.headline} | ${SITE_NAME}`;
 
-  const description = page.metaDescription
-    .trim()
-    .slice(0, 320);
+  const description = buildMetaDescriptionWithContact(
+    page.metaDescription.trim(),
+  ).slice(0, 320);
 
   const ogImage = absAssetUrl(page.ogImageUrl);
 
@@ -329,6 +331,10 @@ export default async function SeoGuidePage({
   const pageUrl =
     `${SITE_URL.replace(/\/$/, "")}/guides/${page.slug}`;
 
+  const seoDescription = buildMetaDescriptionWithContact(
+    page.metaDescription.trim(),
+  );
+
   const updatedLabel =
     page.updatedAt.slice(0, 10);
 
@@ -343,7 +349,10 @@ export default async function SeoGuidePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(
-            webPageJsonLd(page),
+            webPageJsonLd({
+              ...page,
+              metaDescription: seoDescription,
+            }),
           ),
         }}
       />
@@ -551,7 +560,7 @@ export default async function SeoGuidePage({
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-ocean-800 sm:text-base">
-                  {page.metaDescription}
+                  <SeoDescriptionWithPhone description={seoDescription} />
                 </p>
               </div>
             ) : null}
@@ -939,7 +948,11 @@ export default async function SeoGuidePage({
                                 text-ocean-700
                               "
                             >
-                              {guide.metaDescription}
+                              <SeoDescriptionWithPhone
+                                description={buildMetaDescriptionWithContact(
+                                  guide.metaDescription,
+                                )}
+                              />
                             </p>
                           ) : null}
 
