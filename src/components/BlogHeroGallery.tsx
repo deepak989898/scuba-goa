@@ -39,12 +39,12 @@ export function BlogHeroGallery({
 
   return (
     <figure className="mt-1.5 w-full">
-      <div className="relative w-full overflow-hidden rounded-lg border border-ocean-100">
+      <div className="relative w-full overflow-hidden rounded-lg border border-ocean-100 leading-[0]">
         <CmsRemoteImage
           src={resolvedMain}
           alt={displayAlt}
           showFull
-          className="block h-auto w-full max-h-[min(36vh,280px)] object-contain object-top sm:max-h-[min(38vh,340px)] lg:max-h-[min(40vh,400px)]"
+          className="block h-auto w-full max-w-none max-h-[min(38vh,320px)] sm:max-h-[min(40vh,380px)] lg:max-h-[min(42vh,440px)]"
           priority={priority}
           onError={() => {
             if (!failedToFallback && mainFallback) {

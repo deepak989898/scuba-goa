@@ -41,18 +41,30 @@ export function DeferredSiteWidgets() {
   const interacted = useAfterFirstInteraction();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
   const [hasSavedCart, setHasSavedCart] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     if (isAdmin) return;
     setHasSavedCart(cartHasSavedLines());
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (isAdmin) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const sync = () => setIsDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, [isAdmin]);
+
   if (isAdmin) return null;
+
+  const showChatbot = interacted || isDesktop;
 
   return (
     <>
       {interacted || hasSavedCart ? <LazyCartFAB /> : null}
-      {interacted ? <LazyAiChatbot /> : null}
+      {showChatbot ? <LazyAiChatbot /> : null}
     </>
   );
 }

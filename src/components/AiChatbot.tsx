@@ -6,6 +6,7 @@ import Link from "next/link";
 import { whatsappLink } from "@/lib/constants";
 import { ChatMessageBody } from "@/components/ChatMessageBody";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { ASK_PACKAGES_TOGGLE_EVENT } from "@/components/WhatsAppFloat";
 import { useServices } from "@/hooks/useServices";
 import { useCart } from "@/context/CartContext";
 import type { ServiceItem, SubServiceItem } from "@/data/services";
@@ -190,6 +191,12 @@ export function AiChatbot() {
     hydrateLang();
   }, [hydrateLang]);
 
+  useEffect(() => {
+    const onToggle = () => setOpen((o) => !o);
+    window.addEventListener(ASK_PACKAGES_TOGGLE_EVENT, onToggle);
+    return () => window.removeEventListener(ASK_PACKAGES_TOGGLE_EVENT, onToggle);
+  }, []);
+
   function onLanguageChange(api: string) {
     setLang(api);
     try {
@@ -305,13 +312,13 @@ export function AiChatbot() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label="Ask Packages"
-        className={`fixed right-4 z-[55] flex h-12 items-center gap-2 whitespace-nowrap rounded-full border border-amber-200/80 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-3 text-xs font-bold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/60 transition hover:brightness-110 active:brightness-95 sm:px-4 sm:text-sm md:bottom-8 md:right-[5.5rem] ${helpFabBottom}`}
+        className={`fixed right-4 z-[55] flex h-12 items-center gap-2 whitespace-nowrap rounded-full border border-amber-200/80 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-3 text-xs font-bold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/60 transition hover:brightness-110 active:brightness-95 sm:px-4 sm:text-sm md:hidden ${helpFabBottom}`}
       >
         Ask Packages
       </button>
       {open ? (
         <div
-          className={`fixed right-4 z-[55] flex max-h-[min(85vh,640px)] w-[min(100vw-2.5rem,400px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-24 md:right-[5.5rem] ${helpPanelBottom}`}
+          className={`fixed right-4 z-[55] flex max-h-[min(85vh,640px)] w-[min(100vw-2.5rem,400px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-[13.5rem] md:right-8 ${helpPanelBottom}`}
         >
           <div className="flex items-center justify-between gap-2 border-b border-ocean-100 bg-ocean-50 px-3 py-2.5">
             <p className="shrink-0 text-sm font-semibold text-ocean-900">
