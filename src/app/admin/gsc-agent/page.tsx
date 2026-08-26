@@ -245,6 +245,8 @@ export default function GscIndexingAgentPage() {
   const [selectedUrlIds, setSelectedUrlIds] = useState<Set<string>>(new Set());
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [bulkInspecting, setBulkInspecting] = useState(false);
+  const [resolvingIssueId, setResolvingIssueId] = useState<string | null>(null);
+  const [resolvingAllIssues, setResolvingAllIssues] = useState(false);
 
   const bulkEligibleUrls = useMemo(() => {
     return urls.filter((u) => isContentEditableType(String(u.pageType)));
@@ -338,6 +340,61 @@ export default function GscIndexingAgentPage() {
   function openCriticalIssues() {
     setIssueSeverity("CRITICAL");
     setTab("issues");
+  }
+
+  async function resolveIssue(issueId: string) {
+    setResolvingIssueId(issueId);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/resolve-issue", {
+        method: "POST",
+        body: JSON.stringify({ issueId }),
+      });
+      if (!data.ok) {
+        throw new Error(String(data.error || "Resolve failed"));
+      }
+      const parts = [
+        data.action ? String(data.action) : "resolved",
+        data.slug ? `blog: ${data.slug}` : "",
+        data.redirectTo ? `→ ${data.redirectTo}` : "",
+      ].filter(Boolean);
+      setOk(`Issue resolved — ${parts.join(" · ")}`);
+      await load("issues", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Resolve failed");
+    } finally {
+      setResolvingIssueId(null);
+    }
+  }
+
+  async function resolveAllVisibleIssues() {
+    setResolvingAllIssues(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/resolve-issue", {
+        method: "POST",
+        body: JSON.stringify({
+          all: true,
+          severity: issueSeverity || undefined,
+          max: 20,
+        }),
+      });
+      if (data.failed > 0 && data.resolved === 0) {
+        throw new Error(
+          String(data.results?.[0]?.error || "Could not resolve issues"),
+        );
+      }
+      setOk(
+        `Resolved ${data.resolved ?? 0} URL(s). ${data.failed ?? 0} could not be auto-fixed.`,
+      );
+      await load("issues", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Bulk resolve failed");
+    } finally {
+      setResolvingAllIssues(false);
+    }
   }
 
   async function runJob(job: string) {
@@ -1429,7 +1486,8 @@ export default function GscIndexingAgentPage() {
 
       {tab === "issues" ? (
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-2">
             {(
               [
                 ["", "All"],
@@ -1452,7 +1510,22 @@ export default function GscIndexingAgentPage() {
                 {label}
               </button>
             ))}
+            </div>
+            {issues.length > 0 ? (
+              <button
+                type="button"
+                disabled={resolvingAllIssues || resolvingIssueId !== null}
+                onClick={() => void resolveAllVisibleIssues()}
+                className="rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm disabled:opacity-60"
+              >
+                {resolvingAllIssues ? "Resolving…" : "Resolve all in filter"}
+              </button>
+            ) : null}
           </div>
+          <p className="text-xs text-ocean-600">
+            Resolve creates a live blog at the broken URL (free stock images) or
+            redirects to the best matching live article when generation fails.
+          </p>
           <ul className="space-y-2">
             {issues.map((i) => (
               <li
@@ -1486,6 +1559,20 @@ export default function GscIndexingAgentPage() {
                   <p className="text-xs text-ocean-600">—</p>
                 )}
                 <p className="mt-1 text-ocean-800">{String(i.detail)}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={
+                      resolvingIssueId === String(i.id) || resolvingAllIssues
+                    }
+                    onClick={() => void resolveIssue(String(i.id))}
+                    className="rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm disabled:opacity-60"
+                  >
+                    {resolvingIssueId === String(i.id)
+                      ? "Resolving…"
+                      : "Resolve issue"}
+                  </button>
+                </div>
               </li>
             ))}
             {issues.length === 0 ? (

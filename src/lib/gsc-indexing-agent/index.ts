@@ -47,6 +47,12 @@ export {
   listApprovals,
   listActions,
   listSitemapRecords,
+  getSeoIssue,
   getSeoUrl,
 } from "./store";
+export {
+  resolveGscIssue,
+  resolveGscIssuesBatch,
+} from "./resolve-issues";
+export { getSeoBlogRedirect, saveSeoBlogRedirect } from "./seo-blog-redirects";
 export { canEncryptSecrets } from "./crypto";

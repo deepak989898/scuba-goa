@@ -13,6 +13,7 @@ import {
 } from "@/lib/blog-automation/catalog-context";
 import { generateBlogWithOpenAI } from "@/lib/blog-automation/openai";
 import { generateFeaturedImageForArticle } from "@/lib/blog-automation/image-pipeline";
+import { attachStockFeaturedImage } from "@/lib/blog-automation/stock-featured-image";
 import {
   buildAutoTopic,
   getNextPendingTopic,
@@ -79,6 +80,10 @@ export async function generateBlogDraftOnly(options?: {
   forceTitle?: string;
   forceServiceSlug?: string;
   queueItemId?: string;
+  /** When set, prefer this exact slug if still available. */
+  forceSlug?: string;
+  /** Use free stock / Wikimedia cascade instead of AI image generation. */
+  useStockImages?: boolean;
 }): Promise<GenerateBlogDraftResult> {
   const settings = await getBlogAutomationSettings();
   let lang = pickLanguage(settings, options?.language);
@@ -127,16 +132,68 @@ export async function generateBlogDraftOnly(options?: {
     content += buildOfficialPricingMarkdown(catalog, serviceSlug);
   }
 
-  const slug = await ensureUniqueSlug(
-    preferredSlug || draft.slug || draft.title,
-  );
+  const slug = await (async () => {
+    const forced = options?.forceSlug?.trim();
+    if (forced) {
+      const normalized = normalizeBlogSlugInput(forced);
+      if (
+        isValidBlogSlug(normalized) &&
+        !getPostBySlug(normalized) &&
+        !(await blogSlugBlocksNewPost(normalized))
+      ) {
+        return normalized;
+      }
+    }
+    return ensureUniqueSlug(preferredSlug || draft.slug || draft.title);
+  })();
 
   let featuredImageUrl = "";
   let ogImageUrl = "";
   let featuredImageAlt = "";
   let imageMeta: BlogPostFirestore["imageMeta"] | undefined;
 
-  const img = await generateFeaturedImageForArticle({
+  if (options?.useStockImages) {
+    const stock = await attachStockFeaturedImage({
+      slug,
+      articleId: slug,
+      title: draft.title,
+      serviceSlug,
+      serviceName,
+      primaryKeyword: draft.title,
+      brandingEnabled: false,
+    });
+    if (stock.meta?.imageUrl) {
+      featuredImageUrl = stock.meta.imageUrl;
+      ogImageUrl = stock.meta.ogImageUrl;
+      featuredImageAlt = stock.meta.imageAlt;
+      imageMeta = {
+        visualCategory: stock.meta.visualCategory,
+        compositionSignature: stock.meta.compositionSignature,
+        generatedPrompt: stock.meta.generatedPrompt,
+        generationModel: stock.meta.generationModel,
+        sha256: stock.meta.sha256,
+        perceptualHash: stock.meta.perceptualHash,
+        differenceHash: stock.meta.differenceHash,
+        promptHash: stock.meta.promptHash,
+        relevanceScore: stock.meta.relevanceScore,
+        uniquenessScore: stock.meta.uniquenessScore,
+        qualityScore: stock.meta.qualityScore,
+        safetyScore: stock.meta.safetyScore,
+        overallImageScore: stock.meta.overallImageScore,
+        validationNotes: stock.meta.validationNotes,
+        imageStatus: stock.meta.imageStatus,
+        imageTitle: stock.meta.imageTitle,
+        imageCaption: stock.meta.imageCaption,
+        width: stock.meta.width,
+        height: stock.meta.height,
+        mimeType: stock.meta.mimeType,
+        fileSize: stock.meta.fileSize,
+        source: stock.meta.source,
+        brandingApplied: stock.meta.brandingApplied,
+      };
+    }
+  } else {
+    const img = await generateFeaturedImageForArticle({
     articleId: slug,
     slug,
     title: draft.title,
@@ -179,6 +236,24 @@ export async function generateBlogDraftOnly(options?: {
     };
   } else if (img.error) {
     console.warn("[generate-blog-draft] Image pipeline failed:", img.error);
+  }
+  }
+
+  if (!featuredImageUrl && options?.useStockImages) {
+    const stock = await attachStockFeaturedImage({
+      slug,
+      articleId: slug,
+      title: draft.title,
+      serviceSlug,
+      serviceName,
+      primaryKeyword: draft.title,
+      brandingEnabled: false,
+    });
+    if (stock.meta?.imageUrl) {
+      featuredImageUrl = stock.meta.imageUrl;
+      ogImageUrl = stock.meta.ogImageUrl;
+      featuredImageAlt = stock.meta.imageAlt;
+    }
   }
 
   const istDate = new Date().toLocaleDateString("en-CA", {

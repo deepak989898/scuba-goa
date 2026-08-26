@@ -170,6 +170,43 @@ export async function listOpenIssues(limit = 200): Promise<SeoIssue[]> {
     .slice(0, limit);
 }
 
+export async function getSeoIssue(id: string): Promise<SeoIssue | null> {
+  const db = getAdminDb();
+  if (!db) return null;
+  const snap = await db.collection(SEO_ISSUES).doc(id).get();
+  if (!snap.exists) return null;
+  return { id: snap.id, ...snap.data() } as SeoIssue;
+}
+
+export async function listOpenIssuesForUrl(urlId: string): Promise<SeoIssue[]> {
+  const db = getAdminDb();
+  if (!db) return [];
+  const snap = await db
+    .collection(SEO_ISSUES)
+    .where("urlId", "==", urlId)
+    .limit(50)
+    .get();
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as SeoIssue)
+    .filter((i) => i.status === "open" || i.status === "pending_approval");
+}
+
+export async function markUrlIssuesFixed(
+  urlId: string,
+): Promise<number> {
+  const open = await listOpenIssuesForUrl(urlId);
+  const now = new Date().toISOString();
+  const db = getAdminDb();
+  if (!db) return 0;
+  for (const issue of open) {
+    await db.collection(SEO_ISSUES).doc(issue.id).set(
+      { status: "fixed", updatedAt: now },
+      { merge: true },
+    );
+  }
+  return open.length;
+}
+
 export async function saveApproval(a: SeoApproval): Promise<void> {
   const db = getAdminDb();
   if (!db) return;
