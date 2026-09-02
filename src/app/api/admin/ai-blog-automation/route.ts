@@ -80,6 +80,39 @@ export async function GET(req: Request) {
     });
   }
 
+  if (view === "summary") {
+    const [keywordsSample, clusters, jobs, drafts] = await Promise.all([
+      listKeywords(undefined, 200),
+      listClusters(150),
+      listGenerationJobs(undefined, 100),
+      listDrafts(undefined, 80),
+    ]);
+    return NextResponse.json({
+      settings,
+      services,
+      providers: {
+        googleAds: isGoogleAdsConfigured(),
+        gsc: Boolean(process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim()),
+        openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      },
+      stats: {
+        keywords: keywordsSample.length,
+        pendingKeywords: keywordsSample.filter((k) => k.status === "pending").length,
+        clusters: clusters.length,
+        pendingClusters: clusters.filter((c) => c.status === "pending").length,
+        waitingJobs: jobs.filter((j) => j.status === "waiting").length,
+        failedJobs: jobs.filter((j) => j.status === "failed").length,
+        drafts: drafts.filter((d) => d.status !== "published").length,
+        publishedDrafts: drafts.filter((d) => d.status === "published").length,
+      },
+      keywords: keywordsSample,
+      clusters: clusters.filter((c) => c.status === "pending"),
+      jobs: jobs.slice(0, 50),
+      drafts: drafts.slice(0, 40),
+      logs: [],
+    });
+  }
+
   const [keywords, clusters, jobs, drafts, logs] = await Promise.all([
     listKeywords(undefined, 200),
     listClusters(150),
@@ -129,7 +162,7 @@ export async function PATCH(req: Request) {
   if (body.action === "processQueue") {
     const processAll = body.processAll === true;
     const maxJobs = processAll
-      ? Math.min(100, Math.max(1, Number(body.maxJobs) || 10))
+      ? Math.min(20, Math.max(1, Number(body.maxJobs) || 1))
       : Math.min(20, Math.max(1, Number(body.maxJobs) || 10));
     const result = await processGenerationQueue(maxJobs, {
       skipPauseCheck: true,

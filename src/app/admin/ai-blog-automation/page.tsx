@@ -128,7 +128,6 @@ function clusterAwaitingApproval(c: SeoKeywordCluster): boolean {
 async function adminToken(): Promise<string> {
   const auth = getFirebaseAuth();
   if (!auth?.currentUser) throw new Error("Sign in at /admin/login first.");
-  await auth.currentUser.getIdToken(true);
   return auth.currentUser.getIdToken();
 }
 
@@ -273,7 +272,7 @@ export default function AiBlogAutomationPage() {
     setErr(null);
     try {
       const [data, postsRes] = await Promise.all([
-        adminFetch("/api/admin/ai-blog-automation"),
+        adminFetch("/api/admin/ai-blog-automation?view=summary"),
         adminFetch("/api/admin/blog-posts").catch(() => ({ posts: [] })),
       ]);
       setStats(data.stats ?? {});
@@ -581,18 +580,36 @@ export default function AiBlogAutomationPage() {
     let totalReconciled = 0;
     const errorNotes: string[] = [];
     const waitingStart = jobs.filter((j) => j.status === "waiting").length;
-    const maxRounds = Math.max(20, Math.ceil(waitingStart / 5) + 2);
+    const maxRounds = Math.max(30, waitingStart + 5);
+
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
     try {
       for (let round = 0; round < maxRounds; round++) {
-        const data = await adminFetch("/api/admin/ai-blog-automation", {
-          method: "PATCH",
-          body: JSON.stringify({
-            action: "processQueue",
-            processAll: true,
-            maxJobs: 5,
-          }),
-        });
+        let data: Record<string, unknown> = {};
+        try {
+          data = await adminFetch("/api/admin/ai-blog-automation", {
+            method: "PATCH",
+            body: JSON.stringify({
+              action: "processQueue",
+              processAll: true,
+              maxJobs: 1,
+            }),
+          });
+        } catch (batchErr) {
+          const msg =
+            batchErr instanceof Error ? batchErr.message : "Batch failed";
+          if (/504|timeout/i.test(msg) && totalProcessed > 0) {
+            setOk(
+              `Processed ${totalProcessed} so far — server timed out. Click again to continue the remaining jobs.`,
+            );
+            await load();
+            return;
+          }
+          throw batchErr;
+        }
+
         const processed = Number(data.processed ?? 0);
         const remaining = Number(data.remainingWaiting ?? data.waitingCount ?? 0);
         totalProcessed += processed;
@@ -611,6 +628,7 @@ export default function AiBlogAutomationPage() {
         }
 
         if (processed === 0 || remaining === 0) break;
+        await sleep(1500);
       }
 
       if (totalProcessed > 0) {
@@ -628,7 +646,15 @@ export default function AiBlogAutomationPage() {
       }
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Queue process failed");
+      const msg = e instanceof Error ? e.message : "Queue process failed";
+      if (totalProcessed > 0) {
+        setOk(
+          `Processed ${totalProcessed} before error: ${msg}. Click again to continue.`,
+        );
+        await load();
+      } else {
+        setErr(msg);
+      }
     } finally {
       setBusy(null);
     }

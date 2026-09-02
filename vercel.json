@@ -11,6 +11,18 @@
     },
     "src/app/api/admin/gsc-agent/settings/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/admin/ai-blog-automation/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/admin/blog-posts/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/blog-image-regenerate/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/admin/blog-traffic/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
