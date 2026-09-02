@@ -1,72 +1,105 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
+  completePushSubscription,
   dismissPushPromptForSession,
   hasActivePushSubscription,
-  hasPushSubscribedLocally,
-  isPushPromptDismissedThisSession,
   isPushSupported,
   markPushSubscribedLocally,
-  subscribeToWebPush,
+  prepareWebPush,
+  reconcilePushLocalState,
+  requestNotificationPermissionAsync,
 } from "@/lib/web-push-client";
 
-const ASK_DELAY_MS = 14000;
+const MIN_PAGE_MS = 6000;
 
 /**
- * No custom UI — after a short delay, opens the browser's native
- * "Show notifications" permission dialog only.
+ * Shows only the browser's native notification permission dialog.
+ * Chrome requires a real click/tap — timers alone are blocked.
  */
 export function PushNotificationPrompt() {
   const pathname = usePathname() ?? "";
-
-  const permissionDenied =
-    typeof Notification !== "undefined" && Notification.permission === "denied";
+  const askedRef = useRef(false);
 
   const shouldSkip =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/booking") ||
-    !isPushSupported() ||
-    permissionDenied ||
-    isPushPromptDismissedThisSession() ||
-    hasPushSubscribedLocally();
+    !isPushSupported();
 
   useEffect(() => {
     if (shouldSkip) return;
-    if (
-      typeof Notification !== "undefined" &&
-      Notification.permission !== "default"
-    ) {
-      return;
-    }
+
+    reconcilePushLocalState();
+    void prepareWebPush();
 
     let cancelled = false;
+    let pageReady = false;
+    const pageTimer = window.setTimeout(() => {
+      pageReady = true;
+    }, MIN_PAGE_MS);
 
-    const timer = window.setTimeout(async () => {
-      if (cancelled) return;
-      if (Notification.permission === "denied") return;
-
-      const active = await hasActivePushSubscription();
-      if (active) {
+    const finishGranted = async () => {
+      const result = await completePushSubscription();
+      if (result.ok) {
         markPushSubscribedLocally();
         return;
       }
-      if (isPushPromptDismissedThisSession()) return;
-
-      const result = await subscribeToWebPush();
-      if (result.ok) return;
-      if (
-        result.reason === "denied" ||
-        result.reason === "dismissed"
-      ) {
+      if (result.reason === "denied") {
         dismissPushPromptForSession();
       }
-    }, ASK_DELAY_MS);
+    };
+
+    const tryNativePermissionPrompt = () => {
+      if (cancelled || askedRef.current || !pageReady) return;
+      if (typeof Notification === "undefined") return;
+
+      if (Notification.permission === "denied") return;
+
+      if (Notification.permission === "granted") {
+        askedRef.current = true;
+        void (async () => {
+          const active = await hasActivePushSubscription();
+          if (active) {
+            markPushSubscribedLocally();
+            return;
+          }
+          await finishGranted();
+        })();
+        return;
+      }
+
+      if (Notification.permission !== "default") return;
+
+      askedRef.current = true;
+
+      // Must be invoked synchronously from the user-gesture handler.
+      const permissionPromise = requestNotificationPermissionAsync();
+      void permissionPromise.then((permission) => {
+        if (permission === "granted") {
+          void finishGranted();
+        } else if (permission === "denied") {
+          dismissPushPromptForSession();
+        } else {
+          askedRef.current = false;
+        }
+      });
+    };
+
+    const onUserGesture = () => {
+      tryNativePermissionPrompt();
+    };
+
+    const gestureOpts: AddEventListenerOptions = { passive: true };
+    window.addEventListener("pointerdown", onUserGesture, gestureOpts);
+    window.addEventListener("keydown", onUserGesture, gestureOpts);
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      window.clearTimeout(pageTimer);
+      window.removeEventListener("pointerdown", onUserGesture);
+      window.removeEventListener("keydown", onUserGesture);
     };
   }, [shouldSkip, pathname]);
 

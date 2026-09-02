@@ -190,7 +190,7 @@ export function Header() {
                 : "inline-flex min-h-11 min-w-[8.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
             }
           >
-            Reserve Your Dive
+            Book now
           </Link>
           <button
             type="button"
@@ -219,7 +219,7 @@ export function Header() {
               <span className="text-white [&_svg]:text-white">
                 {navIcons.reserve}
               </span>
-              Reserve Your Dive Today
+              Book now
             </Link>
             {nav.map((item) => (
               <Link

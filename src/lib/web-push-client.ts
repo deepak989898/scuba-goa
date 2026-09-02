@@ -56,6 +56,14 @@ export function markPushSubscribedLocally(): void {
   }
 }
 
+export function clearPushSubscribedLocally(): void {
+  try {
+    localStorage.removeItem(SUBSCRIBED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function hasPushSubscribedLocally(): boolean {
   try {
     return localStorage.getItem(SUBSCRIBED_KEY) === "1";
@@ -78,7 +86,22 @@ async function ensureServiceWorker(): Promise<ServiceWorkerRegistration | null> 
   }
 }
 
-export async function subscribeToWebPush(): Promise<{
+/** Register SW early so subscribe is fast after permission is granted. */
+export async function prepareWebPush(): Promise<void> {
+  if (!isPushSupported()) return;
+  await ensureServiceWorker();
+}
+
+/**
+ * Returns a promise from Notification.requestPermission().
+ * Only call directly from a pointer/click handler (same synchronous turn).
+ */
+export function requestNotificationPermissionAsync(): Promise<NotificationPermission> {
+  if (!isPushSupported()) return Promise.resolve("denied");
+  return Notification.requestPermission();
+}
+
+export async function completePushSubscription(): Promise<{
   ok: boolean;
   reason?: string;
 }> {
@@ -86,13 +109,15 @@ export async function subscribeToWebPush(): Promise<{
     return { ok: false, reason: "not_supported" };
   }
 
+  if (Notification.permission !== "granted") {
+    return {
+      ok: false,
+      reason: Notification.permission === "denied" ? "denied" : "dismissed",
+    };
+  }
+
   const vapid = getWebPushPublicKey();
   if (!vapid) return { ok: false, reason: "not_configured" };
-
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    return { ok: false, reason: permission === "denied" ? "denied" : "dismissed" };
-  }
 
   const reg = await ensureServiceWorker();
   if (!reg) return { ok: false, reason: "sw_failed" };
@@ -137,15 +162,47 @@ export async function subscribeToWebPush(): Promise<{
   return { ok: true };
 }
 
+export async function subscribeToWebPush(): Promise<{
+  ok: boolean;
+  reason?: string;
+}> {
+  if (!isPushSupported()) {
+    return { ok: false, reason: "not_supported" };
+  }
+
+  if (Notification.permission === "default") {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      return {
+        ok: false,
+        reason: permission === "denied" ? "denied" : "dismissed",
+      };
+    }
+  }
+
+  return completePushSubscription();
+}
+
 export async function hasActivePushSubscription(): Promise<boolean> {
   if (!isPushSupported()) return false;
   if (Notification.permission !== "granted") return false;
   try {
     const reg = await navigator.serviceWorker.getRegistration("/");
-    if (!reg) return hasPushSubscribedLocally();
+    if (!reg) return false;
     const sub = await reg.pushManager.getSubscription();
     return Boolean(sub);
   } catch {
-    return hasPushSubscribedLocally();
+    return false;
+  }
+}
+
+/** Drop stale local flag when permission was reset in browser settings. */
+export function reconcilePushLocalState(): void {
+  if (typeof Notification === "undefined") return;
+  if (Notification.permission !== "granted" && hasPushSubscribedLocally()) {
+    clearPushSubscribedLocally();
+  }
+  if (Notification.permission === "denied") {
+    clearPushSubscribedLocally();
   }
 }

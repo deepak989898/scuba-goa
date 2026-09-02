@@ -1,5 +1,5 @@
-/** Shared 15s auto-open timing for chat widget (page load, not component mount). */
-export const CHAT_AUTO_OPEN_DELAY_MS = 15_000;
+/** Shared 30s auto-open timing for chat widget (page load, not component mount). */
+export const CHAT_AUTO_OPEN_DELAY_MS = 30_000;
 export const CHAT_AUTO_OPEN_SESSION_KEY = "bsg_chat_auto_opened";
 
 const pageLoadAt =
