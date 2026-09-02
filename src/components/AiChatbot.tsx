@@ -130,7 +130,7 @@ export function AiChatbot() {
             className="fixed z-[55] flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl
               right-3 w-[min(calc(100vw-1.5rem),400px)]
               bottom-[calc(6.5rem+0.75rem+env(safe-area-inset-bottom,0px))]
-              h-[min(calc(100dvh-7rem-env(safe-area-inset-bottom,0px)),720px)]
+              h-[min(58dvh,480px)]
               md:right-4 md:bottom-4 md:top-4 md:h-auto md:max-h-[calc(100dvh-2rem)]"
             role="dialog"
             aria-modal="true"
