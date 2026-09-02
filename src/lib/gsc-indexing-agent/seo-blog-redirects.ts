@@ -17,16 +17,25 @@ function normalizePath(path: string): string {
   return noTrail || "/";
 }
 
+/** Firestore doc IDs cannot contain "/" — encode normalized paths. */
+function pathToDocId(path: string): string {
+  return Buffer.from(normalizePath(path), "utf8").toString("base64url");
+}
+
 export async function getSeoBlogRedirect(
   sourcePath: string,
 ): Promise<string | null> {
   const db = getAdminDb();
   if (!db) return null;
   const source = normalizePath(sourcePath);
-  const snap = await db.collection(COL).doc(source).get();
-  if (!snap.exists) return null;
-  const dest = String((snap.data() as SeoBlogRedirect).destination ?? "").trim();
-  return dest ? normalizePath(dest) : null;
+  try {
+    const snap = await db.collection(COL).doc(pathToDocId(source)).get();
+    if (!snap.exists) return null;
+    const dest = String((snap.data() as SeoBlogRedirect).destination ?? "").trim();
+    return dest ? normalizePath(dest) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function saveSeoBlogRedirect(input: {
@@ -41,7 +50,7 @@ export async function saveSeoBlogRedirect(input: {
   const now = new Date().toISOString();
   await db
     .collection(COL)
-    .doc(source)
+    .doc(pathToDocId(source))
     .set({
       source,
       destination,

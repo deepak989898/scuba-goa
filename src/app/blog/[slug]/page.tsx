@@ -202,12 +202,13 @@ function breadcrumbJsonLd(p: { title: string; slug: string }) {
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const blogPath = `/blog/${slug}`;
-  const fsRedirect = await getSeoBlogRedirect(blogPath);
-  if (fsRedirect) permanentRedirect(fsRedirect);
 
   const p = await getBlogPostBySlugMerged(slug);
   if (!p) {
-    const dest = findBlogRedirectDestination(`/blog/${slug}`);
+    const fsRedirect = await getSeoBlogRedirect(blogPath);
+    if (fsRedirect) permanentRedirect(fsRedirect);
+
+    const dest = findBlogRedirectDestination(blogPath);
     if (dest) permanentRedirect(dest);
     notFound();
   }
