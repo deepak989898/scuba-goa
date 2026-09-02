@@ -16,6 +16,7 @@ type YTPlayerTarget = {
 
 /**
  * YouTube hero: muted autoplay; sound follows `heroSoundEnabled` (user toggle).
+ * Mobile uses a cover-style iframe so 16:9 video fills the hero without letterboxing.
  */
 export function HeroYoutubeSlide({
   videoId,
@@ -26,7 +27,6 @@ export function HeroYoutubeSlide({
   ambientMusicSrc,
   useAmbientMusic,
   heroSoundEnabled,
-  mobileFitMedia = false,
 }: {
   videoId: string;
   posterSrc: string;
@@ -36,7 +36,6 @@ export function HeroYoutubeSlide({
   ambientMusicSrc?: string;
   useAmbientMusic?: boolean;
   heroSoundEnabled: boolean;
-  mobileFitMedia?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -232,31 +231,28 @@ export function HeroYoutubeSlide({
     shouldLoop,
   ]);
 
-  const posterObjectClass = mobileFitMedia
-    ? "object-contain object-top sm:object-cover sm:object-center"
-    : "object-cover object-center";
-  const iframeScaleClass = mobileFitMedia
-    ? "[&_iframe]:scale-100"
-    : "[&_iframe]:scale-[1.15]";
-
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden bg-ocean-900">
       {posterSrc.trim() ? (
-        <div className="absolute inset-0 z-0">
+        <div
+          className={`absolute inset-0 z-0 transition-opacity duration-500 ${
+            playerReady ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
+        >
           <CmsRemoteImage
             src={posterSrc}
             alt={alt}
             fill
             priority
             quality={65}
-            className={posterObjectClass}
+            className="object-cover object-center"
             sizes="100vw"
           />
         </div>
       ) : null}
       <div
         ref={hostRef}
-        className={`absolute inset-0 z-[1] [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:min-h-full [&_iframe]:w-full [&_iframe]:min-w-full ${iframeScaleClass}`}
+        className="absolute inset-0 z-[1] overflow-hidden [&_iframe]:absolute [&_iframe]:left-1/2 [&_iframe]:top-1/2 [&_iframe]:max-w-none [&_iframe]:-translate-x-1/2 [&_iframe]:-translate-y-1/2 [&_iframe]:h-[56.25vw] [&_iframe]:min-h-full [&_iframe]:w-[177.78vh] [&_iframe]:min-w-full"
       />
       {useAmbientMusic && effectiveAmbientSrc ? (
         <audio

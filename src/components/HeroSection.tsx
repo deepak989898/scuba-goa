@@ -11,11 +11,6 @@ import { useShouldRenderHeroVideo } from "@/hooks/useShouldRenderHeroVideo";
 import { SITE_NAME } from "@/lib/constants";
 import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 import { resolveHeroBookingCardModel } from "@/lib/hero-slide-booking";
-import {
-  computeMobileHeroCardOverlapPx,
-  computeMobileHeroMediaHeightPx,
-} from "@/lib/hero-mobile-media-height";
-import { getYoutubeVideoId } from "@/lib/hero-video";
 import type { PackageDoc } from "@/lib/types";
 
 function lowestListedPackageInr(list: PackageDoc[]): number | null {
@@ -128,19 +123,6 @@ export function HeroSection() {
   const n = slides.length;
   /** User-controlled hero video / site-music sound (starts off = muted). */
   const [heroSoundOn, setHeroSoundOn] = useState(false);
-  const [viewport, setViewport] = useState({ w: 0, h: 0 });
-  const [nativeVideoAspect, setNativeVideoAspect] = useState<{
-    w: number;
-    h: number;
-  } | null>(null);
-
-  useEffect(() => {
-    const update = () =>
-      setViewport({ w: window.innerWidth, h: window.innerHeight });
-    update();
-    window.addEventListener("resize", update, { passive: true });
-    return () => window.removeEventListener("resize", update);
-  }, []);
 
   const advanceSlide = useCallback(() => {
     setI((prev) => {
@@ -171,50 +153,6 @@ export function HeroSection() {
     ? `${current.videoUrl ?? ""}|${current.src}|${current.videoThumbnailUrl ?? ""}|${i}`
     : "hero-empty";
 
-  useEffect(() => {
-    setNativeVideoAspect(null);
-  }, [slideKey]);
-
-  const currentVideoUrl = current?.videoUrl?.trim() ?? "";
-  const currentYtId = currentVideoUrl ? getYoutubeVideoId(currentVideoUrl) : null;
-
-  const mobileMediaHeightPx = useMemo(() => {
-    if (viewport.w === 0 || viewport.w >= 640) return null;
-    if (!currentHasVideo || !videoActuallyPlays) return null;
-
-    if (currentYtId) {
-      return computeMobileHeroMediaHeightPx(viewport.w, viewport.h, 16, 9);
-    }
-
-    if (nativeVideoAspect && nativeVideoAspect.w > 0 && nativeVideoAspect.h > 0) {
-      return computeMobileHeroMediaHeightPx(
-        viewport.w,
-        viewport.h,
-        nativeVideoAspect.w,
-        nativeVideoAspect.h,
-      );
-    }
-
-    return null;
-  }, [
-    viewport.w,
-    viewport.h,
-    currentHasVideo,
-    videoActuallyPlays,
-    currentYtId,
-    nativeVideoAspect,
-  ]);
-
-  const mobileCardOverlapPx = useMemo(() => {
-    if (mobileMediaHeightPx == null || viewport.w >= 640) return null;
-    return computeMobileHeroCardOverlapPx(mobileMediaHeightPx, viewport.w);
-  }, [mobileMediaHeightPx, viewport.w]);
-
-  const mobileMediaHeightStyle =
-    mobileMediaHeightPx != null
-      ? { height: `${mobileMediaHeightPx}px`, minHeight: `${mobileMediaHeightPx}px` }
-      : undefined;
-
   const bookingCard = useMemo(
     () =>
       resolveHeroBookingCardModel(current?.bookingOption, {
@@ -239,12 +177,7 @@ export function HeroSection() {
         under the booking card is covered / not visible.
       */}
       <div
-        className={`pointer-events-none absolute inset-x-0 top-0 overflow-hidden sm:bottom-0 sm:h-auto ${
-          mobileMediaHeightPx != null
-            ? "max-sm:h-auto"
-            : "max-sm:h-[min(58dvh,460px)]"
-        }`}
-        style={mobileMediaHeightStyle}
+        className="pointer-events-none absolute inset-x-0 top-0 max-sm:h-[min(58dvh,460px)] overflow-hidden sm:bottom-0 sm:h-auto"
       >
         {current ? (
           <div key={slideKey} className="absolute inset-0">
@@ -254,22 +187,13 @@ export function HeroSection() {
               onVideoEnded={advanceSlide}
               shouldLoopWhenSingleSlide={n <= 1}
               heroSoundEnabled={heroSoundOn}
-              mobileFitMedia={mobileMediaHeightPx != null}
-              onNativeVideoMetrics={(w, h) => setNativeVideoAspect({ w, h })}
             />
           </div>
         ) : null}
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
 
-      <div
-        className={`relative sm:min-h-[min(72vh,640px)] ${
-          mobileMediaHeightPx != null
-            ? "max-sm:min-h-0"
-            : "max-sm:min-h-[min(58dvh,460px)]"
-        }`}
-        style={mobileMediaHeightStyle}
-      >
+      <div className="relative max-sm:min-h-[min(58dvh,460px)] sm:min-h-[min(72vh,640px)]">
         {currentHasVideo && videoActuallyPlays ? (
           <div className="pointer-events-none absolute inset-0 z-[25] flex items-start justify-end p-3 pt-24 sm:items-end sm:justify-end sm:p-6 sm:pt-6 sm:pb-28">
             <HeroVideoSoundToggle
@@ -302,17 +226,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Overlap booking card into hero — overlap scales when media is shorter */}
-      <div
-        className={`relative z-10 px-[14px] pb-2 sm:hidden ${
-          mobileCardOverlapPx == null ? "-mt-[min(28vw,9.5rem)]" : ""
-        }`}
-        style={
-          mobileCardOverlapPx != null
-            ? { marginTop: -mobileCardOverlapPx }
-            : undefined
-        }
-      >
+      <div className="relative z-10 -mt-[min(28vw,9.5rem)] px-[14px] pb-2 sm:hidden">
         <HeroConversionCard
           bookHref={bookingCard.bookHref}
           detailsHref={bookingCard.detailsHref}
