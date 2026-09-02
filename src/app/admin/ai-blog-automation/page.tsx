@@ -1124,13 +1124,51 @@ export default function AiBlogAutomationPage() {
         method: "PATCH",
         body: JSON.stringify({ action: "runAutomationNow" }),
       });
-      const run = data.run as { keywordsAdded?: number; clustersAdded?: number };
+      const run = data.run as {
+        keywordsAdded?: number;
+        clustersAdded?: number;
+        skipped?: boolean;
+      };
+      const auto = data.autoApprove as {
+        result?: { jobsCreated?: number; skippedConflicts?: number };
+      };
+      const queue = data.queue as { processed?: number };
       setOk(
-        `Automation run complete: +${run.keywordsAdded ?? 0} keywords, +${run.clustersAdded ?? 0} clusters.`,
+        `Run complete: +${run.keywordsAdded ?? 0} keywords, +${run.clustersAdded ?? 0} clusters · queued ${auto?.result?.jobsCreated ?? 0} · processed ${queue?.processed ?? 0} job(s).`,
       );
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Automation run failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function queuePendingClustersNow() {
+    setBusy("auto-queue");
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/ai-blog-automation", {
+        method: "PATCH",
+        body: JSON.stringify({ action: "autoApprovePending", maxJobs: 8 }),
+      });
+      const auto = data.autoApprove as {
+        result?: { jobsCreated?: number; skippedConflicts?: number };
+      };
+      const queue = data.queue as { processed?: number };
+      const queued = auto?.result?.jobsCreated ?? 0;
+      if (queued > 0) {
+        setOk(
+          `Queued ${queued} cluster(s) → generation · processed ${queue?.processed ?? 0} · skipped ${auto?.result?.skippedConflicts ?? 0} conflicts.`,
+        );
+      } else {
+        setOk(
+          "No new clusters queued (check daily caps, conflicts filter, or automation toggle).",
+        );
+      }
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Auto-queue failed");
     } finally {
       setBusy(null);
     }
@@ -1521,9 +1559,23 @@ export default function AiBlogAutomationPage() {
                 {(settings.autoApprovePublishWithAiImage ||
                   settings.autoApprovePublishWithoutImage) && (
                   <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-900">
-                    Active · conflicts skipped
+                    Active · conflicts skipped · cron queues pending daily
                   </span>
                 )}
+                {(settings.autoApprovePublishWithAiImage ||
+                  settings.autoApprovePublishWithoutImage) &&
+                filteredClusters.length > 0 ? (
+                  <button
+                    type="button"
+                    disabled={busy === "auto-queue"}
+                    onClick={() => void queuePendingClustersNow()}
+                    className="rounded-full bg-ocean-800 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    {busy === "auto-queue"
+                      ? "Queueing…"
+                      : `Queue ${filteredClusters.length} pending now`}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}

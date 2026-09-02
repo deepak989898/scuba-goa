@@ -248,7 +248,24 @@ export async function PATCH(req: Request) {
       actorId: auth.uid || "admin",
       force: true,
     });
-    return NextResponse.json({ ok: true, run });
+    const auto = await runAutoApprovePublishAutomation(auth.uid || "admin");
+    const queue = await processGenerationQueue(
+      Math.min(
+        (await getSeoBlogSettings()).automationPostsPerDay ?? 5,
+        8,
+      ),
+      { skipPauseCheck: true },
+    );
+    return NextResponse.json({ ok: true, run, autoApprove: auto, queue });
+  }
+
+  if (body.action === "autoApprovePending") {
+    const auto = await runAutoApprovePublishAutomation(auth.uid || "admin");
+    const queue = await processGenerationQueue(
+      Math.min(8, Number(body.maxJobs) || 5),
+      { skipPauseCheck: true },
+    );
+    return NextResponse.json({ ok: true, autoApprove: auto, queue });
   }
 
   if (body.action === "markJobPublished") {

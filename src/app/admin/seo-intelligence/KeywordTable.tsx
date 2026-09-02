@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import type { SeoIntelKeyword } from "@/lib/seo-intelligence/types";
+import type { SeoIntelKeyword, SeoIntelPageMatchStatus } from "@/lib/seo-intelligence/types";
 import {
   SEO_INTEL_TONE_CLASS,
   pageMatchLabel,
   pageMatchTone,
 } from "@/lib/seo-intelligence/ui-priority";
+
+export const PAGE_MATCH_SORT_ORDER: Record<SeoIntelPageMatchStatus, number> = {
+  no_page: 0,
+  wrong_page: 1,
+  cannibalisation: 2,
+  not_indexed: 3,
+  weak_ranking: 4,
+  related_page: 5,
+  correct_page: 6,
+  insufficient_data: 7,
+};
 
 function posLabel(pos: number | null | undefined) {
   if (pos == null || pos <= 0) return "—";
@@ -52,12 +63,34 @@ function isBehindCompetitor(k: SeoIntelKeyword): boolean {
   return me == null || me <= 0 || me > comp;
 }
 
+function pageSortIndicator(sort: "none" | "asc" | "desc"): string {
+  if (sort === "asc") return " ↑";
+  if (sort === "desc") return " ↓";
+  return "";
+}
+
 export function KeywordTable({
   rows,
   mode = "default",
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  onGenerateOne,
+  generatingId,
+  pageSort = "none",
+  onPageSortClick,
 }: {
   rows: SeoIntelKeyword[];
   mode?: "default" | "mine";
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
+  onGenerateOne?: (id: string) => void;
+  generatingId?: string | null;
+  pageSort?: "none" | "asc" | "desc";
+  onPageSortClick?: () => void;
 }) {
   if (rows.length === 0) {
     return (
@@ -78,16 +111,31 @@ export function KeywordTable({
   }
 
   const mine = mode === "mine";
+  const missingRows = rows.filter((k) => k.pageMatchStatus === "no_page");
+  const allMissingSelected =
+    missingRows.length > 0 &&
+    missingRows.every((k) => selectedIds?.has(k.id));
 
   return (
     <div className="overflow-x-auto rounded-xl border border-ocean-100 bg-white shadow-sm">
       <table
         className={`w-full border-collapse text-left text-xs ${
-          mine ? "min-w-[1100px]" : "min-w-[960px]"
+          mine ? "min-w-[1100px]" : selectable ? "min-w-[1000px]" : "min-w-[960px]"
         }`}
       >
         <thead className="sticky top-0 z-10 bg-ocean-50 text-[10px] uppercase tracking-wide text-ocean-600">
           <tr className="border-b border-ocean-100">
+            {selectable ? (
+              <th className="whitespace-nowrap px-2 py-1.5 font-bold">
+                <input
+                  type="checkbox"
+                  checked={allMissingSelected}
+                  onChange={() => onToggleSelectAll?.()}
+                  title="Select all missing-page keywords on this page"
+                  className="rounded border-ocean-300"
+                />
+              </th>
+            ) : null}
             <th className="whitespace-nowrap px-2 py-1.5 font-bold">Keyword</th>
             <th className="whitespace-nowrap px-2 py-1.5 font-bold">Intent</th>
             <th className="whitespace-nowrap px-2 py-1.5 font-bold">Topic</th>
@@ -95,7 +143,20 @@ export function KeywordTable({
               Our rank
             </th>
             <th className="whitespace-nowrap px-2 py-1.5 font-bold">URL</th>
-            <th className="whitespace-nowrap px-2 py-1.5 font-bold">Page</th>
+            <th className="whitespace-nowrap px-2 py-1.5 font-bold">
+              {onPageSortClick ? (
+                <button
+                  type="button"
+                  onClick={onPageSortClick}
+                  className="inline-flex items-center gap-0.5 font-bold uppercase tracking-wide text-ocean-600 hover:text-cyan-800"
+                  title="Sort by page status (Missing first)"
+                >
+                  Page{pageSortIndicator(pageSort)}
+                </button>
+              ) : (
+                "Page"
+              )}
+            </th>
             <th className="whitespace-nowrap px-2 py-1.5 font-bold">
               Competitors
             </th>
@@ -124,6 +185,8 @@ export function KeywordTable({
             const action = mine
               ? k.recommendedAction || "—"
               : shortAction(k.recommendedAction);
+            const isMissing = k.pageMatchStatus === "no_page";
+            const isGenerating = generatingId === k.id;
             return (
               <tr
                 key={k.id}
@@ -131,6 +194,21 @@ export function KeywordTable({
                   behind ? "bg-orange-50/40 even:bg-orange-50/50" : ""
                 }`}
               >
+                {selectable ? (
+                  <td className="whitespace-nowrap px-2 py-1 align-middle">
+                    {isMissing ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds?.has(k.id) ?? false}
+                        onChange={() => onToggleSelect?.(k.id)}
+                        className="rounded border-ocean-300"
+                        title="Select for blog generation"
+                      />
+                    ) : (
+                      <span className="text-ocean-300">—</span>
+                    )}
+                  </td>
+                ) : null}
                 <td className="max-w-[180px] px-2 py-1 align-middle">
                   <Link
                     href={`/admin/seo-intelligence/keywords/${k.id}`}
@@ -172,20 +250,33 @@ export function KeywordTable({
                   {shortUrl(url)}
                 </td>
                 <td className="whitespace-nowrap px-2 py-1 align-middle">
-                  <span
-                    className={`inline-flex rounded px-1 py-0.5 text-[9px] font-bold leading-none ${badge.badge}`}
-                    title={k.pageMatchNote || pageMatchLabel(k.pageMatchStatus)}
-                  >
-                    {pageMatchLabel(k.pageMatchStatus)
-                      .replace("Correct page exists", "OK")
-                      .replace("Related page exists", "Related")
-                      .replace("Wrong page ranking", "Wrong")
-                      .replace("No page exists", "Missing")
-                      .replace("Keyword cannibalisation", "Cannibal")
-                      .replace("Weak ranking", "Weak")
-                      .replace("Insufficient data", "N/A")
-                      .replace("Page not indexed", "No index")}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`inline-flex rounded px-1 py-0.5 text-[9px] font-bold leading-none ${badge.badge}`}
+                      title={k.pageMatchNote || pageMatchLabel(k.pageMatchStatus)}
+                    >
+                      {pageMatchLabel(k.pageMatchStatus)
+                        .replace("Correct page exists", "OK")
+                        .replace("Related page exists", "Related")
+                        .replace("Wrong page ranking", "Wrong")
+                        .replace("No page exists", "Missing")
+                        .replace("Keyword cannibalisation", "Cannibal")
+                        .replace("Weak ranking", "Weak")
+                        .replace("Insufficient data", "N/A")
+                        .replace("Page not indexed", "No index")}
+                    </span>
+                    {isMissing && onGenerateOne ? (
+                      <button
+                        type="button"
+                        disabled={isGenerating || Boolean(generatingId)}
+                        onClick={() => onGenerateOne(k.id)}
+                        className="rounded bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1.5 py-0.5 text-[9px] font-bold text-white disabled:opacity-50"
+                        title="Generate blog with free stock image"
+                      >
+                        {isGenerating ? "…" : "Gen"}
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
                 <td
                   className="max-w-[200px] px-2 py-1 align-middle text-[10px] text-ocean-700"
@@ -297,7 +388,9 @@ export function KeywordTable({
       <p className="border-t border-ocean-50 px-2 py-1 text-[10px] text-ocean-500">
         {mine
           ? "My website rankings · coloured Our rank · fuchsia competitor = ahead of you · orange row = improve first · click keyword for details"
-          : "Dense view · hover cells for full text · click keyword for details · GSC = Imp/Clk/CTR · coloured Our rank"}
+          : selectable
+            ? "Missing keywords: check rows or use Gen · bulk Generate uses free stock images like AI Blog Automation · archived after publish · click Page header to sort Missing first"
+            : "Dense view · hover cells for full text · click keyword for details · GSC = Imp/Clk/CTR · coloured Our rank"}
       </p>
     </div>
   );

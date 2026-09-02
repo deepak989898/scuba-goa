@@ -165,9 +165,10 @@ export async function runScheduledAutomation(opts?: {
     opts?.actorId || "scheduled-automation",
   );
 
-  const queue = await processGenerationQueue(Math.min(postsPerDay, 3), {
-    skipPauseCheck: true,
-  });
+  const queue = await processGenerationQueue(
+    Math.min(postsPerDay, 8),
+    { skipPauseCheck: true },
+  );
 
   const today = todayIst();
   await updateSeoBlogSettings({

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { seoIntelFetch } from "./admin-fetch";
-import { KeywordTable } from "./KeywordTable";
+import { KeywordTable, PAGE_MATCH_SORT_ORDER } from "./KeywordTable";
 import type { SeoIntelKeyword } from "@/lib/seo-intelligence/types";
 
 type Props = {
@@ -25,8 +25,35 @@ export function KeywordsView({ view, title, description }: Props) {
   const [disclaimer, setDisclaimer] = useState("");
   /** Focus on existing site pages + ranks (Keyword Rankings page only) */
   const [mineMode, setMineMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pageSort, setPageSort] = useState<"none" | "asc" | "desc">("none");
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   const activeView = view === "all" && mineMode ? "mine" : view;
+  const showGenerateTools = view === "all" && !mineMode;
+
+  const displayRows = useMemo(() => {
+    if (pageSort === "none") return rows;
+    const order = PAGE_MATCH_SORT_ORDER;
+    return [...rows].sort((a, b) => {
+      const da = order[a.pageMatchStatus] ?? 99;
+      const db = order[b.pageMatchStatus] ?? 99;
+      return pageSort === "asc" ? da - db : db - da;
+    });
+  }, [rows, pageSort]);
+
+  const missingInView = useMemo(
+    () => displayRows.filter((k) => k.pageMatchStatus === "no_page"),
+    [displayRows],
+  );
+
+  const selectedMissingCount = useMemo(
+    () =>
+      [...selectedIds].filter((id) =>
+        missingInView.some((k) => k.id === id),
+      ).length,
+    [selectedIds, missingInView],
+  );
 
   const load = useCallback(
     async (viewOverride?: string) => {
@@ -118,6 +145,106 @@ export function KeywordsView({ view, title, description }: Props) {
   }
 
   /** Switch to owned-keywords view and refresh their SERP positions first. */
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllMissing() {
+    const missingIds = missingInView.map((k) => k.id);
+    const allSelected =
+      missingIds.length > 0 && missingIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of missingIds) next.delete(id);
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of missingIds) next.add(id);
+        return next;
+      });
+    }
+  }
+
+  function cyclePageSort() {
+    setPageSort((s) => (s === "none" ? "asc" : s === "asc" ? "desc" : "none"));
+  }
+
+  async function generateBlogs(keywordIds: string[]) {
+    const ids = [...new Set(keywordIds)].filter(Boolean);
+    if (ids.length === 0) return;
+
+    setBusy(true);
+    setErr(null);
+    setMsg(`Generating ${ids.length} blog(s) with free stock images…`);
+
+    let succeeded = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < ids.length; i += 10) {
+      const batch = ids.slice(i, i + 10);
+      try {
+        const data = await seoIntelFetch(
+          "/api/admin/seo-intelligence/keywords/generate-blogs",
+          {
+            method: "POST",
+            body: JSON.stringify({ keywordIds: batch }),
+          },
+        );
+        succeeded += Number(data.succeeded ?? 0);
+        failed += Number(data.failed ?? 0);
+        for (const r of data.results ?? []) {
+          if (!r.ok && r.error) {
+            errors.push(`${r.keywordId}: ${r.error}`);
+          }
+        }
+      } catch (e) {
+        failed += batch.length;
+        errors.push(e instanceof Error ? e.message : "Batch failed");
+      }
+    }
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+    setGeneratingId(null);
+
+    if (failed > 0 && errors.length) {
+      setErr(errors.slice(0, 3).join(" · "));
+    }
+    setMsg(
+      `Blog generation: ${succeeded} published · ${failed} failed. Keywords removed from this list after success.`,
+    );
+    setBusy(false);
+    await load();
+  }
+
+  async function generateOne(id: string) {
+    setGeneratingId(id);
+    await generateBlogs([id]);
+  }
+
+  async function generateSelected() {
+    const ids = [...selectedIds].filter((id) =>
+      missingInView.some((k) => k.id === id),
+    );
+    await generateBlogs(ids);
+  }
+
+  async function generateAllMissing() {
+    await generateBlogs(missingInView.map((k) => k.id));
+  }
+
   async function openMyWebsiteRankings() {
     setMineMode(true);
     setPageMatch("");
@@ -239,6 +366,26 @@ export function KeywordsView({ view, title, description }: Props) {
               Show all keywords
             </button>
           ) : null}
+          {showGenerateTools ? (
+            <>
+              <button
+                type="button"
+                disabled={busy || selectedMissingCount === 0}
+                onClick={() => void generateSelected()}
+                className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50"
+              >
+                Generate selected ({selectedMissingCount})
+              </button>
+              <button
+                type="button"
+                disabled={busy || missingInView.length === 0}
+                onClick={() => void generateAllMissing()}
+                className="rounded-full bg-gradient-to-r from-purple-700 to-violet-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                Generate all missing ({missingInView.length})
+              </button>
+            </>
+          ) : null}
         </div>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -307,12 +454,24 @@ export function KeywordsView({ view, title, description }: Props) {
       ) : (
         <>
           <p className="text-xs text-ocean-500">
-            {rows.length} keywords shown
+            {displayRows.length} keywords shown
             {mineMode ? " · existing pages only" : ""}
+            {showGenerateTools && missingInView.length > 0
+              ? ` · ${missingInView.length} missing page`
+              : ""}
+            {pageSort !== "none" ? " · sorted by Page" : ""}
           </p>
           <KeywordTable
-            rows={rows}
+            rows={displayRows}
             mode={mineMode && showMineButton ? "mine" : "default"}
+            selectable={showGenerateTools}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAllMissing}
+            onGenerateOne={showGenerateTools ? (id) => void generateOne(id) : undefined}
+            generatingId={generatingId}
+            pageSort={pageSort}
+            onPageSortClick={showGenerateTools ? cyclePageSort : undefined}
           />
         </>
       )}

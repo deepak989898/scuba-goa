@@ -192,15 +192,13 @@ export async function runAutoApprovePublishAutomation(actorId = "system-auto"): 
     await updateSeoBlogSettings(patch);
   }
 
-  const day = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-  const generatedToday =
-    settings.blogsGeneratedDate === day ? (settings.blogsGeneratedToday ?? 0) : 0;
-  const waitingJobs = (await listGenerationJobs("waiting", 100)).length;
-  const remainingCap = Math.max(
-    0,
-    settings.maxBlogsGeneratedPerDay - generatedToday - waitingJobs,
-  );
-  if (remainingCap <= 0) {
+  const waitingJobs = (await listGenerationJobs("waiting", 200)).length;
+
+  /** Queue pending clusters even when today's generation cap is full — they process on later runs. */
+  const MAX_WAITING_JOBS = 100;
+  const queueSlots = Math.max(0, MAX_WAITING_JOBS - waitingJobs);
+
+  if (queueSlots <= 0) {
     return {
       mode,
       result: {
@@ -225,6 +223,7 @@ export async function runAutoApprovePublishAutomation(actorId = "system-auto"): 
     .map((c) => c.id);
 
   const conflictCount = pending.filter((c) => clusterHasConflicts(c)).length;
+  const remainingCap = queueSlots;
 
   if (eligibleIds.length === 0) {
     return {
@@ -259,7 +258,7 @@ export async function runAutoApprovePublishAutomation(actorId = "system-auto"): 
         "@/lib/seo-blog-center/generation-queue"
       );
       const gen = await processGenerationQueue(
-        Math.min(Math.max(result.jobsCreated, 1), 3),
+        Math.min(Math.max(result.jobsCreated, 1), 8),
         { skipPauseCheck: true },
       );
       processed = gen.processed;

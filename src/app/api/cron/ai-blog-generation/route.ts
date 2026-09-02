@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { runAutoApprovePublishAutomation } from "@/lib/seo-blog-center/auto-approve-publish";
 import { processGenerationQueue } from "@/lib/seo-blog-center/generation-queue";
-import { runScheduledAutomation } from "@/lib/seo-blog-center/scheduled-automation";
-import { addSeoBlogLog } from "@/lib/seo-blog-center/store";
+import {
+  runScheduledAutomation,
+  shouldRunScheduledAutomation,
+} from "@/lib/seo-blog-center/scheduled-automation";
+import { addSeoBlogLog, getSeoBlogSettings } from "@/lib/seo-blog-center/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * External cron: auto-approve eligible clusters (if enabled), then process 1–2 jobs.
- * Authorization: Bearer ${CRON_SECRET}
+ * Cron: scheduled research (when due) + always auto-approve pending clusters (if enabled)
+ * + process waiting generation jobs.
  */
 export async function POST(req: Request) {
   if (!verifyCronRequest(req)) {
@@ -18,35 +21,43 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { getSeoBlogSettings } = await import("@/lib/seo-blog-center/store");
     const cfg = await getSeoBlogSettings();
+    let scheduled: Awaited<ReturnType<typeof runScheduledAutomation>> | null = null;
 
-    if (cfg.automationScheduleEnabled) {
-      const scheduled = await runScheduledAutomation({ actorId: "cron-scheduled" });
-      const extra = await processGenerationQueue(2, { skipPauseCheck: true });
-      await addSeoBlogLog({
-        type: "pipeline_run",
-        message: `AI cron (scheduled): ${scheduled.skipped ? "skipped" : `+${scheduled.keywordsAdded}kw`}; extra processed ${extra.processed}`,
-      });
-      return NextResponse.json({ ok: true, scheduled, ...extra });
+    if (
+      cfg.automationScheduleEnabled &&
+      shouldRunScheduledAutomation(cfg)
+    ) {
+      scheduled = await runScheduledAutomation({ actorId: "cron-scheduled" });
     }
 
+    // Always auto-queue pending clusters when automation toggles are on —
+    // even if scheduled research already ran today (was the main stuck-clusters bug).
     const auto = await runAutoApprovePublishAutomation("cron-auto");
-    const result = await processGenerationQueue(2);
-    const autoProcessed = auto.processed ?? 0;
+
+    const processMax = cfg.automationScheduleEnabled
+      ? Math.min(cfg.automationPostsPerDay ?? 5, 8)
+      : 5;
+    const queue = await processGenerationQueue(processMax, {
+      skipPauseCheck: true,
+    });
+
     await addSeoBlogLog({
       type: "pipeline_run",
-      message: `AI generation cron: auto-approve mode=${auto.mode} queued=${auto.result?.jobsCreated ?? 0}; processed ${autoProcessed + result.processed}`,
+      message: `AI cron: scheduled=${scheduled?.skipped ? "skipped" : scheduled ? `+${scheduled.keywordsAdded}kw` : "off"}; auto mode=${auto.mode} queued=${auto.result?.jobsCreated ?? 0}; processed ${queue.processed}`,
     });
+
     return NextResponse.json({
       ok: true,
+      scheduled,
       autoApprove: {
         mode: auto.mode,
-        processed: autoProcessed,
+        processed: auto.processed ?? 0,
         ...(auto.result ?? {}),
       },
-      ...result,
-    });  } catch (e) {
+      ...queue,
+    });
+  } catch (e) {
     const message = e instanceof Error ? e.message : "Cron failed";
     await addSeoBlogLog({ type: "error", message, error: message });
     return NextResponse.json({ error: message }, { status: 500 });
