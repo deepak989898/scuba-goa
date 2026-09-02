@@ -146,6 +146,7 @@ type SessionDoc = {
   leadPhone?: string;
   leadSource?: string;
   interestedItem?: string;
+  pushEnabled?: boolean;
 };
 
 type PageStay = {
@@ -195,6 +196,7 @@ type VisitorSummary = {
   leadEmail: string;
   leadPhone: string;
   leadSource: string;
+  pushEnabled: boolean;
 };
 
 function visitorHasSavedLead(v: VisitorSummary): boolean {
@@ -654,6 +656,7 @@ function buildVisitorSummary(
     leadEmail: String(sess?.leadEmail ?? "").trim(),
     leadPhone: String(sess?.leadPhone ?? "").trim(),
     leadSource: String(sess?.leadSource ?? "").trim(),
+    pushEnabled: sess?.pushEnabled === true,
   };
 }
 
@@ -724,6 +727,16 @@ export default function AdminAnalyticsPage() {
   const [visitorFilter, setVisitorFilter] =
     useState<VisitorKindFilter>("human");
   const [leadOnly, setLeadOnly] = useState(false);
+  const [pushOnly, setPushOnly] = useState(false);
+  const [pushStats, setPushStats] = useState<{
+    total: number;
+    configured: boolean;
+  } | null>(null);
+  const [pushTitle, setPushTitle] = useState("");
+  const [pushBody, setPushBody] = useState("");
+  const [pushUrl, setPushUrl] = useState("/");
+  const [pushSending, setPushSending] = useState(false);
+  const [pushResult, setPushResult] = useState<string | null>(null);
   const [sessionTimeline, setSessionTimeline] = useState<Row[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
@@ -981,6 +994,8 @@ export default function AdminAnalyticsPage() {
             leadPhone: String(data.leadPhone ?? "").trim() || undefined,
             leadSource: String(data.leadSource ?? "").trim() || undefined,
             interestedItem: String(data.interestedItem ?? "").trim() || undefined,
+            pushEnabled:
+              typeof data.pushEnabled === "boolean" ? data.pushEnabled : undefined,
             ...pickGeoFields(data),
             ...pickDeviceMeta(data),
             ...pickTrafficFields(data),
@@ -1167,6 +1182,7 @@ export default function AdminAnalyticsPage() {
       const visible = day.visitors.filter((v) => {
         if (!matchesAdminVisitorKind(v.visitorKind, visitorFilter)) return false;
         if (leadOnly && !visitorHasSavedLead(v)) return false;
+        if (pushOnly && !v.pushEnabled) return false;
         return true;
       });
       const pageViews = visible.reduce((acc, v) => acc + v.pageViews, 0);
@@ -1204,7 +1220,30 @@ export default function AdminAnalyticsPage() {
       todayHumans,
       googleHighConfidence,
     };
-  }, [rows, sessions, todayIstYmd, visitorFilter, leadOnly]);
+  }, [rows, sessions, todayIstYmd, visitorFilter, leadOnly, pushOnly]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPushStats = async () => {
+      try {
+        const data = await adminFetch("/api/admin/push/stats");
+        if (!cancelled) {
+          setPushStats({
+            total: Number(data.total) || 0,
+            configured: Boolean(data.configured),
+          });
+        }
+      } catch {
+        if (!cancelled) setPushStats({ total: 0, configured: false });
+      }
+    };
+    void loadPushStats();
+    const poll = window.setInterval(() => void loadPushStats(), ANALYTICS_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+    };
+  }, []);
 
   const expandedGroup = analytics.dayGroups.find((d) => d.date === expandedDate);
   const expandedVisitors = expandedGroup?.visitors ?? [];
@@ -1559,6 +1598,133 @@ export default function AdminAnalyticsPage() {
                 Name, email &amp; phone from site popup
               </p>
             </div>
+            <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+                Push subscribers
+              </p>
+              <p className="mt-1 font-display text-base font-bold text-sky-950">
+                {pushStats ? pushStats.total : "…"}
+              </p>
+              <p className="mt-1 text-xs text-sky-700">
+                {pushStats?.configured
+                  ? "Notification permission enabled"
+                  : "Add VAPID keys to send pushes"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-sky-200 bg-gradient-to-br from-white via-sky-50/50 to-cyan-50/40 p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-base font-semibold text-sky-950">
+                  Send push notification
+                </h2>
+                <p className="mt-1 text-xs text-sky-800/90">
+                  Bulk offer to visitors who allowed notifications (Chrome, Safari,
+                  Edge, installed PWA).{" "}
+                  <span className="font-semibold">
+                    {pushStats ? pushStats.total : "…"} subscribers
+                  </span>
+                </p>
+              </div>
+            </div>
+            {!pushStats?.configured ? (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Web push is not configured yet. Add{" "}
+                <code className="font-mono">NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY</code>
+                , <code className="font-mono">WEB_PUSH_VAPID_PRIVATE_KEY</code>, and{" "}
+                <code className="font-mono">WEB_PUSH_VAPID_SUBJECT</code> in Vercel,
+                then redeploy.
+              </p>
+            ) : null}
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="font-semibold text-ocean-900">Title</span>
+                <input
+                  type="text"
+                  value={pushTitle}
+                  onChange={(e) => setPushTitle(e.target.value)}
+                  maxLength={80}
+                  placeholder="e.g. Weekend scuba deal — 20% off"
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-semibold text-ocean-900">Open page (path)</span>
+                <input
+                  type="text"
+                  value={pushUrl}
+                  onChange={(e) => setPushUrl(e.target.value)}
+                  maxLength={512}
+                  placeholder="/packages/scuba-diving"
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <label className="mt-3 block text-sm">
+              <span className="font-semibold text-ocean-900">Description</span>
+              <textarea
+                value={pushBody}
+                onChange={(e) => setPushBody(e.target.value)}
+                maxLength={300}
+                rows={3}
+                placeholder="Short offer text visitors see in the notification…"
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+              />
+            </label>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={
+                  pushSending ||
+                  !pushStats?.configured ||
+                  (pushStats?.total ?? 0) === 0
+                }
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      `Send this notification to ${pushStats?.total ?? 0} subscribers?`,
+                    )
+                  ) {
+                    return;
+                  }
+                  void (async () => {
+                    setPushSending(true);
+                    setPushResult(null);
+                    try {
+                      const data = await adminFetch("/api/admin/push/send", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          title: pushTitle.trim(),
+                          description: pushBody.trim(),
+                          url: pushUrl.trim() || "/",
+                        }),
+                      });
+                      setPushResult(
+                        `Delivered ${data.sent ?? 0} · failed ${data.failed ?? 0} · removed expired ${data.removed ?? 0}`,
+                      );
+                      if (Number(data.sent) > 0) {
+                        setPushTitle("");
+                        setPushBody("");
+                      }
+                    } catch (e) {
+                      setPushResult(
+                        e instanceof Error ? e.message : "Send failed",
+                      );
+                    } finally {
+                      setPushSending(false);
+                    }
+                  })();
+                }}
+                className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:opacity-50"
+              >
+                {pushSending ? "Sending…" : "Send to all subscribers"}
+              </button>
+            </div>
+            {pushResult ? (
+              <p className="mt-2 text-xs font-medium text-sky-900">{pushResult}</p>
+            ) : null}
           </div>
 
           <div className="mt-4 rounded-xl border border-orange-200 bg-gradient-to-br from-white via-orange-50/40 to-amber-50/30 p-4 shadow-sm">
@@ -1645,6 +1811,20 @@ export default function AdminAnalyticsPage() {
               >
                 Leads only
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPushOnly((prev) => !prev);
+                  setSelectedSessionId("");
+                }}
+                className={`rounded-xl border px-4 py-2 text-sm font-semibold shadow-sm transition-colors ${
+                  pushOnly
+                    ? "border-sky-600 bg-sky-600 text-white"
+                    : "border-sky-200 bg-white text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Push enabled
+              </button>
               <div
                 className="inline-flex flex-wrap rounded-xl border border-ocean-200 bg-white p-1 shadow-sm"
                 role="group"
@@ -1681,6 +1861,11 @@ export default function AdminAnalyticsPage() {
             <p className="mt-2 text-xs text-orange-800">
               Showing visitors who saved name, email, or phone (popup, booking
               form, or chat).
+            </p>
+          ) : null}
+          {pushOnly ? (
+            <p className="mt-2 text-xs text-sky-800">
+              Showing visitors who enabled browser / PWA push notifications.
             </p>
           ) : null}
 
@@ -1766,7 +1951,9 @@ export default function AdminAnalyticsPage() {
                           <p className="py-3 text-center text-sm text-ocean-600">
                             {leadOnly
                               ? "No leads with saved contact on this day."
-                              : visitorFilter === "bot"
+                              : pushOnly
+                                ? "No push-enabled visitors on this day."
+                                : visitorFilter === "bot"
                                 ? "No bots recorded on this day."
                                 : visitorFilter === "human"
                                   ? "No human visitors on this day."
@@ -1823,6 +2010,11 @@ export default function AdminAnalyticsPage() {
                                         {v.hasLeadCapture || v.leadName ? (
                                           <span className="rounded-md bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                             Lead saved
+                                          </span>
+                                        ) : null}
+                                        {v.pushEnabled ? (
+                                          <span className="rounded-md bg-sky-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                            Push on
                                           </span>
                                         ) : null}
                                         {v.trafficLabel &&

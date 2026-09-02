@@ -1,5 +1,5 @@
-/* Book Scuba Goa PWA — bsg-pwa-v7 */
-const CACHE = "bsg-pwa-v7";
+/* Book Scuba Goa PWA — bsg-pwa-v8 */
+const CACHE = "bsg-pwa-v8";
 const PRECACHE = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -97,4 +97,48 @@ self.addEventListener("fetch", (event) => {
       }),
     );
   }
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title =
+    typeof data.title === "string" && data.title.trim()
+      ? data.title.trim()
+      : "Book Scuba Goa";
+  const body =
+    typeof data.body === "string" && data.body.trim() ? data.body.trim() : "";
+  const url =
+    typeof data.url === "string" && data.url.trim() ? data.url.trim() : "/";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const rawUrl = event.notification.data?.url || "/";
+  const targetUrl = new URL(rawUrl, self.location.origin).href;
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        for (const client of windowClients) {
+          if (client.url.startsWith(self.location.origin) && "focus" in client) {
+            client.navigate(targetUrl);
+            return client.focus();
+          }
+        }
+        return clients.openWindow(targetUrl);
+      }),
+  );
 });

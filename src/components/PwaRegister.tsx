@@ -30,20 +30,6 @@ export function PwaRegister() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
 
-    // Local Next.js HMR + SW = stale chunks; Vercel production/preview only.
-    if (process.env.NODE_ENV !== "production") return;
-
-    // Prefer canonical host so SW scope matches the installed app URL.
-    // Apex often 308→www; registering on the final URL avoids install failures.
-    const host = window.location.hostname.replace(/^www\./, "");
-    if (
-      host === "bookscubagoa.com" &&
-      !window.location.hostname.startsWith("www.")
-    ) {
-      // Soft nudge: stay on www for PWA (do not force redirect here — Vercel DNS should).
-      console.info("[pwa] Open https://www.bookscubagoa.com for Install app");
-    }
-
     const register = () => {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/", updateViaCache: "none" })
@@ -55,7 +41,6 @@ export function PwaRegister() {
         });
     };
 
-    // After load + idle so SW work stays out of the LCP / TBT window.
     const scheduleRegister = () => {
       const w = window as Window & {
         requestIdleCallback?: (
@@ -72,6 +57,9 @@ export function PwaRegister() {
 
     if (document.readyState === "complete") scheduleRegister();
     else window.addEventListener("load", scheduleRegister, { once: true });
+
+    // Install prompt only in production builds.
+    if (process.env.NODE_ENV !== "production") return;
 
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
