@@ -80,6 +80,13 @@ const CHANNEL_LABELS: Record<AttributionChannel, string> = {
   other: "Other",
 };
 
+export function channelDisplayLabel(
+  channel: AttributionChannel | "",
+): string {
+  if (!channel) return "";
+  return CHANNEL_LABELS[channel] ?? "Other";
+}
+
 export function hostFromUrl(url: string): string {
   try {
     const u = new URL(url);

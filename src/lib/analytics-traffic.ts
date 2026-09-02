@@ -5,6 +5,8 @@ import {
   classifyAttribution,
   type AttributionChannel,
   type AttributionResult,
+  channelDisplayLabel,
+  labelFromAttributionSource,
 } from "@/lib/analytics-attribution";
 
 export type TrafficChannel = AttributionChannel;
@@ -88,12 +90,70 @@ export function trafficChannelStyles(channel: TrafficChannel | ""): string {
     case "email":
       return "bg-violet-600 text-white ring-1 ring-violet-900/50";
     case "referral":
-      return "bg-cyan-600 text-white ring-1 ring-cyan-900/50";
+      return "bg-cyan-700 text-white ring-1 ring-cyan-900/50";
     case "other":
-      return "bg-orange-500 text-white ring-1 ring-orange-800/60";
+      return "bg-orange-600 text-white ring-1 ring-orange-900/60";
     default:
-      return "bg-ocean-700 text-white ring-1 ring-ocean-900/50";
+      return "bg-slate-700 text-white ring-1 ring-slate-900/50";
   }
+}
+
+function cleanTrafficText(raw: string | undefined): string {
+  return (raw ?? "").trim();
+}
+
+/** Admin UI: never show blank badges when detail/channel/source exist. */
+export function resolveTrafficDisplay(input: {
+  trafficChannel?: string;
+  trafficLabel?: string;
+  trafficDetail?: string;
+  referrerHost?: string;
+  source?: string;
+}): {
+  badgeLabel: string;
+  channel: TrafficChannel | "";
+  detail: string;
+} {
+  const detail = cleanTrafficText(input.trafficDetail);
+  const referrer = cleanTrafficText(input.referrerHost);
+  let label = cleanTrafficText(input.trafficLabel);
+  if (label === "—" || label.toLowerCase() === "not recorded") label = "";
+
+  if (!label) {
+    label = labelFromAttributionSource(input.source);
+  }
+
+  const detailLower = detail.toLowerCase();
+  if (!label && detailLower.startsWith("from ")) {
+    const host = detail.slice(5).trim();
+    if (host.includes("google")) label = channelDisplayLabel("google_organic");
+    else if (host.includes("bing")) label = channelDisplayLabel("bing");
+    else if (host) label = `Referral · ${host}`;
+  }
+
+  if (!label && referrer) {
+    if (referrer.includes("google")) label = channelDisplayLabel("google_organic");
+    else if (referrer.includes("bing")) label = channelDisplayLabel("bing");
+    else label = `Referral · ${referrer}`;
+  }
+
+  const channel =
+    (input.trafficChannel as TrafficChannel) ||
+    trafficChannelFromLabel(label) ||
+    trafficChannelFromLabel(detail) ||
+    "";
+
+  if (!label && channel) {
+    label = channelDisplayLabel(channel);
+  }
+
+  if (!label) label = "—";
+
+  return {
+    badgeLabel: label,
+    channel,
+    detail: detail || referrer || "",
+  };
 }
 
 export function trafficChannelFromLabel(

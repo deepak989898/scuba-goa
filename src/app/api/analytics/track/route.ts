@@ -617,8 +617,8 @@ export async function POST(req: Request) {
 
   if (!hasTraffic) {
     sessionPayload.trafficChannel = attribution.channel;
-    sessionPayload.trafficLabel = attribution.label;
-    sessionPayload.trafficDetail = attribution.detail;
+    sessionPayload.trafficLabel = attribution.label.trim();
+    sessionPayload.trafficDetail = attribution.detail.trim();
     sessionPayload.source = attribution.source;
     sessionPayload.medium = attribution.medium;
     sessionPayload.sourceConfidence = attribution.sourceConfidence;
@@ -641,10 +641,10 @@ export async function POST(req: Request) {
       sessionPayload.landingPath = landingForSession;
     }
     if (!existing.trafficLabel && existing.trafficChannel) {
-      sessionPayload.trafficLabel = attribution.label;
+      sessionPayload.trafficLabel = attribution.label.trim();
     }
     if (!existing.trafficDetail && attribution.detail) {
-      sessionPayload.trafficDetail = attribution.detail;
+      sessionPayload.trafficDetail = attribution.detail.trim();
     }
     if (!existing.source) sessionPayload.source = attribution.source;
     if (!existing.medium) sessionPayload.medium = attribution.medium;

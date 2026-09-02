@@ -11,6 +11,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { adminFetch } from "@/lib/admin-fetch";
 import type { DeviceCategory } from "@/lib/clientDevice";
 import {
   formatDurationMs,
@@ -24,9 +25,9 @@ import {
 import {
   trafficChannelStyles,
   trafficChannelFromLabel,
+  resolveTrafficDisplay,
   type TrafficChannel,
 } from "@/lib/analytics-traffic";
-import { labelFromAttributionSource } from "@/lib/analytics-attribution";
 import {
   resolveAdminVisitorKind,
   matchesAdminVisitorKind,
@@ -581,37 +582,34 @@ function buildVisitorSummary(
     screenHeight,
     visitorVisitCount,
     isReturningVisitor,
-    trafficChannel: normalizeTrafficChannel(
-      trafficSource?.trafficChannel ?? sess?.trafficChannel
-    ) ||
-      trafficChannelFromLabel(
-        trafficSource?.trafficLabel ?? sess?.trafficLabel,
-      ),
-    trafficLabel: (() => {
-      const labeled =
-        trafficSource?.trafficLabel ||
-        sess?.trafficLabel ||
-        labelFromAttributionSource(
-          String(sess?.source ?? trafficSource?.source ?? ""),
-        );
-      if (labeled) return labeled;
-      if (sess?.referrerHost || trafficSource?.referrerHost) {
-        return `Referral · ${sess?.referrerHost || trafficSource?.referrerHost}`;
-      }
-      if (sess?.utmSource || trafficSource?.utmSource) {
-        return `Campaign · ${sess?.utmSource || trafficSource?.utmSource}`;
-      }
-      if (sess?.trafficChannel || trafficSource?.trafficChannel) {
-        return "Unknown source";
-      }
-      return "—";
+    ...(() => {
+      const resolved = resolveTrafficDisplay({
+        trafficChannel:
+          trafficSource?.trafficChannel ?? sess?.trafficChannel,
+        trafficLabel:
+          trafficSource?.trafficLabel ??
+          sess?.trafficLabel ??
+          rowWithTraffic?.trafficLabel,
+        trafficDetail:
+          trafficSource?.trafficDetail ?? sess?.trafficDetail,
+        referrerHost:
+          sess?.referrerHost ??
+          trafficSource?.referrerHost ??
+          rowWithTraffic?.referrerHost,
+        source:
+          sess?.source ??
+          trafficSource?.source ??
+          rowWithTraffic?.source,
+      });
+      return {
+        trafficChannel: normalizeTrafficChannel(resolved.channel) ||
+          normalizeTrafficChannel(
+            trafficSource?.trafficChannel ?? sess?.trafficChannel,
+          ),
+        trafficLabel: resolved.badgeLabel,
+        trafficDetail: resolved.detail,
+      };
     })(),
-    trafficDetail:
-      trafficSource?.trafficDetail ||
-      sess?.trafficDetail ||
-      sess?.referrerHost ||
-      trafficSource?.referrerHost ||
-      "",
     landingPath: (() => {
       const candidates = [
         sess?.landingPath,
@@ -724,6 +722,7 @@ export default function AdminAnalyticsPage() {
     clicks: number;
     error?: string;
     note?: string;
+    isLatestAvailable?: boolean;
   } | null>(null);
   const [gscLoading, setGscLoading] = useState(true);
   const [capturedLeads, setCapturedLeads] = useState<CapturedLeadRow[]>([]);
@@ -758,19 +757,17 @@ export default function AdminAnalyticsPage() {
     const loadGsc = async () => {
       setGscLoading(true);
       try {
-        const res = await fetch("/api/admin/analytics/gsc-today", {
-          credentials: "include",
-        });
-        const data = await res.json();
+        const data = await adminFetch("/api/admin/analytics/gsc-today");
         if (!cancelled) setGscToday(data);
-      } catch {
+      } catch (e) {
         if (!cancelled) {
           setGscToday({
             ok: false,
             date: todayIstYmd,
             impressions: 0,
             clicks: 0,
-            error: "Could not load GSC data",
+            error:
+              e instanceof Error ? e.message : "Could not load GSC data",
           });
         }
       } finally {
@@ -1510,7 +1507,9 @@ export default function AdminAnalyticsPage() {
             </div>
             <div className="rounded-xl border border-violet-200 bg-violet-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-violet-800">
-                GSC impressions today
+                {gscToday?.isLatestAvailable
+                  ? "GSC impressions (latest)"
+                  : "GSC impressions today"}
               </p>
               <p className="mt-1 font-display text-base font-bold text-violet-950">
                 {gscLoading
@@ -1521,6 +1520,9 @@ export default function AdminAnalyticsPage() {
               </p>
               <p className="mt-1 text-xs text-violet-700">
                 {gscToday?.date ?? todayIstYmd} (IST) · Search Console
+                {gscToday?.ok && gscToday.clicks > 0
+                  ? ` · ${gscToday.clicks} clicks`
+                  : ""}
               </p>
               {gscToday?.error ? (
                 <p className="mt-1 text-[11px] leading-snug text-red-700">
@@ -1788,7 +1790,7 @@ export default function AdminAnalyticsPage() {
                                         {v.trafficLabel &&
                                         v.trafficLabel !== "—" ? (
                                           <span
-                                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${trafficChannelStyles(
+                                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold shadow-sm ${trafficChannelStyles(
                                               v.trafficChannel ||
                                                 trafficChannelFromLabel(
                                                   v.trafficLabel,
@@ -1870,7 +1872,7 @@ export default function AdminAnalyticsPage() {
 
                                     {v.trafficDetail &&
                                     v.trafficDetail !== v.trafficLabel ? (
-                                      <p className="mt-0.5 text-xs text-slate-600">
+                                      <p className="mt-0.5 text-xs font-medium text-slate-700">
                                         Source detail: {v.trafficDetail}
                                       </p>
                                     ) : null}
@@ -2079,7 +2081,7 @@ export default function AdminAnalyticsPage() {
                                         "—" ? (
                                           <span className="inline-flex flex-wrap items-center gap-2">
                                             <span
-                                              className={`rounded-md px-2 py-0.5 text-xs font-semibold ${trafficChannelStyles(
+                                              className={`rounded-md px-2 py-0.5 text-xs font-semibold shadow-sm ${trafficChannelStyles(
                                                 selectedVisitor.trafficChannel ||
                                                   trafficChannelFromLabel(
                                                     selectedVisitor.trafficLabel,
@@ -2091,7 +2093,7 @@ export default function AdminAnalyticsPage() {
                                             {selectedVisitor.trafficDetail &&
                                             selectedVisitor.trafficDetail !==
                                               selectedVisitor.trafficLabel ? (
-                                              <span className="text-slate-600">
+                                              <span className="text-sm font-medium text-slate-700">
                                                 {selectedVisitor.trafficDetail}
                                               </span>
                                             ) : null}
