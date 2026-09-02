@@ -119,11 +119,11 @@ export async function generateFeaturedImageForArticle(
       const uploaded = await brandAndUploadBlogImageBuffer(raw, input.slug, {
         articleId: input.articleId,
         brandingEnabled,
-        // Keep both halves of comparison diptychs (attention crop can clip one side)
+        preserveFullFrame: true,
         resizePosition:
           brief.visualCategory === "destination_comparison"
             ? "centre"
-            : "attention",
+            : "centre",
       });
 
       const uniquenessScore = dup.uniquenessScore;

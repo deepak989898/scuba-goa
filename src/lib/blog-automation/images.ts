@@ -59,32 +59,68 @@ async function buildTopLeftLogoBadge(imageWidth: number): Promise<Buffer> {
     .toBuffer();
 }
 
-/** Resize toward 16:9 WebP; optionally composite subtle top-left logo. */
+/** Resize without cropping — preserve full frame (letterbox pad only if needed for max bounds). */
 export async function applyBrandOverlay(
   photoBuffer: Buffer,
   options?: {
     brandingEnabled?: boolean;
     resizePosition?: "attention" | "centre" | "center";
+    /** When true, never crop faces/subjects (default). */
+    preserveFullFrame?: boolean;
   },
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const brandingEnabled = options?.brandingEnabled !== false;
-  const position =
-    options?.resizePosition === "centre" || options?.resizePosition === "center"
-      ? "centre"
-      : "attention";
+  const preserveFull =
+    options?.preserveFullFrame !== false;
 
-  let pipeline = sharp(photoBuffer).rotate().resize({
-    width: MAX_WIDTH,
-    height: TARGET_HEIGHT,
-    fit: "cover",
-    position,
-    withoutEnlargement: false,
-  });
+  let pipeline = sharp(photoBuffer).rotate();
+
+  if (preserveFull) {
+    pipeline = pipeline.resize({
+      width: MAX_WIDTH,
+      height: TARGET_HEIGHT,
+      fit: "inside",
+      withoutEnlargement: false,
+    });
+  } else {
+    const position =
+      options?.resizePosition === "centre" || options?.resizePosition === "center"
+        ? "centre"
+        : "attention";
+    pipeline = pipeline.resize({
+      width: MAX_WIDTH,
+      height: TARGET_HEIGHT,
+      fit: "cover",
+      position,
+      withoutEnlargement: false,
+    });
+  }
 
   let resizedBuf = await pipeline.toBuffer();
   const meta = await sharp(resizedBuf).metadata();
-  const width = meta.width ?? MAX_WIDTH;
-  const height = meta.height ?? TARGET_HEIGHT;
+  let width = meta.width ?? MAX_WIDTH;
+  let height = meta.height ?? TARGET_HEIGHT;
+
+  // Subtle letterbox pad to max bounds — never crop content
+  if (preserveFull && (width < MAX_WIDTH || height < TARGET_HEIGHT)) {
+    const padTop = Math.max(0, Math.floor((TARGET_HEIGHT - height) / 2));
+    const padBottom = Math.max(0, TARGET_HEIGHT - height - padTop);
+    const padLeft = Math.max(0, Math.floor((MAX_WIDTH - width) / 2));
+    const padRight = Math.max(0, MAX_WIDTH - width - padLeft);
+    if (padTop || padBottom || padLeft || padRight) {
+      resizedBuf = await sharp(resizedBuf)
+        .extend({
+          top: padTop,
+          bottom: padBottom,
+          left: padLeft,
+          right: padRight,
+          background: { r: 12, g: 36, b: 52 },
+        })
+        .toBuffer();
+      width = MAX_WIDTH;
+      height = TARGET_HEIGHT;
+    }
+  }
 
   if (brandingEnabled) {
     try {
@@ -169,12 +205,14 @@ export async function brandAndUploadBlogImageBuffer(
     articleId?: string;
     brandingEnabled?: boolean;
     resizePosition?: "attention" | "centre" | "center";
+    preserveFullFrame?: boolean;
   },
 ): Promise<UploadBlogImageResult> {
   const brandingEnabled = options?.brandingEnabled !== false;
   const compressed = await applyBrandOverlay(imageBuffer, {
     brandingEnabled,
     resizePosition: options?.resizePosition,
+    preserveFullFrame: options?.preserveFullFrame ?? true,
   });
   const uploaded = await uploadWebpToStorage(compressed.buffer, {
     slug,

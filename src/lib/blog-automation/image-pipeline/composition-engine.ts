@@ -9,6 +9,7 @@ import type {
   VisualClassification,
 } from "./types";
 import { lightingForTime } from "./classify-visual";
+import { researchTitleForImage } from "./title-research";
 
 const CATEGORY_SHOTS: Record<VisualCategory, ShotType[]> = {
   scuba_diving: ["underwater_reef", "split_level", "medium_action", "boat_departure"],
@@ -43,8 +44,8 @@ const CATEGORY_SHOTS: Record<VisualCategory, ShotType[]> = {
   south_goa: ["scenic_overview", "wide_environmental", "aerial_coastal"],
   nightlife: ["nightclub_interior", "wide_environmental", "over_shoulder"],
   night_club: ["nightclub_interior", "wide_environmental"],
-  casino: ["nightclub_interior", "wide_environmental", "over_shoulder"],
-  casino_pricing: ["over_shoulder", "wide_environmental", "close_equipment"],
+  casino: ["nightclub_interior", "wide_environmental", "scenic_overview", "sunset_cruise"],
+  casino_pricing: ["wide_environmental", "over_shoulder", "scenic_overview"],
   dolphin_trip: ["boat_departure", "wide_environmental", "scenic_overview"],
   dinner_cruise: ["sunset_cruise", "wide_environmental", "over_shoulder"],
   yacht: ["sunset_cruise", "aerial_coastal", "wide_environmental"],
@@ -164,7 +165,11 @@ export function pickCompositionVariant(
     classification.visualCategory === "casino" ||
     classification.visualCategory === "casino_pricing"
   ) {
-    angles = ["eye_level", "wide_establishing", "three_quarter", "over_shoulder"];
+    angles =
+      classification.visualCategory === "casino" ||
+      classification.visualCategory === "casino_pricing"
+        ? ["wide_establishing", "eye_level", "three_quarter", "over_shoulder"]
+        : ["eye_level", "wide_establishing", "three_quarter", "over_shoulder"];
   }
   if (classification.visualCategory === "destination_comparison") {
     angles = ["eye_level", "wide_establishing", "three_quarter"];
@@ -230,12 +235,22 @@ export function buildImageBrief(input: {
   const variant = pickCompositionVariant(input.classification, seed, attempt);
   const c = input.classification;
 
+  const research = researchTitleForImage({
+    title: input.articleTitle,
+    primaryKeyword: input.primaryKeyword,
+    serviceSlug: input.serviceSlug,
+    serviceName: input.serviceName,
+  });
+
+  const mainSubject = research.mainSubjectHint || c.mainSubject;
+  const locationContext = research.locationDetail || c.location;
+
   const scene = [
-    c.mainSubject,
+    mainSubject,
     c.supportingSubjects.length
       ? `with ${c.supportingSubjects.join(", ")}`
       : "",
-    `in ${c.location}`,
+    `in ${locationContext}`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -248,8 +263,8 @@ export function buildImageBrief(input: {
     visualCategory: c.visualCategory,
     visualSubcategory: c.visualSubcategory,
     visualIntent: c.visualIntent,
-    mainSubject: c.mainSubject,
-    locationContext: c.location,
+    mainSubject,
+    locationContext,
     scene,
     cameraAngle: variant.cameraAngle,
     shotType: variant.shotType,
@@ -293,6 +308,8 @@ export function buildImageBrief(input: {
     mustAvoid: c.exclusions,
     uniquenessSignature: variant.uniquenessSignature,
     attempt,
+    titleResearch: research.promptAddendum || undefined,
+    researchMainSubjectHint: research.mainSubjectHint,
   };
 }
 

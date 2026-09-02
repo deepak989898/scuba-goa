@@ -30,7 +30,7 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
   const casinoBlock = isCasinoVisual
     ? [
         "CRITICAL: This article is about CASINO / GAMBLING / ENTRY PACKAGES in Goa.",
-        "Show a casino cruise ship at night, casino interior, poker/chips table, or entry desk — NOT scuba diving.",
+        "Show the famous Big Daddy / Mandovi River casino cruise ship exterior at night — NOT only a generic indoor poker table.",
         "Do NOT draw scuba divers, dive tanks, underwater scenes, or old document scans.",
         "No readable text, age numbers, or price amounts in the image.",
       ].join(" ")
@@ -69,6 +69,10 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
         ].join(" ")
       : "";
 
+  const titleResearchBlock = brief.titleResearch?.trim()
+    ? brief.titleResearch.trim()
+    : "";
+
   const humanRealismBlock = [
     "HUMAN REALISM (mandatory): every visible person must look like a real photographed human, not AI or CGI.",
     "Faces must be sharp, clean, and naturally detailed — clear eyes, natural skin texture, believable pores and light, no plastic/waxy skin, no blurry or melted facial features.",
@@ -76,6 +80,7 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
     "Frame people close enough that faces stay readable (not tiny distant blobs).",
     "Hands and fingers must be anatomically correct (five fingers, natural joints) — no fused, melted, or extra fingers.",
     "Correct eye alignment, natural teeth if smiling, consistent lighting on faces matching the environment.",
+    "Prefer wide environmental framing so faces and the full subject stay in frame — do not crop heads or cut off the main venue.",
     "Photorealistic travel-magazine quality, DSLR sharpness, shallow depth of field acceptable to keep faces crisp.",
   ].join(" ");
 
@@ -86,6 +91,7 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
     `Service context (secondary only): ${brief.serviceName || "Goa adventures"} (${brief.serviceSlug || "general"}).`,
     `Visual category: ${brief.visualCategory} / ${brief.visualSubcategory}.`,
     `Visual intent: ${brief.visualIntent}.`,
+    titleResearchBlock,
     comparisonBlock,
     casinoBlock,
     originTravelBlock,

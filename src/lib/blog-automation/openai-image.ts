@@ -51,8 +51,8 @@ export async function generateBlogImageBufferFromPrompt(
   };
 
   if (isGptImageModel(model)) {
-    // 1024² is cheaper than 1536×1024; pipeline crops to 16:9 hero.
-    body.size = process.env.OPENAI_IMAGE_SIZE?.trim() || "1024x1024";
+    // Landscape native size reduces square crop issues; pipeline preserves full frame on upload.
+    body.size = process.env.OPENAI_IMAGE_SIZE?.trim() || "1536x1024";
     body.quality = quality;
   } else {
     body.size = "1792x1024";

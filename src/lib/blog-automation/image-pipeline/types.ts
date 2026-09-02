@@ -121,6 +121,9 @@ export type ImageBrief = {
   mustAvoid: string[];
   uniquenessSignature: string;
   attempt: number;
+  /** Factual venue/title research for OpenAI prompt. */
+  titleResearch?: string;
+  researchMainSubjectHint?: string;
 };
 
 export type BlogImageMeta = {

@@ -21,4 +21,5 @@ export {
   saveImageRegistryEntry,
 } from "./dedupe";
 export { validateImageBriefRelevance, categorySuggestsWrongTopic } from "./validate";
+export { researchTitleForImage } from "./title-research";
 export { generateFeaturedImageForArticle } from "./generate-featured";

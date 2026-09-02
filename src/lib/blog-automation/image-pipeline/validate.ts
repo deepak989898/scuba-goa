@@ -56,7 +56,9 @@ export function validateImageBriefRelevance(
   const comparisonTitle = /\bvs\.?\b|versus|compare/.test(title);
 
   const pricingTitle =
-    /price|pricing|cost|cheap|budget|package|how much|fee/.test(title);
+    /price|pricing|cost|cheap|budget|package|how much|fee|age limit|minimum age|entry age/.test(
+      title,
+    );
 
   if (comparisonTitle && /goa|andaman|maldives|lakshadweep|thailand|bali/i.test(title)) {
     if (brief.visualCategory === "destination_comparison") {
@@ -87,6 +89,16 @@ export function validateImageBriefRelevance(
       relevance -= 30;
       notes.push("Price guide still using generic dive lifestyle scene");
     }
+  } else if (pricingTitle && casinoTitle) {
+    if (brief.visualCategory === "casino_pricing" || brief.visualCategory === "casino") {
+      relevance += 18;
+    } else {
+      relevance -= 30;
+      notes.push("Casino price/age title not mapped to casino visuals");
+    }
+    if (/mandovi|ship|cruise|floating|jetty|boarding|panjim/i.test(promptBlob)) {
+      relevance += 12;
+    }
   } else if (casinoTitle) {
     if (brief.visualCategory === "casino" || brief.visualCategory === "casino_pricing") {
       relevance += 18;
@@ -96,6 +108,12 @@ export function validateImageBriefRelevance(
     } else {
       relevance -= 25;
       notes.push("Casino title not mapped to casino visuals");
+    }
+    if (/mandovi|floating|cruise ship|offshore|big daddy|deltin|panjim/i.test(promptBlob)) {
+      relevance += 12;
+    } else if (/indoor poker|generic casino table only/i.test(promptBlob)) {
+      relevance -= 15;
+      notes.push("Casino brief missing Mandovi ship / offshore venue context");
     }
     if (SCUBA_MARKERS.some((m) => promptBlob.includes(m))) {
       relevance -= 45;
