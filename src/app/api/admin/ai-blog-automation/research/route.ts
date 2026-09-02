@@ -31,12 +31,18 @@ export async function POST(req: Request) {
 
   const settings = await getSeoBlogSettings();
   const day = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const researchLimit = Math.min(
+    500,
+    Math.max(1, settings.maxResearchCallsPerDay ?? 100),
+  );
   if (
     settings.researchCallsDate === day &&
-    (settings.researchCallsToday ?? 0) >= 20
+    (settings.researchCallsToday ?? 0) >= researchLimit
   ) {
     return NextResponse.json(
-      { error: "Daily research call limit reached (20)" },
+      {
+        error: `Daily research call limit reached (${researchLimit}). Increase it in Settings → Max research runs / day, or wait until tomorrow (IST).`,
+      },
       { status: 429 },
     );
   }

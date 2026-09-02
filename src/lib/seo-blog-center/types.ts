@@ -315,6 +315,8 @@ export interface SeoBlogCenterSettings {
   /** AI Blog Automation */
   pauseGenerationQueue: boolean;
   maxKeywordsPerResearch: number;
+  /** Max manual keyword research runs per IST day (New research tab). */
+  maxResearchCallsPerDay: number;
   maxBlogsGeneratedPerDay: number;
   maxBlogsPublishedPerDay: number;
   maxImagesPerDay: number;
@@ -388,6 +390,7 @@ export const DEFAULT_SEO_BLOG_SETTINGS: SeoBlogCenterSettings = {
   autoApprovePublishWithoutImage: false,
   pauseGenerationQueue: false,
   maxKeywordsPerResearch: 250,
+  maxResearchCallsPerDay: 100,
   maxBlogsGeneratedPerDay: 5,
   maxBlogsPublishedPerDay: 2,
   maxImagesPerDay: 5,

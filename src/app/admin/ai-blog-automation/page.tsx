@@ -1416,6 +1416,22 @@ export default function AiBlogAutomationPage() {
             Max 250 opportunities. Local search adds beach/island/near-me variants.
             Turn on SEO categories below so research covers booking, questions,
             prices, packages, and nearby activities — not only one angle.
+            {settings ? (
+              <>
+                {" "}
+                Research today (IST):{" "}
+                <span className="font-semibold">
+                  {settings.researchCallsDate ===
+                  new Date().toLocaleDateString("en-CA", {
+                    timeZone: "Asia/Kolkata",
+                  })
+                    ? settings.researchCallsToday ?? 0
+                    : 0}
+                  /{settings.maxResearchCallsPerDay ?? 100}
+                </span>
+                .
+              </>
+            ) : null}
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-sm text-ocean-800">
@@ -2270,6 +2286,34 @@ export default function AiBlogAutomationPage() {
                 })
               }
             />
+          </label>
+          <label className="block text-sm">
+            Max research runs / day
+            <input
+              type="number"
+              min={1}
+              max={500}
+              className="mt-1 w-24 rounded border border-ocean-200 px-2 py-1"
+              value={settings.maxResearchCallsPerDay ?? 100}
+              onChange={(e) =>
+                void saveSettings({
+                  maxResearchCallsPerDay: Math.min(
+                    500,
+                    Math.max(1, Number(e.target.value) || 100),
+                  ),
+                })
+              }
+            />
+            <span className="mt-1 block text-xs text-ocean-600">
+              New research tab — today:{" "}
+              {settings.researchCallsDate ===
+              new Date().toLocaleDateString("en-CA", {
+                timeZone: "Asia/Kolkata",
+              })
+                ? settings.researchCallsToday ?? 0
+                : 0}
+              /{settings.maxResearchCallsPerDay ?? 100}
+            </span>
           </label>
           <label className="block text-sm">
             Max blogs generated / day
