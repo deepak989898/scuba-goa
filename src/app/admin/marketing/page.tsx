@@ -23,6 +23,7 @@ type Lead = {
   id: string;
   name: string;
   phone: string;
+  email: string;
   interestedItem: string;
   preferredDate: string;
   source: string;
@@ -85,6 +86,7 @@ export default function AdminMarketingPage() {
           id: d.id,
           name: String(x.name ?? ""),
           phone: String(x.phone ?? ""),
+          email: String(x.email ?? ""),
           interestedItem: String(x.interestedItem ?? ""),
           preferredDate: String(x.preferredDate ?? ""),
           source: String(x.source ?? ""),
@@ -285,6 +287,7 @@ export default function AdminMarketingPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-ocean-900">
                       {l.name || "Unnamed"} · {l.phone}
+                      {l.email ? ` · ${l.email}` : ""}
                     </p>
                     <p className="text-xs text-ocean-500">
                       Last activity {formatTs(l.updatedAt)}

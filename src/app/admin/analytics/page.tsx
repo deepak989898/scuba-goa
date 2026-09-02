@@ -138,6 +138,13 @@ type SessionDoc = {
   pageViewCounts?: Record<string, number>;
   pageLabels?: Record<string, string>;
   recentEvents?: RecentEvent[];
+  hasLeadCapture?: boolean;
+  hasBookingIntent?: boolean;
+  leadName?: string;
+  leadEmail?: string;
+  leadPhone?: string;
+  leadSource?: string;
+  interestedItem?: string;
 };
 
 type PageStay = {
@@ -181,6 +188,12 @@ type VisitorSummary = {
   attributionReason: string;
   analyticsVersion: number;
   rawReferrer: string;
+  hasLeadCapture: boolean;
+  hasBookingIntent: boolean;
+  leadName: string;
+  leadEmail: string;
+  leadPhone: string;
+  leadSource: string;
 };
 
 type DayGroup = {
@@ -626,7 +639,61 @@ function buildVisitorSummary(
     attributionReason: sess?.attributionReason ?? "",
     analyticsVersion: sess?.analyticsVersion ?? 1,
     rawReferrer: sess?.rawReferrer ?? "",
+    hasLeadCapture: sess?.hasLeadCapture === true,
+    hasBookingIntent: sess?.hasBookingIntent === true,
+    leadName: String(sess?.leadName ?? "").trim(),
+    leadEmail: String(sess?.leadEmail ?? "").trim(),
+    leadPhone: String(sess?.leadPhone ?? "").trim(),
+    leadSource: String(sess?.leadSource ?? "").trim(),
   };
+}
+
+type CapturedLeadRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  source: string;
+  sessionId: string;
+  interestedItem: string;
+  capturePath: string;
+  updatedAt: unknown;
+};
+
+function exportCapturedLeadsCsv(leads: CapturedLeadRow[]) {
+  const headers = [
+    "Name",
+    "Email",
+    "Phone",
+    "Source",
+    "Session ID",
+    "Page",
+    "Interested",
+    "Saved at (IST)",
+  ];
+  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = leads.map((l) =>
+    [
+      l.name,
+      l.email,
+      l.phone,
+      l.source,
+      l.sessionId,
+      l.capturePath,
+      l.interestedItem,
+      formatTs(l.updatedAt),
+    ]
+      .map((c) => esc(String(c)))
+      .join(","),
+  );
+  const csv = [headers.map((h) => esc(h)).join(","), ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `visitor-leads-${new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Keep small — this page used to poll 5k+2k docs every 20s (~7k reads/poll). */
@@ -659,11 +726,27 @@ export default function AdminAnalyticsPage() {
     note?: string;
   } | null>(null);
   const [gscLoading, setGscLoading] = useState(true);
+  const [capturedLeads, setCapturedLeads] = useState<CapturedLeadRow[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
 
   const todayIstYmd = useMemo(
     () =>
       new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
     []
+  );
+
+  const popupLeadsToday = useMemo(() => {
+    return capturedLeads.filter((l) => {
+      if (l.source !== "visitor_popup") return false;
+      const ts = toTimestamp(l.updatedAt);
+      if (!ts) return false;
+      return istCalendarDate(ts) === todayIstYmd;
+    });
+  }, [capturedLeads, todayIstYmd]);
+
+  const popupLeadsAll = useMemo(
+    () => capturedLeads.filter((l) => l.source === "visitor_popup"),
+    [capturedLeads],
   );
 
   useEffect(() => {
@@ -699,6 +782,50 @@ export default function AdminAnalyticsPage() {
       cancelled = true;
     };
   }, [todayIstYmd]);
+
+  useEffect(() => {
+    if (!db) {
+      setLeadsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const loadLeads = async () => {
+      try {
+        const q = query(
+          collection(db, "marketingLeads"),
+          orderBy("updatedAt", "desc"),
+          limit(200),
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        const rows: CapturedLeadRow[] = snap.docs.map((d) => {
+          const x = d.data() as Record<string, unknown>;
+          return {
+            id: d.id,
+            name: String(x.name ?? ""),
+            phone: String(x.phone ?? d.id),
+            email: String(x.email ?? ""),
+            source: String(x.source ?? ""),
+            sessionId: String(x.sessionId ?? ""),
+            interestedItem: String(x.interestedItem ?? ""),
+            capturePath: String(x.capturePath ?? ""),
+            updatedAt: x.updatedAt,
+          };
+        });
+        setCapturedLeads(rows);
+      } catch {
+        if (!cancelled) setCapturedLeads([]);
+      } finally {
+        if (!cancelled) setLeadsLoading(false);
+      }
+    };
+    void loadLeads();
+    const poll = window.setInterval(() => void loadLeads(), ANALYTICS_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+    };
+  }, [db]);
 
   useEffect(() => {
     if (!db) {
@@ -832,6 +959,19 @@ export default function AdminAnalyticsPage() {
             recentEvents: Array.isArray(data.recentEvents)
               ? (data.recentEvents as RecentEvent[]).slice(-50)
               : undefined,
+            hasLeadCapture:
+              typeof data.hasLeadCapture === "boolean"
+                ? data.hasLeadCapture
+                : undefined,
+            hasBookingIntent:
+              typeof data.hasBookingIntent === "boolean"
+                ? data.hasBookingIntent
+                : undefined,
+            leadName: String(data.leadName ?? "").trim() || undefined,
+            leadEmail: String(data.leadEmail ?? "").trim() || undefined,
+            leadPhone: String(data.leadPhone ?? "").trim() || undefined,
+            leadSource: String(data.leadSource ?? "").trim() || undefined,
+            interestedItem: String(data.interestedItem ?? "").trim() || undefined,
             ...pickGeoFields(data),
             ...pickDeviceMeta(data),
             ...pickTrafficFields(data),
@@ -1307,7 +1447,7 @@ export default function AdminAnalyticsPage() {
         <p className="mt-3 text-ocean-700">Loading…</p>
       ) : loadError ? null : (
         <>
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <div className="rounded-xl border border-green-200 bg-green-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
                 Online humans
@@ -1392,6 +1532,82 @@ export default function AdminAnalyticsPage() {
                 </p>
               ) : null}
             </div>
+            <div className="rounded-xl border border-orange-200 bg-orange-50/80 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-orange-800">
+                Popup leads today
+              </p>
+              <p className="mt-1 font-display text-base font-bold text-orange-950">
+                {leadsLoading ? "…" : popupLeadsToday.length}
+              </p>
+              <p className="mt-1 text-xs text-orange-700">
+                Name, email &amp; phone from site popup
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-orange-200 bg-gradient-to-br from-white via-orange-50/40 to-amber-50/30 p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-base font-semibold text-orange-950">
+                  Captured visitor contacts
+                </h2>
+                <p className="mt-1 text-xs text-orange-800/90">
+                  From the on-site popup (visitor_popup). Export for WhatsApp or
+                  email campaigns.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={popupLeadsAll.length === 0}
+                onClick={() => exportCapturedLeadsCsv(popupLeadsAll)}
+                className="rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+              >
+                Export CSV
+              </button>
+            </div>
+            {leadsLoading ? (
+              <p className="mt-3 text-sm text-orange-800">Loading leads…</p>
+            ) : popupLeadsAll.length === 0 ? (
+              <p className="mt-3 text-sm text-orange-800">
+                No popup leads yet. They appear here when visitors submit the
+                offers form on the website.
+              </p>
+            ) : (
+              <div className="mt-3 overflow-x-auto rounded-lg border border-orange-100 bg-white">
+                <table className="min-w-full text-left text-xs">
+                  <thead className="bg-orange-100/60 text-orange-950">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Name</th>
+                      <th className="px-3 py-2 font-semibold">Email</th>
+                      <th className="px-3 py-2 font-semibold">Phone</th>
+                      <th className="px-3 py-2 font-semibold">Page</th>
+                      <th className="px-3 py-2 font-semibold">Saved</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-orange-50">
+                    {popupLeadsAll.slice(0, 25).map((l) => (
+                      <tr key={l.id} className="text-slate-800">
+                        <td className="px-3 py-2 font-medium">{l.name || "—"}</td>
+                        <td className="px-3 py-2">{l.email || "—"}</td>
+                        <td className="px-3 py-2 font-mono">{l.phone}</td>
+                        <td className="px-3 py-2 font-mono text-[11px]">
+                          {l.capturePath || l.interestedItem || "—"}
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {formatTs(l.updatedAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {popupLeadsAll.length > 25 ? (
+                  <p className="border-t border-orange-50 px-3 py-2 text-[11px] text-orange-700">
+                    Showing 25 of {popupLeadsAll.length}. Use Export CSV for the
+                    full list.
+                  </p>
+                ) : null}
+              </div>
+            )}
           </div>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1564,6 +1780,11 @@ export default function AdminAnalyticsPage() {
                                             Legacy
                                           </span>
                                         ) : null}
+                                        {v.hasLeadCapture || v.leadName ? (
+                                          <span className="rounded-md bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                            Lead saved
+                                          </span>
+                                        ) : null}
                                         {v.trafficLabel &&
                                         v.trafficLabel !== "—" ? (
                                           <span
@@ -1616,6 +1837,21 @@ export default function AdminAnalyticsPage() {
                                         visit with geo)
                                       </p>
                                     )}
+
+                                    {v.leadName || v.leadPhone || v.leadEmail ? (
+                                      <p className="mt-1.5 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-1 text-xs text-orange-950">
+                                        <span className="font-semibold">
+                                          Contact:
+                                        </span>{" "}
+                                        {v.leadName ? `${v.leadName}` : ""}
+                                        {v.leadPhone
+                                          ? `${v.leadName ? " · " : ""}+${v.leadPhone}`
+                                          : ""}
+                                        {v.leadEmail
+                                          ? ` · ${v.leadEmail}`
+                                          : ""}
+                                      </p>
+                                    ) : null}
 
                                     {v.deviceLine ? (
                                       <p
@@ -1869,6 +2105,48 @@ export default function AdminAnalyticsPage() {
                                         )}
                                       </dd>
                                     </div>
+                                    {selectedVisitor.leadName ||
+                                    selectedVisitor.leadPhone ||
+                                    selectedVisitor.leadEmail ? (
+                                      <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50/80 p-2.5">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-orange-900">
+                                          Saved contact
+                                        </p>
+                                        {selectedVisitor.leadName ? (
+                                          <div className="mt-1 flex gap-2 text-xs">
+                                            <dt className="w-20 shrink-0 font-semibold text-orange-900">
+                                              Name
+                                            </dt>
+                                            <dd>{selectedVisitor.leadName}</dd>
+                                          </div>
+                                        ) : null}
+                                        {selectedVisitor.leadEmail ? (
+                                          <div className="mt-1 flex gap-2 text-xs">
+                                            <dt className="w-20 shrink-0 font-semibold text-orange-900">
+                                              Email
+                                            </dt>
+                                            <dd className="break-all">
+                                              {selectedVisitor.leadEmail}
+                                            </dd>
+                                          </div>
+                                        ) : null}
+                                        {selectedVisitor.leadPhone ? (
+                                          <div className="mt-1 flex gap-2 text-xs">
+                                            <dt className="w-20 shrink-0 font-semibold text-orange-900">
+                                              Phone
+                                            </dt>
+                                            <dd className="font-mono">
+                                              +{selectedVisitor.leadPhone}
+                                            </dd>
+                                          </div>
+                                        ) : null}
+                                        {selectedVisitor.leadSource ? (
+                                          <p className="mt-1 text-[10px] text-orange-800">
+                                            Source: {selectedVisitor.leadSource}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
                                   </dl>
 
                                   <h4 className="mt-4 text-sm font-semibold text-indigo-950">
