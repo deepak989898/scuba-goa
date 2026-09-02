@@ -1,6 +1,5 @@
 import {
   discoverGoogleSuggestKeywords,
-  discoverTemplateKeywords,
 } from "@/lib/seo-blog-center/keyword-agent";
 import type { ProviderResult, RawKeywordIdea, ResearchInput } from "./types";
 
@@ -14,8 +13,14 @@ const INTENT_SUFFIXES: Record<string, string[]> = {
   local: ["Goa", "North Goa", "Baga", "Calangute"],
 };
 
+function cleanSeedBase(raw: string): string {
+  let s = raw.replace(/\s+/g, " ").trim();
+  s = s.replace(/\s+in\s+goa$/i, "").trim();
+  return s;
+}
+
 function buildServiceSeeds(input: ResearchInput): RawKeywordIdea[] {
-  const base = (input.seedKeyword || input.serviceName).trim();
+  const base = cleanSeedBase(input.seedKeyword || input.serviceName);
   if (!base) return [];
   const variants: string[] = [
     base,
@@ -71,7 +76,7 @@ export async function fetchSuggestAndSeedIdeas(
 
   if (input.includeSuggest) {
     try {
-      const suggest = await discoverGoogleSuggestKeywords(exclude, 30);
+      const suggest = await discoverGoogleSuggestKeywords(exclude, 30, input);
       for (const k of suggest) {
         ideas.push({
           keyword: k.keyword,
@@ -84,17 +89,6 @@ export async function fetchSuggestAndSeedIdeas(
     } catch {
       /* optional */
     }
-  }
-
-  const templates = discoverTemplateKeywords(exclude, 20);
-  for (const k of templates) {
-    ideas.push({
-      keyword: k.keyword,
-      source: "template",
-      monthlySearches: null,
-      competition: k.competition,
-      serviceSlug: input.serviceSlug,
-    });
   }
 
   return { configured: true, ideas, provider: "suggest_seed" };

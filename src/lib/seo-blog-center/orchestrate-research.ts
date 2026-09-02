@@ -4,6 +4,7 @@ import { inferCategory } from "@/lib/seo-blog-center/utils";
 import { buildKeywordClusters } from "@/lib/seo-blog-center/cluster-keywords";
 import { normalizeAndClassifyIdeas } from "@/lib/seo-blog-center/normalize-keywords";
 import { scoreKeywordOpportunity } from "@/lib/seo-blog-center/opportunity-score";
+import { keywordMatchesSelectedService } from "@/lib/seo-blog-center/service-keyword-context";
 import { fetchGoogleAdsKeywordIdeas } from "@/lib/seo-blog-center/providers/google-ads";
 import { fetchGscKeywordIdeas } from "@/lib/seo-blog-center/providers/gsc";
 import { fetchSuggestAndSeedIdeas } from "@/lib/seo-blog-center/providers/suggest-seed";
@@ -115,7 +116,9 @@ export async function runKeywordResearch(
   });
   rawIdeas.push(...categoryIdeas);
 
-  const classified = normalizeAndClassifyIdeas(rawIdeas).filter((k) => {
+  const classified = normalizeAndClassifyIdeas(rawIdeas)
+    .filter((k) => keywordMatchesSelectedService(k.displayKeyword, input))
+    .filter((k) => {
     if (input.minMonthlySearches > 0 && k.monthlySearches != null) {
       return k.monthlySearches >= input.minMonthlySearches;
     }
@@ -132,6 +135,8 @@ export async function runKeywordResearch(
     .map((k) =>
       scoreKeywordOpportunity(k, {
         serviceName: input.serviceName,
+        seedKeyword: input.seedKeyword,
+        serviceSlug: input.serviceSlug,
         existingTitles,
         existingKeywords,
       }),

@@ -23,6 +23,15 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
     brief.visualCategory === "price_comparison" ||
     /price|pricing|cost|budget|package|how much/i.test(brief.articleTitle);
 
+  const originTravelBlock = /\bfrom\s+\w+/i.test(brief.articleTitle) &&
+    /\btrip|travel|planning|guide\b/i.test(brief.articleTitle)
+    ? [
+        "CRITICAL: Title mentions travelling FROM another city TO Goa.",
+        "Show Goa scuba/beach/boat as the destination — NOT the origin city's landmarks, maps, documents, or archival scans.",
+        "Do NOT draw letters, old books, manuscripts, maps, or unrelated historical documents.",
+      ].join(" ")
+    : "";
+
   const pricingBlock = isPricing
     ? [
         "CRITICAL: This article is a PRICE GUIDE / COST / PACKAGES story.",
@@ -51,6 +60,7 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
     `Visual category: ${brief.visualCategory} / ${brief.visualSubcategory}.`,
     `Visual intent: ${brief.visualIntent}.`,
     comparisonBlock,
+    originTravelBlock,
     pricingBlock,
     humanRealismBlock,
     `Primary scene: ${brief.scene}.`,

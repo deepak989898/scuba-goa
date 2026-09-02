@@ -4,6 +4,53 @@ import type { ClassifiedKeyword, RawKeywordIdea } from "./providers/types";
 const BLOCKED =
   /\b(porn|xxx|escort|casino cheat|hack|torrent|pirate|weapon)\b/i;
 
+const SMALL_WORDS = new Set([
+  "in",
+  "on",
+  "at",
+  "for",
+  "and",
+  "or",
+  "the",
+  "a",
+  "to",
+  "from",
+  "vs",
+  "near",
+  "with",
+]);
+
+/** Readable blog title / keyword display (dedupe Goa Goa, title case). */
+export function polishDisplayKeyword(raw: string): string {
+  let s = raw.replace(/\s+/g, " ").trim();
+  if (!s) return s;
+
+  const words = s.split(" ");
+  const deduped: string[] = [];
+  for (const w of words) {
+    const lw = w.toLowerCase();
+    if (deduped.length && deduped[deduped.length - 1]!.toLowerCase() === lw) {
+      continue;
+    }
+    deduped.push(w);
+  }
+  s = deduped.join(" ");
+  s = s.replace(/\b(in goa)\s+goa\b/gi, "in Goa");
+  s = s.replace(/\bgoa\s+goa\b/gi, "Goa");
+
+  return s
+    .split(" ")
+    .map((w, i) => {
+      const lower = w.toLowerCase();
+      if (i > 0 && SMALL_WORDS.has(lower)) return lower;
+      if (lower === "goa") return "Goa";
+      if (lower === "padi") return "PADI";
+      if (lower === "vip") return "VIP";
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
 export function normalizeKeywordKey(raw: string): string {
   return raw
     .toLowerCase()
@@ -67,7 +114,7 @@ export function normalizeAndClassifyIdeas(
 ): ClassifiedKeyword[] {
   const map = new Map<string, ClassifiedKeyword>();
   for (const idea of ideas) {
-    const display = idea.keyword.replace(/\s+/g, " ").trim();
+    const display = polishDisplayKeyword(idea.keyword.replace(/\s+/g, " ").trim());
     if (display.length < 3 || display.length > 120) continue;
     if (BLOCKED.test(display)) continue;
     const normalized = normalizeKeywordKey(display);

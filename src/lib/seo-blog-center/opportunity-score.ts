@@ -3,9 +3,12 @@ import type {
 } from "@/lib/seo-blog-center/types";
 import type { ClassifiedKeyword } from "./providers/types";
 import { normalizeKeywordKey } from "@/lib/seo-blog-center/normalize-keywords";
+import { buildRelevanceHaystack } from "@/lib/seo-blog-center/service-keyword-context";
 
 export type ScoreContext = {
   serviceName: string;
+  seedKeyword?: string;
+  serviceSlug?: string;
   existingTitles: string[];
   existingKeywords: string[];
 };
@@ -50,7 +53,11 @@ export function scoreKeywordOpportunity(
         : `Demand ${Math.round(demand)}/20 (volume unavailable)`,
   );
 
-  const hay = `${ctx.serviceName} goa scuba diving water sports tour`.toLowerCase();
+  const hay = buildRelevanceHaystack({
+    serviceName: ctx.serviceName,
+    seedKeyword: ctx.seedKeyword ?? ctx.serviceName,
+    serviceSlug: ctx.serviceSlug ?? "",
+  });
   const relTokens = normalizeKeywordKey(kw.keyword).split(" ");
   let relHits = 0;
   for (const t of relTokens) if (hay.includes(t)) relHits += 1;

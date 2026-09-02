@@ -1,4 +1,5 @@
 import type { ProviderResult, RawKeywordIdea, ResearchInput } from "./types";
+import { isScubaService } from "@/lib/seo-blog-center/service-keyword-context";
 
 /** Popular Goa / coastal places for local SEO modifiers. */
 export const GOA_LOCAL_PLACES = [
@@ -65,7 +66,9 @@ const NEAR_ME_TEMPLATES = [
 ];
 
 function cleanBase(raw: string): string {
-  return raw.replace(/\s+/g, " ").trim().slice(0, 80);
+  let s = raw.replace(/\s+/g, " ").trim().slice(0, 80);
+  s = s.replace(/\s+in\s+goa$/i, "").trim();
+  return s;
 }
 
 /**
@@ -96,7 +99,6 @@ export function buildLocalSearchIdeas(input: ResearchInput): RawKeywordIdea[] {
   const extras = [
     `${base} in Goa for beginners`,
     `${base} in Goa with hotel pickup`,
-    `${base} Grande Island package`,
     `${base} Baga beach`,
     `${base} Calangute beach`,
     `${base} from Mumbai`,
@@ -106,6 +108,9 @@ export function buildLocalSearchIdeas(input: ResearchInput): RawKeywordIdea[] {
     `where to do ${base} in Goa`,
     `best place for ${base} in Goa`,
   ];
+  if (isScubaService(input)) {
+    extras.push(`${base} Grande Island package`);
+  }
   for (const e of extras) variants.add(e);
 
   if (input.city?.trim()) {

@@ -4,7 +4,7 @@ import type {
   ClusterConflictReasonCode,
   SeoKeywordCluster,
 } from "@/lib/seo-blog-center/types";
-import { normalizeKeywordKey } from "@/lib/seo-blog-center/normalize-keywords";
+import { normalizeKeywordKey, polishDisplayKeyword } from "@/lib/seo-blog-center/normalize-keywords";
 import type { ScoredKeyword } from "@/lib/seo-blog-center/opportunity-score";
 
 function tokenSet(s: string): Set<string> {
@@ -121,7 +121,7 @@ export function buildKeywordClusters(
       .filter((k) => !questions.includes(k));
 
     const now = new Date().toISOString();
-    const titleBase = primary.displayKeyword.replace(/\b\w/g, (c) => c.toUpperCase());
+    const titleBase = polishDisplayKeyword(primary.displayKeyword);
     const conflicts = buildClusterConflicts(
       primary.displayKeyword,
       input.existingUrls,

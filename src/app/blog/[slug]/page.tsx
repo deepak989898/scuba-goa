@@ -365,8 +365,12 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           </div>
 
-          <p className="mt-1.5 border-l-4 border-amber-400 bg-amber-50/60 py-1 pl-2 text-sm leading-snug text-ocean-800">
-            <SeoDescriptionWithPhone description={seoDescription} />
+          <p className="mt-1.5 border-l-4 border-amber-400 bg-amber-50/90 py-1.5 pl-2.5 text-sm leading-snug text-slate-800">
+            <SeoDescriptionWithPhone
+              description={seoDescription}
+              className="text-slate-800"
+              phoneClassName="font-bold text-orange-700 hover:text-orange-800 underline-offset-2 hover:underline"
+            />
           </p>
 
           <div className="prose prose-ocean mt-2 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">

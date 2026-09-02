@@ -1,4 +1,8 @@
 import { blogImageVarietySeed } from "@/lib/blog-automation/blog-image-topic";
+import {
+  isRelevantWikimediaFileTitle,
+  scoreWikimediaRelevance,
+} from "@/lib/blog-automation/wikimedia-relevance";
 
 export type WikimediaPhoto = {
   url: string;
@@ -61,6 +65,7 @@ export async function searchWikimediaCommonsPhoto(
       const url = info?.thumburl || info?.url || "";
       if (!url || !/^https?:\/\//i.test(url)) continue;
       const title = (page.title || q).replace(/^File:/i, "").replace(/_/g, " ");
+      if (!isRelevantWikimediaFileTitle(title)) continue;
       hits.push({
         url,
         alt: title,
@@ -70,8 +75,18 @@ export async function searchWikimediaCommonsPhoto(
     }
 
     if (!hits.length) return null;
-    const idx = blogImageVarietySeed(`${seed}:${q}`) % hits.length;
-    return hits[idx] ?? hits[0];
+
+    const ranked = hits
+      .map((h) => ({
+        hit: h,
+        score: scoreWikimediaRelevance(h.alt, q),
+      }))
+      .filter((x) => x.score > 40)
+      .sort((a, b) => b.score - a.score);
+
+    const pool = ranked.length ? ranked : hits.map((h) => ({ hit: h, score: 50 }));
+    const idx = blogImageVarietySeed(`${seed}:${q}`) % pool.length;
+    return pool[idx]?.hit ?? pool[0]?.hit ?? null;
   } catch {
     return null;
   }

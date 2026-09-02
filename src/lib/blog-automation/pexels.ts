@@ -34,6 +34,27 @@ const STOP_WORDS = new Set([
   "when",
   "where",
   "why",
+  "trip",
+  "tour",
+  "travel",
+  "planning",
+  "chandigarh",
+  "delhi",
+  "mumbai",
+  "bangalore",
+  "bengaluru",
+  "hyderabad",
+  "pune",
+  "kolkata",
+  "chennai",
+  "jaipur",
+  "lucknow",
+  "indore",
+  "ahmedabad",
+  "kochi",
+  "nagpur",
+  "patna",
+  "bhopal",
 ]);
 
 /** Topic-specific Pexels queries — title keywords checked first. */
@@ -70,6 +91,14 @@ function queriesForTopic(text: string): string[] | null {
     return ["grande island goa boat", "goa island boat trip", "tropical island boat"];
   }
   if (/scuba|diving|underwater|snorkel/.test(t)) {
+    if (/\bfrom\s+\w+/i.test(t) || /\btrip\b/.test(t)) {
+      return [
+        "scuba diving goa beach",
+        "scuba trip goa boat",
+        "travellers scuba goa",
+        "underwater diving india goa",
+      ];
+    }
     return ["scuba diving goa", "underwater diving india", "scuba diver ocean"];
   }
   if (/trek|hiking|adventure trip/.test(t)) {

@@ -436,7 +436,9 @@ export function classifyVisualCategory(input: {
         ],
       });
     }
-    if (/beginner|first.?time|learn|try scuba|open water course/.test(titleText)) {
+    if (
+      /beginner|first.?time|learn|try scuba|open water course/.test(titleText)
+    ) {
       return pick("scuba_beginner", {
         visualIntent: "beginner scuba introduction",
         mainSubject: stablePick(
@@ -467,6 +469,43 @@ export function classifyVisualCategory(input: {
         timeOfDay: "midday",
         desiredComposition: "environment_dominant",
         exclusions: ["identical generic coral-only portrait"],
+      });
+    }
+    if (
+      /\bfrom\s+[a-z][a-z\s]{2,24}\b/i.test(titleText) &&
+      /\btrip|travel|planning|guide|visit\b/i.test(titleText)
+    ) {
+      return pick("scuba_diving", {
+        visualSubcategory: "origin_travel",
+        visualIntent:
+          "travellers planning a Goa scuba trip from another Indian city — Goa destination dominates",
+        mainSubject: stablePick(
+          seed,
+          [
+            "Two travellers with sharp photoreal faces at a sunny Goa beach dive centre with scuba tanks and boat in background — Arabian Sea coastline, not northern city landmarks",
+            "Happy guests preparing scuba gear on a Goa boat jetty with turquoise water — clear Goa coastal setting",
+            "Instructor welcoming travellers at a Goa dive shop with gear racks and ocean view — adventure trip mood",
+            "Divers walking toward a Goa beach entry point with BCD and fins — tropical Goa shoreline dominant",
+          ] as const,
+          7,
+        ),
+        supportingSubjects: [
+          "Goa beach or boat jetty",
+          "scuba equipment staged safely",
+          "travel adventure energy",
+        ],
+        location: "Goa coastal dive centre / beach (destination only)",
+        timeOfDay: "clear_morning",
+        desiredComposition: "environment_dominant",
+        peopleCount: "1-2 adults with clear faces",
+        safetyEquipment: ["BCD", "mask", "fins"],
+        exclusions: [
+          "Chandigarh or northern city skylines",
+          "old documents letters or book scans",
+          "maps or archival manuscripts",
+          "origin-city monuments as main subject",
+          "nightclub",
+        ],
       });
     }
     return pick("scuba_diving", {

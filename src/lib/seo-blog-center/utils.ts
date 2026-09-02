@@ -47,13 +47,19 @@ export function keywordHasDraft(
 
 export function inferServiceSlug(keyword: string): string {
   const l = keyword.toLowerCase();
+  if (/casino|poker|blackjack|roulette/.test(l)) return "casino-bookings";
+  if (/night.?club|disco|pub crawl|vip table/.test(l)) return "night-club";
   if (/parasail|jet.?ski|banana boat|flyboard|bungee|water sport/.test(l)) {
     return "water-sports";
   }
   if (/north goa|south goa|fort|beach tour|sightseeing/.test(l)) {
     return "north-goa-tour";
   }
-  if (/dolphin|island|boat trip|grande/.test(l)) {
+  if (/dolphin/.test(l)) return "dolphin-trip";
+  if (/dudhsagar/.test(l)) return "dudhsagar-trip";
+  if (/disco/.test(l)) return "disco";
+  if (/\bpub\b/.test(l)) return "pubs";
+  if (/\b(scuba|diving|snorkel|padi|grande island)\b/.test(l)) {
     return "scuba-diving";
   }
   return "scuba-diving";
@@ -65,6 +71,10 @@ export function inferCategory(keyword: string): import("@/lib/seo-blog-center/ty
   if (/\b(parasail|jet ski|banana boat|flyboard|bungee|watersport)\b/.test(l)) {
     return "water_sports";
   }
+  if (/\b(casino|poker|blackjack|roulette|chips)\b/.test(l)) return "travel_guides";
+  if (/\b(night.?club|disco|pub crawl|vip table|guest list)\b/.test(l)) {
+    return "travel_guides";
+  }
   if (/\b(baga|calangute|anjuna|palolem|beach|north goa|south goa)\b/.test(l)) {
     return "goa_beaches";
   }
@@ -72,5 +82,5 @@ export function inferCategory(keyword: string): import("@/lib/seo-blog-center/ty
   if (/\b(price|cost|booking|package|book)\b/.test(l)) return "booking_pricing";
   if (/\bfrom\b/.test(l) && !l.includes("goa")) return "city_origin";
   if (/\b(best time|guide|itinerary|tips|safety)\b/.test(l)) return "travel_guides";
-  return "scuba_diving";
+  return "travel_guides";
 }

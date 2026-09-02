@@ -11,13 +11,94 @@ import {
 } from "@/lib/blog-firestore";
 import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 import { regenerateBlogPostFeaturedImage } from "@/lib/blog-automation/regenerate-blog-image";
+import type { BlogImageMeta } from "@/lib/blog-automation/image-pipeline/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
+function revalidateBlogImagePaths(slug: string) {
+  revalidatePath(`/blog/${slug}`);
+  revalidatePath("/blog");
+  revalidatePath("/admin/blog-automation");
+  revalidatePath("/admin/ai-blog-automation");
+}
+
+async function persistFeaturedImage(
+  slug: string,
+  existing: Record<string, unknown>,
+  meta: BlogImageMeta,
+) {
+  const db = getAdminDb();
+  if (!db) throw new Error("Database not configured");
+
+  const ref = db.collection("blogPosts").doc(slug);
+  const previousUrl = String(existing.featuredImageUrl ?? "").trim();
+  const previousMeta =
+    existing.imageMeta && typeof existing.imageMeta === "object"
+      ? (existing.imageMeta as Record<string, unknown>)
+      : null;
+  const now = new Date().toISOString();
+  const history = Array.isArray(previousMeta?.history)
+    ? [...(previousMeta.history as unknown[])]
+    : [];
+  if (previousUrl) {
+    history.unshift({
+      imageUrl: previousUrl,
+      sha256: previousMeta?.sha256,
+      createdAt: String(previousMeta?.createdAt || existing.updatedAt || now),
+      reason: "replaced_by_regenerate",
+    });
+  }
+
+  const imageMeta = {
+    ...meta,
+    history: history.slice(0, 10),
+  };
+
+  await ref.set(
+    stripUndefinedDeep({
+      featuredImageUrl: meta.imageUrl,
+      ogImageUrl: meta.ogImageUrl,
+      featuredImageAlt: meta.imageAlt,
+      imageMeta,
+      updatedAt: now,
+    }),
+    { merge: true },
+  );
+
+  const post = parseBlogPostFromFirestore(
+    slug,
+    {
+      ...existing,
+      featuredImageUrl: meta.imageUrl,
+      ogImageUrl: meta.ogImageUrl,
+      featuredImageAlt: meta.imageAlt,
+      imageMeta,
+    },
+    { requirePublished: false },
+  );
+  if (post?.published && meta.imageUrl) {
+    try {
+      await syncBlogImageToHomeGallery({
+        blogSlug: slug,
+        title: post.title,
+        featuredImageUrl: meta.imageUrl,
+        serviceSlug: post.serviceSlug,
+        published: true,
+      });
+    } catch (e) {
+      console.error("[blog-image-generate] gallery sync:", e);
+    }
+  }
+
+  return imageMeta;
+}
+
 /**
  * Generate a topic-specific featured image and update the blog post.
- * useStock=true → Pexels/Pixabay/Unsplash/Wikimedia (no OpenAI cost).
+ * useStock=true → stock only (free).
+ * forceOpenAi=true → OpenAI only (paid).
+ * Default → free stock first; OpenAI only if stock fails (saves API cost).
  */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -31,6 +112,7 @@ export async function POST(req: Request) {
     brandingEnabled?: boolean;
     allowPexelsFallback?: boolean;
     useStock?: boolean;
+    forceOpenAi?: boolean;
   } = {};
   try {
     body = (await req.json()) as typeof body;
@@ -53,10 +135,7 @@ export async function POST(req: Request) {
         status: 500,
       });
     }
-    revalidatePath(`/blog/${slug}`);
-    revalidatePath("/blog");
-    revalidatePath("/admin/blog-automation");
-    revalidatePath("/admin/ai-blog-automation");
+    revalidateBlogImagePaths(slug);
     return NextResponse.json({
       ok: true,
       featuredImageUrl: result.featuredImageUrl,
@@ -91,11 +170,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const previousUrl = String(existing.featuredImageUrl ?? "").trim();
-  const previousMeta =
-    existing.imageMeta && typeof existing.imageMeta === "object"
-      ? (existing.imageMeta as Record<string, unknown>)
-      : null;
+  // Free stock first (topic-matched) unless admin explicitly requests OpenAI.
+  if (body.forceOpenAi !== true) {
+    const stock = await regenerateBlogPostFeaturedImage(slug, {
+      title,
+      useStock: true,
+    });
+    if (stock.ok && stock.featuredImageUrl) {
+      revalidateBlogImagePaths(slug);
+      return NextResponse.json({
+        ok: true,
+        featuredImageUrl: stock.featuredImageUrl,
+        ogImageUrl: stock.ogImageUrl,
+        featuredImageAlt: stock.featuredImageAlt,
+        source: stock.source,
+        costNote: "Used free stock photo — no OpenAI charge.",
+      });
+    }
+  }
 
   try {
     const result = await generateFeaturedImageForArticle({
@@ -109,8 +201,8 @@ export async function POST(req: Request) {
       serviceName: String(existing.serviceSlug ?? "").replace(/-/g, " "),
       contentExcerpt: String(existing.content ?? "").slice(0, 600),
       brandingEnabled: body.brandingEnabled !== false,
-      allowPexelsFallback: body.allowPexelsFallback === true,
-      maxRetries: 3,
+      allowPexelsFallback: body.allowPexelsFallback !== false,
+      maxRetries: 2,
     });
 
     if (!result.meta) {
@@ -121,71 +213,14 @@ export async function POST(req: Request) {
             "Image generation failed after uniqueness checks. Each OpenAI attempt is billed even if the image was rejected.",
           attempts: result.attempts,
           costNote:
-            "OpenAI image API charges per successful generation call. Failed uniqueness retries still cost money.",
+            "OpenAI image API charges per generation. Use Regenerate (free stock) to avoid cost.",
         },
         { status: 500 },
       );
     }
 
-    const now = new Date().toISOString();
-    const history = Array.isArray(previousMeta?.history)
-      ? [...(previousMeta.history as unknown[])]
-      : [];
-    if (previousUrl) {
-      history.unshift({
-        imageUrl: previousUrl,
-        sha256: previousMeta?.sha256,
-        createdAt: String(previousMeta?.createdAt || existing.updatedAt || now),
-        reason: "replaced_by_regenerate",
-      });
-    }
-
-    const imageMeta = {
-      ...result.meta,
-      history: history.slice(0, 10),
-    };
-
-    await ref.set(
-      stripUndefinedDeep({
-        featuredImageUrl: result.meta.imageUrl,
-        ogImageUrl: result.meta.ogImageUrl,
-        featuredImageAlt: result.meta.imageAlt,
-        imageMeta,
-        updatedAt: now,
-      }),
-      { merge: true },
-    );
-
-    const post = parseBlogPostFromFirestore(
-      slug,
-      {
-        ...existing,
-        featuredImageUrl: result.meta.imageUrl,
-        ogImageUrl: result.meta.ogImageUrl,
-        featuredImageAlt: result.meta.imageAlt,
-        imageMeta,
-      },
-      { requirePublished: false },
-    );
-    if (post?.published && result.meta.imageUrl) {
-      try {
-        await syncBlogImageToHomeGallery({
-          blogSlug: slug,
-          title: post.title,
-          featuredImageUrl: result.meta.imageUrl,
-          serviceSlug: post.serviceSlug,
-          published: true,
-        });
-      } catch (e) {
-        console.error("[blog-image-generate] gallery sync:", e);
-      }
-    }
-
-    // Always revalidate so paid OpenAI images show immediately (draft + live).
-    revalidatePath(`/blog/${slug}`);
-    revalidatePath("/blog");
-    revalidatePath("/admin/blog-automation");
-    revalidatePath("/admin/ai-blog-automation");
+    const imageMeta = await persistFeaturedImage(slug, existing, result.meta);
+    revalidateBlogImagePaths(slug);
 
     return NextResponse.json({
       ok: true,
@@ -199,6 +234,7 @@ export async function POST(req: Request) {
       visualCategory: result.meta.visualCategory,
       relevanceScore: result.meta.relevanceScore,
       uniquenessScore: result.meta.uniquenessScore,
+      source: "openai",
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Image generation failed";

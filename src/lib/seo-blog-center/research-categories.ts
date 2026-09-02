@@ -1,4 +1,11 @@
 import type { ClassifiedKeyword, RawKeywordIdea, ResearchInput } from "@/lib/seo-blog-center/providers/types";
+import {
+  getComparisonKeywords,
+  getNearbyActivities,
+  getPackageKeywords,
+  getQuestionKeywords,
+  isScubaService,
+} from "@/lib/seo-blog-center/service-keyword-context";
 
 /**
  * Content-angle categories for keyword research (admin checkboxes).
@@ -132,7 +139,9 @@ export function applyResearchCategoryFlags(
 }
 
 function cleanBase(raw: string): string {
-  return raw.replace(/\s+/g, " ").trim().slice(0, 80);
+  let s = raw.replace(/\s+/g, " ").trim().slice(0, 80);
+  s = s.replace(/\s+in\s+goa$/i, "").trim();
+  return s;
 }
 
 const LOCATION_PLACES = [
@@ -150,7 +159,7 @@ const LOCATION_PLACES = [
   "Panjim",
 ] as const;
 
-const NEARBY_ACTIVITIES = [
+const NEARBY_ACTIVITIES_WATER = [
   "parasailing",
   "jet ski",
   "banana boat",
@@ -205,29 +214,13 @@ export function buildResearchCategoryIdeas(
   }
 
   if (cats.has("question_blogs")) {
-    for (const k of [
-      `how much does ${base} cost in Goa`,
-      `is ${base} safe in Goa`,
-      `how to book ${base} in Goa`,
-      `what to wear for ${base} in Goa`,
-      `can non swimmers do ${base} in Goa`,
-      `do I need license for ${base} in Goa`,
-      `how long is ${base} in Goa`,
-      `what is included in ${base} Goa`,
-    ]) {
+    for (const k of getQuestionKeywords(base, input)) {
       variants.add(k);
     }
   }
 
   if (cats.has("comparison_blogs")) {
-    for (const k of [
-      `${base} vs snorkeling Goa`,
-      `Grande Island vs Bat Island ${base}`,
-      `North Goa vs South Goa ${base}`,
-      `best ${base} package vs cheap option Goa`,
-      `${base} or dolphin trip Goa which is better`,
-      `PADI vs Discover Scuba Goa`,
-    ]) {
+    for (const k of getComparisonKeywords(base, input)) {
       variants.add(k);
     }
   }
@@ -268,40 +261,44 @@ export function buildResearchCategoryIdeas(
       `first time ${base} in Goa`,
       `${base} for beginners Goa`,
       `${base} Goa review experience`,
-      `${base} underwater experience Goa`,
       `${base} with photos Goa`,
     ]) {
       variants.add(k);
     }
+    if (isScubaService(input)) {
+      variants.add(`${base} underwater experience Goa`);
+    }
   }
 
   if (cats.has("package_specific")) {
-    for (const k of [
-      `${base} package Goa`,
-      `${base} packages with pickup`,
-      `${base} combo package Goa`,
-      `${base} family package Goa`,
-      `${base} couple package Goa`,
-      `${base} inclusions exclusions Goa`,
-      `${base} full day package Goa`,
-      `Grande Island ${base} package`,
-    ]) {
+    for (const k of getPackageKeywords(base, input)) {
       variants.add(k);
     }
   }
 
   if (cats.has("nearby_activities")) {
-    for (const act of NEARBY_ACTIVITIES) {
+    const nearby = getNearbyActivities(input.serviceSlug, input.serviceName);
+    for (const act of nearby) {
       variants.add(`${base} and ${act} Goa`);
       variants.add(`${act} near ${base} Goa`);
     }
+    const nearSuffix =
+      isScubaService(input) || input.serviceSlug === "water-sports"
+        ? "water sports"
+        : "things to do";
     for (const k of [
       `things to do near ${base} Goa`,
       `activities near ${base} in Goa`,
-      `water sports near ${base} Goa`,
+      `${nearSuffix} near ${base} Goa`,
       `what to do after ${base} in Goa`,
     ]) {
       variants.add(k);
+    }
+    for (const act of NEARBY_ACTIVITIES_WATER) {
+      if (nearby.includes(act)) continue;
+      if (isScubaService(input) || input.serviceSlug === "water-sports") {
+        variants.add(`${act} near ${base} Goa`);
+      }
     }
   }
 

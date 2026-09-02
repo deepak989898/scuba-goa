@@ -833,7 +833,7 @@ export default function AiBlogAutomationPage() {
     try {
       const data = await adminFetch("/api/admin/blog-image-generate", {
         method: "POST",
-        body: JSON.stringify({ slug: editingPost.slug, title }),
+        body: JSON.stringify({ slug: editingPost.slug, title, forceOpenAi: true }),
       });
       window.clearInterval(tick);
       setAiImageProgress(100);

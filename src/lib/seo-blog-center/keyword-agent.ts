@@ -1,4 +1,9 @@
 import type { KeywordCategory, SeoBlogKeyword } from "@/lib/seo-blog-center/types";
+import type { ResearchInput } from "@/lib/seo-blog-center/providers/types";
+import {
+  buildServiceSeedQueries,
+  keywordMatchesSelectedService,
+} from "@/lib/seo-blog-center/service-keyword-context";
 import {
   buildScubaSeedQueries,
   fetchGoogleSuggestQueries,
@@ -150,8 +155,11 @@ function buildTemplatePool(excludeSet: Set<string>): SeoBlogKeyword[] {
 export async function discoverGoogleSuggestKeywords(
   excludeSet: Set<string>,
   maxResults = 20,
+  researchInput?: ResearchInput,
 ): Promise<SeoBlogKeyword[]> {
-  const seeds = buildScubaSeedQueries();
+  const seeds = researchInput
+    ? buildServiceSeedQueries(researchInput)
+    : buildScubaSeedQueries();
   const seen = new Set(excludeSet);
   const collected: SeoBlogKeyword[] = [];
 
@@ -161,7 +169,11 @@ export async function discoverGoogleSuggestKeywords(
     for (const s of suggestions) {
       const key = s.toLowerCase();
       if (seen.has(key) || key.length < 4) continue;
-      if (!/scuba|diving|goa|snorkel|water|island|beach|underwater|padi|boat|parasail/.test(key)) {
+      if (researchInput && !keywordMatchesSelectedService(s, researchInput)) continue;
+      if (
+        !researchInput &&
+        !/scuba|diving|goa|snorkel|water|island|beach|underwater|padi|boat|parasail/.test(key)
+      ) {
         continue;
       }
       seen.add(key);
@@ -177,6 +189,7 @@ export async function discoverGoogleSuggestKeywords(
       for (const phrase of related) {
         const key = phrase.toLowerCase();
         if (seen.has(key)) continue;
+        if (researchInput && !keywordMatchesSelectedService(phrase, researchInput)) continue;
         seen.add(key);
         collected.push(buildRecord(phrase, "google_serp"));
         if (collected.length >= maxResults) break;

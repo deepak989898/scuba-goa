@@ -39,10 +39,10 @@ export async function generateBlogImageBufferFromPrompt(
   if (!trimmed) throw new Error("Image prompt is required");
 
   const model = getConfiguredImageModel();
-  // Default "high" for gpt-image — clearer faces/hands. Override with OPENAI_IMAGE_QUALITY=medium to save cost.
+  // medium ≈ ~40% cheaper than high; override via OPENAI_IMAGE_QUALITY=high if needed.
   const quality =
     process.env.OPENAI_IMAGE_QUALITY?.trim() ||
-    (isGptImageModel(model) ? "high" : "hd");
+    (isGptImageModel(model) ? "medium" : "standard");
 
   const body: Record<string, unknown> = {
     model,
@@ -51,7 +51,8 @@ export async function generateBlogImageBufferFromPrompt(
   };
 
   if (isGptImageModel(model)) {
-    body.size = "1536x1024";
+    // 1024² is cheaper than 1536×1024; pipeline crops to 16:9 hero.
+    body.size = process.env.OPENAI_IMAGE_SIZE?.trim() || "1024x1024";
     body.quality = quality;
   } else {
     body.size = "1792x1024";

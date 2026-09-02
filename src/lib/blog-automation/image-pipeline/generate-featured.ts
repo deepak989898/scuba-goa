@@ -46,12 +46,12 @@ async function hashesFor(buffer: Buffer) {
 export async function generateFeaturedImageForArticle(
   input: GenerateFeaturedImageInput,
 ): Promise<GenerateFeaturedImageResult> {
-  const maxRetries = Math.max(1, Math.min(3, input.maxRetries ?? 3));
+  const maxRetries = Math.max(1, Math.min(3, input.maxRetries ?? 2));
   const minRelevance = input.minRelevanceScore ?? 90;
   const minUniqueness = input.minUniquenessScore ?? 85;
   const minOverall = input.minOverallScore ?? 88;
   const brandingEnabled = input.brandingEnabled !== false;
-  const allowPexels = input.allowPexelsFallback === true;
+  const allowPexels = input.allowPexelsFallback !== false;
 
   const classification = classifyVisualCategory({
     title: input.title,

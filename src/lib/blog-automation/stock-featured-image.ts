@@ -117,6 +117,24 @@ export async function searchStockPhotoCascade(input: {
   varietySeed?: string;
 }): Promise<StockPhotoHit | null> {
   const seed = input.varietySeed || input.title;
+  const topic = inferBlogImageTopic(input.title, input.serviceSlug);
+
+  // Curated topic photos beat random Wikimedia search (avoids document scans).
+  const curatedFirst = pickCuratedBlogFallbackUrl(
+    input.title,
+    input.serviceSlug,
+    seed,
+  );
+  if (curatedFirst) {
+    return {
+      source: "curated_fallback",
+      url: curatedFirst,
+      alt: input.title,
+      photographer: "Wikimedia Commons (curated)",
+      query: topic,
+    };
+  }
+
   const queries = stockImageSearchQueries(input);
 
   for (const query of queries) {
@@ -149,7 +167,6 @@ export async function searchStockPhotoCascade(input: {
     }
   }
 
-  const topic = inferBlogImageTopic(input.title, input.serviceSlug);
   const broadQueries = [
     `${topic.replace(/_/g, " ")} goa india`,
     "goa beach travel",

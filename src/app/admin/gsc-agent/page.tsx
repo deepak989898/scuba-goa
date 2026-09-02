@@ -837,7 +837,7 @@ export default function GscIndexingAgentPage() {
     try {
       const data = await adminFetch("/api/admin/blog-image-generate", {
         method: "POST",
-        body: JSON.stringify({ slug: editingBlog.slug, title }),
+        body: JSON.stringify({ slug: editingBlog.slug, title, forceOpenAi: true }),
       });
       window.clearInterval(tick);
       setAiImageProgress(100);
