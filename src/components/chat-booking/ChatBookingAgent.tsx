@@ -368,37 +368,38 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
   const dateOptions = buildDateOptions();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3"
       >
-        {bubbles.map((m) => (
-          <div
-            key={m.id}
-            className={
-              m.role === "user"
-                ? "ml-6 rounded-2xl rounded-br-md bg-gradient-to-r from-cyan-700 to-ocean-800 px-3 py-2 text-sm text-white"
-                : "mr-4 rounded-2xl rounded-bl-md bg-ocean-50 px-3 py-2 text-sm text-ocean-900"
-            }
-          >
-            {m.role === "assistant" ? (
-              <ChatMessageBody text={m.text} />
-            ) : (
-              m.text
-            )}
-          </div>
-        ))}
-        {loading ? (
-          <p className="text-xs text-ocean-500">{t("thinking", lang)}</p>
+        <div className="space-y-2">
+          {bubbles.map((m) => (
+            <div
+              key={m.id}
+              className={
+                m.role === "user"
+                  ? "ml-4 rounded-2xl rounded-br-md bg-gradient-to-r from-cyan-700 to-ocean-800 px-3 py-2 text-sm text-white"
+                  : "mr-2 rounded-2xl rounded-bl-md bg-ocean-50 px-3 py-2 text-sm text-ocean-900"
+              }
+            >
+              {m.role === "assistant" ? (
+                <ChatMessageBody text={m.text} />
+              ) : (
+                m.text
+              )}
+            </div>
+          ))}
+          {loading ? (
+            <p className="text-xs text-ocean-500">{t("thinking", lang)}</p>
+          ) : null}
+        </div>
+
+        {err ? (
+          <p className="text-xs text-red-700" role="alert">{err}</p>
         ) : null}
-      </div>
 
-      {err ? (
-        <p className="px-3 text-xs text-red-700" role="alert">{err}</p>
-      ) : null}
-
-      <div className="shrink-0 space-y-2 border-t border-ocean-100 bg-white p-3">
+        <div className="space-y-2">
         {/* Welcome */}
         {state.step === "welcome" && !qaMode ? (
           <div className="flex flex-wrap gap-2">
@@ -601,22 +602,23 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
 
         {/* Review */}
         {state.step === "review" ? (
-          <div className="space-y-2 text-xs text-ocean-800">
+          <div className="space-y-2 rounded-xl border border-cyan-200 bg-cyan-50/40 p-3 text-xs text-ocean-800">
+            <p className="font-semibold text-ocean-900">Your booking summary</p>
             <p>
               📅 {formatDisplayDate(state.date)} · 👥 {state.people} · 📍{" "}
               {state.pickup}
             </p>
-            <ul className="space-y-1 rounded-lg border border-ocean-100 bg-ocean-50 p-2">
+            <ul className="space-y-1.5 rounded-lg border border-ocean-100 bg-white p-2">
               {cartLines.map((l) => (
-                <li key={l.key} className="flex justify-between gap-2">
-                  <span className="truncate">{l.name} ×{l.quantity}</span>
+                <li key={l.key} className="flex justify-between gap-2 leading-snug">
+                  <span className="min-w-0 break-words">{l.name} ×{l.quantity}</span>
                   <span className="font-bold shrink-0">
                     ₹{l.lineTotal.toLocaleString("en-IN")}
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="font-bold">
+            <p className="font-bold text-sm">
               Total ₹{pricing.fullInr.toLocaleString("en-IN")} · Min advance ₹
               {pricing.minInr.toLocaleString("en-IN")}
             </p>
@@ -633,7 +635,7 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
                 setState((s) => ({ ...s, step: "category" }));
                 pushAssistant(t("categoryPrompt", lang));
               }}
-              className="w-full text-center text-xs font-semibold text-cyan-800 hover:underline"
+              className="min-h-10 w-full rounded-full border-2 border-amber-400 bg-gradient-to-r from-amber-100 to-orange-100 py-2.5 text-sm font-extrabold text-amber-950 shadow-sm ring-1 ring-amber-300/60 hover:from-amber-200 hover:to-orange-200"
             >
               + Add more activities
             </button>
@@ -681,7 +683,11 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
 
         {/* Payment */}
         {state.step === "payment" ? (
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+            <p className="text-xs font-semibold text-ocean-900">
+              📅 {formatDisplayDate(state.date)} · 👥 {state.people} · ₹
+              {pricing.chargeInr.toLocaleString("en-IN")} to pay now
+            </p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -790,6 +796,7 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
             {t("back", lang)}
           </button>
         ) : null}
+        </div>
       </div>
     </div>
   );

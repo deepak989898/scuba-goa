@@ -48,20 +48,6 @@ const navIcons = {
       <path d="M8 14h4" />
     </MenuIcon>
   ),
-  blog: (
-    <MenuIcon>
-      <path d="M5 4.5h10l4 4V19.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1Z" />
-      <path d="M14.5 4.5v4h4" />
-      <path d="M8 13h8" />
-      <path d="M8 16.5h5" />
-    </MenuIcon>
-  ),
-  guides: (
-    <MenuIcon>
-      <path d="M5 4.5h5.5a3 3 0 0 1 3 3V20l-3.5-2-3.5 2V7.5a3 3 0 0 1 3-3Z" />
-      <path d="M13.5 4.5H19a3 3 0 0 1 3 3V20l-3.5-2-3.5 2V7.5a3 3 0 0 0-3-3" />
-    </MenuIcon>
-  ),
   gallery: (
     <MenuIcon>
       <rect x="3.5" y="5" width="17" height="14" rx="2" />
@@ -111,8 +97,6 @@ const nav = [
   { href: "/", label: "Home", icon: navIcons.home },
   { href: "/services", label: "Services", icon: navIcons.services },
   { href: "/booking", label: "Book", icon: navIcons.book },
-  { href: "/blog", label: "Blog", icon: navIcons.blog },
-  { href: "/guides", label: "Guides", icon: navIcons.guides },
   { href: "/gallery", label: "Gallery", icon: navIcons.gallery },
   { href: "/offers", label: "Offers", icon: navIcons.offers },
   { href: "/about", label: "About", icon: navIcons.about },

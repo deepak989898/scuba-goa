@@ -27,6 +27,10 @@ const LANGUAGES = [
   { api: "Odia", label: "ଓଡ଼ିଆ · Odia" },
 ];
 
+function closeChat() {
+  markChatAutoOpenShown();
+}
+
 export function AiChatbot() {
   const pathname = usePathname();
   const { services, loading: servicesLoading } = useServices();
@@ -74,6 +78,18 @@ export function AiChatbot() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeChat();
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   function onLanguageChange(api: string) {
     setLang(api);
     try {
@@ -83,10 +99,13 @@ export function AiChatbot() {
     }
   }
 
+  function handleClose() {
+    closeChat();
+    setOpen(false);
+  }
+
   const helpFabBottom =
     "bottom-[calc(6.5rem+0.75rem+env(safe-area-inset-bottom,0px))]";
-  const helpPanelBottom =
-    "bottom-[calc(6.5rem+0.75rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))]";
   void pathname;
 
   return (
@@ -100,54 +119,66 @@ export function AiChatbot() {
         Book with us
       </button>
       {open ? (
-        <div
-          className={`fixed right-4 z-[55] flex max-h-[min(85vh,640px)] w-[min(100vw-2.5rem,400px)] flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl md:bottom-[13.5rem] md:right-4 ${helpPanelBottom}`}
-        >
-          <div className="flex items-center justify-between gap-2 border-b border-ocean-100 bg-ocean-50 px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ocean-900">
-                Book Scuba Goa
-              </p>
-              <p className="text-[10px] text-ocean-600">
-                Tap to book · live prices
-              </p>
-            </div>
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-              <label className="sr-only" htmlFor="ask-packages-lang">
-                Language
-              </label>
-              <select
-                id="ask-packages-lang"
-                className="max-w-[9.5rem] rounded-lg border border-ocean-200 bg-white px-2 py-1.5 text-xs font-semibold text-ocean-800"
-                value={lang}
-                onChange={(e) => onLanguageChange(e.target.value)}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.api} value={l.api}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="text-ocean-700"
-                onClick={() => {
-                  markChatAutoOpenShown();
-                  setOpen(false);
-                }}
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-
-          <ChatBookingAgent
-            lang={lang}
-            services={services}
-            servicesLoading={servicesLoading}
+        <>
+          <button
+            type="button"
+            aria-label="Close chat"
+            className="fixed inset-0 z-[54] bg-black/20 md:bg-black/10"
+            onClick={handleClose}
           />
-        </div>
+          <div
+            className="fixed z-[55] flex flex-col overflow-hidden rounded-2xl border border-ocean-100 bg-white shadow-2xl
+              right-3 w-[min(calc(100vw-1.5rem),400px)]
+              bottom-[calc(6.5rem+0.75rem+env(safe-area-inset-bottom,0px))]
+              h-[min(calc(100dvh-7rem-env(safe-area-inset-bottom,0px)),720px)]
+              md:right-4 md:bottom-4 md:top-4 md:h-auto md:max-h-[calc(100dvh-2rem)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Book with us"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-ocean-100 bg-ocean-50 px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ocean-900">
+                  Book Scuba Goa
+                </p>
+                <p className="text-[10px] text-ocean-600">
+                  Tap to book · live prices
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <label className="sr-only" htmlFor="ask-packages-lang">
+                  Language
+                </label>
+                <select
+                  id="ask-packages-lang"
+                  className="max-w-[8.5rem] rounded-lg border border-ocean-200 bg-white px-2 py-1.5 text-xs font-semibold text-ocean-800"
+                  value={lang}
+                  onChange={(e) => onLanguageChange(e.target.value)}
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l.api} value={l.api}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  aria-label="Close"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ocean-200 bg-white text-base font-bold text-ocean-700 shadow-sm hover:bg-ocean-100"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <ChatBookingAgent
+              lang={lang}
+              services={services}
+              servicesLoading={servicesLoading}
+            />
+          </div>
+        </>
       ) : null}
     </>
   );
