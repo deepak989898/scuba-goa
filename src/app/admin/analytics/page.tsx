@@ -650,6 +650,15 @@ export default function AdminAnalyticsPage() {
   const [sessionTimeline, setSessionTimeline] = useState<Row[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [gscToday, setGscToday] = useState<{
+    ok: boolean;
+    date: string;
+    impressions: number;
+    clicks: number;
+    error?: string;
+    note?: string;
+  } | null>(null);
+  const [gscLoading, setGscLoading] = useState(true);
 
   const todayIstYmd = useMemo(
     () =>
@@ -660,6 +669,36 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     if (!expandedDate) setExpandedDate(todayIstYmd);
   }, [expandedDate, todayIstYmd]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadGsc = async () => {
+      setGscLoading(true);
+      try {
+        const res = await fetch("/api/admin/analytics/gsc-today", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!cancelled) setGscToday(data);
+      } catch {
+        if (!cancelled) {
+          setGscToday({
+            ok: false,
+            date: todayIstYmd,
+            impressions: 0,
+            clicks: 0,
+            error: "Could not load GSC data",
+          });
+        }
+      } finally {
+        if (!cancelled) setGscLoading(false);
+      }
+    };
+    void loadGsc();
+    return () => {
+      cancelled = true;
+    };
+  }, [todayIstYmd]);
 
   useEffect(() => {
     if (!db) {
@@ -1268,7 +1307,7 @@ export default function AdminAnalyticsPage() {
         <p className="mt-3 text-ocean-700">Loading…</p>
       ) : loadError ? null : (
         <>
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <div className="rounded-xl border border-green-200 bg-green-50/80 p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
                 Online humans
@@ -1328,6 +1367,30 @@ export default function AdminAnalyticsPage() {
               <p className="mt-1 text-xs text-ocean-600">
                 High-confidence Google organic: {analytics.googleHighConfidence}
               </p>
+            </div>
+            <div className="rounded-xl border border-violet-200 bg-violet-50/80 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-800">
+                GSC impressions today
+              </p>
+              <p className="mt-1 font-display text-base font-bold text-violet-950">
+                {gscLoading
+                  ? "…"
+                  : gscToday?.ok
+                    ? gscToday.impressions.toLocaleString("en-IN")
+                    : "—"}
+              </p>
+              <p className="mt-1 text-xs text-violet-700">
+                {gscToday?.date ?? todayIstYmd} (IST) · Search Console
+              </p>
+              {gscToday?.error ? (
+                <p className="mt-1 text-[11px] leading-snug text-red-700">
+                  {gscToday.error}
+                </p>
+              ) : gscToday?.note ? (
+                <p className="mt-1 text-[11px] leading-snug text-violet-600">
+                  {gscToday.note}
+                </p>
+              ) : null}
             </div>
           </div>
 

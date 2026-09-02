@@ -263,7 +263,7 @@ async function inspectWithToken(
 export async function querySearchAnalytics(input: {
   startDate: string;
   endDate: string;
-  dimensions: ("query" | "page" | "country" | "device")[];
+  dimensions?: ("query" | "page" | "country" | "device" | "date")[];
   rowLimit?: number;
 }): Promise<
   | {
@@ -293,7 +293,7 @@ export async function querySearchAnalytics(input: {
       body: JSON.stringify({
         startDate: input.startDate,
         endDate: input.endDate,
-        dimensions: input.dimensions,
+        ...(input.dimensions?.length ? { dimensions: input.dimensions } : {}),
         rowLimit: Math.min(2500, input.rowLimit ?? 1000),
       }),
     },
