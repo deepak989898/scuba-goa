@@ -40,6 +40,7 @@ type BookingBody = Record<string, unknown> & {
   promoCode?: string;
   discountPercent?: number;
   subtotalBeforeDiscountPaise?: number;
+  channel?: string;
 };
 
 function parseCartItemsForPromo(raw: unknown): CartItemForPromo[] | null {
@@ -271,6 +272,8 @@ export async function POST(req: Request) {
     typeof booking.pickupLocation === "string"
       ? booking.pickupLocation
       : undefined;
+  const bookingChannel =
+    typeof booking.channel === "string" ? booking.channel.trim() : undefined;
 
   // 1) Customer email first (Resend + invoice link) — do not wait for PDF.
   let emailSent = false;
@@ -428,6 +431,7 @@ export async function POST(req: Request) {
         pickupLocation,
         cartItems: booking.cartItems,
         pdfBytes,
+        channel: bookingChannel,
       });
     } catch (err) {
       console.error("admin booking notification email failed", err);

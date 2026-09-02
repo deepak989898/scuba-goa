@@ -127,6 +127,12 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     items: [
       { href: "/admin/ratings", label: "Reviews" },
       { href: "/admin/marketing", label: "Marketing leads" },
+      {
+        href: "/admin/chat-logs",
+        label: "Chat logs",
+        description: "Book with us conversations by date",
+        highlight: true,
+      },
     ],
   },
 ];

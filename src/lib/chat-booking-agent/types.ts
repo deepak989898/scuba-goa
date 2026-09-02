@@ -68,4 +68,5 @@ export type ChatBubble = {
   id: string;
   role: "assistant" | "user";
   text: string;
+  at?: string;
 };

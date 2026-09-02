@@ -140,9 +140,18 @@ export async function sendBookingAdminNotificationEmail(opts: {
   pickupLocation?: string;
   cartItems?: unknown;
   pdfBytes?: Uint8Array;
+  /** e.g. chat_widget, booking_page */
+  channel?: string;
 }): Promise<boolean> {
   const to = resolveAdminNotifyTo();
   if (!isMailConfigured() || !to) return false;
+
+  const channelLabel =
+    opts.channel === "chat_widget"
+      ? "Book with us chat"
+      : opts.channel
+        ? String(opts.channel).replace(/_/g, " ")
+        : "Website booking";
 
   const from = resolveMailFromAddress(
     process.env.RESEND_API_KEY?.trim()
@@ -169,6 +178,7 @@ export async function sendBookingAdminNotificationEmail(opts: {
 
   const html = `
     <p><strong>New paid booking</strong> — ${escapeHtml(SITE_NAME)}</p>
+    <p><strong>Source:</strong> ${escapeHtml(channelLabel)}</p>
     <p>
       <strong>Customer:</strong> ${escapeHtml(opts.customerName)}<br/>
       <strong>Email:</strong> <a href="mailto:${escapeHtml(opts.customerEmail)}">${escapeHtml(opts.customerEmail)}</a><br/>
@@ -205,9 +215,72 @@ export async function sendBookingAdminNotificationEmail(opts: {
   const result = await sendMailDetailed({
     from,
     to,
-    subject: `New booking — ${opts.customerName} — ₹${opts.amountInr.toLocaleString("en-IN")} paid`,
+    bcc: buildBccList(),
+    subject: `New booking (${channelLabel}) — ${opts.customerName} — ₹${opts.amountInr.toLocaleString("en-IN")} paid`,
     html,
     attachments,
+  });
+  return result.ok;
+}
+
+/** Alert admin when a visitor saves contact details in the Book with us chat widget. */
+export async function sendChatLeadAdminNotificationEmail(opts: {
+  name: string;
+  email: string;
+  phone: string;
+  interestedItem?: string;
+  preferredDate?: string;
+  pickup?: string;
+  people?: number;
+  cartTotalInr?: number;
+  step?: string;
+}): Promise<boolean> {
+  const to = resolveAdminNotifyTo();
+  if (!isMailConfigured() || !to) return false;
+
+  const from = resolveMailFromAddress(
+    process.env.RESEND_API_KEY?.trim()
+      ? process.env.RESEND_FROM_EMAIL ??
+          process.env.MAIL_FROM ??
+          CONTACT_EMAIL
+      : process.env.MAIL_FROM ??
+          process.env.MAIL_SMTP_USER ??
+          process.env.RESEND_FROM_EMAIL ??
+          CONTACT_EMAIL,
+  );
+
+  const extras: string[] = [];
+  if (opts.preferredDate) extras.push(`<strong>Trip date:</strong> ${escapeHtml(opts.preferredDate)}`);
+  if (opts.people && opts.people > 0) extras.push(`<strong>People:</strong> ${opts.people}`);
+  if (opts.pickup) extras.push(`<strong>Pickup:</strong> ${escapeHtml(opts.pickup)}`);
+  if (opts.cartTotalInr && opts.cartTotalInr > 0) {
+    extras.push(`<strong>Cart total:</strong> ₹${opts.cartTotalInr.toLocaleString("en-IN")}`);
+  }
+  if (opts.step) extras.push(`<strong>Chat step:</strong> ${escapeHtml(opts.step)}`);
+
+  const html = `
+    <p><strong>New chat lead</strong> — Book with us widget</p>
+    <p>
+      <strong>Name:</strong> ${escapeHtml(opts.name)}<br/>
+      <strong>Email:</strong> <a href="mailto:${escapeHtml(opts.email)}">${escapeHtml(opts.email)}</a><br/>
+      <strong>Phone:</strong> <a href="tel:${escapeHtml(opts.phone.replace(/\D/g, ""))}">${escapeHtml(opts.phone)}</a>
+    </p>
+    ${opts.interestedItem ? `<p><strong>Interested in:</strong> ${escapeHtml(opts.interestedItem)}</p>` : ""}
+    ${extras.length ? `<p>${extras.join("<br/>")}</p>` : ""}
+    <p style="margin-top:1rem;">
+      <a href="${escapeHtml(SITE_URL)}/admin/chat-logs" style="display:inline-block;background:#0d9488;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:700;">View chat logs</a>
+      &nbsp;
+      <a href="${escapeHtml(SITE_URL)}/admin/marketing" style="display:inline-block;background:#0369a1;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:700;">Marketing leads</a>
+    </p>
+    <p style="font-size:12px;color:#666;">Visitor shared details in chat — follow up if payment is not completed yet.</p>
+  `;
+
+  const result = await sendMailDetailed({
+    from,
+    to,
+    bcc: buildBccList(),
+    subject: `Chat lead — ${opts.name} — ${opts.phone}`,
+    html,
   });
   return result.ok;
 }

@@ -114,6 +114,7 @@ export async function runChatBookingCheckout(
     payUnits: itemCount,
     pickupLocation: pickupLocation?.trim() || undefined,
     cartItems,
+    channel: "chat_widget",
   };
 
   const { logPaymentEvent } = await import("@/lib/analytics-payment-event");

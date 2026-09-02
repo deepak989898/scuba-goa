@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { sendChatLeadAdminNotificationEmail } from "@/lib/email";
 import {
   linkSessionLeadToPhone,
   upsertRecoveryLead,
@@ -120,6 +121,10 @@ export async function POST(req: Request) {
     sessionId?: string;
     source?: string;
     capturePath?: string;
+    pickup?: string;
+    people?: number;
+    cartTotalInr?: number;
+    step?: string;
   };
   try {
     body = await req.json();
@@ -153,6 +158,18 @@ export async function POST(req: Request) {
     typeof body.capturePath === "string"
       ? body.capturePath.trim().slice(0, PATH_MAX)
       : "";
+  const pickup =
+    typeof body.pickup === "string" ? body.pickup.trim().slice(0, 200) : "";
+  const people =
+    typeof body.people === "number" && body.people > 0
+      ? Math.floor(body.people)
+      : undefined;
+  const cartTotalInr =
+    typeof body.cartTotalInr === "number" && body.cartTotalInr > 0
+      ? body.cartTotalInr
+      : undefined;
+  const chatStep =
+    typeof body.step === "string" ? body.step.trim().slice(0, 32) : "";
 
   const analyticsPath =
     source === "visitor_popup"
@@ -182,6 +199,33 @@ export async function POST(req: Request) {
       },
       { merge: true },
     );
+
+    if (source === "chat_booking" && name && email) {
+      try {
+        const sent = await sendChatLeadAdminNotificationEmail({
+          name,
+          email,
+          phone,
+          interestedItem: interestedItem || undefined,
+          preferredDate: preferredDate || undefined,
+          pickup: pickup || undefined,
+          people,
+          cartTotalInr,
+          step: chatStep || undefined,
+        });
+        if (sent) {
+          await ref.set(
+            {
+              adminChatLeadEmailSent: true,
+              adminChatLeadEmailAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
+      } catch (e) {
+        console.error("chat lead admin email failed", e);
+      }
+    }
     if (sessionId) {
       await linkSessionLeadToPhone(sessionId, phone);
       try {

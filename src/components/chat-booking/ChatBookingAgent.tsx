@@ -39,6 +39,10 @@ import {
   saveBubbles,
   saveBookingState,
 } from "@/lib/chat-booking-agent/storage";
+import {
+  flushBookWithUsSessionSync,
+  scheduleBookWithUsSessionSync,
+} from "@/lib/chat-booking-agent/sync-session-log";
 import type {
   ChatBubble,
   ChatBookingLine,
@@ -117,6 +121,7 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
           id: uid(),
           role: "assistant",
           text: t("welcome", lang),
+          at: new Date().toISOString(),
         },
       ]);
     }
@@ -138,11 +143,17 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
   }, [bubbles, state.step, loading]);
 
   const pushAssistant = useCallback((text: string) => {
-    setBubbles((b) => [...b, { id: uid(), role: "assistant", text }]);
+    setBubbles((b) => [
+      ...b,
+      { id: uid(), role: "assistant", text, at: new Date().toISOString() },
+    ]);
   }, []);
 
   const pushUser = useCallback((text: string) => {
-    setBubbles((b) => [...b, { id: uid(), role: "user", text }]);
+    setBubbles((b) => [
+      ...b,
+      { id: uid(), role: "user", text, at: new Date().toISOString() },
+    ]);
   }, []);
 
   const goStep = useCallback(
@@ -178,6 +189,37 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
     () => slotSummary(selectedOptions, state.people),
     [selectedOptions, state.people],
   );
+
+  const buildSyncPayload = useCallback(() => {
+    const sessionId = getOrCreateAnalyticsSessionId();
+    return {
+      sessionId,
+      language: lang,
+      messages: bubbles.map((b) => ({
+        role: b.role,
+        text: b.text,
+        at: b.at ?? new Date().toISOString(),
+        step: state.step,
+      })),
+      step: state.step,
+      tripDate: state.date || undefined,
+      people: state.people > 0 ? state.people : undefined,
+      pickup: state.pickup || undefined,
+      selectedPackages: selectedOptions.map((o) => o.title),
+      customerName: state.name.trim() || undefined,
+      phone: state.phone.trim() || undefined,
+      email: state.email.trim() || undefined,
+      cartTotalInr: pricing.fullInr > 0 ? pricing.fullInr : undefined,
+      paidInr: state.confirmation?.paidInr,
+      converted: state.step === "confirmed" || Boolean(state.confirmation),
+      paymentId: state.confirmation?.paymentId,
+    };
+  }, [bubbles, lang, state, selectedOptions, pricing.fullInr]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    scheduleBookWithUsSessionSync(buildSyncPayload());
+  }, [hydrated, buildSyncPayload]);
 
   async function askBot(message: string) {
     if (!message.trim() || loading) return;
@@ -306,6 +348,10 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
         email,
         interestedItem: cartLines.map((l) => l.name).join(", "),
         preferredDate: state.date,
+        pickup: state.pickup,
+        people: state.people,
+        cartTotalInr: pricing.fullInr > 0 ? pricing.fullInr : undefined,
+        step: "payment",
         source: "chat_booking",
         sessionId: getOrCreateAnalyticsSessionId(),
       }),
