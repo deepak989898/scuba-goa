@@ -4,6 +4,9 @@ import type {
   VisualClassification,
 } from "./types";
 import {
+  CASINO_PRICING_SUBJECT_VARIANTS,
+  CASINO_SUBJECT_VARIANTS,
+  DOLPHIN_TRIP_SUBJECT_VARIANTS,
   SCUBA_SUBJECT_VARIANTS,
   SCUBA_PRICING_SUBJECT_VARIANTS,
   WATER_SPORTS_SUBJECT_VARIANTS,
@@ -22,6 +25,29 @@ function titleHaystack(input: {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
+}
+
+/** When blog post serviceSlug is wrong (e.g. scuba-diving on a casino article), trust the title. */
+function resolveImageServiceSlug(
+  titleText: string,
+  serviceSlug?: string,
+): string {
+  if (/casino|gambling|poker|big daddy|deltin|blackjack|roulette|baccarat/.test(titleText)) {
+    return "casino-bookings";
+  }
+  if (/night.?club|nightclub|ruski|ruskii|club ruski|disco\b|nightlife|clubbing/.test(titleText)) {
+    return "night-club";
+  }
+  if (/dolphin/.test(titleText) && !/scuba|diving/.test(titleText)) {
+    return "dolphin-trip";
+  }
+  if (
+    /water.?sport|parasail|jet.?ski|banana boat|flyboard|bumper/.test(titleText) &&
+    !/scuba|diving/.test(titleText)
+  ) {
+    return "water-sports";
+  }
+  return (serviceSlug || "").toLowerCase();
 }
 
 const SCUBA_EXCLUSIONS_FOR_NON_SCUBA = [
@@ -47,7 +73,7 @@ export function classifyVisualCategory(input: {
   contentExcerpt?: string;
 }): VisualClassification {
   const titleText = titleHaystack(input);
-  const slug = (input.serviceSlug || "").toLowerCase();
+  const slug = resolveImageServiceSlug(titleText, input.serviceSlug);
   const seed = `${input.title}||${input.primaryKeyword || ""}`;
 
   const pick = (
@@ -127,9 +153,60 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  // 2) Nightlife — title-led; ignore scuba serviceSlug
+  // 2) Casino — title-led; never default to scuba for Big Daddy / entry / chips stories
   if (
-    /night.?club|nightclub|russian.?club|disco\b|nightlife|party night|clubbing|goa nightlife/.test(
+    /casino|gambling|poker|roulette|blackjack|baccarat|big daddy|deltin|casino cruise|offshore casino/.test(
+      titleText,
+    ) ||
+    (slug.includes("casino") && !/scuba|diving/.test(titleText))
+  ) {
+    const isPricing =
+      /price|pricing|cost|cheap|budget|package|how much|age limit|entry|fee|charges/.test(
+        titleText,
+      );
+    if (isPricing) {
+      return pick("casino_pricing", {
+        visualSubcategory: /age limit/.test(titleText) ? "age_entry" : "pricing",
+        visualIntent: "casino entry / package pricing atmosphere — not scuba diving",
+        mainSubject: stablePick(seed, CASINO_PRICING_SUBJECT_VARIANTS, 3),
+        supportingSubjects: ["entry desk or cruise boarding", "chips as props only"],
+        location: "Goa offshore casino or onshore casino venue",
+        timeOfDay: "nightclub_lighting",
+        desiredComposition: "subject_left",
+        peopleCount: "staff + 1-2 adult guests",
+        exclusions: [
+          "scuba diving",
+          "underwater scene",
+          "dive tanks",
+          "readable price text",
+          "currency symbols",
+          "old documents or letters",
+        ],
+      });
+    }
+    return pick("casino", {
+      visualSubcategory: /big daddy/.test(titleText) ? "big_daddy" : "casino",
+      visualIntent: "premium Goa casino experience — cruise or venue",
+      mainSubject: stablePick(seed, CASINO_SUBJECT_VARIANTS, 4),
+      supportingSubjects: ["chips or cards as secondary props", "night coastal lights"],
+      location: "Goa casino cruise or casino venue",
+      timeOfDay: "nightclub_lighting",
+      desiredComposition: "environment_dominant",
+      peopleCount: "adult guests optional",
+      exclusions: [
+        "scuba diving",
+        "underwater coral",
+        "dive gear as hero",
+        "old newspaper scans",
+        "readable text",
+        "daytime beach scuba",
+      ],
+    });
+  }
+
+  // 3) Nightlife — title-led; ignore scuba serviceSlug
+  if (
+    /night.?club|nightclub|russian.?club|ruski|ruskii|disco\b|nightlife|party night|clubbing|goa nightlife/.test(
       titleText,
     ) ||
     (/night-club|disco|pubs|nightlife/.test(slug) &&
@@ -154,6 +231,21 @@ export function classifyVisualCategory(input: {
         "generic scuba diver",
       ],
     });
+  }
+
+  if (/dolphin/.test(titleText) || slug.includes("dolphin")) {
+    if (!/scuba|diving/.test(titleText)) {
+      return pick("dolphin_trip", {
+        visualIntent: "dolphin watching boat trip",
+        mainSubject: stablePick(seed, DOLPHIN_TRIP_SUBJECT_VARIANTS, 2),
+        supportingSubjects: ["life jackets", "sunrise coastal horizon"],
+        location: "Goa coastal waters",
+        timeOfDay: "clear_morning",
+        desiredComposition: "environment_dominant",
+        safetyEquipment: ["life jackets"],
+        exclusions: ["scuba diver underwater", "nightclub", "casino"],
+      });
+    }
   }
 
   if (/dinner.?cruise|sunset.?cruise|party.?boat/.test(titleText)) {
@@ -332,7 +424,7 @@ export function classifyVisualCategory(input: {
   const titleIsScuba = /scuba|diving|underwater|snorkel/.test(titleText);
   const slugIsScuba =
     slug.includes("scuba") &&
-    !/nightlife|water.?sport|parasail|jet.?ski|dudhsagar|bungee|yacht|cruise/.test(
+    !/casino|night.?club|nightlife|water.?sport|parasail|jet.?ski|dudhsagar|bungee|yacht|cruise|disco|pub|dolphin|ruski|ruskii/.test(
       titleText,
     );
 
@@ -543,13 +635,14 @@ export function classifyVisualCategory(input: {
     });
   }
 
-  if (/price|cost|compare/.test(titleText)) {
+  if (/price|cost|compare/.test(titleText) && !titleIsScuba && !slugIsScuba) {
     return pick("price_comparison", {
       visualIntent: "activity comparison without on-image prices",
       mainSubject:
-        "Side-by-side beach activity preparation without any readable price text",
+        "Side-by-side activity preparation matching the article topic — not scuba unless title says scuba",
       timeOfDay: "soft_overcast",
       desiredComposition: "multi_subject",
+      exclusions: ["scuba diving unless title mentions scuba", "readable price text"],
     });
   }
 

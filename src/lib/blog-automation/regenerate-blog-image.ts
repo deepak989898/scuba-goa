@@ -9,6 +9,7 @@ import {
 } from "@/lib/blog-firestore";
 import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 import { pickBlogFeaturedImage } from "@/lib/cms-image";
+import { resolveImageServiceContext } from "@/lib/blog-automation/resolve-image-service";
 
 export function blogPostNeedsImageRegenerate(post: BlogPostFirestore): boolean {
   const url = pickBlogFeaturedImage(post.featuredImageUrl, post.ogImageUrl);
@@ -43,8 +44,11 @@ export async function regenerateBlogPostFeaturedImage(
     String(opts?.title ?? "").trim() || String(existing.title ?? "").trim();
   if (!title) return { ok: false, slug, error: "Blog title required" };
 
-  const serviceSlug = String(existing.serviceSlug ?? "");
-  const serviceName = serviceSlug.replace(/-/g, " ") || "Goa travel";
+  const storedSlug = String(existing.serviceSlug ?? "");
+  const { serviceSlug, serviceName } = await resolveImageServiceContext(
+    title,
+    storedSlug,
+  );
   const useStock = opts?.useStock === true;
 
   let imageUrl = "";

@@ -95,6 +95,27 @@ export const NIGHTLIFE_SUBJECT_VARIANTS = [
   "Outdoor night party deck near the beach with DJ console and soft purple-blue lighting",
 ] as const;
 
+export const CASINO_SUBJECT_VARIANTS = [
+  "Luxury offshore casino cruise ship at night with lit decks on the Arabian Sea near Goa",
+  "Elegant casino interior with poker table, chips and soft ambient lighting — no readable text",
+  "Guests entering a premium Goa casino venue with red carpet and warm golden interior lights",
+  "Close-up of stacked casino chips and playing cards on a polished table — tasteful editorial style",
+  "Night view of a floating casino boat with colourful lights reflecting on calm coastal water",
+] as const;
+
+export const CASINO_PRICING_SUBJECT_VARIANTS = [
+  "Casino reception desk: staff showing a guest entry package folders side-by-side — blank or blurred text only",
+  "Travellers comparing casino entry packages at a cruise boarding counter with chips display as props",
+  "Concierge explaining VIP vs standard casino entry options at a lit venue entrance — no readable prices",
+  "Side-by-side entry tiers: standard chips stack vs premium VIP lounge glimpse — same casino backdrop",
+] as const;
+
+export const DOLPHIN_TRIP_SUBJECT_VARIANTS = [
+  "Early morning dolphin-watching boat on calm Goa waters with guests scanning the horizon",
+  "Dolphins surfacing near a small tour boat with life-jacketed passengers and sunrise glow",
+  "Coastal boat cruise leaving a Goa beach for dolphin spotting with clear Arabian Sea backdrop",
+] as const;
+
 /**
  * Price-guide visuals must read as planning / packages / cost comparison —
  * NOT a generic beach dive lifestyle shot. No readable currency or price numbers.

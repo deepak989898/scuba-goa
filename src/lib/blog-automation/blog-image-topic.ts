@@ -33,10 +33,14 @@ export function pickFromList<T>(items: T[], seed: string): T | null {
   return items[idx] ?? items[0];
 }
 
-export function inferBlogImageTopic(title: string, serviceSlug = ""): BlogImageTopic {
-  const t = `${title} ${serviceSlug}`.toLowerCase().replace(/-/g, " ");
-  if (/casino|gambling|poker|roulette|blackjack|baccarat/.test(t)) return "casino";
-  if (/night.?club|nightclub|disco|pub|nightlife|party/.test(t)) return "nightlife";
+/** Infer topic from text only (title or slug fragment) — order matters. */
+function inferTopicFromText(t: string): BlogImageTopic {
+  if (/casino|gambling|poker|roulette|blackjack|baccarat|big daddy|deltin/.test(t)) {
+    return "casino";
+  }
+  if (/night.?club|nightclub|disco\b|pub\b|nightlife|party|ruski|ruskii/.test(t)) {
+    return "nightlife";
+  }
   if (/dudhsagar|waterfall/.test(t)) return "waterfall";
   if (/north goa|fort aguada|anjuna|vagator/.test(t)) return "north_goa";
   if (/south goa|palolem|colva|benaulim/.test(t)) return "south_goa";
@@ -51,6 +55,73 @@ export function inferBlogImageTopic(title: string, serviceSlug = ""): BlogImageT
   if (/food|restaurant|seafood/.test(t)) return "food";
   if (/beach|coast|sea/.test(t)) return "beach";
   return "general";
+}
+
+const SLUG_TOPIC_HINTS: Record<string, BlogImageTopic> = {
+  "casino bookings": "casino",
+  "casino-bookings": "casino",
+  "night club": "nightlife",
+  "night-club": "nightlife",
+  pubs: "nightlife",
+  disco: "nightlife",
+  "water sports": "water_sports",
+  "water-sports": "water_sports",
+  "dolphin trip": "dolphin",
+  "dolphin-trip": "dolphin",
+  "scuba diving": "scuba",
+  "scuba-diving": "scuba",
+  "dudhsagar trip": "waterfall",
+  "dudhsagar-trip": "waterfall",
+  flyboarding: "water_sports",
+  "bungee jumping": "water_sports",
+  "north goa tour": "north_goa",
+  "north-goa-tour": "north_goa",
+  "south goa tour": "south_goa",
+  "south-goa-tour": "south_goa",
+};
+
+export function inferServiceSlugFromTitle(title: string): string | null {
+  const t = title.toLowerCase();
+  if (/casino|big daddy|deltin|poker|blackjack/.test(t)) return "casino-bookings";
+  if (/night.?club|nightclub|ruski|ruskii|disco\b|pub crawl/.test(t)) return "night-club";
+  if (/dolphin/.test(t) && !/scuba|diving/.test(t)) return "dolphin-trip";
+  if (
+    /water.?sport|parasail|jet.?ski|banana boat|flyboard/.test(t) &&
+    !/scuba|diving/.test(t)
+  ) {
+    return "water-sports";
+  }
+  if (/scuba|diving|snorkel|padi/.test(t)) return "scuba-diving";
+  if (/dudhsagar|waterfall/.test(t)) return "dudhsagar-trip";
+  if (/north goa/.test(t)) return "north-goa-tour";
+  if (/south goa/.test(t)) return "south-goa-tour";
+  return null;
+}
+
+/** Prefer title topic over a mismatched serviceSlug (e.g. scuba-diving slug on casino post). */
+export function resolveEffectiveServiceSlug(title: string, serviceSlug: string): string {
+  const fromTitle = inferServiceSlugFromTitle(title);
+  if (fromTitle) return fromTitle;
+  const slug = serviceSlug.trim().toLowerCase();
+  if (slug) return slug;
+  return "scuba-diving";
+}
+
+export function inferBlogImageTopic(title: string, serviceSlug = ""): BlogImageTopic {
+  const titleNorm = title.toLowerCase().replace(/-/g, " ");
+  const fromTitle = inferTopicFromText(titleNorm);
+  if (fromTitle !== "general" && fromTitle !== "beach") {
+    return fromTitle;
+  }
+
+  const slugNorm = serviceSlug.toLowerCase().replace(/-/g, " ");
+  const fromSlug =
+    SLUG_TOPIC_HINTS[slugNorm] ??
+    SLUG_TOPIC_HINTS[serviceSlug.toLowerCase()] ??
+    inferTopicFromText(slugNorm);
+  if (fromSlug !== "general") return fromSlug;
+
+  return inferTopicFromText(`${titleNorm} ${slugNorm}`);
 }
 
 /** Curated Wikimedia Commons URLs — stable, free, no API key. */

@@ -43,6 +43,9 @@ const CATEGORY_SHOTS: Record<VisualCategory, ShotType[]> = {
   south_goa: ["scenic_overview", "wide_environmental", "aerial_coastal"],
   nightlife: ["nightclub_interior", "wide_environmental", "over_shoulder"],
   night_club: ["nightclub_interior", "wide_environmental"],
+  casino: ["nightclub_interior", "wide_environmental", "over_shoulder"],
+  casino_pricing: ["over_shoulder", "wide_environmental", "close_equipment"],
+  dolphin_trip: ["boat_departure", "wide_environmental", "scenic_overview"],
   dinner_cruise: ["sunset_cruise", "wide_environmental", "over_shoulder"],
   yacht: ["sunset_cruise", "aerial_coastal", "wide_environmental"],
   beach_guide: ["beach_activity", "scenic_overview", "wide_environmental"],
@@ -156,7 +159,11 @@ export function pickCompositionVariant(
   const shotType = shots[stableIndex(uniquenessSeed, shots.length, attempt + 1)]!;
 
   let angles = [...ANGLES];
-  if (classification.visualCategory === "nightlife") {
+  if (
+    classification.visualCategory === "nightlife" ||
+    classification.visualCategory === "casino" ||
+    classification.visualCategory === "casino_pricing"
+  ) {
     angles = ["eye_level", "wide_establishing", "three_quarter", "over_shoulder"];
   }
   if (classification.visualCategory === "destination_comparison") {
@@ -255,16 +262,21 @@ export function buildImageBrief(input: {
     backgroundElements: c.supportingSubjects,
     mood: c.isScubaVisual
       ? "calm professional adventure"
-      : c.visualCategory === "nightlife"
+      : c.visualCategory === "nightlife" ||
+          c.visualCategory === "casino" ||
+          c.visualCategory === "casino_pricing"
         ? "premium evening energy"
         : c.visualCategory === "destination_comparison"
           ? "clear comparative storytelling"
           : "authentic Goa travel",
-    colourDirection: c.visualCategory === "nightlife"
-      ? "deep blues, magentas, warm spotlights"
-      : c.visualCategory === "destination_comparison"
-        ? "balanced natural colour on both halves, distinct environments"
-        : "natural coastal blues, sand tones, realistic skin tones",
+    colourDirection:
+      c.visualCategory === "nightlife" ||
+      c.visualCategory === "casino" ||
+      c.visualCategory === "casino_pricing"
+        ? "deep blues, magentas, warm spotlights, gold casino accents"
+        : c.visualCategory === "destination_comparison"
+          ? "balanced natural colour on both halves, distinct environments"
+          : "natural coastal blues, sand tones, realistic skin tones",
     mustInclude: [
       c.mainSubject,
       ...c.safetyEquipment.slice(0, 3),
@@ -272,7 +284,11 @@ export function buildImageBrief(input: {
         ? "two clearly different destination halves in one frame"
         : c.visualCategory === "scuba_pricing"
           ? "clear booking/package-choice storytelling (desk, folders, or tier comparison) — not only tanks on sand"
-          : "geographically believable context matching the article title",
+          : c.visualCategory === "casino_pricing"
+            ? "casino entry or package-choice storytelling — chips/cards as props, not scuba"
+            : c.visualCategory === "casino"
+              ? "casino cruise or venue atmosphere matching the article title"
+              : "geographically believable context matching the article title",
     ].filter(Boolean),
     mustAvoid: c.exclusions,
     uniquenessSignature: variant.uniquenessSignature,

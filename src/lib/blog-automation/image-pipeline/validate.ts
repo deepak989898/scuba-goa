@@ -47,7 +47,9 @@ export function validateImageBriefRelevance(
     .toLowerCase();
 
   // Category coherence with title
-  const nightlifeTitle = /night.?club|nightlife|disco|party night/.test(title);
+  const nightlifeTitle = /night.?club|nightlife|disco|party night|ruski|ruskii/.test(title);
+  const casinoTitle =
+    /casino|gambling|poker|big daddy|deltin|blackjack|roulette/.test(title);
   const waterSportsTitle = /water.?sport|parasail|jet.?ski|banana/.test(title);
   const scubaTitle = /scuba|diving|underwater/.test(title);
   const safetyTitle = /safety|beginner tip|buddy/.test(title);
@@ -84,6 +86,20 @@ export function validateImageBriefRelevance(
     } else if (/tank|beach|lined up|reef|underwater/.test(promptBlob)) {
       relevance -= 30;
       notes.push("Price guide still using generic dive lifestyle scene");
+    }
+  } else if (casinoTitle) {
+    if (brief.visualCategory === "casino" || brief.visualCategory === "casino_pricing") {
+      relevance += 18;
+    } else if (brief.visualCategory.startsWith("scuba_")) {
+      relevance -= 50;
+      notes.push("Casino title incorrectly classified as scuba");
+    } else {
+      relevance -= 25;
+      notes.push("Casino title not mapped to casino visuals");
+    }
+    if (SCUBA_MARKERS.some((m) => promptBlob.includes(m))) {
+      relevance -= 45;
+      notes.push("Scuba markers present in casino image brief");
     }
   } else if (nightlifeTitle) {
     if (brief.visualCategory === "nightlife" || brief.visualCategory === "night_club") {
@@ -134,7 +150,9 @@ export function validateImageBriefRelevance(
     brief.visualCategory === "booking_guide" ||
     brief.visualCategory === "dinner_cruise" ||
     brief.visualCategory === "yacht" ||
-    brief.visualCategory === "bungee"
+    brief.visualCategory === "bungee" ||
+    brief.visualCategory === "casino" ||
+    brief.visualCategory === "dolphin_trip"
   ) {
     relevance += 10;
   }
@@ -189,6 +207,14 @@ export function categorySuggestsWrongTopic(
     return true;
   }
   if (/nightlife|night.?club|disco/.test(t) && visualCategory.startsWith("scuba_")) {
+    return true;
+  }
+  if (
+    /casino|gambling|poker|big daddy|deltin/.test(t) &&
+    (visualCategory.startsWith("scuba_") ||
+      visualCategory === "general_travel" ||
+      visualCategory === "beach_guide")
+  ) {
     return true;
   }
   if (

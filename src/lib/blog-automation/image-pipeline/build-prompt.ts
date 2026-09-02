@@ -20,27 +20,54 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
 
   const isPricing =
     brief.visualCategory === "scuba_pricing" ||
+    brief.visualCategory === "casino_pricing" ||
     brief.visualCategory === "price_comparison" ||
     /price|pricing|cost|budget|package|how much/i.test(brief.articleTitle);
 
-  const originTravelBlock = /\bfrom\s+\w+/i.test(brief.articleTitle) &&
-    /\btrip|travel|planning|guide\b/i.test(brief.articleTitle)
+  const isCasinoVisual =
+    brief.visualCategory === "casino" || brief.visualCategory === "casino_pricing";
+
+  const casinoBlock = isCasinoVisual
     ? [
-        "CRITICAL: Title mentions travelling FROM another city TO Goa.",
-        "Show Goa scuba/beach/boat as the destination — NOT the origin city's landmarks, maps, documents, or archival scans.",
-        "Do NOT draw letters, old books, manuscripts, maps, or unrelated historical documents.",
+        "CRITICAL: This article is about CASINO / GAMBLING / ENTRY PACKAGES in Goa.",
+        "Show a casino cruise ship at night, casino interior, poker/chips table, or entry desk — NOT scuba diving.",
+        "Do NOT draw scuba divers, dive tanks, underwater scenes, or old document scans.",
+        "No readable text, age numbers, or price amounts in the image.",
       ].join(" ")
     : "";
 
   const pricingBlock = isPricing
-    ? [
-        "CRITICAL: This article is a PRICE GUIDE / COST / PACKAGES story.",
-        "A viewer must understand within one second that people are choosing or comparing dive packages — not just getting ready to dive.",
-        "Show a booking desk, package folders/option cards (blank or blurred text only), staff advising guests, or budget-vs-premium gear tiers side by side.",
-        "Do NOT make the hero image only tanks lined up on sand with people chatting — that fails to communicate pricing.",
-        "Do NOT draw any readable prices, ₹/$ amounts, years (2026), rate tables, or discount stickers.",
-      ].join(" ")
+    ? isCasinoVisual
+      ? [
+          "CRITICAL: Casino price / entry / age-limit article.",
+          "Show entry package comparison, reception desk, or VIP vs standard entry — not scuba gear.",
+          "Do NOT draw readable prices, age numbers, or currency symbols.",
+        ].join(" ")
+      : brief.visualCategory === "scuba_pricing" ||
+          /scuba|diving/i.test(brief.articleTitle)
+        ? [
+            "CRITICAL: This article is a SCUBA PRICE GUIDE / COST / PACKAGES story.",
+            "A viewer must understand within one second that people are choosing or comparing dive packages — not just getting ready to dive.",
+            "Show a booking desk, package folders/option cards (blank or blurred text only), staff advising guests, or budget-vs-premium gear tiers side by side.",
+            "Do NOT make the hero image only tanks lined up on sand with people chatting — that fails to communicate pricing.",
+            "Do NOT draw any readable prices, ₹/$ amounts, years (2026), rate tables, or discount stickers.",
+          ].join(" ")
+        : [
+            "CRITICAL: Price / cost / package article — match the SERVICE in the title.",
+            "Show booking desk or package comparison for THAT activity (casino, nightclub, water sports, etc.) — not generic scuba.",
+            "Do NOT draw readable prices or currency symbols.",
+          ].join(" ")
     : "";
+
+  const originTravelBlock =
+    /\bfrom\s+\w+/i.test(brief.articleTitle) &&
+    /\btrip|travel|planning|guide\b/i.test(brief.articleTitle)
+      ? [
+          "CRITICAL: Title mentions travelling FROM another city TO Goa.",
+          "Show Goa destination activity (beach, boat, casino, club, etc. as per title) — NOT origin city landmarks, maps, documents, or archival scans.",
+          "Do NOT draw letters, old books, manuscripts, maps, or unrelated historical documents.",
+        ].join(" ")
+      : "";
 
   const humanRealismBlock = [
     "HUMAN REALISM (mandatory): every visible person must look like a real photographed human, not AI or CGI.",
@@ -54,12 +81,13 @@ export function buildImagePromptFromBrief(brief: ImageBrief): string {
 
   return [
     `Create a realistic premium editorial travel photograph that a human would instantly associate with this exact article title: "${brief.articleTitle}".`,
-    `Read and obey the title meaning first — do not invent a generic scuba stock scene if the title is about nightlife, water sports, islands, safety, pricing, or destination comparison.`,
+    `Read and obey the title meaning first — do not invent a generic scuba stock scene if the title is about casino, nightlife, water sports, islands, safety, pricing, or destination comparison.`,
     `Primary keyword context: ${brief.primaryKeyword || brief.articleTitle}.`,
     `Service context (secondary only): ${brief.serviceName || "Goa adventures"} (${brief.serviceSlug || "general"}).`,
     `Visual category: ${brief.visualCategory} / ${brief.visualSubcategory}.`,
     `Visual intent: ${brief.visualIntent}.`,
     comparisonBlock,
+    casinoBlock,
     originTravelBlock,
     pricingBlock,
     humanRealismBlock,

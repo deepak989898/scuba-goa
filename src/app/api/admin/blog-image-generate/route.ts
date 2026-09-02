@@ -11,6 +11,7 @@ import {
 } from "@/lib/blog-firestore";
 import { syncBlogImageToHomeGallery } from "@/lib/home-gallery-sync";
 import { regenerateBlogPostFeaturedImage } from "@/lib/blog-automation/regenerate-blog-image";
+import { resolveImageServiceContext } from "@/lib/blog-automation/resolve-image-service";
 import type { BlogImageMeta } from "@/lib/blog-automation/image-pipeline/types";
 
 export const runtime = "nodejs";
@@ -190,6 +191,12 @@ export async function POST(req: Request) {
   }
 
   try {
+    const storedSlug = String(existing.serviceSlug ?? "");
+    const { serviceSlug, serviceName } = await resolveImageServiceContext(
+      title,
+      storedSlug,
+    );
+
     const result = await generateFeaturedImageForArticle({
       articleId: slug,
       slug,
@@ -197,8 +204,8 @@ export async function POST(req: Request) {
       primaryKeyword: Array.isArray(existing.keywords)
         ? String(existing.keywords[0] || title)
         : title,
-      serviceSlug: String(existing.serviceSlug ?? ""),
-      serviceName: String(existing.serviceSlug ?? "").replace(/-/g, " "),
+      serviceSlug,
+      serviceName,
       contentExcerpt: String(existing.content ?? "").slice(0, 600),
       brandingEnabled: body.brandingEnabled !== false,
       allowPexelsFallback: body.allowPexelsFallback !== false,
