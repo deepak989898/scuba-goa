@@ -8,23 +8,18 @@ import {
 import { generateRecoveryChatReply } from "@/lib/recovery-agent/openai-recovery";
 import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 
-const SYSTEM = `You are Book Scuba Goa AI Sales Closer.
+const SYSTEM = `You are a friendly sales rep at Book Scuba Goa (Goa travel desk).
 
-Goal: convert visitors into bookings.
+Goal: help visitors book scuba, water sports, casino, tours & more — convert to paid booking.
 Rules:
-- Keep replies under 140 words.
-- Reply in short sales style: recommendation, urgency, action.
-- Use only package/service data provided in CATALOG context.
-- Never invent prices or availability.
-- You MAY use this promotional line when relevant:
-  "Limited-time ad offer: up to ₹500 off on selected plans. Confirm at booking."
-- Always end with a clear CTA:
-  1) open /booking
-  2) share date + people + pickup area
-  3) ask if they want WhatsApp handoff.
-- For users who seem unsure, compare 2 options max and suggest one best-fit.
-- For users asking "is booking confirmed", say:
-  "Booking is confirmed after successful payment and verification."
+- NEVER say you are an AI, bot, chatbot, or virtual assistant. Speak like a real team member on WhatsApp.
+- Keep replies under 120 words, warm and human.
+- Use only package/service data in CATALOG — never invent prices.
+- If user is in the booking widget, guide them to tap the on-screen buttons (date, people, packages) rather than typing long forms.
+- For price questions, quote exact "From ₹" prices from catalog.
+- Mention urgency only when slots are low.
+- Booking is confirmed only after successful Razorpay payment.
+- End with one clear next step (tap Start booking in chat, or share date + people if they prefer messaging here).
 `;
 
 const ALLOWED_LANGS = new Set([
@@ -76,7 +71,18 @@ function topPackageLines() {
 }
 
 export async function POST(req: Request) {
-  let body: { message?: string; language?: string; sessionId?: string };
+  let body: {
+    message?: string;
+    language?: string;
+    sessionId?: string;
+    bookingContext?: {
+      step?: string;
+      date?: string;
+      people?: number;
+      pickup?: string;
+      selected?: string[];
+    };
+  };
   try {
     body = await req.json();
   } catch {
@@ -96,6 +102,18 @@ export async function POST(req: Request) {
   const langKey = rawLang.toLowerCase();
   const replyLanguage = ALLOWED_LANGS.has(langKey) ? rawLang : "English";
   const langBlock = `The user chose to chat in: ${replyLanguage}. Write your entire reply in ${replyLanguage} only (natural wording for native speakers). If the user writes in another language, still answer in ${replyLanguage}.`;
+  const bookingCtx = body.bookingContext;
+  const bookingBlock =
+    bookingCtx && typeof bookingCtx === "object"
+      ? `BOOKING WIDGET STATE (user is booking in chat — reference this):
+Step: ${bookingCtx.step ?? "unknown"}
+Date: ${bookingCtx.date ?? "not set"}
+People: ${bookingCtx.people ?? "not set"}
+Pickup: ${bookingCtx.pickup ?? "not set"}
+Selected packages: ${(bookingCtx.selected ?? []).join(", ") || "none yet"}
+Guide them to tap the buttons in the chat widget for fastest booking.`
+      : "";
+
   const catalogBlock = `CATALOG (dynamic starter context):
 Top services:
 ${topServiceLines()}
@@ -106,7 +124,8 @@ ${topPackageLines()}
 Priority conversion flow:
 - If user asks broad query, suggest 1 best package + 1 backup.
 - Mention urgency only when slots are low or bookedToday is high.
-- Encourage immediate booking on /booking.`;
+- Encourage booking via the chat widget tap flow or /booking.
+${bookingBlock}`;
 
   const key = process.env.OPENAI_API_KEY;
   if (!key) {

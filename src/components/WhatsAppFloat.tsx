@@ -10,7 +10,7 @@ import {
 export const ASK_PACKAGES_TOGGLE_EVENT = "ask-packages-toggle";
 
 /**
- * Desktop-only vertical FAB stack: Call → WhatsApp → Ask Packages.
+ * Desktop-only vertical FAB stack: Call → WhatsApp → Book with us.
  * Mobile uses StickyBookBar + AiChatbot pill above the bar.
  */
 export function WhatsAppFloat() {
@@ -42,9 +42,9 @@ export function WhatsAppFloat() {
         type="button"
         onClick={() => window.dispatchEvent(new CustomEvent(ASK_PACKAGES_TOGGLE_EVENT))}
         className="flex h-12 items-center whitespace-nowrap rounded-full border border-amber-200/80 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-4 text-xs font-bold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/60 transition hover:brightness-110 active:brightness-95"
-        aria-label="Ask Packages"
+        aria-label="Book with us"
       >
-        Ask Packages
+        Book with us
       </button>
     </div>
   );
