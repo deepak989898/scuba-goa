@@ -1,12 +1,17 @@
 import { downloadCompressUploadBlogImage } from "@/lib/blog-automation/images";
 import {
   inferBlogImageTopic,
-  pickCuratedBlogFallbackUrl,
+  listCuratedFileTitlesForTopic,
   stockImageSearchQueries,
   blogImageVarietySeed,
 } from "@/lib/blog-automation/blog-image-topic";
 import { searchPexelsPhoto } from "@/lib/blog-automation/pexels";
-import { searchWikimediaCommonsPhoto } from "@/lib/blog-automation/wikimedia-commons";
+import { searchOpenversePhoto } from "@/lib/blog-automation/openverse";
+import {
+  searchWikimediaCommonsPhoto,
+  searchWikimediaCommonsPhotos,
+} from "@/lib/blog-automation/wikimedia-commons";
+import { resolveWikimediaFileUrls } from "@/lib/blog-automation/wikimedia-file-url";
 import type { BlogImageMeta, VisualCategory } from "@/lib/blog-automation/image-pipeline/types";
 import type { BlogImageTopic } from "@/lib/blog-automation/blog-image-topic";
 
@@ -15,6 +20,7 @@ export type StockImageSource =
   | "pixabay"
   | "unsplash"
   | "wikimedia"
+  | "openverse"
   | "curated_fallback";
 
 export type StockPhotoHit = {
@@ -106,64 +112,86 @@ async function searchUnsplashPhoto(
   };
 }
 
+function dedupeHits(hits: StockPhotoHit[]): StockPhotoHit[] {
+  const seen = new Set<string>();
+  const out: StockPhotoHit[] = [];
+  for (const h of hits) {
+    const key = h.url.split("?")[0].toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(h);
+  }
+  return out;
+}
+
+async function hitsFromCuratedFiles(
+  title: string,
+  serviceSlug: string,
+): Promise<StockPhotoHit[]> {
+  const fileTitles = listCuratedFileTitlesForTopic(title, serviceSlug);
+  const resolved = await resolveWikimediaFileUrls(fileTitles);
+  return resolved.map((r) => ({
+    source: "curated_fallback" as const,
+    url: r.url,
+    alt: r.title || title,
+    photographer: "Wikimedia Commons (curated)",
+    query: r.title,
+  }));
+}
+
 /**
- * Pexels → Pixabay → Unsplash → Wikimedia Commons (no key).
- * Each source picks a different photo per slug/title (not always the first result).
+ * Collect candidates from every free source — APIs, Openverse, Wikimedia search, curated files.
  */
-export async function searchStockPhotoCascade(input: {
+export async function collectStockPhotoCandidates(input: {
   title: string;
   serviceSlug: string;
   serviceName: string;
   varietySeed?: string;
-}): Promise<StockPhotoHit | null> {
+}): Promise<StockPhotoHit[]> {
   const seed = input.varietySeed || input.title;
   const topic = inferBlogImageTopic(input.title, input.serviceSlug);
-
-  // Curated topic photos beat random Wikimedia search (avoids document scans).
-  const curatedFirst = pickCuratedBlogFallbackUrl(
-    input.title,
-    input.serviceSlug,
-    seed,
-  );
-  if (curatedFirst) {
-    return {
-      source: "curated_fallback",
-      url: curatedFirst,
-      alt: input.title,
-      photographer: "Wikimedia Commons (curated)",
-      query: topic,
-    };
-  }
+  const candidates: StockPhotoHit[] = [];
 
   const queries = stockImageSearchQueries(input);
 
   for (const query of queries) {
     const pexels = await searchPexelsPhoto(query, seed);
     if (pexels?.url) {
-      return {
+      candidates.push({
         source: "pexels",
         url: pexels.url,
         alt: pexels.alt || `${input.title} (${query})`,
         photographer: pexels.photographer,
         query,
-      };
+      });
     }
 
     const pixabay = await searchPixabayPhoto(query, seed);
-    if (pixabay) return pixabay;
+    if (pixabay) candidates.push(pixabay);
 
     const unsplash = await searchUnsplashPhoto(query, seed);
-    if (unsplash) return unsplash;
+    if (unsplash) candidates.push(unsplash);
 
-    const wiki = await searchWikimediaCommonsPhoto(query, seed);
-    if (wiki) {
-      return {
+    const openverse = await searchOpenversePhoto(query, seed);
+    if (openverse) {
+      candidates.push({
+        source: "openverse",
+        url: openverse.url,
+        alt: openverse.alt,
+        photographer: openverse.photographer,
+        query: openverse.query,
+      });
+    }
+
+    const wikiHits = await searchWikimediaCommonsPhotos(query, seed, 4);
+    for (const wiki of wikiHits) {
+      candidates.push({
         source: "wikimedia",
         url: wiki.url,
         alt: wiki.alt,
         photographer: wiki.photographer,
         query: wiki.query,
-      };
+      });
     }
   }
 
@@ -172,57 +200,70 @@ export async function searchStockPhotoCascade(input: {
     "goa beach travel",
     "tropical ocean india",
     "goa tourism landscape",
+    "india travel beach sunset",
   ];
 
   for (const fallback of broadQueries) {
-    const pexels = await searchPexelsPhoto(fallback, `${seed}:${fallback}`);
-    if (pexels?.url) {
-      return {
-        source: "pexels",
-        url: pexels.url,
-        alt: `${input.title} — ${fallback}`,
-        photographer: pexels.photographer,
-        query: fallback,
-      };
+    const openverse = await searchOpenversePhoto(fallback, `${seed}:${fallback}`);
+    if (openverse) {
+      candidates.push({
+        source: "openverse",
+        url: openverse.url,
+        alt: openverse.alt,
+        photographer: openverse.photographer,
+        query: openverse.query,
+      });
     }
-    const pixabay = await searchPixabayPhoto(fallback, seed);
-    if (pixabay) return pixabay;
-    const unsplash = await searchUnsplashPhoto(fallback, seed);
-    if (unsplash) return unsplash;
-    const wiki = await searchWikimediaCommonsPhoto(fallback, seed);
-    if (wiki) {
-      return {
+
+    const wikiHits = await searchWikimediaCommonsPhotos(fallback, seed, 3);
+    for (const wiki of wikiHits) {
+      candidates.push({
         source: "wikimedia",
         url: wiki.url,
         alt: wiki.alt,
         photographer: wiki.photographer,
         query: wiki.query,
-      };
+      });
     }
+
+    const pexels = await searchPexelsPhoto(fallback, `${seed}:${fallback}`);
+    if (pexels?.url) {
+      candidates.push({
+        source: "pexels",
+        url: pexels.url,
+        alt: `${input.title} — ${fallback}`,
+        photographer: pexels.photographer,
+        query: fallback,
+      });
+    }
+    const pixabay = await searchPixabayPhoto(fallback, seed);
+    if (pixabay) candidates.push(pixabay);
+    const unsplash = await searchUnsplashPhoto(fallback, seed);
+    if (unsplash) candidates.push(unsplash);
   }
 
-  const curatedUrl = pickCuratedBlogFallbackUrl(
-    input.title,
-    input.serviceSlug,
-    seed,
-  );
-  if (curatedUrl) {
-    return {
-      source: "curated_fallback",
-      url: curatedUrl,
-      alt: input.title,
-      photographer: "Wikimedia Commons (curated)",
-      query: topic,
-    };
-  }
+  const curated = await hitsFromCuratedFiles(input.title, input.serviceSlug);
+  candidates.push(...curated);
 
-  return null;
+  return dedupeHits(candidates);
+}
+
+/** First hit from the candidate pool (legacy helper). */
+export async function searchStockPhotoCascade(input: {
+  title: string;
+  serviceSlug: string;
+  serviceName: string;
+  varietySeed?: string;
+}): Promise<StockPhotoHit | null> {
+  const hits = await collectStockPhotoCandidates(input);
+  return hits[0] ?? null;
 }
 
 export type StockFeaturedImageResult = {
   ok: boolean;
   meta: BlogImageMeta | null;
   error?: string;
+  attempted?: number;
 };
 
 function topicToVisualCategory(topic: BlogImageTopic): VisualCategory {
@@ -261,6 +302,15 @@ function buildStockMeta(
     photo.alt?.trim() || `${input.title} — ${keyword} in Goa | Book Scuba Goa`;
   const topic = inferBlogImageTopic(input.title, input.serviceSlug || "");
 
+  const sourceMap: Record<StockImageSource, BlogImageMeta["source"]> = {
+    pexels: "pexels",
+    pixabay: "pexels",
+    unsplash: "pexels",
+    wikimedia: "pexels",
+    openverse: "pexels",
+    curated_fallback: "pexels",
+  };
+
   return {
     imageUrl: uploaded.featuredImageUrl,
     ogImageUrl: uploaded.ogImageUrl,
@@ -271,9 +321,7 @@ function buildStockMeta(
     height: uploaded.height,
     mimeType: uploaded.mimeType || "image/webp",
     fileSize: uploaded.fileSize,
-    source: photo.source === "wikimedia" || photo.source === "curated_fallback"
-      ? "pexels"
-      : photo.source,
+    source: sourceMap[photo.source],
     generatedPrompt: `stock:${photo.source}:${photo.query}`,
     visualCategory: topicToVisualCategory(topic),
     compositionSignature: `stock_${photo.source}_${photo.query.replace(/\s+/g, "_").slice(0, 40)}`,
@@ -327,7 +375,7 @@ async function tryUploadStockUrl(
 
 /**
  * Fetch a free stock photo, convert to WebP on Firebase.
- * Falls back through APIs → Wikimedia → curated topic images.
+ * Tries Pexels → Pixabay → Unsplash → Openverse → Wikimedia search → curated Commons files.
  */
 export async function attachStockFeaturedImage(input: {
   articleId: string;
@@ -340,47 +388,27 @@ export async function attachStockFeaturedImage(input: {
 }): Promise<StockFeaturedImageResult> {
   const brandingEnabled = input.brandingEnabled !== false;
   const varietySeed = `${input.slug}:${input.title}`;
+  const topic = inferBlogImageTopic(input.title, input.serviceSlug);
 
   try {
-    const photo = await searchStockPhotoCascade({
+    const candidates = await collectStockPhotoCandidates({
       title: input.title,
       serviceSlug: input.serviceSlug,
       serviceName: input.serviceName,
       varietySeed,
     });
 
-    if (photo?.url) {
+    for (const photo of candidates) {
       const uploaded = await tryUploadStockUrl(photo, {
         ...input,
         brandingEnabled,
       });
-      if (uploaded?.meta) return uploaded;
+      if (uploaded?.meta) {
+        return { ok: true, meta: uploaded.meta, attempted: candidates.length };
+      }
     }
 
-    // Curated URLs — try each topic variant until download succeeds
-    const topic = inferBlogImageTopic(input.title, input.serviceSlug);
-    const curatedUrls = [
-      pickCuratedBlogFallbackUrl(input.title, input.serviceSlug, varietySeed),
-      pickCuratedBlogFallbackUrl(input.title, input.serviceSlug, `${varietySeed}:alt`),
-      pickCuratedBlogFallbackUrl("goa beach", "beach", varietySeed),
-    ].filter(Boolean) as string[];
-
-    for (const url of curatedUrls) {
-      const hit: StockPhotoHit = {
-        source: "curated_fallback",
-        url,
-        alt: input.title,
-        photographer: "Wikimedia Commons",
-        query: topic,
-      };
-      const uploaded = await tryUploadStockUrl(hit, {
-        ...input,
-        brandingEnabled,
-      });
-      if (uploaded?.meta) return uploaded;
-    }
-
-    // Last resort: direct Wikimedia URL (no Firebase) so blog still has a real photo
+    // Absolute last resort: single Wikimedia search + direct URL (no Firebase upload)
     const wiki = await searchWikimediaCommonsPhoto(
       `${input.title} goa india`,
       varietySeed,
@@ -389,6 +417,7 @@ export async function attachStockFeaturedImage(input: {
       const keyword = input.primaryKeyword || input.title;
       return {
         ok: true,
+        attempted: candidates.length,
         meta: {
           imageUrl: wiki.url,
           ogImageUrl: wiki.url,
@@ -422,11 +451,19 @@ export async function attachStockFeaturedImage(input: {
       };
     }
 
+    const hasApiKeys =
+      process.env.PEXELS_API_KEY?.trim() ||
+      process.env.PIXABAY_API_KEY?.trim() ||
+      process.env.UNSPLASH_ACCESS_KEY?.trim() ||
+      process.env.UNSPLASH_API_KEY?.trim();
+
     return {
       ok: false,
       meta: null,
-      error:
-        "No stock photo found. Add PEXELS_API_KEY / PIXABAY_API_KEY / UNSPLASH_ACCESS_KEY on Vercel for best results.",
+      attempted: candidates.length,
+      error: hasApiKeys
+        ? `No stock photo could be downloaded after ${candidates.length} attempts. Try OpenAI image or upload manually.`
+        : `No stock photo found after ${candidates.length} attempts (Openverse + Wikimedia). Add PEXELS_API_KEY / PIXABAY_API_KEY / UNSPLASH_ACCESS_KEY on Vercel for more variety.`,
     };
   } catch (e) {
     return {

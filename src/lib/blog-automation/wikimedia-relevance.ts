@@ -30,6 +30,10 @@ export function scoreWikimediaRelevance(title: string, query: string): number {
   if (/scuba|diving|underwater|beach|ocean|sea|boat|island/i.test(file)) {
     score += 10;
   }
+  if (/casino|nightclub|night club|party|disco|pub\b/i.test(file)) score += 12;
+  if (/casino|nightclub|night club|party|disco|pub\b/i.test(q)) {
+    if (/casino|ship|mandovi|night|club|disco/i.test(file)) score += 15;
+  }
   if (WIKIMEDIA_REJECT_RE.test(file)) score = 0;
   return score;
 }

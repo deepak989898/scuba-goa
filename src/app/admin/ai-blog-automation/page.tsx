@@ -575,26 +575,53 @@ export default function AiBlogAutomationPage() {
 
   async function processQueueNow() {
     setBusy("queue");
+    setErr(null);
+    setOk(null);
+    let totalProcessed = 0;
+    let totalReconciled = 0;
+    const errorNotes: string[] = [];
+    const waitingStart = jobs.filter((j) => j.status === "waiting").length;
+    const maxRounds = Math.max(20, Math.ceil(waitingStart / 5) + 2);
+
     try {
-      const data = await adminFetch("/api/admin/ai-blog-automation", {
-        method: "PATCH",
-        body: JSON.stringify({ action: "processQueue", maxJobs: 3 }),
-      });
-      const processed = Number(data.processed ?? 0);
-      const reconciled = Number(data.reconciled ?? 0);
-      const waitingCount = Number(data.waitingCount ?? 0);
-      const errors = Array.isArray(data.errors)
-        ? data.errors.filter(Boolean).map(String)
-        : [];
-      if (processed > 0) {
+      for (let round = 0; round < maxRounds; round++) {
+        const data = await adminFetch("/api/admin/ai-blog-automation", {
+          method: "PATCH",
+          body: JSON.stringify({
+            action: "processQueue",
+            processAll: true,
+            maxJobs: 5,
+          }),
+        });
+        const processed = Number(data.processed ?? 0);
+        const remaining = Number(data.remainingWaiting ?? data.waitingCount ?? 0);
+        totalProcessed += processed;
+        totalReconciled += Number(data.reconciled ?? 0);
+        if (Array.isArray(data.errors)) {
+          for (const e of data.errors) {
+            const msg = String(e).trim();
+            if (msg && !errorNotes.includes(msg)) errorNotes.push(msg);
+          }
+        }
+
+        if (processed > 0 && remaining > 0) {
+          setOk(
+            `Processing queue… ${totalProcessed} completed · ${remaining} still waiting`,
+          );
+        }
+
+        if (processed === 0 || remaining === 0) break;
+      }
+
+      if (totalProcessed > 0) {
         setOk(
-          `Processed ${processed} job(s)${reconciled > 0 ? ` · reset ${reconciled} stuck` : ""}`,
+          `Processed ${totalProcessed} job(s)${totalReconciled > 0 ? ` · reset ${totalReconciled} stuck` : ""}. Refresh the list to see published posts.`,
         );
-      } else if (errors.length > 0) {
-        setErr(errors.join(" · "));
-      } else if (waitingCount > 0) {
+      } else if (errorNotes.length > 0) {
+        setErr(errorNotes.join(" · "));
+      } else if (waitingStart > 0) {
         setErr(
-          `No jobs could be claimed (${waitingCount} still waiting). Try again in a minute or delete broken rows.`,
+          `No jobs could be claimed (${waitingStart} were waiting). Try again in a minute or delete broken rows.`,
         );
       } else {
         setOk("No waiting jobs in the queue");
@@ -921,7 +948,7 @@ export default function AiBlogAutomationPage() {
   async function regenerateMissingBlogImages() {
     if (
       !confirm(
-        "Regenerate featured images for all blogs missing a valid image?\n\nUses free stock (Pexels → Pixabay → Wikimedia). Processes up to 15 posts per click.",
+        "Regenerate featured images for all blogs missing a valid image?\n\nUses free stock (Pexels → Pixabay → Openverse → Wikimedia). Processes up to 15 posts per click.",
       )
     ) {
       return;
@@ -1719,7 +1746,7 @@ export default function AiBlogAutomationPage() {
               onClick={() => void processQueueNow()}
               className="rounded-full bg-ocean-800 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
-              {busy === "queue" ? "Processing…" : "Process stuck jobs"}
+              {busy === "queue" ? "Processing all…" : "Process all waiting jobs"}
             </button>
             <button
               type="button"

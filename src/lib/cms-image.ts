@@ -11,7 +11,7 @@ export const SITE_IMAGE_PLACEHOLDER = "/booking-header.png";
 
 /** Default blog hero when no featured image — Goa beach (not booking promo banner). */
 export const BLOG_FEATURED_PLACEHOLDER =
-  "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg";
+  "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg";
 
 function isUsableBlogFeaturedCandidate(url: string): boolean {
   const t = url.trim();

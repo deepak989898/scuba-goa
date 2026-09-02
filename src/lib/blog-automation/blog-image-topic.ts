@@ -35,7 +35,7 @@ export function pickFromList<T>(items: T[], seed: string): T | null {
 
 /** Infer topic from text only (title or slug fragment) — order matters. */
 function inferTopicFromText(t: string): BlogImageTopic {
-  if (/casino|gambling|poker|roulette|blackjack|baccarat|big daddy|deltin/.test(t)) {
+  if (/casino|gambling|poker|roulette|blackjack|baccarat|big daddy|bigdaddy|deltin/.test(t)) {
     return "casino";
   }
   if (/night.?club|nightclub|disco\b|pub\b|nightlife|party|ruski|ruskii/.test(t)) {
@@ -124,67 +124,141 @@ export function inferBlogImageTopic(title: string, serviceSlug = ""): BlogImageT
   return inferTopicFromText(`${titleNorm} ${slugNorm}`);
 }
 
-/** Curated Wikimedia Commons URLs — stable, free, no API key. */
-export const CURATED_BLOG_FALLBACK_URLS: Record<BlogImageTopic, string[]> = {
+/** Verified Wikimedia Commons file titles — URLs resolved via API (never hardcoded thumbs). */
+export const CURATED_WIKIMEDIA_FILE_TITLES: Record<BlogImageTopic, string[]> = {
   casino: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Casino_de_Goa.jpg/1600px-Casino_de_Goa.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Casino_chips.jpg/1600px-Casino_chips.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Poker_chips.jpg/1600px-Poker_chips.jpg",
+    "Goa Casino ship on the Mandovi river March 2026.jpg",
+    "Goa Casino ship on the Mandovi river March 2026 -002.jpg",
+    "CasinoGoa.jpg",
+    "Casino Pride Goa.jpg",
   ],
   nightlife: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Goa_nightlife.jpg/1600px-Goa_nightlife.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Club_lights.jpg/1600px-Club_lights.jpg",
+    "Devils Night Club Goa.jpg",
+    "Goa nightlife.jpg",
+    "Club lights.jpg",
   ],
   waterfall: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Dudhsagar_Falls.jpg/1600px-Dudhsagar_Falls.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Waterfall_in_India.jpg/1600px-Waterfall_in_India.jpg",
+    "Dudhsagar Falls.jpg",
+    "Dudhsagar falls goa.jpg",
+    "Waterfall in India.jpg",
   ],
   north_goa: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Fort_Aguada_Goa.jpg/1600px-Fort_Aguada_Goa.jpg",
+    "Palolem Beach.jpg",
+    "Fort Aguada Goa.jpg",
+    "Anjuna beach Goa.jpg",
   ],
   south_goa: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Colva_Beach_Goa.jpg/1600px-Colva_Beach_Goa.jpg",
+    "Palolem Beach.jpg",
+    "Colva Beach Goa.jpg",
+    "Agonda beach Goa.jpg",
   ],
   dolphin: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Dolphin_in_water.jpg/1600px-Dolphin_in_water.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Dolphins_ocean.jpg/1600px-Dolphins_ocean.jpg",
+    "Dolphin in water.jpg",
+    "Dolphins ocean.jpg",
+    "Dolphins in the ocean.jpg",
   ],
   water_sports: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Parasailing_in_Goa.jpg/1600px-Parasailing_in_Goa.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Jet_ski_beach.jpg/1600px-Jet_ski_beach.jpg",
+    "Parasailing in Goa.jpg",
+    "Jet ski beach.jpg",
+    "Water sports Goa.jpg",
   ],
   scuba: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Scuba_diving.jpg/1600px-Scuba_diving.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Scuba_diver.jpg/1600px-Scuba_diver.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Underwater_scuba.jpg/1600px-Underwater_scuba.jpg",
+    "Arabian Sea Scuba Diving spot GOA.jpg",
+    "Scuba diving.jpg",
+    "Scuba diver.jpg",
+    "Underwater scuba.jpg",
   ],
   island: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Tropical_island_boat.jpg/1600px-Tropical_island_boat.jpg",
+    "Palolem Beach.jpg",
+    "Grande Island Goa.jpg",
+    "Boat trip Goa.jpg",
   ],
   trek: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Western_Ghats_monsoon.jpg/1600px-Western_Ghats_monsoon.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Forest_trek_India.jpg/1600px-Forest_trek_India.jpg",
+    "Western Ghats monsoon.jpg",
+    "Forest trek India.jpg",
+    "Trekking in India.jpg",
   ],
   hotel: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Beach_resort_pool.jpg/1600px-Beach_resort_pool.jpg",
+    "Palolem Beach.jpg",
+    "Beach resort pool.jpg",
+    "Goa beach resort.jpg",
   ],
   food: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Seafood_platter.jpg/1600px-Seafood_platter.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Goan_fish_curry.jpg/1600px-Goan_fish_curry.jpg",
+    "Seafood platter.jpg",
+    "Goan fish curry.jpg",
+    "Seafood Goa.jpg",
   ],
   beach: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Goa_beach_sunset.jpg/1600px-Goa_beach_sunset.jpg",
+    "Palolem Beach.jpg",
+    "Goa beach sunset.jpg",
+    "Agonda beach Goa.jpg",
   ],
   general: [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Palolem_beach_Goa_India.jpg/1600px-Palolem_beach_Goa_India.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Goa_beach_sunset.jpg/1600px-Goa_beach_sunset.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Scuba_diving.jpg/1600px-Scuba_diving.jpg",
+    "Palolem Beach.jpg",
+    "Goa beach sunset.jpg",
+    "Arabian Sea Scuba Diving spot GOA.jpg",
+    "Fort Aguada Goa.jpg",
   ],
+};
+
+/** @deprecated Use CURATED_WIKIMEDIA_FILE_TITLES + API resolution */
+export const CURATED_BLOG_FALLBACK_URLS: Record<BlogImageTopic, string[]> = {
+  casino: [],
+  nightlife: [],
+  waterfall: [],
+  north_goa: [],
+  south_goa: [],
+  dolphin: [],
+  water_sports: [],
+  scuba: [],
+  island: [],
+  trek: [],
+  hotel: [],
+  food: [],
+  beach: [],
+  general: [],
+};
+
+export function listCuratedFileTitlesForTopic(
+  title: string,
+  serviceSlug: string,
+): string[] {
+  const topic = inferBlogImageTopic(title, serviceSlug);
+  const topicFiles = CURATED_WIKIMEDIA_FILE_TITLES[topic] ?? [];
+  const generalFiles = CURATED_WIKIMEDIA_FILE_TITLES.general;
+  return [...new Set([...topicFiles, ...generalFiles])];
+}
+
+/** Verified direct upload.wikimedia.org URLs for sync UI fallbacks (no API call). */
+export const VERIFIED_WIKIMEDIA_DIRECT_URLS: Record<BlogImageTopic, string> = {
+  casino:
+    "https://upload.wikimedia.org/wikipedia/commons/8/89/Goa_Casino_ship_on_the_Mandovi_river_March_2026.jpg",
+  nightlife:
+    "https://upload.wikimedia.org/wikipedia/commons/4/46/Devils_Night_Club_Goa.jpg",
+  waterfall:
+    "https://upload.wikimedia.org/wikipedia/commons/5/50/Dudhsagar_Falls.jpg",
+  north_goa:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  south_goa:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  dolphin:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  water_sports:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  scuba:
+    "https://upload.wikimedia.org/wikipedia/commons/e/ec/Arabian_Sea_Scuba_Diving_spot_GOA.jpg",
+  island:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  trek:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  hotel:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  food:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  beach:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
+  general:
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/Palolem_Beach.jpg",
 };
 
 export function pickCuratedBlogFallbackUrl(
@@ -193,8 +267,11 @@ export function pickCuratedBlogFallbackUrl(
   seed: string,
 ): string | null {
   const topic = inferBlogImageTopic(title, serviceSlug);
-  const urls = CURATED_BLOG_FALLBACK_URLS[topic] ?? CURATED_BLOG_FALLBACK_URLS.general;
-  return pickFromList(urls, seed || title);
+  const pool = [
+    VERIFIED_WIKIMEDIA_DIRECT_URLS[topic],
+    VERIFIED_WIKIMEDIA_DIRECT_URLS.general,
+  ];
+  return pickFromList(pool, seed || title);
 }
 
 export function stockImageSearchQueries(input: {

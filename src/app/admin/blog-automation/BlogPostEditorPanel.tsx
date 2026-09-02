@@ -323,7 +323,7 @@ export function BlogPostEditorPanel({
             </div>
           ) : null}
           <p className="mt-1.5 text-xs text-ocean-500">
-            Upload a file, regenerate with free stock (Pexels/Pixabay/Wikimedia), or
+            Upload a file, regenerate with free stock (Pexels/Pixabay/Openverse/Wikimedia), or
             generate with OpenAI (WebP + logo).
           </p>
         </div>

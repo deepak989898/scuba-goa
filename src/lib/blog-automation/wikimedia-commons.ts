@@ -81,7 +81,7 @@ export async function searchWikimediaCommonsPhoto(
         hit: h,
         score: scoreWikimediaRelevance(h.alt, q),
       }))
-      .filter((x) => x.score > 40)
+      .filter((x) => x.score > 25)
       .sort((a, b) => b.score - a.score);
 
     const pool = ranked.length ? ranked : hits.map((h) => ({ hit: h, score: 50 }));
@@ -89,5 +89,86 @@ export async function searchWikimediaCommonsPhoto(
     return pool[idx]?.hit ?? pool[0]?.hit ?? null;
   } catch {
     return null;
+  }
+}
+
+/** Return multiple Wikimedia hits for a query (for candidate pooling). */
+export async function searchWikimediaCommonsPhotos(
+  query: string,
+  seed = "",
+  max = 5,
+): Promise<WikimediaPhoto[]> {
+  const q = query.trim().slice(0, 120);
+  if (!q) return [];
+
+  const params = new URLSearchParams({
+    action: "query",
+    generator: "search",
+    gsrsearch: q,
+    gsrnamespace: "6",
+    gsrlimit: "20",
+    prop: "imageinfo",
+    iiprop: "url",
+    iiurlwidth: "1600",
+    format: "json",
+    origin: "*",
+  });
+
+  try {
+    const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params.toString()}`, {
+      headers: { "User-Agent": "BookScubaGoa-BlogBot/1.0 (blog images)" },
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return [];
+
+    const data = (await res.json()) as {
+      query?: {
+        pages?: Record<
+          string,
+          {
+            title?: string;
+            imageinfo?: Array<{
+              thumburl?: string;
+              url?: string;
+            }>;
+          }
+        >;
+      };
+    };
+
+    const pages = Object.values(data.query?.pages ?? {});
+    const hits: WikimediaPhoto[] = [];
+
+    for (const page of pages) {
+      const info = page.imageinfo?.[0];
+      const raw = info?.url || info?.thumburl || "";
+      const url = raw.split("?")[0];
+      if (!url || !/^https?:\/\//i.test(url)) continue;
+      const title = (page.title || q).replace(/^File:/i, "").replace(/_/g, " ");
+      if (!isRelevantWikimediaFileTitle(title)) continue;
+      hits.push({
+        url,
+        alt: title,
+        photographer: "Wikimedia Commons",
+        query: q,
+      });
+    }
+
+    if (!hits.length) return [];
+
+    const ranked = hits
+      .map((h) => ({
+        hit: h,
+        score: scoreWikimediaRelevance(h.alt, q),
+      }))
+      .filter((x) => x.score > 20)
+      .sort((a, b) => b.score - a.score);
+
+    const pool = ranked.length ? ranked.map((x) => x.hit) : hits;
+    const start = blogImageVarietySeed(`${seed}:${q}`) % pool.length;
+    const rotated = [...pool.slice(start), ...pool.slice(0, start)];
+    return rotated.slice(0, max);
+  } catch {
+    return [];
   }
 }

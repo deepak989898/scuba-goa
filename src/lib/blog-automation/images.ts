@@ -233,7 +233,10 @@ export async function downloadCompressUploadBlogImage(input: {
   brandingEnabled?: boolean;
 }): Promise<UploadBlogImageResult> {
   const res = await fetch(input.imageUrl, {
-    headers: { "User-Agent": "BlueSharkGoa-BlogBot/1.0" },
+    headers: {
+      "User-Agent": "BookScubaGoa-BlogBot/1.0 (+https://www.bookscubagoa.com)",
+      Accept: "image/*,*/*",
+    },
   });
   if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
   const buffer = Buffer.from(await res.arrayBuffer());

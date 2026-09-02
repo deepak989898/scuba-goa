@@ -158,10 +158,12 @@ export async function claimNextGenerationJob(opts?: {
 
 export async function processGenerationJob(
   job: AiBlogGenerationJob,
+  opts?: { skipDailyCap?: boolean },
 ): Promise<{ ok: boolean; error?: string }> {
   const settings = await getSeoBlogSettings();
   const day = todayIst();
   if (
+    !opts?.skipDailyCap &&
     settings.blogsGeneratedDate === day &&
     (settings.blogsGeneratedToday ?? 0) >= settings.maxBlogsGeneratedPerDay
   ) {
@@ -268,7 +270,8 @@ export async function processGenerationJob(
       settings.autoPublish &&
       !imageBlocksPublish &&
       quality.score >= settings.minAutoPublishQualityScore &&
-      (settings.blogsPublishedDate !== day ||
+      (opts?.skipDailyCap ||
+        settings.blogsPublishedDate !== day ||
         (settings.blogsPublishedToday ?? 0) < settings.maxBlogsPublishedPerDay)
     ) {
       const db = getAdminDb();
@@ -337,12 +340,13 @@ export type ProcessGenerationQueueResult = {
   errors: string[];
   reconciled: number;
   waitingCount: number;
+  remainingWaiting: number;
   skippedReason?: string;
 };
 
 export async function processGenerationQueue(
   maxJobs = 2,
-  opts?: { skipPauseCheck?: boolean },
+  opts?: { skipPauseCheck?: boolean; skipDailyCap?: boolean },
 ): Promise<ProcessGenerationQueueResult> {
   const settings = await getSeoBlogSettings();
   const reconciled = await reconcileStuckGenerationJobs();
@@ -354,6 +358,7 @@ export async function processGenerationQueue(
       errors: ["Generation queue is paused — click Resume queue first"],
       reconciled,
       waitingCount,
+      remainingWaiting: waitingCount,
       skippedReason: "queue_paused",
     };
   }
@@ -363,7 +368,10 @@ export async function processGenerationQueue(
     settings.blogsGeneratedDate === day
       ? (settings.blogsGeneratedToday ?? 0)
       : 0;
-  if (generatedToday >= settings.maxBlogsGeneratedPerDay) {
+  if (
+    !opts?.skipDailyCap &&
+    generatedToday >= settings.maxBlogsGeneratedPerDay
+  ) {
     return {
       processed: 0,
       errors: [
@@ -371,6 +379,7 @@ export async function processGenerationQueue(
       ],
       reconciled,
       waitingCount,
+      remainingWaiting: waitingCount,
       skippedReason: "daily_cap",
     };
   }
@@ -381,13 +390,16 @@ export async function processGenerationQueue(
       errors: ["Firebase Admin is not configured on the server"],
       reconciled,
       waitingCount,
+      remainingWaiting: waitingCount,
       skippedReason: "no_admin_db",
     };
   }
 
   const errors: string[] = [];
   let processed = 0;
-  const remainingCap = settings.maxBlogsGeneratedPerDay - generatedToday;
+  const remainingCap = opts?.skipDailyCap
+    ? maxJobs
+    : settings.maxBlogsGeneratedPerDay - generatedToday;
 
   for (let i = 0; i < maxJobs && processed < remainingCap; i++) {
     const job = await claimNextGenerationJob(opts);
@@ -399,16 +411,21 @@ export async function processGenerationQueue(
       }
       break;
     }
-    const result = await processGenerationJob(job);
+    const result = await processGenerationJob(job, {
+      skipDailyCap: opts?.skipDailyCap,
+    });
     processed += 1;
     if (!result.ok && result.error) errors.push(result.error);
   }
+
+  const remainingWaiting = (await listGenerationJobs("waiting", 200)).length;
 
   return {
     processed,
     errors,
     reconciled,
     waitingCount,
+    remainingWaiting,
     skippedReason:
       processed === 0 && waitingCount > 0 && errors.length === 0
         ? "claim_failed"
