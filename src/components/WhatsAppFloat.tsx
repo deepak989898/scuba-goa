@@ -1,31 +1,16 @@
 "use client";
 
-import {
-  CONTACT_PHONE_HREF,
-  CONTACT_PHONE_LABEL,
-  WHATSAPP_TEL_LABEL,
-  whatsappLink,
-} from "@/lib/constants";
+import { WHATSAPP_TEL_LABEL, whatsappLink } from "@/lib/constants";
 
 export const ASK_PACKAGES_TOGGLE_EVENT = "ask-packages-toggle";
 
 /**
- * Desktop-only vertical FAB stack: Call → WhatsApp → Book with us.
+ * Desktop-only vertical FAB stack: WhatsApp → Book with us.
  * Mobile uses StickyBookBar + AiChatbot pill above the bar.
  */
 export function WhatsAppFloat() {
   return (
     <div className="fixed bottom-8 right-4 z-[60] hidden flex-col items-end gap-3 md:flex">
-      <a
-        href={CONTACT_PHONE_HREF}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-600 text-white shadow-lg shadow-sky-900/30 transition hover:scale-105 hover:bg-sky-500"
-        aria-label={`Call ${CONTACT_PHONE_LABEL}`}
-        title={`Call ${CONTACT_PHONE_LABEL}`}
-      >
-        <svg className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-          <path d="M6.62 10.79a15.15 15.15 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V21a1 1 0 01-1 1C10.4 22 2 13.6 2 3a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.25 1.01l-2.2 2.2z" />
-        </svg>
-      </a>
       <a
         href={whatsappLink()}
         target="_blank"

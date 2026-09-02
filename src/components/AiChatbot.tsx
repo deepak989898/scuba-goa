@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 import { ASK_PACKAGES_TOGGLE_EVENT } from "@/components/WhatsAppFloat";
 import { ChatBookingAgent } from "@/components/chat-booking/ChatBookingAgent";
 import { useServices } from "@/hooks/useServices";
+import {
+  chatAutoOpenAlreadyShown,
+  markChatAutoOpenShown,
+  msUntilChatAutoOpen,
+} from "@/lib/chat-auto-open";
 
 const STORAGE_KEY = "bookscuba_ai_lang";
 
@@ -54,6 +59,19 @@ export function AiChatbot() {
     const onToggle = () => setOpen((o) => !o);
     window.addEventListener(ASK_PACKAGES_TOGGLE_EVENT, onToggle);
     return () => window.removeEventListener(ASK_PACKAGES_TOGGLE_EVENT, onToggle);
+  }, []);
+
+  useEffect(() => {
+    if (chatAutoOpenAlreadyShown()) return;
+
+    const delay = msUntilChatAutoOpen();
+    const timer = window.setTimeout(() => {
+      if (chatAutoOpenAlreadyShown()) return;
+      markChatAutoOpenShown();
+      setOpen(true);
+    }, delay);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   function onLanguageChange(api: string) {
@@ -113,7 +131,10 @@ export function AiChatbot() {
               <button
                 type="button"
                 className="text-ocean-700"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  markChatAutoOpenShown();
+                  setOpen(false);
+                }}
                 aria-label="Close"
               >
                 ✕

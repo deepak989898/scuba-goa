@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAfterFirstInteraction } from "@/hooks/useAfterFirstInteraction";
+import { msUntilChatAutoOpen } from "@/lib/chat-auto-open";
 
 const CART_STORAGE_KEY = "bookscubagoa-cart-v1";
 
@@ -46,6 +47,7 @@ export function DeferredSiteWidgets() {
   const isAdmin = pathname?.startsWith("/admin") ?? false;
   const [hasSavedCart, setHasSavedCart] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [chatAutoOpenReady, setChatAutoOpenReady] = useState(false);
 
   useEffect(() => {
     if (isAdmin) return;
@@ -61,9 +63,21 @@ export function DeferredSiteWidgets() {
     return () => mq.removeEventListener("change", sync);
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (isAdmin) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    if (mq.matches) {
+      setChatAutoOpenReady(true);
+      return;
+    }
+    const delay = msUntilChatAutoOpen();
+    const t = window.setTimeout(() => setChatAutoOpenReady(true), delay);
+    return () => window.clearTimeout(t);
+  }, [isAdmin]);
+
   if (isAdmin) return null;
 
-  const showChatbot = interacted || isDesktop;
+  const showChatbot = interacted || isDesktop || chatAutoOpenReady;
 
   return (
     <>
