@@ -115,6 +115,21 @@ export type SeoUrlRecord = {
     summary: string;
     rankingStatus: string;
   };
+  /** Flag when free stock could not satisfy hero image — admin may use OpenAI manually. */
+  imageAttention?: {
+    needsOpenAi: boolean;
+    reason: string;
+    at: string;
+  };
+};
+
+export type GscAutomationOpenAiImageItem = {
+  urlId: string;
+  url: string;
+  title: string;
+  slug: string;
+  reason: string;
+  at: string;
 };
 
 export type SeoSettings = {
@@ -131,6 +146,19 @@ export type SeoSettings = {
   lastInventoryAt: string | null;
   lastAnalyticsSyncAt: string | null;
   notifyOnCritical: boolean;
+  /** Daily GSC automation: sync analytics → inspect → ranking improve (stock images only). */
+  automationScheduleEnabled?: boolean;
+  automationFrequency?: "daily" | "weekly" | "monthly";
+  /** Improve blogs with average position worse than this (e.g. 8 = not in top 8). */
+  automationPositionThreshold?: number;
+  automationInspectPerRun?: number;
+  automationRankingImproveMax?: number;
+  automationStartedAt?: string | null;
+  automationStartedBy?: string | null;
+  automationLastRunAt?: string | null;
+  automationLastRunDate?: string | null;
+  /** Blogs where stock image failed or needs manual OpenAI hero image. */
+  automationOpenAiImageQueue?: GscAutomationOpenAiImageItem[];
   createdAt: string;
   updatedAt: string;
 };

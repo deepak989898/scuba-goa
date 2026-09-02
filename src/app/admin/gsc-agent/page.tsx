@@ -8,6 +8,7 @@ import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { BlogPostEditorPanel } from "@/app/admin/blog-automation/BlogPostEditorPanel";
 import { GuideEditorPanel } from "@/app/admin/gsc-agent/GuideEditorPanel";
+import { GscAutomationStartWizard } from "@/app/admin/gsc-agent/GscAutomationWizard";
 import {
   RANKING_IMPROVE_HIDE_MS,
 } from "@/lib/gsc-indexing-agent/ranking-opportunity-ui";
@@ -209,6 +210,26 @@ type EditingSession = {
   guidanceBullets: string[];
 };
 
+type GscOpenAiImageItem = {
+  urlId: string;
+  url: string;
+  title: string;
+  slug: string;
+  reason: string;
+  at: string;
+};
+
+type GscAutomationSettings = {
+  automationScheduleEnabled?: boolean;
+  automationFrequency?: string;
+  automationPositionThreshold?: number;
+  automationInspectPerRun?: number;
+  automationRankingImproveMax?: number;
+  automationLastRunAt?: string | null;
+  automationLastRunDate?: string | null;
+  automationOpenAiImageQueue?: GscOpenAiImageItem[];
+};
+
 export default function GscIndexingAgentPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [urlFilter, setUrlFilter] = useState<UrlFilter>("all");
@@ -247,6 +268,11 @@ export default function GscIndexingAgentPage() {
   const [bulkInspecting, setBulkInspecting] = useState(false);
   const [resolvingIssueId, setResolvingIssueId] = useState<string | null>(null);
   const [resolvingAllIssues, setResolvingAllIssues] = useState(false);
+  const [automationWizardOpen, setAutomationWizardOpen] = useState(false);
+  const [automationBusy, setAutomationBusy] = useState(false);
+
+  const automationSettings = (settings ?? {}) as GscAutomationSettings;
+  const openAiImageQueue = automationSettings.automationOpenAiImageQueue ?? [];
 
   const bulkEligibleUrls = useMemo(() => {
     return urls.filter((u) => isContentEditableType(String(u.pageType)));
@@ -492,6 +518,103 @@ export default function GscIndexingAgentPage() {
       setErr(e instanceof Error ? e.message : "Clean stale failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function startGscAutomation(config: {
+    frequency: "daily" | "weekly" | "monthly";
+    positionThreshold: number;
+    inspectPerRun: number;
+    rankingImproveMax: number;
+  }) {
+    setAutomationBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/settings", {
+        method: "POST",
+        body: JSON.stringify({ action: "startAutomation", ...config }),
+      });
+      setSettings(data.settings ?? null);
+      const run = data.run as {
+        rankingImproved?: number;
+        openAiImageAttention?: number;
+        rankingCandidates?: number;
+      };
+      setAutomationWizardOpen(false);
+      setOk(
+        `GSC automation ON (${config.frequency}, position > ${config.positionThreshold}). First run: improved ${run?.rankingImproved ?? 0}/${run?.rankingCandidates ?? 0} blogs · ${run?.openAiImageAttention ?? 0} need OpenAI image review.`,
+      );
+      await load("overview", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Start automation failed");
+    } finally {
+      setAutomationBusy(false);
+    }
+  }
+
+  async function stopGscAutomation() {
+    setAutomationBusy(true);
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/settings", {
+        method: "POST",
+        body: JSON.stringify({ action: "stopAutomation" }),
+      });
+      setSettings(data.settings ?? null);
+      setOk("GSC automation stopped.");
+      await load("overview", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Stop automation failed");
+    } finally {
+      setAutomationBusy(false);
+    }
+  }
+
+  async function runGscAutomationNow() {
+    setAutomationBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/settings", {
+        method: "POST",
+        body: JSON.stringify({ action: "runAutomationNow" }),
+      });
+      const run = data.run as {
+        skipped?: boolean;
+        skipReason?: string;
+        rankingImproved?: number;
+        openAiImageAttention?: number;
+        rankingCandidates?: number;
+      };
+      if (run?.skipped) {
+        setOk(run.skipReason || "Automation run skipped.");
+      } else {
+        setOk(
+          `Automation run done: improved ${run?.rankingImproved ?? 0}/${run?.rankingCandidates ?? 0} · ${run?.openAiImageAttention ?? 0} need OpenAI images.`,
+        );
+      }
+      await load("overview", urlFilter, issueSeverity);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Automation run failed");
+    } finally {
+      setAutomationBusy(false);
+    }
+  }
+
+  async function clearOpenAiImageQueue() {
+    setAutomationBusy(true);
+    try {
+      const data = await adminFetch("/api/admin/gsc-agent/settings", {
+        method: "POST",
+        body: JSON.stringify({ action: "clearOpenAiImageQueue" }),
+      });
+      setSettings(data.settings ?? null);
+      setOk("OpenAI image attention list cleared.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Clear failed");
+    } finally {
+      setAutomationBusy(false);
     }
   }
 
@@ -1036,6 +1159,114 @@ export default function GscIndexingAgentPage() {
 
       {tab === "overview" && overview ? (
         <div className="space-y-4">
+          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-sm font-bold text-ocean-900">
+                  Daily SEO automation
+                </h2>
+                <p className="mt-1 text-xs text-ocean-700">
+                  Sync analytics → inspect queue → improve blogs ranking worse than
+                  your position target. Images: free stock only; flagged blogs need
+                  manual OpenAI hero from Edit.
+                </p>
+                {automationSettings.automationScheduleEnabled ? (
+                  <p className="mt-2 text-xs font-semibold text-violet-900">
+                    ON · {automationSettings.automationFrequency || "daily"} · position
+                    &gt; {automationSettings.automationPositionThreshold ?? 10} ·
+                    inspect {automationSettings.automationInspectPerRun ?? 8}/run ·
+                    improve {automationSettings.automationRankingImproveMax ?? 5}/run
+                    {automationSettings.automationLastRunAt
+                      ? ` · last run ${new Date(
+                          automationSettings.automationLastRunAt,
+                        ).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`
+                      : ""}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs font-semibold text-ocean-600">
+                    OFF — start automation to run daily without manual clicks.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {automationSettings.automationScheduleEnabled ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={automationBusy || busy}
+                      onClick={() => void runGscAutomationNow()}
+                      className="rounded-full border border-violet-400 bg-white px-3 py-1.5 text-xs font-bold text-violet-900 disabled:opacity-50"
+                    >
+                      Run now
+                    </button>
+                    <button
+                      type="button"
+                      disabled={automationBusy || busy}
+                      onClick={() => void stopGscAutomation()}
+                      className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-900 disabled:opacity-50"
+                    >
+                      Stop automation
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={automationBusy || busy}
+                    onClick={() => setAutomationWizardOpen(true)}
+                    className="rounded-full bg-violet-700 px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    Start automation
+                  </button>
+                )}
+              </div>
+            </div>
+            {openAiImageQueue.length > 0 ? (
+              <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50/80 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-amber-950">
+                    Needs OpenAI image ({openAiImageQueue.length})
+                  </p>
+                  <button
+                    type="button"
+                    disabled={automationBusy}
+                    onClick={() => void clearOpenAiImageQueue()}
+                    className="text-[10px] font-bold text-amber-900 underline"
+                  >
+                    Clear list
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-amber-900">
+                  Stock image failed or low relevance — open Edit and use OpenAI image
+                  generation for a better hero match.
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {openAiImageQueue.slice(0, 8).map((item) => (
+                    <li
+                      key={item.urlId}
+                      className="flex flex-wrap items-center justify-between gap-2 text-[11px]"
+                    >
+                      <span className="text-ocean-900">
+                        <strong>{item.title || item.slug}</strong>
+                        <span className="text-ocean-600"> — {item.reason}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void openEdit(item.urlId)}
+                        className="rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white"
+                      >
+                        Edit · OpenAI image
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {openAiImageQueue.length > 8 ? (
+                  <p className="mt-1 text-[10px] text-ocean-600">
+                    +{openAiImageQueue.length - 8} more in queue
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <p className="text-xs text-ocean-600">
             Tip: click any metric card to open the matching page list. Status
             comes from <strong>URL Inspection API</strong> (quota ~50/day) and
@@ -1891,6 +2122,13 @@ export default function GscIndexingAgentPage() {
         </Link>{" "}
         · Docs: <code>docs/GSC-INDEXING-AGENT.md</code>
       </p>
+
+      <GscAutomationStartWizard
+        open={automationWizardOpen}
+        onClose={() => setAutomationWizardOpen(false)}
+        busy={automationBusy}
+        onSubmit={(config) => void startGscAutomation(config)}
+      />
     </div>
   );
 }

@@ -322,6 +322,20 @@ export interface SeoBlogCenterSettings {
   minAutoPublishQualityScore: number;
   generateImages: boolean;
   estimatedCostConfirmUsd: number;
+  /** Scheduled SEO automation (research → cluster → generate → publish). */
+  automationScheduleEnabled?: boolean;
+  automationFrequency?: "daily" | "weekly" | "monthly";
+  /** Target posts published per automation day (IST). */
+  automationPostsPerDay?: number;
+  /** Keywords researched per service on each automation run. */
+  automationKeywordsPerService?: number;
+  automationServiceMode?: "all" | "selected";
+  automationServiceSlugs?: string[];
+  automationImageMode?: "stock" | "openai";
+  automationLastRunAt?: string;
+  automationLastRunDate?: string;
+  automationStartedAt?: string;
+  automationStartedBy?: string;
   researchCallsToday?: number;
   researchCallsDate?: string;
   blogsGeneratedToday?: number;
@@ -381,6 +395,13 @@ export const DEFAULT_SEO_BLOG_SETTINGS: SeoBlogCenterSettings = {
   minAutoPublishQualityScore: 92,
   generateImages: true,
   estimatedCostConfirmUsd: 5,
+  automationScheduleEnabled: false,
+  automationFrequency: "daily",
+  automationPostsPerDay: 5,
+  automationKeywordsPerService: 50,
+  automationServiceMode: "all",
+  automationServiceSlugs: [],
+  automationImageMode: "stock",
 };
 
 export const PROMPT_VERSION = "ai-blog-automation-v1";

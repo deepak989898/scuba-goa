@@ -42,6 +42,15 @@ export async function GET(req: Request) {
         lastInventoryAt: settings.lastInventoryAt,
         lastAnalyticsSyncAt: settings.lastAnalyticsSyncAt,
         lastSitemapSubmitAt: settings.lastSitemapSubmitAt,
+        automationScheduleEnabled: settings.automationScheduleEnabled ?? false,
+        automationFrequency: settings.automationFrequency ?? "daily",
+        automationPositionThreshold: settings.automationPositionThreshold ?? 10,
+        automationInspectPerRun: settings.automationInspectPerRun ?? 8,
+        automationRankingImproveMax: settings.automationRankingImproveMax ?? 5,
+        automationStartedAt: settings.automationStartedAt,
+        automationLastRunAt: settings.automationLastRunAt,
+        automationLastRunDate: settings.automationLastRunDate,
+        automationOpenAiImageQueue: settings.automationOpenAiImageQueue ?? [],
       },
     });
   }

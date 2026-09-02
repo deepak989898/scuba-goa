@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { runAutoApprovePublishAutomation } from "@/lib/seo-blog-center/auto-approve-publish";
 import { processGenerationQueue } from "@/lib/seo-blog-center/generation-queue";
+import { runScheduledAutomation } from "@/lib/seo-blog-center/scheduled-automation";
 import { addSeoBlogLog } from "@/lib/seo-blog-center/store";
 
 export const runtime = "nodejs";
@@ -17,13 +18,25 @@ export async function POST(req: Request) {
   }
 
   try {
+    const { getSeoBlogSettings } = await import("@/lib/seo-blog-center/store");
+    const cfg = await getSeoBlogSettings();
+
+    if (cfg.automationScheduleEnabled) {
+      const scheduled = await runScheduledAutomation({ actorId: "cron-scheduled" });
+      const extra = await processGenerationQueue(2, { skipPauseCheck: true });
+      await addSeoBlogLog({
+        type: "pipeline_run",
+        message: `AI cron (scheduled): ${scheduled.skipped ? "skipped" : `+${scheduled.keywordsAdded}kw`}; extra processed ${extra.processed}`,
+      });
+      return NextResponse.json({ ok: true, scheduled, ...extra });
+    }
+
     const auto = await runAutoApprovePublishAutomation("cron-auto");
-    // Auto-approve already starts generation; process any leftover waiting jobs.
     const result = await processGenerationQueue(2);
     const autoProcessed = auto.processed ?? 0;
     await addSeoBlogLog({
       type: "pipeline_run",
-      message: `AI generation cron: auto-approve mode=${auto.mode} queued=${auto.result?.jobsCreated ?? 0} (skipped conflicts=${auto.result?.skippedConflicts ?? 0}); auto-processed ${autoProcessed}; leftover processed ${result.processed}`,
+      message: `AI generation cron: auto-approve mode=${auto.mode} queued=${auto.result?.jobsCreated ?? 0}; processed ${autoProcessed + result.processed}`,
     });
     return NextResponse.json({
       ok: true,
@@ -33,8 +46,7 @@ export async function POST(req: Request) {
         ...(auto.result ?? {}),
       },
       ...result,
-    });
-  } catch (e) {
+    });  } catch (e) {
     const message = e instanceof Error ? e.message : "Cron failed";
     await addSeoBlogLog({ type: "error", message, error: message });
     return NextResponse.json({ error: message }, { status: 500 });

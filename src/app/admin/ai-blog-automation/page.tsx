@@ -26,6 +26,10 @@ import {
 import { enrichConflictsFromUrls } from "@/lib/seo-blog-center/conflict-display";
 import { BlogPostEditorPanel } from "@/app/admin/blog-automation/BlogPostEditorPanel";
 import { seoBlogDraftToFirestorePost } from "@/lib/seo-blog-center/draft-to-post";
+import {
+  AutomationStartWizard,
+  AutomationStatusCard,
+} from "@/app/admin/ai-blog-automation/AutomationWizard";
 
 type Tab =
   | "dashboard"
@@ -191,6 +195,7 @@ export default function AiBlogAutomationPage() {
     Set<ResearchCategoryId>
   >(() => new Set(ALL_RESEARCH_CATEGORY_IDS));
   const [generateAiImage, setGenerateAiImage] = useState(true);
+  const [automationModalOpen, setAutomationModalOpen] = useState(false);
   const [clusterFilter, setClusterFilter] = useState<
     "all" | "conflicts" | "no_conflicts"
   >("no_conflicts");
@@ -1008,6 +1013,76 @@ export default function AiBlogAutomationPage() {
     }
   }
 
+  async function startAutomation(config: {
+    frequency: "daily" | "weekly" | "monthly";
+    postsPerDay: number;
+    keywordsPerService: number;
+    serviceMode: "all" | "selected";
+    serviceSlugs: string[];
+    imageMode: "stock" | "openai";
+  }) {
+    setBusy("automation-start");
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/ai-blog-automation", {
+        method: "PATCH",
+        body: JSON.stringify({ action: "startAutomation", ...config }),
+      });
+      setSettings(data.settings);
+      setAutomationModalOpen(false);
+      const run = data.run as {
+        keywordsAdded?: number;
+        clustersAdded?: number;
+        autoApprove?: { result?: { jobsCreated?: number } };
+      };
+      setOk(
+        `Automation started. First run: +${run.keywordsAdded ?? 0} keywords, +${run.clustersAdded ?? 0} clusters, ${run.autoApprove?.result?.jobsCreated ?? 0} jobs queued.`,
+      );
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to start automation");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function stopAutomation() {
+    setBusy("automation-stop");
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/ai-blog-automation", {
+        method: "PATCH",
+        body: JSON.stringify({ action: "stopAutomation" }),
+      });
+      setSettings(data.settings);
+      setOk("Automation stopped.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to stop automation");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runAutomationNow() {
+    setBusy("automation-run");
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/ai-blog-automation", {
+        method: "PATCH",
+        body: JSON.stringify({ action: "runAutomationNow" }),
+      });
+      const run = data.run as { keywordsAdded?: number; clustersAdded?: number };
+      setOk(
+        `Automation run complete: +${run.keywordsAdded ?? 0} keywords, +${run.clustersAdded ?? 0} clusters.`,
+      );
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Automation run failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function setAutoApproveMode(
     mode: "off" | "with_ai_image" | "without_image",
   ) {
@@ -1111,6 +1186,19 @@ export default function AiBlogAutomationPage() {
 
       {tab === "dashboard" && !loading ? (
         <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {settings ? (
+            <AutomationStatusCard
+              settings={settings}
+              busy={
+                busy === "automation-start" ||
+                busy === "automation-stop" ||
+                busy === "automation-run"
+              }
+              onStart={() => setAutomationModalOpen(true)}
+              onStop={() => void stopAutomation()}
+              onRunNow={() => void runAutomationNow()}
+            />
+          ) : null}
           {[
             ["Keywords", stats.keywords],
             ["Pending keywords", stats.pendingKeywords],
@@ -2091,6 +2179,14 @@ export default function AiBlogAutomationPage() {
           </ul>
         </section>
       ) : null}
+
+      <AutomationStartWizard
+        open={automationModalOpen}
+        onClose={() => setAutomationModalOpen(false)}
+        services={serviceOptions}
+        busy={busy === "automation-start"}
+        onSubmit={(config) => void startAutomation(config)}
+      />
     </div>
   );
 }

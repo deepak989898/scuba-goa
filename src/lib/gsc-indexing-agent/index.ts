@@ -21,6 +21,12 @@ export { syncSearchAnalytics } from "./analytics-sync";
 export { submitSitemapsIfDue } from "./sitemap-submit";
 export { onPublicUrlPublished } from "./publish-hook";
 export { runGscAgentJob } from "./pipeline";
+export {
+  runGscScheduledAutomation,
+  startGscScheduledAutomation,
+  stopGscScheduledAutomation,
+  shouldRunGscScheduledAutomation,
+} from "./scheduled-automation";
 export { proposeContentImprovements } from "./content-quality";
 export {
   loadEditablePage,

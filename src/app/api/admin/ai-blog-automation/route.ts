@@ -13,13 +13,14 @@ import {
 } from "@/lib/seo-blog-center/store";
 import { isGoogleAdsConfigured } from "@/lib/seo-blog-center/providers/google-ads";
 import { processGenerationQueue } from "@/lib/seo-blog-center/generation-queue";
+import { runScheduledAutomation, startScheduledAutomation, stopScheduledAutomation } from "@/lib/seo-blog-center/scheduled-automation";
 import { runAutoApprovePublishAutomation } from "@/lib/seo-blog-center/auto-approve-publish";
 import type { SeoBlogCenterSettings } from "@/lib/seo-blog-center/types";
 import { getAllServicesServer } from "@/lib/get-services-server";
 import { fallbackServices } from "@/data/services";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 function buildServiceOptions(
   live: { slug: string; title: string }[],
@@ -167,6 +168,49 @@ export async function PATCH(req: Request) {
   if (body.action === "runAutoApprove") {
     const auto = await runAutoApprovePublishAutomation(auth.uid || "admin-auto");
     return NextResponse.json({ ok: true, ...auto });
+  }
+
+  if (body.action === "startAutomation") {
+    const frequency = String(body.frequency || "daily");
+    if (!["daily", "weekly", "monthly"].includes(frequency)) {
+      return NextResponse.json({ error: "Invalid frequency" }, { status: 400 });
+    }
+    const imageMode = body.imageMode === "openai" ? "openai" : "stock";
+    const serviceMode = body.serviceMode === "selected" ? "selected" : "all";
+    const serviceSlugs = Array.isArray(body.serviceSlugs)
+      ? body.serviceSlugs.map(String).filter(Boolean)
+      : [];
+    if (serviceMode === "selected" && serviceSlugs.length === 0) {
+      return NextResponse.json(
+        { error: "Select at least one service" },
+        { status: 400 },
+      );
+    }
+    const { settings, run } = await startScheduledAutomation(
+      {
+        frequency: frequency as "daily" | "weekly" | "monthly",
+        postsPerDay: Number(body.postsPerDay) || 5,
+        keywordsPerService: Number(body.keywordsPerService) || 50,
+        serviceMode,
+        serviceSlugs,
+        imageMode,
+      },
+      auth.uid || "admin",
+    );
+    return NextResponse.json({ ok: true, settings, run });
+  }
+
+  if (body.action === "stopAutomation") {
+    const settings = await stopScheduledAutomation();
+    return NextResponse.json({ ok: true, settings });
+  }
+
+  if (body.action === "runAutomationNow") {
+    const run = await runScheduledAutomation({
+      actorId: auth.uid || "admin",
+      force: true,
+    });
+    return NextResponse.json({ ok: true, run });
   }
 
   if (body.action === "markJobPublished") {
