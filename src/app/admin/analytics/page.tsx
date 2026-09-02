@@ -197,6 +197,17 @@ type VisitorSummary = {
   leadSource: string;
 };
 
+function visitorHasSavedLead(v: VisitorSummary): boolean {
+  if (v.hasLeadCapture) return true;
+  const phone = v.leadPhone.replace(/\D/g, "");
+  if (phone.length >= 10) return true;
+  const email = v.leadEmail.trim();
+  if (email.includes("@") && email.includes(".")) return true;
+  const name = v.leadName.trim();
+  if (name.length >= 2) return true;
+  return false;
+}
+
 type DayGroup = {
   date: string;
   label: string;
@@ -712,6 +723,7 @@ export default function AdminAnalyticsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [visitorFilter, setVisitorFilter] =
     useState<VisitorKindFilter>("human");
+  const [leadOnly, setLeadOnly] = useState(false);
   const [sessionTimeline, setSessionTimeline] = useState<Row[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
@@ -1152,9 +1164,11 @@ export default function AdminAnalyticsPage() {
       });
 
     const dayGroups: DayGroup[] = dayGroupsRaw.map((day) => {
-      const visible = day.visitors.filter((v) =>
-        matchesAdminVisitorKind(v.visitorKind, visitorFilter)
-      );
+      const visible = day.visitors.filter((v) => {
+        if (!matchesAdminVisitorKind(v.visitorKind, visitorFilter)) return false;
+        if (leadOnly && !visitorHasSavedLead(v)) return false;
+        return true;
+      });
       const pageViews = visible.reduce((acc, v) => acc + v.pageViews, 0);
       return { ...day, visitors: visible, pageViews };
     });
@@ -1190,7 +1204,7 @@ export default function AdminAnalyticsPage() {
       todayHumans,
       googleHighConfidence,
     };
-  }, [rows, sessions, todayIstYmd, visitorFilter]);
+  }, [rows, sessions, todayIstYmd, visitorFilter, leadOnly]);
 
   const expandedGroup = analytics.dayGroups.find((d) => d.date === expandedDate);
   const expandedVisitors = expandedGroup?.visitors ?? [];
@@ -1616,37 +1630,59 @@ export default function AdminAnalyticsPage() {
             <p className="text-sm font-medium text-ocean-800">
               Show in visitor list
             </p>
-            <div
-              className="inline-flex flex-wrap rounded-xl border border-ocean-200 bg-white p-1 shadow-sm"
-              role="group"
-              aria-label="Visitor type filter"
-            >
-              {(
-                [
-                  ["human", "Humans"],
-                  ["suspected", "Suspected"],
-                  ["bot", "Bots"],
-                  ["all", "All"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => {
-                    setVisitorFilter(value);
-                    setSelectedSessionId("");
-                  }}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    visitorFilter === value
-                      ? "bg-ocean-800 text-white shadow-sm"
-                      : "text-ocean-700 hover:bg-ocean-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLeadOnly((prev) => !prev);
+                  setSelectedSessionId("");
+                }}
+                className={`rounded-xl border px-4 py-2 text-sm font-semibold shadow-sm transition-colors ${
+                  leadOnly
+                    ? "border-orange-500 bg-orange-500 text-white"
+                    : "border-orange-200 bg-white text-orange-900 hover:bg-orange-50"
+                }`}
+              >
+                Leads only
+              </button>
+              <div
+                className="inline-flex flex-wrap rounded-xl border border-ocean-200 bg-white p-1 shadow-sm"
+                role="group"
+                aria-label="Visitor type filter"
+              >
+                {(
+                  [
+                    ["human", "Humans"],
+                    ["suspected", "Suspected"],
+                    ["bot", "Bots"],
+                    ["all", "All"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setVisitorFilter(value);
+                      setSelectedSessionId("");
+                    }}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      visitorFilter === value
+                        ? "bg-ocean-800 text-white shadow-sm"
+                        : "text-ocean-700 hover:bg-ocean-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+          {leadOnly ? (
+            <p className="mt-2 text-xs text-orange-800">
+              Showing visitors who saved name, email, or phone (popup, booking
+              form, or chat).
+            </p>
+          ) : null}
 
           <div className="mt-4">
             <h2 className="font-display text-base font-semibold text-ocean-900">
@@ -1728,11 +1764,13 @@ export default function AdminAnalyticsPage() {
                       <div className="border-t border-ocean-100 px-4 pb-4 pt-2">
                         {day.visitors.length === 0 ? (
                           <p className="py-3 text-center text-sm text-ocean-600">
-                            {visitorFilter === "bot"
-                              ? "No bots recorded on this day."
-                              : visitorFilter === "human"
-                                ? "No human visitors on this day."
-                                : "No visitors recorded on this day."}
+                            {leadOnly
+                              ? "No leads with saved contact on this day."
+                              : visitorFilter === "bot"
+                                ? "No bots recorded on this day."
+                                : visitorFilter === "human"
+                                  ? "No human visitors on this day."
+                                  : "No visitors recorded on this day."}
                           </p>
                         ) : (
                           <div className="grid gap-2.5 lg:grid-cols-2">

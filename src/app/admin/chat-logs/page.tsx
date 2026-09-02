@@ -23,6 +23,15 @@ type DayRow = {
   convertedCount: number;
 };
 
+type UserGroup = {
+  key: string;
+  label: string;
+  phone?: string;
+  sessions: BookWithUsChatSession[];
+  converted: boolean;
+  lastAt: string;
+};
+
 function formatTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString("en-IN", {
@@ -35,32 +44,96 @@ function formatTime(iso: string): string {
   }
 }
 
-function SessionCard({ session }: { session: BookWithUsChatSession }) {
+function userKeyForSession(s: BookWithUsChatSession): string {
+  const phone = s.phone?.trim().replace(/\D/g, "");
+  if (phone && phone.length >= 10) return `phone:${phone}`;
+  const name = s.customerName?.trim();
+  if (name) return `name:${name.toLowerCase()}`;
+  return `session:${s.sessionId}`;
+}
+
+function userLabelForSession(s: BookWithUsChatSession): string {
+  if (s.customerName?.trim()) return s.customerName.trim();
+  if (s.phone?.trim()) return s.phone.trim();
+  return "Visitor";
+}
+
+/** Visitor shared name, email, or phone in the booking chat flow. */
+function sessionHasSavedContact(s: BookWithUsChatSession): boolean {
+  const phone = s.phone?.replace(/\D/g, "") ?? "";
+  if (phone.length >= 10) return true;
+  const email = s.email?.trim() ?? "";
+  if (email.includes("@") && email.includes(".")) return true;
+  const name = s.customerName?.trim() ?? "";
+  if (name.length >= 2) return true;
+  return false;
+}
+
+function filterSessions(
+  sessions: BookWithUsChatSession[],
+  contactOnly: boolean,
+): BookWithUsChatSession[] {
+  if (!contactOnly) return sessions;
+  return sessions.filter(sessionHasSavedContact);
+}
+
+function groupSessionsByUser(
+  sessions: BookWithUsChatSession[],
+  contactOnly = false,
+): UserGroup[] {
+  const filtered = filterSessions(sessions, contactOnly);
+  const map = new Map<string, UserGroup>();
+  for (const s of filtered) {
+    const key = userKeyForSession(s);
+    const existing = map.get(key);
+    if (existing) {
+      existing.sessions.push(s);
+      if (s.converted) existing.converted = true;
+      if ((s.updatedAt || "") > existing.lastAt) existing.lastAt = s.updatedAt;
+    } else {
+      map.set(key, {
+        key,
+        label: userLabelForSession(s),
+        phone: s.phone?.trim() || undefined,
+        sessions: [s],
+        converted: s.converted,
+        lastAt: s.updatedAt || s.createdAt,
+      });
+    }
+  }
+  return [...map.values()]
+    .map((g) => ({
+      ...g,
+      sessions: [...g.sessions].sort((a, b) =>
+        (b.updatedAt || "").localeCompare(a.updatedAt || ""),
+      ),
+    }))
+    .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+}
+
+function ConversationBody({ session }: { session: BookWithUsChatSession }) {
   return (
-    <article className="rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-bold text-ocean-900">
-            {session.customerName || "Visitor"}
-            {session.phone ? ` · ${session.phone}` : ""}
-          </p>
-          <p className="text-xs text-ocean-600">
-            {formatTime(session.updatedAt)} · Step: {session.step}
-            {session.converted ? " · ✅ Converted" : ""}
-          </p>
-        </div>
-        <div className="text-right text-xs text-ocean-700">
-          {session.tripDate ? <p>📅 Trip: {session.tripDate}</p> : null}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-ocean-700">
+        <p>
+          {formatTime(session.updatedAt)} · Step: {session.step}
+          {session.converted ? " · ✅ Converted" : ""}
+        </p>
+        <div className="text-right">
+          {session.tripDate ? <p>📅 {session.tripDate}</p> : null}
           {session.people ? <p>👥 {session.people} people</p> : null}
           {session.pickup ? <p>📍 {session.pickup}</p> : null}
+          {session.email ? <p>✉️ {session.email}</p> : null}
           {session.cartTotalInr != null ? (
-            <p className="font-bold">₹{session.cartTotalInr.toLocaleString("en-IN")}</p>
+            <p className="font-bold text-ocean-900">
+              ₹{session.cartTotalInr.toLocaleString("en-IN")}
+            </p>
           ) : null}
         </div>
       </div>
 
       {session.selectedPackages && session.selectedPackages.length > 0 ? (
-        <ul className="mt-2 flex flex-wrap gap-1">
+        <ul className="flex flex-wrap gap-1">
           {session.selectedPackages.map((p) => (
             <li
               key={p}
@@ -72,14 +145,14 @@ function SessionCard({ session }: { session: BookWithUsChatSession }) {
         </ul>
       ) : null}
 
-      <div className="mt-3 space-y-2 max-h-80 overflow-y-auto rounded-lg border border-ocean-50 bg-sand/40 p-2">
+      <div className="space-y-2 max-h-96 overflow-y-auto rounded-lg border border-ocean-100 bg-white p-2">
         {session.messages.map((m, i) => (
           <div
             key={`${session.id}-${i}`}
             className={
               m.role === "user"
                 ? "ml-4 rounded-xl rounded-br-sm bg-ocean-800 px-3 py-2 text-xs text-white"
-                : "mr-2 rounded-xl rounded-bl-sm bg-white px-3 py-2 text-xs text-ocean-900 shadow-sm"
+                : "mr-2 rounded-xl rounded-bl-sm bg-ocean-50 px-3 py-2 text-xs text-ocean-900"
             }
           >
             <span className="block text-[9px] font-bold uppercase opacity-70">
@@ -92,11 +165,19 @@ function SessionCard({ session }: { session: BookWithUsChatSession }) {
       </div>
 
       {session.paymentId ? (
-        <p className="mt-2 text-[10px] font-mono text-ocean-500">
+        <p className="text-[10px] font-mono text-ocean-500">
           Payment: {session.paymentId}
         </p>
       ) : null}
-    </article>
+    </div>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <span className="text-sm font-bold text-ocean-500" aria-hidden>
+      {open ? "▲" : "▼"}
+    </span>
   );
 }
 
@@ -104,11 +185,13 @@ export default function AdminChatLogsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [days, setDays] = useState<DayRow[]>([]);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [sessionsByDate, setSessionsByDate] = useState<
     Record<string, BookWithUsChatSession[]>
   >({});
   const [loadingDate, setLoadingDate] = useState<string | null>(null);
+  const [contactOnly, setContactOnly] = useState(false);
 
   const loadDays = useCallback(async () => {
     setLoading(true);
@@ -128,11 +211,15 @@ export default function AdminChatLogsPage() {
   }, [loadDays]);
 
   async function toggleDate(date: string) {
-    if (expanded === date) {
-      setExpanded(null);
+    const next = new Set(expandedDates);
+    if (next.has(date)) {
+      next.delete(date);
+      setExpandedDates(next);
       return;
     }
-    setExpanded(date);
+    next.add(date);
+    setExpandedDates(next);
+
     if (sessionsByDate[date]) return;
 
     setLoadingDate(date);
@@ -152,6 +239,14 @@ export default function AdminChatLogsPage() {
     }
   }
 
+  function toggleUser(date: string, userKey: string) {
+    const id = `${date}:${userKey}`;
+    const next = new Set(expandedUsers);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpandedUsers(next);
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -160,18 +255,50 @@ export default function AdminChatLogsPage() {
             Book with us · Chat logs
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
-            Full tap-to-book conversations from the site chat widget. Grouped by
-            IST date — expand a day to read every visitor chat and conversion.
+            Tap a date → tap a visitor → read the full conversation. Grouped by
+            IST day and visitor (phone / name).
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void loadDays()}
+            className="rounded-full border border-ocean-200 px-4 py-2 text-sm font-semibold text-ocean-800"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={loading}
-          onClick={() => void loadDays()}
-          className="rounded-full border border-ocean-200 px-4 py-2 text-sm font-semibold text-ocean-800"
+          onClick={() => setContactOnly(false)}
+          className={`rounded-full px-4 py-2 text-xs font-bold ${
+            !contactOnly
+              ? "bg-ocean-800 text-white"
+              : "border border-ocean-200 text-ocean-800"
+          }`}
         >
-          Refresh
+          All chats
         </button>
+        <button
+          type="button"
+          onClick={() => setContactOnly(true)}
+          className={`rounded-full px-4 py-2 text-xs font-bold ${
+            contactOnly
+              ? "bg-teal-700 text-white"
+              : "border border-ocean-200 text-ocean-800"
+          }`}
+        >
+          With name / email / phone
+        </button>
+        {contactOnly ? (
+          <span className="text-xs text-ocean-600">
+            Showing visitors who saved contact details in chat
+          </span>
+        ) : null}
       </div>
 
       {err ? (
@@ -189,8 +316,15 @@ export default function AdminChatLogsPage() {
       ) : (
         <div className="mt-4 space-y-2">
           {days.map((day) => {
-            const isOpen = expanded === day.date;
+            const dateOpen = expandedDates.has(day.date);
             const sessions = sessionsByDate[day.date] ?? [];
+            const filteredSessions = filterSessions(sessions, contactOnly);
+            const userGroups = groupSessionsByUser(sessions, contactOnly);
+
+            if (contactOnly && sessions.length > 0 && userGroups.length === 0) {
+              return null;
+            }
+
             return (
               <section
                 key={day.date}
@@ -206,30 +340,88 @@ export default function AdminChatLogsPage() {
                       {day.label}
                     </p>
                     <p className="text-xs text-ocean-600">
-                      {day.sessionCount} chat{day.sessionCount === 1 ? "" : "s"}
+                      {contactOnly && sessions.length > 0
+                        ? `${filteredSessions.length} with contact`
+                        : `${day.sessionCount} chat${day.sessionCount === 1 ? "" : "s"}`}
                       {day.convertedCount > 0
                         ? ` · ${day.convertedCount} converted`
                         : ""}
                     </p>
                   </div>
-                  <span
-                    className="text-sm font-bold text-ocean-500"
-                    aria-hidden
-                  >
-                    {isOpen ? "▲" : "▼"}
-                  </span>
+                  <Chevron open={dateOpen} />
                 </button>
 
-                {isOpen ? (
-                  <div className="border-t border-ocean-100 bg-sand/30 p-3 space-y-3">
+                {dateOpen ? (
+                  <div className="border-t border-ocean-100 bg-sand/20 px-2 py-2">
                     {loadingDate === day.date ? (
-                      <p className="text-sm text-ocean-600">Loading chats…</p>
-                    ) : sessions.length === 0 ? (
-                      <p className="text-sm text-ocean-600">No sessions this day.</p>
+                      <p className="px-2 py-2 text-sm text-ocean-600">
+                        Loading visitors…
+                      </p>
+                    ) : userGroups.length === 0 ? (
+                      <p className="px-2 py-2 text-sm text-ocean-600">
+                        {contactOnly
+                          ? "No visitors with saved contact on this day."
+                          : "No chats this day."}
+                      </p>
                     ) : (
-                      sessions.map((s) => (
-                        <SessionCard key={s.id} session={s} />
-                      ))
+                      <div className="space-y-1">
+                        {userGroups.map((group) => {
+                          const userId = `${day.date}:${group.key}`;
+                          const userOpen = expandedUsers.has(userId);
+                          const displayPhone =
+                            group.phone &&
+                            !group.label.includes(group.phone)
+                              ? group.phone
+                              : null;
+
+                          return (
+                            <div
+                              key={userId}
+                              className="rounded-lg border border-ocean-100 bg-white"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => toggleUser(day.date, group.key)}
+                                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-ocean-50/60"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-ocean-900">
+                                    {group.label}
+                                    {displayPhone ? ` · ${displayPhone}` : ""}
+                                    {group.converted ? (
+                                      <span className="ml-1 text-emerald-700">
+                                        ✅
+                                      </span>
+                                    ) : null}
+                                  </p>
+                                  <p className="text-xs text-ocean-600">
+                                    {group.sessions.length} conversation
+                                    {group.sessions.length === 1 ? "" : "s"} ·
+                                    Last {formatTime(group.lastAt)}
+                                  </p>
+                                </div>
+                                <Chevron open={userOpen} />
+                              </button>
+
+                              {userOpen ? (
+                                <div className="space-y-3 border-t border-ocean-50 bg-sand/30 p-3">
+                                  {group.sessions.map((session, idx) => (
+                                    <div key={session.id}>
+                                      {group.sessions.length > 1 ? (
+                                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-ocean-500">
+                                          Chat {idx + 1} ·{" "}
+                                          {formatTime(session.updatedAt)}
+                                        </p>
+                                      ) : null}
+                                      <ConversationBody session={session} />
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 ) : null}
