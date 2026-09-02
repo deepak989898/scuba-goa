@@ -741,6 +741,57 @@ export default function AiBlogAutomationPage() {
     );
   }
 
+  async function publishSelectedQueueJobs(jobIds: string[]) {
+    if (jobIds.length === 0) {
+      setErr("Select at least one job");
+      return;
+    }
+    const targets = jobs.filter((j) => jobIds.includes(j.id));
+    const publishable = targets.filter(
+      (j) => j.status !== "published" && jobBlogSlug(j),
+    );
+    if (publishable.length === 0) {
+      setErr("No unpublished drafts with a blog slug in your selection");
+      return;
+    }
+    if (
+      !confirm(
+        `Publish ${publishable.length} selected blog(s) to the live site?\n\n${publishable
+          .map((j) => `/blog/${jobBlogSlug(j)}`)
+          .join("\n")}`,
+      )
+    ) {
+      return;
+    }
+    setBusy("queue-publish");
+    setErr(null);
+    setOk(null);
+    try {
+      const data = await adminFetch("/api/admin/ai-blog-automation", {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "publishQueueJobs",
+          jobIds: publishable.map((j) => j.id),
+        }),
+      });
+      const okN = Number(data.successCount) || 0;
+      const failN = Number(data.failCount) || 0;
+      if (okN > 0) {
+        setOk(
+          `Published ${okN} blog(s)${failN > 0 ? ` · ${failN} could not be published` : ""}`,
+        );
+      } else {
+        setErr("No blogs were published. Check draft content or errors in logs.");
+      }
+      setSelectedJobs(new Set());
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function deleteQueueBlogs(jobIds: string[]) {
     if (jobIds.length === 0) {
       setErr("Select at least one job");
@@ -1856,6 +1907,16 @@ export default function AiBlogAutomationPage() {
             <p className="text-xs font-semibold text-ocean-800">
               {selectedJobs.size} selected
             </p>
+            <button
+              type="button"
+              disabled={busy === "queue-publish" || selectedJobs.size === 0}
+              onClick={() => void publishSelectedQueueJobs([...selectedJobs])}
+              className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {busy === "queue-publish"
+                ? "Publishing…"
+                : `Publish selected (${selectedJobs.size})`}
+            </button>
             <button
               type="button"
               disabled={busy === "queue-delete" || selectedJobs.size === 0}

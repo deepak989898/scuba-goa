@@ -268,6 +268,175 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, autoApprove: auto, queue });
   }
 
+  if (body.action === "publishQueueJobs") {
+    const jobIds = Array.isArray(body.jobIds)
+      ? body.jobIds.map(String).filter(Boolean)
+      : [];
+    if (jobIds.length === 0) {
+      return NextResponse.json({ error: "Select at least one job" }, { status: 400 });
+    }
+    if (jobIds.length > 50) {
+      return NextResponse.json(
+        { error: "Max 50 jobs per bulk publish" },
+        { status: 400 },
+      );
+    }
+
+    const {
+      getGenerationJobById,
+      saveGenerationJob,
+      getDraftById,
+      saveDraft,
+      listDrafts,
+    } = await import("@/lib/seo-blog-center/store");
+    const { publishBlogPostNow } = await import(
+      "@/lib/blog-automation/scheduled-posts"
+    );
+    const { seoBlogDraftToFirestorePost } = await import(
+      "@/lib/seo-blog-center/draft-to-post"
+    );
+    const { blogPostToFirestorePayload } = await import("@/lib/blog-firestore");
+    const { getAdminDb } = await import("@/lib/firebase-admin");
+    const { revalidatePath } = await import("next/cache");
+
+    const db = getAdminDb();
+    if (!db) {
+      return NextResponse.json({ error: "Server not configured" }, { status: 500 });
+    }
+
+    const published: string[] = [];
+    const failed: { jobId: string; error: string }[] = [];
+    const now = new Date().toISOString();
+
+    for (const jobId of jobIds.slice(0, 50)) {
+      try {
+        const job = await getGenerationJobById(jobId);
+        if (!job) {
+          failed.push({ jobId, error: "Job not found" });
+          continue;
+        }
+        if (job.status === "published") {
+          failed.push({ jobId, error: "Already published" });
+          continue;
+        }
+
+        let draft = job.generatedDraftId
+          ? await getDraftById(job.generatedDraftId)
+          : null;
+        const slug =
+          job.generatedBlogSlug?.trim() ||
+          draft?.slug?.trim() ||
+          draft?.publishedBlogSlug?.trim() ||
+          "";
+
+        if (!slug) {
+          failed.push({ jobId, error: "No blog slug on this job" });
+          continue;
+        }
+
+        const postRef = db.collection("blogPosts").doc(slug);
+        const postSnap = await postRef.get();
+
+        if (!postSnap.exists) {
+          if (!draft) {
+            draft =
+              (await listDrafts(undefined, 200)).find(
+                (d) => d.slug === slug || d.publishedBlogSlug === slug,
+              ) ?? null;
+          }
+          if (!draft?.title?.trim() || !draft?.content?.trim()) {
+            failed.push({
+              jobId,
+              error: "Draft content missing — open Edit first",
+            });
+            continue;
+          }
+          const post = seoBlogDraftToFirestorePost(draft, false);
+          await postRef.set(blogPostToFirestorePayload(post), { merge: true });
+        } else if (postSnap.data()?.published === true) {
+          await saveGenerationJob({
+            ...job,
+            status: "published",
+            generatedBlogSlug: slug,
+            completedAt: job.completedAt || now,
+          });
+          if (draft && draft.status !== "published") {
+            await saveDraft({
+              ...draft,
+              status: "published",
+              publishedAt: now,
+              publishedBlogSlug: slug,
+              updatedAt: now,
+            });
+          }
+          published.push(slug);
+          continue;
+        }
+
+        const pub = await publishBlogPostNow(slug);
+        if (!pub.ok) {
+          failed.push({ jobId, error: pub.error || "Publish failed" });
+          continue;
+        }
+
+        await saveGenerationJob({
+          ...job,
+          status: "published",
+          generatedBlogSlug: slug,
+          completedAt: job.completedAt || now,
+        });
+
+        if (!draft && job.generatedDraftId) {
+          draft = await getDraftById(job.generatedDraftId);
+        }
+        if (!draft) {
+          draft =
+            (await listDrafts(undefined, 200)).find(
+              (d) => d.slug === slug || d.publishedBlogSlug === slug,
+            ) ?? null;
+        }
+        if (draft) {
+          await saveDraft({
+            ...draft,
+            status: "published",
+            publishedAt: now,
+            publishedBlogSlug: slug,
+            updatedAt: now,
+          });
+        }
+
+        await addSeoBlogLog({
+          type: "blog_published",
+          message: `Bulk published from queue: /blog/${slug}`,
+          resourceId: jobId,
+        });
+
+        published.push(slug);
+      } catch (e) {
+        failed.push({
+          jobId,
+          error: e instanceof Error ? e.message : "Publish failed",
+        });
+      }
+    }
+
+    if (published.length > 0) {
+      revalidatePath("/blog");
+      for (const slug of published) {
+        revalidatePath(`/blog/${slug}`);
+      }
+      revalidatePath("/sitemap.xml");
+    }
+
+    return NextResponse.json({
+      ok: true,
+      published,
+      failed,
+      successCount: published.length,
+      failCount: failed.length,
+    });
+  }
+
   if (body.action === "markJobPublished") {
     const jobId = String(body.jobId ?? "").trim();
     const slug = String(body.slug ?? "").trim();
