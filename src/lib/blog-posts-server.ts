@@ -3,6 +3,7 @@ import {
   isValidBlogSlug,
   normalizeBlogSlugInput,
   parseBlogPostFromFirestore,
+  pickBlogDisplayUpdatedYmd,
   type BlogPostFirestore,
 } from "@/lib/blog-firestore";
 import type { BlogPost } from "@/data/blog/post-types";
@@ -13,7 +14,7 @@ export function blogFirestoreToBlogPost(p: BlogPostFirestore): BlogPost {
     title: p.title,
     excerpt: p.excerpt,
     date: p.date,
-    updatedAt: p.updatedAt.slice(0, 10),
+    updatedAt: pickBlogDisplayUpdatedYmd(p),
     readTime: p.readTime,
     imageUrl: p.featuredImageUrl || p.ogImageUrl || undefined,
     imageAlt: p.featuredImageAlt || p.title,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatBlogDateForReaders } from "@/lib/blog-firestore";
 
 type Props = {
   publishedAt?: string;
@@ -23,12 +24,12 @@ export function BlogTrustBlock({
         {publishedAt ? (
           <p>
             <span className="font-semibold text-ocean-900">Published:</span>{" "}
-            {publishedAt}
+            {formatBlogDateForReaders(publishedAt)}
           </p>
         ) : null}
         <p>
           <span className="font-semibold text-ocean-900">Updated:</span>{" "}
-          {updatedAt}
+          {formatBlogDateForReaders(updatedAt)}
         </p>
         <p>
           <span className="font-semibold text-ocean-900">By:</span>{" "}

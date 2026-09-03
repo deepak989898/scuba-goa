@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
   blogPostToFirestorePayload,
+  istDateYmdFromIso,
   parseBlogPostFromFirestore,
   type BlogPostFirestore,
 } from "@/lib/blog-firestore";
@@ -428,7 +429,7 @@ async function persistFields(
   const db = getAdminDb();
   if (!db) throw new Error("Server not configured");
   const slug = record.contentId.trim();
-  const now = new Date().toISOString();
+  const now = meta.at?.trim() || new Date().toISOString();
 
   if (record.pageType === "blog") {
     const ref = db.collection("blogPosts").doc(slug);
@@ -452,6 +453,8 @@ async function persistFields(
       faqs: fields.faqs.length ? fields.faqs : current.faqs,
       readTime: estimateReadTime(fields.content),
       updatedAt: now,
+      contentUpdatedDate: istDateYmdFromIso(now),
+      lastSeoRankingImprove: blogLastSeoImproveFromMeta(meta),
       // Images intentionally unchanged
       featuredImageUrl: current.featuredImageUrl,
       featuredImageAlt: current.featuredImageAlt,
@@ -695,10 +698,11 @@ async function saveBlogLastSeoImprove(
 ): Promise<void> {
   const db = getAdminDb();
   if (!db) return;
+  const updatedAt = meta.at || new Date().toISOString();
   await db.collection("blogPosts").doc(slug).set(
     {
       lastSeoRankingImprove: {
-        at: meta.at,
+        at: updatedAt,
         estimatedPct: meta.estimatedPct,
         summary: meta.summary,
         targetBand: meta.targetBand,
@@ -706,10 +710,25 @@ async function saveBlogLastSeoImprove(
         clicksAtImprove: meta.clicksAtImprove ?? 0,
         rankingStatus: meta.rankingStatus,
       },
-      updatedAt: new Date().toISOString(),
+      contentUpdatedDate: istDateYmdFromIso(updatedAt),
+      updatedAt,
     },
     { merge: true },
   );
+}
+
+function blogLastSeoImproveFromMeta(
+  meta: RankingImproveMeta,
+): NonNullable<BlogPostFirestore["lastSeoRankingImprove"]> {
+  return {
+    at: meta.at,
+    estimatedPct: meta.estimatedPct,
+    summary: meta.summary,
+    targetBand: meta.targetBand,
+    impressionsAtImprove: meta.impressionsAtImprove ?? 0,
+    clicksAtImprove: meta.clicksAtImprove ?? 0,
+    rankingStatus: meta.rankingStatus,
+  };
 }
 
 function improveMetaWithGscSnapshots(
@@ -925,7 +944,7 @@ async function applyBlogRankingUpdateWithMeta(
       { requirePublished: false },
     );
     if (!current) throw new Error(`Could not parse blog: ${s}`);
-    const now = new Date().toISOString();
+    const now = improve.at?.trim() || new Date().toISOString();
     const next: BlogPostFirestore = {
       ...current,
       title: fields.title,
@@ -937,6 +956,8 @@ async function applyBlogRankingUpdateWithMeta(
       faqs: fields.faqs.length ? fields.faqs : current.faqs,
       readTime: estimateReadTime(fields.content),
       updatedAt: now,
+      contentUpdatedDate: istDateYmdFromIso(now),
+      lastSeoRankingImprove: blogLastSeoImproveFromMeta(improve),
       featuredImageUrl: current.featuredImageUrl,
       featuredImageAlt: current.featuredImageAlt,
       ogImageUrl: current.ogImageUrl,

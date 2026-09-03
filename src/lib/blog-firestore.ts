@@ -74,6 +74,8 @@ export type BlogPostFirestore = {
   /** UTC ISO — auto-publish when cron time >= this */
   scheduledPublishAt?: string;
   localeGroupId?: string;
+  /** YYYY-MM-DD (IST) — last content/SEO text refresh shown to readers */
+  contentUpdatedDate?: string;
   /** Last AI SEO text improve (title/meta/content) — for admin cooldown UI. */
   lastSeoRankingImprove?: {
     at: string;
@@ -88,6 +90,41 @@ export type BlogPostFirestore = {
 
 export function isBlogScheduled(post: BlogPostFirestore): boolean {
   return !post.published && Boolean(post.scheduledPublishAt?.trim());
+}
+
+/** Calendar date YYYY-MM-DD in Asia/Kolkata from an ISO timestamp. */
+export function istDateYmdFromIso(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  }
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+/** Best YYYY-MM-DD to show as “Updated” on the public blog. */
+export function pickBlogDisplayUpdatedYmd(post: BlogPostFirestore): string {
+  const content = post.contentUpdatedDate?.trim();
+  if (content) return content.slice(0, 10);
+  const seoAt = post.lastSeoRankingImprove?.at?.trim();
+  if (seoAt) return seoAt.slice(0, 10);
+  const updated = post.updatedAt?.trim();
+  if (updated) return updated.slice(0, 10);
+  return post.date?.trim().slice(0, 10) || "";
+}
+
+/** Human-readable date for blog meta (IST). */
+export function formatBlogDateForReaders(ymdOrIso: string): string {
+  const raw = ymdOrIso.trim();
+  if (!raw) return "—";
+  const iso = raw.length === 10 ? `${raw}T12:00:00+05:30` : raw;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function normalizeBlogSlugInput(raw: string): string {
@@ -214,6 +251,10 @@ export function parseBlogPostFromFirestore(
         ? String(data.localeGroupId).trim()
         : undefined,
     lastSeoRankingImprove: parseLastSeoRankingImprove(data.lastSeoRankingImprove),
+    contentUpdatedDate:
+      data.contentUpdatedDate != null
+        ? String(data.contentUpdatedDate).trim().slice(0, 10)
+        : undefined,
   };
 }
 
@@ -278,6 +319,9 @@ export function blogPostToFirestorePayload(
     ...(post.localeGroupId ? { localeGroupId: post.localeGroupId } : {}),
     ...(post.lastSeoRankingImprove
       ? { lastSeoRankingImprove: post.lastSeoRankingImprove }
+      : {}),
+    ...(post.contentUpdatedDate
+      ? { contentUpdatedDate: post.contentUpdatedDate.slice(0, 10) }
       : {}),
   };
 }

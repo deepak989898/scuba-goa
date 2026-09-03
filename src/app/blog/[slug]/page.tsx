@@ -15,6 +15,9 @@ import {
   getPublishedBlogPostBySlug,
   listPublishedBlogSlugsServer,
 } from "@/lib/blog-posts-server";
+import {
+  pickBlogDisplayUpdatedYmd,
+} from "@/lib/blog-firestore";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { relatedServicesForContent } from "@/lib/related-services-for-content";
@@ -69,7 +72,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   );
   const ogAlt = fs?.featuredImageAlt?.trim() || p.imageAlt?.trim() || p.title;
   const publishedTime = fs?.publishedAt?.slice(0, 10) || p.date;
-  const modifiedTime = fs?.updatedAt?.slice(0, 10) || p.updatedAt || p.date;
+  const modifiedTime = fs
+    ? pickBlogDisplayUpdatedYmd(fs)
+    : p.updatedAt || p.date;
 
   return {
     title: { absolute: title },
@@ -234,7 +239,9 @@ export default async function BlogPostPage({ params }: Props) {
   const seoDescription = buildMetaDescriptionWithContact(
     fs?.metaDescription?.trim() || p.excerpt,
   );
-  const dateModified = fs?.updatedAt?.slice(0, 10) ?? p.updatedAt ?? p.date;
+  const dateModified = fs
+    ? pickBlogDisplayUpdatedYmd(fs)
+    : p.updatedAt ?? p.date;
   const publishedLabel = (fs?.publishedAt || p.date || "").slice(0, 10);
   const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
   const bookHref = focusServiceSlug
