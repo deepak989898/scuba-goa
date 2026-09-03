@@ -81,6 +81,14 @@ const navIcons = {
       <path d="m9 15.5 2 2 4-4" />
     </MenuIcon>
   ),
+  hotels: (
+    <MenuIcon>
+      <path d="M3 10h4v10H3z" />
+      <path d="M10 6h4v14h-4z" />
+      <path d="M17 12h4v8h-4z" />
+      <path d="M2 20h20" />
+    </MenuIcon>
+  ),
   whatsapp: (
     <svg
       className="h-5 w-5 shrink-0 text-emerald-400"
@@ -96,6 +104,7 @@ const navIcons = {
 const nav = [
   { href: "/", label: "Home", icon: navIcons.home },
   { href: "/services", label: "Services", icon: navIcons.services },
+  { href: "/hotels", label: "Hotels", icon: navIcons.hotels },
   { href: "/booking", label: "Book", icon: navIcons.book },
   { href: "/gallery", label: "Gallery", icon: navIcons.gallery },
   { href: "/offers", label: "Offers", icon: navIcons.offers },
