@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { whatsappLink } from "@/lib/constants";
+import { useHotelsMenuVisible } from "@/hooks/useHotelsMenuVisible";
 
 function MenuIcon({ children }: { children: ReactNode }) {
   return (
@@ -104,21 +105,29 @@ const navIcons = {
 const nav = [
   { href: "/", label: "Home", icon: navIcons.home },
   { href: "/services", label: "Services", icon: navIcons.services },
-  { href: "/hotels", label: "Hotels", icon: navIcons.hotels },
+  { href: "/hotels", label: "Hotels", icon: navIcons.hotels, hotelsOnly: true },
   { href: "/booking", label: "Book", icon: navIcons.book },
   { href: "/gallery", label: "Gallery", icon: navIcons.gallery },
   { href: "/offers", label: "Offers", icon: navIcons.offers },
   { href: "/about", label: "About", icon: navIcons.about },
   { href: "/contact", label: "Contact", icon: navIcons.contact },
-];
+] as const;
 
 export function Header() {
   const pathname = usePathname();
+  const { visible: hotelsVisible, loading: hotelsMenuLoading } = useHotelsMenuVisible();
   const isHome = pathname === "/";
   /** Transparent nav only over the home full-bleed hero */
   const overHero = isHome;
   const isBooking = pathname === "/booking" || pathname?.startsWith("/booking/");
   const [open, setOpen] = useState(false);
+
+  const navItems = nav.filter(
+    (item) =>
+      !("hotelsOnly" in item && item.hotelsOnly) ||
+      hotelsVisible ||
+      hotelsMenuLoading,
+  );
 
   return (
     <header
@@ -151,7 +160,7 @@ export function Header() {
           />
         </Link>
         <nav className="hidden items-center gap-0.5 md:flex">
-          {nav.map((item) => {
+          {navItems.map((item) => {
             const active =
               item.href === "/booking"
                 ? isBooking
@@ -230,7 +239,7 @@ export function Header() {
               </span>
               Book now
             </Link>
-            {nav.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

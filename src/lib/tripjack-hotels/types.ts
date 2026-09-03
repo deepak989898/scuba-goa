@@ -127,7 +127,11 @@ export type HotelRoomOption = {
 };
 
 export type HotelsSiteSettings = {
-  enabled: boolean;
+  /** Show Hotels link in website header/footer navigation */
+  websiteMenuVisible?: boolean;
+  /** Legacy alias — kept in sync with websiteMenuVisible */
+  enabled?: boolean;
   markupPercent?: number;
   updatedAt?: string;
+  updatedBy?: string;
 };

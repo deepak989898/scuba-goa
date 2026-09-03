@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { FooterQuickLinks } from "@/components/FooterQuickLinks";
 import { OfficeMapEmbed } from "@/components/OfficeMapEmbed";
 import {
   CONTACT_EMAIL,
@@ -11,17 +12,6 @@ import {
   SITE_NAME,
   whatsappLink,
 } from "@/lib/constants";
-
-const quick = [
-  { href: "/booking", label: "Book & pay online" },
-  { href: "/hotels", label: "Hotels in Goa" },
-  { href: "/offers", label: "Package offers" },
-  { href: "/services", label: "All services" },
-  { href: "/blog", label: "Travel blog" },
-  { href: "/guides", label: "Guides" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/contact", label: "Contact" },
-];
 
 const legal = [
   { href: "/privacy-policy", label: "Privacy Policy" },
@@ -70,24 +60,7 @@ export function Footer() {
                 Quick links
               </p>
               <div className="mt-2 h-0.5 w-10 rounded-full bg-gradient-to-r from-cyan-400 to-sky-300" />
-              <ul className="mt-4 space-y-1 text-sm text-slate-200">
-                {quick.map((q) => (
-                  <li key={q.href}>
-                    <Link
-                      href={q.href}
-                      className="group inline-flex min-h-8 items-center gap-2 transition hover:translate-x-1 hover:text-cyan-300"
-                    >
-                      <span
-                        className="text-cyan-500 transition group-hover:text-cyan-300"
-                        aria-hidden
-                      >
-                        ›
-                      </span>
-                      {q.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <FooterQuickLinks />
             </div>
 
             <div className="min-w-0 lg:col-span-2">
