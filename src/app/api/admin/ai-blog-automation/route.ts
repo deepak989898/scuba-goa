@@ -3,6 +3,7 @@ import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
   getSeoBlogSettings,
   listClusters,
+  listPendingClusters,
   listDrafts,
   listGenerationJobs,
   listKeywords,
@@ -56,11 +57,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ keywords: await listKeywords(undefined, 300) });
   }
   if (view === "clusters") {
-    const clusters = (await listClusters(150)).filter((c) => c.status === "pending");
+    const clusters = await listPendingClusters(300);
     return NextResponse.json({ clusters });
   }
   if (view === "jobs") {
-    return NextResponse.json({ jobs: await listGenerationJobs(undefined, 150) });
+    return NextResponse.json({ jobs: await listGenerationJobs(undefined, 300) });
   }
   if (view === "drafts") {
     return NextResponse.json({ drafts: await listDrafts(undefined, 100) });
@@ -83,8 +84,8 @@ export async function GET(req: Request) {
   if (view === "summary") {
     const [keywordsSample, clusters, jobs, drafts] = await Promise.all([
       listKeywords(undefined, 200),
-      listClusters(300),
-      listGenerationJobs(undefined, 300),
+      listPendingClusters(300),
+      listGenerationJobs(undefined, 400),
       listDrafts(undefined, 80),
     ]);
     return NextResponse.json({
@@ -99,14 +100,14 @@ export async function GET(req: Request) {
         keywords: keywordsSample.length,
         pendingKeywords: keywordsSample.filter((k) => k.status === "pending").length,
         clusters: clusters.length,
-        pendingClusters: clusters.filter((c) => c.status === "pending").length,
+        pendingClusters: clusters.length,
         waitingJobs: jobs.filter((j) => j.status === "waiting").length,
         failedJobs: jobs.filter((j) => j.status === "failed").length,
         drafts: drafts.filter((d) => d.status !== "published").length,
         publishedDrafts: drafts.filter((d) => d.status === "published").length,
       },
       keywords: keywordsSample,
-      clusters: clusters.filter((c) => c.status === "pending"),
+      clusters,
       jobs: jobs.slice(0, 150),
       drafts: drafts.slice(0, 40),
       logs: [],
@@ -115,8 +116,8 @@ export async function GET(req: Request) {
 
   const [keywords, clusters, jobs, drafts, logs] = await Promise.all([
     listKeywords(undefined, 200),
-    listClusters(150),
-    listGenerationJobs(undefined, 100),
+    listPendingClusters(300),
+    listGenerationJobs(undefined, 200),
     listDrafts(undefined, 80),
     listLogs(40),
   ]);
@@ -133,14 +134,14 @@ export async function GET(req: Request) {
       keywords: keywords.length,
       pendingKeywords: keywords.filter((k) => k.status === "pending").length,
       clusters: clusters.length,
-      pendingClusters: clusters.filter((c) => c.status === "pending").length,
+      pendingClusters: clusters.length,
       waitingJobs: jobs.filter((j) => j.status === "waiting").length,
       failedJobs: jobs.filter((j) => j.status === "failed").length,
       drafts: drafts.filter((d) => d.status !== "published").length,
       publishedDrafts: drafts.filter((d) => d.status === "published").length,
     },
     keywords,
-    clusters: clusters.filter((c) => c.status === "pending"),
+    clusters,
     jobs: jobs.slice(0, 50),
     drafts: drafts.slice(0, 40),
     logs,

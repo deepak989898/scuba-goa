@@ -4,7 +4,7 @@ import {
   getClusterById,
   getKeywordById,
   getSeoBlogSettings,
-  listClusters,
+  listPendingClusters,
   listGenerationJobs,
   saveCluster,
   saveGenerationJob,
@@ -213,9 +213,9 @@ export async function runAutoApprovePublishAutomation(actorId = "system-auto"): 
     };
   }
 
-  const pending = (await listClusters(200))
-    .filter((c) => c.status === "pending")
-    .sort((a, b) => (b.opportunityScore ?? 0) - (a.opportunityScore ?? 0));
+  const pending = (await listPendingClusters(300)).sort(
+    (a, b) => (b.opportunityScore ?? 0) - (a.opportunityScore ?? 0),
+  );
 
   const eligibleIds = pending
     .filter((c) => !clusterHasConflicts(c))

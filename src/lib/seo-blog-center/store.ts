@@ -208,11 +208,30 @@ export async function listLogs(limit = 50): Promise<SeoBlogCenterLog[]> {
 export async function listClusters(limit = 100): Promise<SeoKeywordCluster[]> {
   const db = getAdminDb();
   if (!db) return [];
-  const snap = await db.collection(COL.clusters).limit(Math.min(300, limit * 2)).get();
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }) as SeoKeywordCluster)
-    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
-    .slice(0, limit);
+  const cap = Math.min(500, Math.max(1, limit));
+
+  try {
+    const snap = await db
+      .collection(COL.clusters)
+      .orderBy("createdAt", "desc")
+      .limit(cap)
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SeoKeywordCluster);
+  } catch (e) {
+    console.error("[seo-blog-center] listClusters orderBy failed", e);
+    const snap = await db.collection(COL.clusters).limit(cap * 4).get();
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as SeoKeywordCluster)
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+      .slice(0, cap);
+  }
+}
+
+/** Pending clusters for approve UI — newest first. */
+export async function listPendingClusters(limit = 250): Promise<SeoKeywordCluster[]> {
+  const cap = Math.min(500, Math.max(1, limit));
+  const rows = await listClusters(Math.min(500, cap * 2));
+  return rows.filter((c) => c.status === "pending").slice(0, cap);
 }
 
 export async function listGenerationJobs(
@@ -221,14 +240,30 @@ export async function listGenerationJobs(
 ): Promise<AiBlogGenerationJob[]> {
   const db = getAdminDb();
   if (!db) return [];
-  const snap = await db.collection(COL.jobs).limit(Math.min(300, limit * 2)).get();
-  let all = snap.docs.map(
-    (d) => ({ ...d.data(), id: d.id }) as AiBlogGenerationJob,
-  );
-  if (status) all = all.filter((j) => j.status === status);
-  return all
-    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
-    .slice(0, limit);
+  const cap = Math.min(500, Math.max(1, limit));
+
+  try {
+    const snap = await db
+      .collection(COL.jobs)
+      .orderBy("createdAt", "desc")
+      .limit(status ? cap * 2 : cap)
+      .get();
+    let all = snap.docs.map(
+      (d) => ({ ...d.data(), id: d.id }) as AiBlogGenerationJob,
+    );
+    if (status) all = all.filter((j) => j.status === status);
+    return all.slice(0, cap);
+  } catch (e) {
+    console.error("[seo-blog-center] listGenerationJobs orderBy failed", e);
+    const snap = await db.collection(COL.jobs).limit(cap * 4).get();
+    let all = snap.docs.map(
+      (d) => ({ ...d.data(), id: d.id }) as AiBlogGenerationJob,
+    );
+    if (status) all = all.filter((j) => j.status === status);
+    return all
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+      .slice(0, cap);
+  }
 }
 
 export async function saveKeyword(kw: SeoBlogKeyword): Promise<void> {

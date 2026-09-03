@@ -491,6 +491,22 @@ export default function AiBlogAutomationPage() {
         `Research done: ${data.keywords?.length ?? 0} keywords → ${data.clusters?.length ?? 0} clusters (max ${data.cappedAt})${tail}`,
       );
       setTab("clusters");
+      if (Array.isArray(data.clusters) && data.clusters.length > 0) {
+        const fresh = (data.clusters as SeoKeywordCluster[]).filter(
+          clusterAwaitingApproval,
+        );
+        if (fresh.length > 0) {
+          setClusters((prev) => {
+            const byId = new Map(prev.map((c) => [c.id, c]));
+            for (const c of fresh) byId.set(c.id, c);
+            return [...byId.values()]
+              .filter(clusterAwaitingApproval)
+              .sort((a, b) =>
+                (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
+              );
+          });
+        }
+      }
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Research failed");
