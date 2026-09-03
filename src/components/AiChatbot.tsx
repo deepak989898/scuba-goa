@@ -138,8 +138,8 @@ export function AiChatbot() {
           >
             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-ocean-100 bg-ocean-50 px-3 py-2.5">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ocean-900">
-                  Book Scuba Goa
+                <p className="text-sm font-bold bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 bg-clip-text text-transparent">
+                  Book with us
                 </p>
                 <p className="text-[10px] text-ocean-600">
                   Tap to book · live prices
