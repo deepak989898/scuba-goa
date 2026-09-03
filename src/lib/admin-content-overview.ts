@@ -87,6 +87,15 @@ export type BlogGscRow = {
   position: number | null;
   impressions: number;
   clicks: number;
+  lastRankingImprove?: {
+    at: string;
+    estimatedPct: number;
+    summary: string;
+    targetBand?: string;
+    impressionsAtImprove?: number;
+    clicksAtImprove?: number;
+    rankingStatus?: string;
+  };
 };
 
 export type ContentOverview = {
@@ -394,6 +403,7 @@ export async function buildContentOverview(): Promise<ContentOverview> {
 
 function rowFromSeoUrl(u: SeoUrlRecord): BlogGscRow {
   const pos = Number(u.averagePosition);
+  const last = u.lastRankingImprove;
   return {
     indexStatus: u.indexStatus,
     indexLabel: blogGscIndexLabel(u.indexStatus),
@@ -401,5 +411,18 @@ function rowFromSeoUrl(u: SeoUrlRecord): BlogGscRow {
       Number.isFinite(pos) && pos > 0 ? Math.round(pos * 10) / 10 : null,
     impressions: Math.max(0, Math.round(Number(u.impressions) || 0)),
     clicks: Math.max(0, Math.round(Number(u.clicks) || 0)),
+    ...(last?.at
+      ? {
+          lastRankingImprove: {
+            at: last.at,
+            estimatedPct: last.estimatedPct,
+            summary: last.summary,
+            targetBand: last.targetBand,
+            impressionsAtImprove: last.impressionsAtImprove,
+            clicksAtImprove: last.clicksAtImprove,
+            rankingStatus: last.rankingStatus,
+          },
+        }
+      : {}),
   };
 }

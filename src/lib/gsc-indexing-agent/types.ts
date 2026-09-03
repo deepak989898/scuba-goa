@@ -114,6 +114,8 @@ export type SeoUrlRecord = {
     checklist: string[];
     summary: string;
     rankingStatus: string;
+    impressionsAtImprove?: number;
+    clicksAtImprove?: number;
   };
   /** Flag when free stock could not satisfy hero image — admin may use OpenAI manually. */
   imageAttention?: {

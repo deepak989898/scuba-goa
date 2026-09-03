@@ -8,6 +8,11 @@ import { isBlogScheduled } from "@/lib/blog-firestore";
 import { formatUtcInIst } from "@/lib/blog-automation/schedule-ist";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 import type { BlogGscRow } from "@/lib/admin-content-overview";
+import {
+  canShowBlogRankingGenerate,
+  formatBlogImproveDate,
+  getBlogRankingImproveSnapshot,
+} from "@/lib/gsc-indexing-agent/blog-ranking-improve-ui";
 import { BlogPostEditorPanel } from "./BlogPostEditorPanel";
 
 type BlogTraffic = { views: number; visitors: number };
@@ -48,6 +53,8 @@ type Props = {
   aiImageProgress?: number | null;
   onRefreshTraffic?: () => void;
   trafficRefreshing?: boolean;
+  onGenerateSeoImprove?: (slug: string) => Promise<void>;
+  onBulkGenerateSeoImprove?: (slugs: string[]) => Promise<void>;
 };
 
 function viewCountForPost(
@@ -258,6 +265,8 @@ export function BlogPostsTable({
   aiImageProgress = null,
   onRefreshTraffic,
   trafficRefreshing,
+  onGenerateSeoImprove,
+  onBulkGenerateSeoImprove,
 }: Props) {
   const scheduledCount = posts.filter((p) => isBlogScheduled(p)).length;
   const liveCount = posts.filter((p) => p.published).length;
@@ -405,6 +414,42 @@ export function BlogPostsTable({
     })();
   }
 
+  function runBulkSeoGenerate() {
+    if (!onBulkGenerateSeoImprove) return;
+    const slugs = [...selected].filter((slug) => {
+      const p = posts.find((x) => x.slug === slug);
+      if (!p?.published) return false;
+      const gsc = gscForSlug(slug, blogGscBySlug);
+      return canShowBlogRankingGenerate(p, gsc).allowed;
+    });
+    if (slugs.length === 0) return;
+    void (async () => {
+      const done = await onBulkGenerateSeoImprove(slugs);
+      if (done) setSelected(new Set());
+    })();
+  }
+
+  const seoEligibleSlugs = useMemo(() => {
+    return filteredPosts
+      .filter((p) => {
+        if (!p.published) return false;
+        const gsc = gscForSlug(p.slug, blogGscBySlug);
+        return canShowBlogRankingGenerate(p, gsc).allowed;
+      })
+      .map((p) => p.slug);
+  }, [filteredPosts, blogGscBySlug]);
+
+  const selectedSeoEligibleCount = useMemo(
+    () =>
+      [...selected].filter((slug) => {
+        const p = posts.find((x) => x.slug === slug);
+        if (!p?.published) return false;
+        const gsc = gscForSlug(slug, blogGscBySlug);
+        return canShowBlogRankingGenerate(p, gsc).allowed;
+      }).length,
+    [selected, posts, blogGscBySlug],
+  );
+
   return (
     <section className="mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-white shadow-sm">
       <div className="border-b border-ocean-100 px-3 py-4">
@@ -417,7 +462,9 @@ export function BlogPostsTable({
         </h2>
         <p className="mt-1 text-sm text-ocean-600">
           {liveCount} live · {scheduledCount} scheduled · review and edit before
-          auto-publish. Blog index:{" "}
+          auto-publish. SEO improve: title, meta &amp; content only (no images).
+          Generate hides for 15 days or until +10 GSC impressions since last run.
+          Blog index:{" "}
           {trafficLoading
             ? "…"
             : `${blogIndexTraffic.views.toLocaleString("en-IN")} views · ${blogIndexTraffic.visitors.toLocaleString("en-IN")} visitors`}
@@ -511,6 +558,18 @@ export function BlogPostsTable({
             >
               Delete
             </button>
+            {onBulkGenerateSeoImprove && selectedSeoEligibleCount > 0 ? (
+              <button
+                type="button"
+                disabled={busy === "seo-bulk" || busy === "bulk"}
+                onClick={() => runBulkSeoGenerate()}
+                className="rounded-full bg-violet-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                {busy === "seo-bulk"
+                  ? "Generating SEO…"
+                  : `Generate SEO (${selectedSeoEligibleCount})`}
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={busy === "bulk"}
@@ -522,7 +581,8 @@ export function BlogPostsTable({
           </div>
         ) : (
           <p className="mt-2 text-xs text-ocean-500">
-            Select blogs with checkboxes to publish, unpublish, or delete together.
+            Select blogs with checkboxes to publish, unpublish, delete, or{" "}
+            <strong>Generate SEO</strong> ({seoEligibleSlugs.length} eligible now).
             Click <strong>Views / Imp / Clk / Pos / Idx</strong> to sort (one at a
             time; click again to reverse)
             {sortKey ? (
@@ -743,7 +803,25 @@ export function BlogPostsTable({
                       <GscIndexBadge row={gsc} />
                     </td>
                     <td className={TD}>
-                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs font-semibold leading-snug">
+                      <div className="flex flex-col gap-1">
+                        {(() => {
+                          const improveMeta = getBlogRankingImproveSnapshot(
+                            p,
+                            gsc,
+                          );
+                          const seoGate = canShowBlogRankingGenerate(p, gsc);
+                          return (
+                            <>
+                              {improveMeta ? (
+                                <span
+                                  className="text-[10px] font-semibold leading-tight text-emerald-800"
+                                  title={improveMeta.summary}
+                                >
+                                  SEO ~{improveMeta.estimatedPct}% ·{" "}
+                                  {formatBlogImproveDate(improveMeta.at)}
+                                </span>
+                              ) : null}
+                              <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs font-semibold leading-snug">
                         {p.published ? (
                           <Link
                             href={`/blog/${p.slug}`}
@@ -760,6 +838,23 @@ export function BlogPostsTable({
                         >
                           Edit
                         </button>
+                        {p.published &&
+                        seoGate.allowed &&
+                        onGenerateSeoImprove ? (
+                          <button
+                            type="button"
+                            className="text-violet-800 hover:underline disabled:opacity-50"
+                            disabled={
+                              busy === `seo-${p.slug}` ||
+                              busy === "seo-bulk" ||
+                              busy === "bulk"
+                            }
+                            title="AI improve title, meta & content (no images)"
+                            onClick={() => void onGenerateSeoImprove(p.slug)}
+                          >
+                            {busy === `seo-${p.slug}` ? "…" : "Gen SEO"}
+                          </button>
+                        ) : null}
                         {p.published ? (
                           <button
                             type="button"
@@ -787,6 +882,18 @@ export function BlogPostsTable({
                         >
                           Del
                         </button>
+                              </div>
+                              {!seoGate.allowed && improveMeta && seoGate.reason ? (
+                                <span
+                                  className="text-[10px] leading-tight text-ocean-500"
+                                  title={seoGate.reason}
+                                >
+                                  {seoGate.reason}
+                                </span>
+                              ) : null}
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>

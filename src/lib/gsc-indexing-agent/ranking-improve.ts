@@ -49,6 +49,8 @@ export type RankingImproveMeta = {
   checklist: string[];
   summary: string;
   rankingStatus: string;
+  impressionsAtImprove?: number;
+  clicksAtImprove?: number;
 };
 
 export type EditablePagePayload = {
@@ -458,6 +460,7 @@ async function persistFields(
     };
 
     await ref.set(blogPostToFirestorePayload(next), { merge: true });
+    await saveBlogLastSeoImprove(slug, meta);
     revalidatePath(`/blog/${slug}`, "page");
     revalidatePath("/blog", "page");
   } else {
@@ -686,6 +689,52 @@ export async function saveManualRankingEdit(
   return loadEditablePage(urlId);
 }
 
+async function saveBlogLastSeoImprove(
+  slug: string,
+  meta: RankingImproveMeta,
+): Promise<void> {
+  const db = getAdminDb();
+  if (!db) return;
+  await db.collection("blogPosts").doc(slug).set(
+    {
+      lastSeoRankingImprove: {
+        at: meta.at,
+        estimatedPct: meta.estimatedPct,
+        summary: meta.summary,
+        targetBand: meta.targetBand,
+        impressionsAtImprove: meta.impressionsAtImprove ?? 0,
+        clicksAtImprove: meta.clicksAtImprove ?? 0,
+        rankingStatus: meta.rankingStatus,
+      },
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true },
+  );
+}
+
+function improveMetaWithGscSnapshots(
+  record: SeoUrlRecord | null,
+  rankingStatus: string,
+  averagePosition: number,
+  prev?: RankingImproveMeta | null,
+): RankingImproveMeta {
+  const est = estimateImprovementPct(rankingStatus, averagePosition);
+  const guidance = improvementGuidance(rankingStatus);
+  return {
+    at: new Date().toISOString(),
+    estimatedPct: prev?.estimatedPct ?? est.estimatedPct,
+    targetBand: prev?.targetBand ?? est.targetBand,
+    checklist: prev?.checklist ?? guidance.bullets,
+    summary: prev?.summary ?? est.summary,
+    rankingStatus,
+    impressionsAtImprove: Math.max(
+      0,
+      Math.round(Number(record?.impressions) || 0),
+    ),
+    clicksAtImprove: Math.max(0, Math.round(Number(record?.clicks) || 0)),
+  };
+}
+
 async function resolveBlogSeoRecord(slug: string): Promise<SeoUrlRecord | null> {
   const normalized = normalizeSiteUrl(`${siteOrigin()}/blog/${slug}`);
   if (normalized) {
@@ -802,17 +851,62 @@ export async function applyBlogRankingUpdate(
   const record = await resolveBlogSeoRecord(s);
   const rankingStatus = record?.rankingStatus ?? "UNKNOWN";
   const averagePosition = Number(record?.averagePosition ?? 0);
-  const est = estimateImprovementPct(rankingStatus, averagePosition);
-  const guidance = improvementGuidance(rankingStatus);
-  const improve: RankingImproveMeta = {
-    at: new Date().toISOString(),
-    estimatedPct: est.estimatedPct,
-    targetBand: est.targetBand,
-    checklist: guidance.bullets,
-    summary: est.summary,
+  const improve = improveMetaWithGscSnapshots(
+    record,
     rankingStatus,
+    averagePosition,
+  );
+
+  return applyBlogRankingUpdateWithMeta(s, fields, improve);
+}
+
+/** Generate + apply SEO text improve for one published blog (no images). */
+export async function generateBlogRankingImprove(slug: string): Promise<{
+  slug: string;
+  improve: RankingImproveMeta;
+}> {
+  const s = slug.trim();
+  if (!s) throw new Error("slug required");
+
+  const { fields, improve: suggested } = await suggestBlogRankingUpdate(s);
+  const record = await resolveBlogSeoRecord(s);
+  const improve: RankingImproveMeta = {
+    ...suggested,
+    impressionsAtImprove: Math.max(
+      0,
+      Math.round(Number(record?.impressions) || 0),
+    ),
+    clicksAtImprove: Math.max(0, Math.round(Number(record?.clicks) || 0)),
   };
 
+  return applyBlogRankingUpdateWithMeta(s, fields, improve);
+}
+
+async function applyBlogRankingUpdateWithMeta(
+  slug: string,
+  fieldsIn: RankingImproveFields,
+  improve: RankingImproveMeta,
+): Promise<{ slug: string; ok: true; improve: RankingImproveMeta }> {
+  const s = slug.trim();
+  const fields: RankingImproveFields = {
+    title: String(fieldsIn.title ?? "").trim(),
+    metaTitle: String(fieldsIn.metaTitle ?? fieldsIn.title ?? "").trim(),
+    metaDescription: String(fieldsIn.metaDescription ?? "").trim(),
+    excerpt: String(fieldsIn.excerpt ?? "").trim(),
+    keywords: Array.isArray(fieldsIn.keywords)
+      ? fieldsIn.keywords.map((k) => String(k).trim()).filter(Boolean)
+      : [],
+    content: String(fieldsIn.content ?? ""),
+    faqs: Array.isArray(fieldsIn.faqs) ? fieldsIn.faqs : [],
+    headline: String(fieldsIn.headline ?? fieldsIn.title ?? "").trim(),
+    bodyContent: String(fieldsIn.bodyContent ?? fieldsIn.content ?? ""),
+  };
+
+  if (!fields.title || fields.content.trim().length < 50) {
+    throw new Error("Title and content are required");
+  }
+
+  const record = await resolveBlogSeoRecord(s);
   if (record && (record.pageType === "blog" || record.pageType === "guide")) {
     await persistFields(
       record as SeoUrlRecord & { pageType: "blog" | "guide" },
@@ -820,7 +914,6 @@ export async function applyBlogRankingUpdate(
       improve,
     );
   } else {
-    // Inventory miss — still update the blog document directly.
     const db = getAdminDb();
     if (!db) throw new Error("Server not configured");
     const ref = db.collection("blogPosts").doc(s);
@@ -850,9 +943,51 @@ export async function applyBlogRankingUpdate(
       imageMeta: current.imageMeta,
     };
     await ref.set(blogPostToFirestorePayload(next), { merge: true });
+    await saveBlogLastSeoImprove(s, improve);
     revalidatePath(`/blog/${s}`);
     revalidatePath("/blog");
   }
 
   return { slug: s, ok: true, improve };
+}
+
+export async function generateBlogRankingImproveBulk(
+  slugs: string[],
+  maxJobs = 10,
+): Promise<{
+  succeeded: number;
+  failed: number;
+  results: Array<{
+    slug: string;
+    ok: boolean;
+    improve?: RankingImproveMeta;
+    error?: string;
+  }>;
+}> {
+  const unique = [...new Set(slugs.map((s) => s.trim()).filter(Boolean))].slice(
+    0,
+    maxJobs,
+  );
+  const results: Array<{
+    slug: string;
+    ok: boolean;
+    improve?: RankingImproveMeta;
+    error?: string;
+  }> = [];
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const slug of unique) {
+    try {
+      const { improve } = await generateBlogRankingImprove(slug);
+      results.push({ slug, ok: true, improve });
+      succeeded += 1;
+    } catch (e) {
+      const error = e instanceof Error ? e.message : "Generate failed";
+      results.push({ slug, ok: false, error });
+      failed += 1;
+    }
+  }
+
+  return { succeeded, failed, results };
 }

@@ -633,6 +633,59 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
+  async function generateBlogSeoImprove(slug: string) {
+    setBusy(`seo-${slug}`);
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-automation/ranking-update", {
+        method: "POST",
+        body: JSON.stringify({ action: "generate", slug }),
+      });
+      const pct = data.improve?.estimatedPct;
+      setOkMsg(
+        `SEO improved /blog/${slug}${pct != null ? ` (~${pct}% estimated uplift)` : ""}. Title, meta & content updated — images unchanged.`,
+      );
+      await refresh({ silent: Boolean(editing) });
+      await loadOverview();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "SEO improve failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function bulkGenerateBlogSeoImprove(slugs: string[]): Promise<boolean> {
+    if (slugs.length === 0) return false;
+    if (
+      !confirm(
+        `Generate SEO improvements for ${slugs.length} blog${slugs.length === 1 ? "" : "s"}? Updates title, meta & content only (no images). Max 10 per batch.`,
+      )
+    ) {
+      return false;
+    }
+    setBusy("seo-bulk");
+    setErr(null);
+    try {
+      const data = await adminFetch("/api/admin/blog-automation/ranking-update", {
+        method: "POST",
+        body: JSON.stringify({ action: "generateBulk", slugs }),
+      });
+      const okN = Number(data.succeeded ?? 0);
+      const failN = Number(data.failed ?? 0);
+      setOkMsg(
+        `SEO improve bulk: ${okN} updated · ${failN} failed (max 10 per request).`,
+      );
+      await refresh({ silent: Boolean(editing) });
+      await loadOverview();
+      return okN > 0;
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Bulk SEO improve failed");
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function prepareScheduledToday() {
     setBusy("prepare");
     setErr(null);
@@ -1176,6 +1229,10 @@ export default function AdminBlogAutomationPage() {
             aiImageProgress={aiImageProgress}
             onRefreshTraffic={() => void refreshTrafficOnly()}
             trafficRefreshing={trafficRefreshing}
+            onGenerateSeoImprove={(slug) => generateBlogSeoImprove(slug)}
+            onBulkGenerateSeoImprove={(slugs) =>
+              bulkGenerateBlogSeoImprove(slugs)
+            }
           />
           </div>
 

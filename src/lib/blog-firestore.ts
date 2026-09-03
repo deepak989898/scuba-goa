@@ -74,6 +74,16 @@ export type BlogPostFirestore = {
   /** UTC ISO — auto-publish when cron time >= this */
   scheduledPublishAt?: string;
   localeGroupId?: string;
+  /** Last AI SEO text improve (title/meta/content) — for admin cooldown UI. */
+  lastSeoRankingImprove?: {
+    at: string;
+    estimatedPct: number;
+    summary: string;
+    targetBand?: string;
+    impressionsAtImprove?: number;
+    clicksAtImprove?: number;
+    rankingStatus?: string;
+  };
 };
 
 export function isBlogScheduled(post: BlogPostFirestore): boolean {
@@ -203,6 +213,32 @@ export function parseBlogPostFromFirestore(
       data.localeGroupId != null
         ? String(data.localeGroupId).trim()
         : undefined,
+    lastSeoRankingImprove: parseLastSeoRankingImprove(data.lastSeoRankingImprove),
+  };
+}
+
+function parseLastSeoRankingImprove(
+  raw: unknown,
+): BlogPostFirestore["lastSeoRankingImprove"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const at = String(o.at ?? "").trim();
+  if (!at) return undefined;
+  return {
+    at,
+    estimatedPct: Math.round(Number(o.estimatedPct) || 0),
+    summary: String(o.summary ?? "").trim(),
+    targetBand: o.targetBand != null ? String(o.targetBand).trim() : undefined,
+    impressionsAtImprove:
+      o.impressionsAtImprove != null
+        ? Math.max(0, Math.round(Number(o.impressionsAtImprove) || 0))
+        : undefined,
+    clicksAtImprove:
+      o.clicksAtImprove != null
+        ? Math.max(0, Math.round(Number(o.clicksAtImprove) || 0))
+        : undefined,
+    rankingStatus:
+      o.rankingStatus != null ? String(o.rankingStatus).trim() : undefined,
   };
 }
 
@@ -240,5 +276,8 @@ export function blogPostToFirestorePayload(
       ? { scheduledPublishAt: post.scheduledPublishAt }
       : {}),
     ...(post.localeGroupId ? { localeGroupId: post.localeGroupId } : {}),
+    ...(post.lastSeoRankingImprove
+      ? { lastSeoRankingImprove: post.lastSeoRankingImprove }
+      : {}),
   };
 }
