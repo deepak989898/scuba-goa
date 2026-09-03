@@ -344,9 +344,7 @@ export default async function SeoGuidePage({
     featuredPrimary: heroSrc,
     featuredFallback: heroFallback,
     focusService,
-    extraServices: relatedServices.filter(
-      (s) => s.slug !== focusService?.slug,
-    ),
+    relatedServices,
   });
 
   const faqs = buildGuideFaqs({

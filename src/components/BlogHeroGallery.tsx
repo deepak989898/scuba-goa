@@ -13,11 +13,10 @@ type Slide = {
   url: string;
   alt: string;
   href?: string;
-  isMain?: boolean;
 };
 
 /**
- * Hero — full main image + clickable thumbnail row (main + linked service photos).
+ * Hero — large image + clickable thumbnails (related service photos only).
  */
 export function BlogHeroGallery({
   mainUrl,
@@ -27,16 +26,7 @@ export function BlogHeroGallery({
   priority,
 }: Props) {
   const slides = useMemo(() => {
-    const main =
-      mainUrl.trim() || mainFallback.trim();
     const out: Slide[] = [];
-    if (main) {
-      out.push({
-        url: main,
-        alt: mainAlt,
-        isMain: true,
-      });
-    }
     for (const s of serviceThumbs) {
       if (!s.url.trim()) continue;
       if (out.some((x) => x.url === s.url)) continue;
@@ -44,8 +34,11 @@ export function BlogHeroGallery({
         url: s.url,
         alt: s.alt,
         href: s.href,
-        isMain: false,
       });
+    }
+    if (out.length === 0) {
+      const main = mainUrl.trim() || mainFallback.trim();
+      if (main) out.push({ url: main, alt: mainAlt });
     }
     return out;
   }, [mainUrl, mainFallback, mainAlt, serviceThumbs]);
@@ -91,7 +84,7 @@ export function BlogHeroGallery({
         <div
           className="mt-2 flex flex-wrap gap-2"
           role="tablist"
-          aria-label="Article and service photos"
+          aria-label="Related service photos"
         >
           {slides.map((slide, i) => {
             const selected = i === activeIndex;
@@ -114,36 +107,13 @@ export function BlogHeroGallery({
               </span>
             );
 
-            if (slide.href && !slide.isMain) {
-              return (
-                <button
-                  key={`${slide.url}-${i}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  aria-label={`Show photo ${i + 1}: ${slide.alt}`}
-                  className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                  onClick={() => {
-                    setActiveIndex(i);
-                    setFailedToFallback(false);
-                  }}
-                >
-                  {inner}
-                </button>
-              );
-            }
-
             return (
               <button
                 key={`${slide.url}-${i}`}
                 type="button"
                 role="tab"
                 aria-selected={selected}
-                aria-label={
-                  slide.isMain
-                    ? "Show main article image"
-                    : `Show photo ${i + 1}: ${slide.alt}`
-                }
+                aria-label={`Show photo ${i + 1}: ${slide.alt}`}
                 className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                 onClick={() => {
                   setActiveIndex(i);
@@ -157,7 +127,7 @@ export function BlogHeroGallery({
         </div>
       ) : null}
 
-      {active?.href && !active.isMain ? (
+      {active?.href ? (
         <p className="mt-2 text-xs text-ocean-600">
           <Link
             href={active.href}

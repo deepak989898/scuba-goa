@@ -264,6 +264,7 @@ export default async function BlogPostPage({ params }: Props) {
     featuredPrimary: featuredImages.primary,
     featuredFallback: featuredImages.fallback,
     focusService,
+    relatedServices,
   });
   const offerListLd = packageOfferCatalogJsonLd(catalog.packages, pageUrl, {
     fallbackImageUrl: featuredImage,
