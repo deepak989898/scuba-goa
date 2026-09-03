@@ -515,6 +515,7 @@ export default async function SeoGuidePage({
                   mainFallback={heroGallery.mainFallback}
                   mainAlt={heroGallery.mainAlt}
                   serviceThumbs={heroGallery.serviceThumbs}
+                  layout="bounded"
                   priority
                 />
               </div>

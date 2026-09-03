@@ -6,10 +6,15 @@ import type { BlogHeroGalleryData } from "@/lib/blog-hero-gallery";
 
 type Props = BlogHeroGalleryData & {
   priority?: boolean;
+  /**
+   * `intrinsic` — full uncropped height (blog banners).
+   * `bounded` — capped hero box with object-contain (guide pages + tall service photos).
+   */
+  layout?: "intrinsic" | "bounded";
 };
 
 /**
- * Blog hero — full uncropped main image + thumbnails for the linked service only.
+ * Blog / guide hero — main image + thumbnails for linked services.
  */
 export function BlogHeroGallery({
   mainUrl,
@@ -17,6 +22,7 @@ export function BlogHeroGallery({
   mainAlt,
   serviceThumbs,
   priority,
+  layout = "intrinsic",
 }: Props) {
   const thumbs = serviceThumbs.filter((s) => s.url.trim());
   const [useBlogMain, setUseBlogMain] = useState(true);
@@ -37,21 +43,42 @@ export function BlogHeroGallery({
 
   const showCounter = thumbs.length > 0 && !useBlogMain;
 
+  const mainWrapClass =
+    layout === "bounded"
+      ? "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-900/5 aspect-[16/10] max-h-[min(260px,48vh)] min-h-[200px] sm:aspect-[16/9] sm:min-h-[240px] sm:max-h-[min(340px,52vh)] lg:min-h-[280px] lg:max-h-[min(400px,55vh)]"
+      : "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-900/5 leading-[0]";
+
   return (
     <figure className="mt-1.5 w-full">
-      <div className="relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-900/5 leading-[0]">
-        <CmsRemoteImage
-          src={resolvedMain}
-          alt={displayAlt}
-          showFull
-          className="mx-auto block h-auto w-full max-w-none"
-          priority={priority}
-          onError={() => {
-            if (!failedToFallback && mainFallback) {
-              setFailedToFallback(true);
-            }
-          }}
-        />
+      <div className={mainWrapClass}>
+        {layout === "bounded" ? (
+          <CmsRemoteImage
+            src={resolvedMain}
+            alt={displayAlt}
+            fill
+            className="object-contain"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 720px"
+            priority={priority}
+            onError={() => {
+              if (!failedToFallback && mainFallback) {
+                setFailedToFallback(true);
+              }
+            }}
+          />
+        ) : (
+          <CmsRemoteImage
+            src={resolvedMain}
+            alt={displayAlt}
+            showFull
+            className="mx-auto block h-auto w-full max-w-none"
+            priority={priority}
+            onError={() => {
+              if (!failedToFallback && mainFallback) {
+                setFailedToFallback(true);
+              }
+            }}
+          />
+        )}
         {showCounter ? (
           <span
             className="absolute bottom-2 right-2 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white"
