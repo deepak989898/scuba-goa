@@ -66,6 +66,42 @@ export function buildBlogHeroGalleryData(input: {
   };
 }
 
+/** Guide hero — main guide image + thumbnails from attached sidebar services only. */
+export function buildGuideHeroGalleryData(input: {
+  title: string;
+  heroPrimary: string;
+  heroFallback: string;
+  relatedServices: ServiceItem[];
+}): BlogHeroGalleryData {
+  const title = input.title.trim() || "Goa guide";
+  const mainUrl =
+    pickBlogFeaturedImage(input.heroPrimary) ||
+    pickBlogFeaturedImage(input.heroFallback) ||
+    input.heroFallback.trim();
+  const mainFallback =
+    pickBlogFeaturedImage(input.heroFallback) ||
+    input.heroFallback.trim();
+
+  const serviceThumbs: BlogHeroGallerySlide[] = [];
+  const seen = new Set<string>();
+
+  for (const service of input.relatedServices) {
+    if (service.active === false) continue;
+    const href = `/services/${service.slug}`;
+    const label = `${service.title} in Goa`;
+    for (const img of serviceDetailImages(service)) {
+      pushThumb(serviceThumbs, seen, img, label, href);
+    }
+  }
+
+  return {
+    mainUrl,
+    mainFallback,
+    mainAlt: title,
+    serviceThumbs,
+  };
+}
+
 /** Pick the service whose gallery thumbnails should appear on a blog post. */
 export function resolveBlogFocusService(
   services: ServiceItem[],
