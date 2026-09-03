@@ -16,6 +16,7 @@ import {
   seoPageToFirestorePayload,
   type SeoPageFirestore,
 } from "@/lib/seo-page-firestore";
+import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import {
   DEFAULT_BULK_SEO_IMPROVE_BATCH,
   MAX_BULK_SEO_IMPROVE_PER_REQUEST,
