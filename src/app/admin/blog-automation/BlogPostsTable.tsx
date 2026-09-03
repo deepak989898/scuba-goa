@@ -54,7 +54,7 @@ type Props = {
   onRefreshTraffic?: () => void;
   trafficRefreshing?: boolean;
   onGenerateSeoImprove?: (slug: string) => Promise<void>;
-  onBulkGenerateSeoImprove?: (slugs: string[]) => Promise<void>;
+  onBulkGenerateSeoImprove?: (slugs: string[]) => Promise<boolean>;
 };
 
 function viewCountForPost(
