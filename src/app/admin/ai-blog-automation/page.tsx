@@ -1365,17 +1365,9 @@ export default function AiBlogAutomationPage() {
     <div>
       <AdminContentSeoNav />
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="font-display text-lg font-bold text-ocean-900">
-            AI Blog Automation
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-ocean-700">
-            Research keywords (Google Ads when configured + GSC + seeds) → cluster →
-            approve → generate drafts automatically → review → publish. Use Clusters
-            automation toggles to auto-approve (skips conflicts). Generation starts on
-            approve — Process is only for stuck waiting jobs.
-          </p>
-        </div>
+        <h1 className="font-display text-lg font-bold text-ocean-900">
+          AI Blog Automation
+        </h1>
       </div>
 
       {err ? (
@@ -1426,9 +1418,9 @@ export default function AiBlogAutomationPage() {
             />
           ) : null}
           {[
-            ["Keywords", stats.keywords],
+            ["Keywords (total)", stats.keywords],
             ["Pending keywords", stats.pendingKeywords],
-            ["Clusters", stats.pendingClusters ?? stats.clusters],
+            ["Pending clusters", stats.pendingClusters ?? stats.clusters],
             ["Waiting jobs", stats.waitingJobs],
             ["Failed jobs", stats.failedJobs],
             ["Drafts", stats.drafts],

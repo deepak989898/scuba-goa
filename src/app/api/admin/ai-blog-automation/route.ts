@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
   getSeoBlogSettings,
-  listClusters,
+  getSeoBlogDashboardCounts,
   listPendingClusters,
   listDrafts,
   listGenerationJobs,
@@ -82,12 +82,14 @@ export async function GET(req: Request) {
   }
 
   if (view === "summary") {
-    const [keywordsSample, clusters, jobs, drafts] = await Promise.all([
-      listKeywords(undefined, 200),
-      listPendingClusters(300),
-      listGenerationJobs(undefined, 400),
-      listDrafts(undefined, 80),
-    ]);
+    const [keywordsSample, clusters, jobs, drafts, dashboardCounts] =
+      await Promise.all([
+        listKeywords(undefined, 200),
+        listPendingClusters(300),
+        listGenerationJobs(undefined, 400),
+        listDrafts(undefined, 80),
+        getSeoBlogDashboardCounts(),
+      ]);
     return NextResponse.json({
       settings,
       services,
@@ -97,14 +99,14 @@ export async function GET(req: Request) {
         openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
       },
       stats: {
-        keywords: keywordsSample.length,
-        pendingKeywords: keywordsSample.filter((k) => k.status === "pending").length,
-        clusters: clusters.length,
-        pendingClusters: clusters.length,
-        waitingJobs: jobs.filter((j) => j.status === "waiting").length,
-        failedJobs: jobs.filter((j) => j.status === "failed").length,
-        drafts: drafts.filter((d) => d.status !== "published").length,
-        publishedDrafts: drafts.filter((d) => d.status === "published").length,
+        keywords: dashboardCounts.keywords,
+        pendingKeywords: dashboardCounts.pendingKeywords,
+        clusters: dashboardCounts.pendingClusters,
+        pendingClusters: dashboardCounts.pendingClusters,
+        waitingJobs: dashboardCounts.waitingJobs,
+        failedJobs: dashboardCounts.failedJobs,
+        drafts: dashboardCounts.drafts,
+        publishedDrafts: dashboardCounts.publishedDrafts,
       },
       keywords: keywordsSample,
       clusters,
@@ -114,13 +116,15 @@ export async function GET(req: Request) {
     });
   }
 
-  const [keywords, clusters, jobs, drafts, logs] = await Promise.all([
-    listKeywords(undefined, 200),
-    listPendingClusters(300),
-    listGenerationJobs(undefined, 200),
-    listDrafts(undefined, 80),
-    listLogs(40),
-  ]);
+  const [keywords, clusters, jobs, drafts, logs, dashboardCounts] =
+    await Promise.all([
+      listKeywords(undefined, 200),
+      listPendingClusters(300),
+      listGenerationJobs(undefined, 200),
+      listDrafts(undefined, 80),
+      listLogs(40),
+      getSeoBlogDashboardCounts(),
+    ]);
 
   return NextResponse.json({
     settings,
@@ -131,14 +135,14 @@ export async function GET(req: Request) {
       openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
     },
     stats: {
-      keywords: keywords.length,
-      pendingKeywords: keywords.filter((k) => k.status === "pending").length,
-      clusters: clusters.length,
-      pendingClusters: clusters.length,
-      waitingJobs: jobs.filter((j) => j.status === "waiting").length,
-      failedJobs: jobs.filter((j) => j.status === "failed").length,
-      drafts: drafts.filter((d) => d.status !== "published").length,
-      publishedDrafts: drafts.filter((d) => d.status === "published").length,
+      keywords: dashboardCounts.keywords,
+      pendingKeywords: dashboardCounts.pendingKeywords,
+      clusters: dashboardCounts.pendingClusters,
+      pendingClusters: dashboardCounts.pendingClusters,
+      waitingJobs: dashboardCounts.waitingJobs,
+      failedJobs: dashboardCounts.failedJobs,
+      drafts: dashboardCounts.drafts,
+      publishedDrafts: dashboardCounts.publishedDrafts,
     },
     keywords,
     clusters,

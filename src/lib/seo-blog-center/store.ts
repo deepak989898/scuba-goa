@@ -22,6 +22,64 @@ const COL = {
   jobs: "seoBlogGenerationJobs",
 } as const;
 
+async function countCollection(
+  collectionName: string,
+  field?: string,
+  value?: string,
+): Promise<number> {
+  const db = getAdminDb();
+  if (!db) return 0;
+  try {
+    let q = db.collection(collectionName);
+    if (field && value !== undefined) {
+      q = q.where(field, "==", value) as typeof q;
+    }
+    const snap = await q.count().get();
+    return snap.data().count;
+  } catch (e) {
+    console.error(`[seo-blog-center] count ${collectionName} failed`, e);
+    return 0;
+  }
+}
+
+/** Firestore totals for dashboard cards (not capped list samples). */
+export async function getSeoBlogDashboardCounts(): Promise<{
+  keywords: number;
+  pendingKeywords: number;
+  pendingClusters: number;
+  waitingJobs: number;
+  failedJobs: number;
+  drafts: number;
+  publishedDrafts: number;
+}> {
+  const [
+    keywords,
+    pendingKeywords,
+    pendingClusters,
+    waitingJobs,
+    failedJobs,
+    publishedDrafts,
+    draftTotal,
+  ] = await Promise.all([
+    countCollection(COL.keywords),
+    countCollection(COL.keywords, "status", "pending"),
+    countCollection(COL.clusters, "status", "pending"),
+    countCollection(COL.jobs, "status", "waiting"),
+    countCollection(COL.jobs, "status", "failed"),
+    countCollection(COL.drafts, "status", "published"),
+    countCollection(COL.drafts),
+  ]);
+  return {
+    keywords,
+    pendingKeywords,
+    pendingClusters,
+    waitingJobs,
+    failedJobs,
+    drafts: Math.max(0, draftTotal - publishedDrafts),
+    publishedDrafts,
+  };
+}
+
 function todayIst(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
