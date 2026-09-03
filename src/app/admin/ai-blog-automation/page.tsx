@@ -32,6 +32,21 @@ import {
   AutomationStatusCard,
 } from "@/app/admin/ai-blog-automation/AutomationWizard";
 
+type QueueJobFilter = "active" | "published" | "all";
+
+function isPublishedQueueJob(j: AiBlogGenerationJob): boolean {
+  return j.status === "published";
+}
+
+function filterQueueJobs(
+  jobs: AiBlogGenerationJob[],
+  filter: QueueJobFilter,
+): AiBlogGenerationJob[] {
+  if (filter === "all") return jobs;
+  if (filter === "published") return jobs.filter(isPublishedQueueJob);
+  return jobs.filter((j) => !isPublishedQueueJob(j));
+}
+
 type Tab =
   | "dashboard"
   | "research"
@@ -203,6 +218,7 @@ export default function AiBlogAutomationPage() {
   const [clusterFilter, setClusterFilter] = useState<
     "all" | "conflicts" | "no_conflicts"
   >("no_conflicts");
+  const [queueFilter, setQueueFilter] = useState<QueueJobFilter>("active");
   const [imageAudit, setImageAudit] = useState<{
     scanned?: number;
     exactUrlDuplicateGroups?: number;
@@ -408,6 +424,21 @@ export default function AiBlogAutomationPage() {
         (c) => clusterAwaitingApproval(c) && clusterConflictsList(c).length > 0,
       ).length,
     [clusters],
+  );
+
+  const filteredQueueJobs = useMemo(
+    () => filterQueueJobs(jobs, queueFilter),
+    [jobs, queueFilter],
+  );
+
+  const queuePublishedCount = useMemo(
+    () => jobs.filter(isPublishedQueueJob).length,
+    [jobs],
+  );
+
+  const queueActiveCount = useMemo(
+    () => jobs.filter((j) => !isPublishedQueueJob(j)).length,
+    [jobs],
   );
 
   async function runResearch() {
@@ -1930,9 +1961,11 @@ export default function AiBlogAutomationPage() {
         <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
           <p className="mb-2 text-xs text-ocean-600">
             {jobs.filter((j) => j.status === "waiting").length} waiting ·{" "}
-            {jobs.filter((j) => j.status === "published").length} published ·{" "}
+            {queuePublishedCount} published ·{" "}
             {jobs.filter((j) => j.status === "failed").length} failed ·{" "}
-            {jobs.length} shown (scroll for more). Today IST: generated{" "}
+            {filteredQueueJobs.length} shown
+            {queueFilter !== "all" ? ` (${queueFilter})` : ""}
+            . Today IST: generated{" "}
             {settings?.blogsGeneratedDate === todayIstDate()
               ? settings?.blogsGeneratedToday ?? 0
               : 0}
@@ -1940,8 +1973,42 @@ export default function AiBlogAutomationPage() {
             {settings?.blogsPublishedDate === todayIstDate()
               ? settings?.blogsPublishedToday ?? 0
               : 0}
-            /{settings?.maxBlogsPublishedPerDay ?? 2} — raise both in Settings.
+            /{settings?.maxBlogsPublishedPerDay ?? 2}.
           </p>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1 rounded-full border border-ocean-200 bg-white p-0.5 text-xs font-semibold">
+              {(
+                [
+                  ["active", "Active queue"],
+                  ["published", "Published blogs"],
+                  ["all", "All jobs"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setQueueFilter(id);
+                    setSelectedJobs(new Set());
+                  }}
+                  className={`rounded-full px-3 py-1.5 ${
+                    queueFilter === id
+                      ? "bg-ocean-800 text-white"
+                      : "text-ocean-800 hover:bg-ocean-50"
+                  }`}
+                >
+                  {label}
+                  {id === "active" ? ` (${queueActiveCount})` : ""}
+                  {id === "published" ? ` (${queuePublishedCount})` : ""}
+                  {id === "all" ? ` (${jobs.length})` : ""}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-ocean-500">
+              Default hides published — switch to Published blogs or All jobs to review
+              live posts.
+            </p>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -1966,17 +2033,18 @@ export default function AiBlogAutomationPage() {
               <input
                 type="checkbox"
                 checked={
-                  jobs.length > 0 && selectedJobs.size === jobs.length
+                  filteredQueueJobs.length > 0 &&
+                  filteredQueueJobs.every((j) => selectedJobs.has(j.id))
                 }
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedJobs(new Set(jobs.map((j) => j.id)));
+                    setSelectedJobs(new Set(filteredQueueJobs.map((j) => j.id)));
                   } else {
                     setSelectedJobs(new Set());
                   }
                 }}
               />
-              Select all ({jobs.length})
+              Select all shown ({filteredQueueJobs.length})
             </label>
             <p className="text-xs font-semibold text-ocean-800">
               {selectedJobs.size} selected
@@ -2006,7 +2074,7 @@ export default function AiBlogAutomationPage() {
               disabled={viewsLoading}
               className="text-xs font-semibold text-ocean-700 underline disabled:opacity-50"
               onClick={() => {
-                const slugs = jobs
+                const slugs = filteredQueueJobs
                   .map((j) => jobBlogSlug(j))
                   .filter(Boolean);
                 void loadBlogViews({ full: true, slugs });
@@ -2039,7 +2107,21 @@ export default function AiBlogAutomationPage() {
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((j) => {
+                {filteredQueueJobs.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="p-6 text-center text-sm text-ocean-600"
+                    >
+                      {queueFilter === "active"
+                        ? "No active jobs — queue is clear. Use Published blogs to review live posts."
+                        : queueFilter === "published"
+                          ? "No published jobs in this view."
+                          : "No generation jobs yet."}
+                    </td>
+                  </tr>
+                ) : null}
+                {filteredQueueJobs.map((j) => {
                   const slug = jobBlogSlug(j);
                   const draft = jobDraft(j);
                   const post = resolveEditablePost(j);
