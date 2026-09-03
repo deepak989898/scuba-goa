@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
 import { BlogContent } from "@/components/BlogContent";
+import { BlogHeroGallery } from "@/components/BlogHeroGallery";
+import {
+  buildBlogHeroGalleryData,
+  resolveBlogFocusService,
+} from "@/lib/blog-hero-gallery";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
@@ -307,6 +310,10 @@ export default async function SeoGuidePage({
     page.heroImageUrl.trim() ||
     page.ogImageUrl.trim();
 
+  const heroFallback =
+    page.ogImageUrl.trim() ||
+    page.heroImageUrl.trim();
+
   const focusServiceSlug =
     focusSlugFromBookingOption(
       page.bookingOption,
@@ -321,6 +328,26 @@ export default async function SeoGuidePage({
       },
       focusServiceSlug,
     );
+
+  const focusService = resolveBlogFocusService(
+    catalog.services,
+    relatedServices,
+    focusServiceSlug,
+    {
+      title: page.headline,
+      keywords: page.keywords,
+    },
+  );
+
+  const heroGallery = buildBlogHeroGalleryData({
+    title: page.headline,
+    featuredPrimary: heroSrc,
+    featuredFallback: heroFallback,
+    focusService,
+    extraServices: relatedServices.filter(
+      (s) => s.slug !== focusService?.slug,
+    ),
+  });
 
   const faqs = buildGuideFaqs({
     headline: page.headline,
@@ -503,42 +530,17 @@ export default async function SeoGuidePage({
 
             </div>
 
-            {/* Hero Image */}
-            {heroSrc ? (
-              <figure className="mt-4">
-
-                <div
-                  className="
-                    relative
-                    aspect-[16/9]
-                    max-h-[420px]
-                    w-full
-                    overflow-hidden
-                    rounded-xl
-                    border
-                    border-ocean-100
-                    bg-ocean-50
-                  "
-                >
-                  <Image
-                    src={heroSrc}
-                    alt={page.headline}
-                    fill
-                    className="object-cover"
-                    sizes="
-                      (max-width: 768px) 100vw,
-                      (max-width: 1280px) 70vw,
-                      850px
-                    "
-                    priority
-                  />
-                </div>
-
-                <figcaption className="mt-2 text-xs text-ocean-500">
-                  {page.headline}
-                </figcaption>
-
-              </figure>
+            {/* Hero image + clickable service thumbnails */}
+            {heroGallery.mainUrl ? (
+              <div className="mt-4">
+                <BlogHeroGallery
+                  mainUrl={heroGallery.mainUrl}
+                  mainFallback={heroGallery.mainFallback}
+                  mainAlt={heroGallery.mainAlt}
+                  serviceThumbs={heroGallery.serviceThumbs}
+                  priority
+                />
+              </div>
             ) : null}
 
             {/* Short Answer / Summary */}

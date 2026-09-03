@@ -39,6 +39,8 @@ export function buildBlogHeroGalleryData(input: {
   featuredPrimary: string;
   featuredFallback: string;
   focusService?: ServiceItem | null;
+  /** Extra services (e.g. guide related activities) — thumbnails after focus service. */
+  extraServices?: ServiceItem[];
 }): BlogHeroGalleryData {
   const title = input.title.trim() || "Blog article";
   const mainUrl =
@@ -50,12 +52,23 @@ export function buildBlogHeroGalleryData(input: {
   const serviceThumbs: BlogHeroGallerySlide[] = [];
   const seen = new Set<string>();
 
-  if (input.focusService) {
-    const href = `/services/${input.focusService.slug}`;
-    const label = `${input.focusService.title} in Goa`;
-    for (const img of serviceDetailImages(input.focusService)) {
+  const addServiceImages = (service: ServiceItem) => {
+    const href = `/services/${service.slug}`;
+    const label = `${service.title} in Goa`;
+    for (const img of serviceDetailImages(service)) {
       pushThumb(serviceThumbs, seen, img, label, href);
     }
+  };
+
+  if (input.focusService) {
+    addServiceImages(input.focusService);
+  }
+
+  for (const svc of input.extraServices ?? []) {
+    if (input.focusService?.slug === svc.slug) continue;
+    if (svc.active === false) continue;
+    addServiceImages(svc);
+    if (serviceThumbs.length >= 12) break;
   }
 
   return {
