@@ -30,7 +30,9 @@ export function KeywordsView({ view, title, description }: Props) {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   const activeView = view === "all" && mineMode ? "mine" : view;
-  const showGenerateTools = view === "all" && !mineMode;
+  const showGenerateTools =
+    (view === "all" || view === "opportunities" || view === "content-gap") &&
+    !mineMode;
 
   const displayRows = useMemo(() => {
     if (pageSort === "none") return rows;

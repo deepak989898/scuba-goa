@@ -428,8 +428,31 @@ export default function AiBlogAutomationPage() {
           excludeCovered: true,
         }),
       });
+      const auto = data.autoApprove as {
+        mode?: string;
+        result?: {
+          jobsCreated?: number;
+          skippedConflicts?: number;
+          approved?: number;
+        };
+        processed?: number;
+      } | null;
+      const queued = auto?.result?.jobsCreated ?? 0;
+      const conflicts = auto?.result?.skippedConflicts ?? 0;
+      const processed = auto?.processed ?? 0;
+      let tail = "";
+      if (auto?.mode && auto.mode !== "off") {
+        tail =
+          ` · Auto: ${queued} queued, ${processed} processed now` +
+          (conflicts > 0 ? `, ${conflicts} conflict(s) still pending` : "") +
+          (queued > processed
+            ? " · rest wait in Generation queue (daily cap may apply)"
+            : "");
+      } else if ((data.clusters?.length ?? 0) > 0) {
+        tail = " · Check Clusters tab to approve manually";
+      }
       setOk(
-        `Research done: ${data.keywords?.length ?? 0} keywords → ${data.clusters?.length ?? 0} clusters (max ${data.cappedAt})`,
+        `Research done: ${data.keywords?.length ?? 0} keywords → ${data.clusters?.length ?? 0} clusters (max ${data.cappedAt})${tail}`,
       );
       setTab("clusters");
       await load();
@@ -1650,6 +1673,13 @@ export default function AiBlogAutomationPage() {
             <p className="text-xs text-ocean-600">
               Only <strong>pending</strong> clusters appear here. After approve, they move to{" "}
               <strong>Generation queue</strong> and won&apos;t show again.
+              {settings &&
+              (settings.autoApprovePublishWithAiImage ||
+                settings.autoApprovePublishWithoutImage) &&
+              pendingReadyCount === 0 &&
+              pendingConflictCount === 0
+                ? " Auto-approve is ON — new clusters are queued automatically; open Generation queue."
+                : null}
             </p>
             <div className="flex flex-wrap items-center gap-1 rounded-full border border-ocean-200 bg-white p-0.5 text-xs font-semibold">
               {(
@@ -1884,6 +1914,14 @@ export default function AiBlogAutomationPage() {
 
       {tab === "queue" ? (
         <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-3 shadow-sm">
+          <p className="mb-2 text-xs text-ocean-600">
+            {jobs.filter((j) => j.status === "waiting").length} waiting ·{" "}
+            {jobs.filter((j) => j.status === "published").length} published ·{" "}
+            {jobs.filter((j) => j.status === "failed").length} failed ·{" "}
+            {jobs.length} shown (scroll for more). Daily publish cap:{" "}
+            {settings?.maxBlogsGeneratedPerDay ?? 5}/day IST — increase in Settings
+            if jobs stay waiting.
+          </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
