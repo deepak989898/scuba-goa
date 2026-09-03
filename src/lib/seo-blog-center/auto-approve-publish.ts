@@ -12,6 +12,7 @@ import {
   updateSeoBlogSettings,
 } from "@/lib/seo-blog-center/store";
 import {
+  MAX_WAITING_GENERATION_JOBS,
   PROMPT_VERSION,
   type AiBlogGenerationJob,
   type SeoKeywordCluster,
@@ -195,8 +196,7 @@ export async function runAutoApprovePublishAutomation(actorId = "system-auto"): 
   const waitingJobs = (await listGenerationJobs("waiting", 200)).length;
 
   /** Queue pending clusters even when today's generation cap is full — they process on later runs. */
-  const MAX_WAITING_JOBS = 100;
-  const queueSlots = Math.max(0, MAX_WAITING_JOBS - waitingJobs);
+  const queueSlots = Math.max(0, MAX_WAITING_GENERATION_JOBS - waitingJobs);
 
   if (queueSlots <= 0) {
     return {

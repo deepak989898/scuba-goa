@@ -2,6 +2,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { stripUndefinedDeep } from "@/lib/firestore-json";
 import {
   DEFAULT_SEO_BLOG_SETTINGS,
+  MAX_BLOGS_PER_DAY_LIMIT,
   type AiBlogGenerationJob,
   type SeoBlogCenterLog,
   type SeoBlogCenterSettings,
@@ -33,15 +34,46 @@ export async function getSeoBlogSettings(): Promise<SeoBlogCenterSettings> {
   return { ...DEFAULT_SEO_BLOG_SETTINGS, ...(snap.data() as SeoBlogCenterSettings) };
 }
 
+function clampDailyBlogLimit(n: unknown, fallback: number): number {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return fallback;
+  return Math.min(MAX_BLOGS_PER_DAY_LIMIT, Math.max(1, Math.round(v)));
+}
+
 export async function updateSeoBlogSettings(
   updates: Partial<SeoBlogCenterSettings>,
 ): Promise<SeoBlogCenterSettings> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
   const current = await getSeoBlogSettings();
+  const patch = { ...updates };
+  if (patch.maxBlogsGeneratedPerDay != null) {
+    patch.maxBlogsGeneratedPerDay = clampDailyBlogLimit(
+      patch.maxBlogsGeneratedPerDay,
+      current.maxBlogsGeneratedPerDay,
+    );
+  }
+  if (patch.maxBlogsPublishedPerDay != null) {
+    patch.maxBlogsPublishedPerDay = clampDailyBlogLimit(
+      patch.maxBlogsPublishedPerDay,
+      current.maxBlogsPublishedPerDay,
+    );
+  }
+  if (patch.maxImagesPerDay != null) {
+    patch.maxImagesPerDay = clampDailyBlogLimit(
+      patch.maxImagesPerDay,
+      current.maxImagesPerDay,
+    );
+  }
+  if (patch.automationPostsPerDay != null) {
+    patch.automationPostsPerDay = clampDailyBlogLimit(
+      patch.automationPostsPerDay,
+      current.automationPostsPerDay ?? 5,
+    );
+  }
   const next = {
     ...current,
-    ...updates,
+    ...patch,
     id: "global" as const,
     updatedAt: new Date().toISOString(),
   };

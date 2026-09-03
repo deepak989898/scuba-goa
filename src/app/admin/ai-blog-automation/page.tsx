@@ -10,13 +10,14 @@ import {
   getContentTrafficForSlug,
   type ContentTraffic,
 } from "@/lib/analytics-content-traffic";
-import type {
-  AiBlogGenerationJob,
-  ClusterConflict,
-  SeoBlogCenterSettings,
-  SeoBlogDraft,
-  SeoBlogKeyword,
-  SeoKeywordCluster,
+import {
+  MAX_BLOGS_PER_DAY_LIMIT,
+  type AiBlogGenerationJob,
+  type ClusterConflict,
+  type SeoBlogCenterSettings,
+  type SeoBlogDraft,
+  type SeoBlogKeyword,
+  type SeoKeywordCluster,
 } from "@/lib/seo-blog-center/types";
 import {
   ALL_RESEARCH_CATEGORY_IDS,
@@ -97,6 +98,10 @@ function similarityBadgeClass(pct: number): string {
 }
 
 /** Format ISO timestamp as IST date + time with AM/PM, e.g. 23 Jul 2026, 07:30 PM */
+function todayIstDate(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
 function formatIstDateTimeAmPm(iso?: string | null): string {
   if (!iso?.trim()) return "—";
   const d = new Date(iso);
@@ -1140,6 +1145,15 @@ export default function AiBlogAutomationPage() {
     }
   }
 
+  async function applyDailyLimits(limit: number) {
+    const capped = Math.min(MAX_BLOGS_PER_DAY_LIMIT, Math.max(1, Math.round(limit)));
+    await saveSettings({
+      maxBlogsGeneratedPerDay: capped,
+      maxBlogsPublishedPerDay: capped,
+      maxImagesPerDay: capped,
+    });
+  }
+
   async function startAutomation(config: {
     frequency: "daily" | "weekly" | "monthly";
     postsPerDay: number;
@@ -1918,9 +1932,15 @@ export default function AiBlogAutomationPage() {
             {jobs.filter((j) => j.status === "waiting").length} waiting ·{" "}
             {jobs.filter((j) => j.status === "published").length} published ·{" "}
             {jobs.filter((j) => j.status === "failed").length} failed ·{" "}
-            {jobs.length} shown (scroll for more). Daily publish cap:{" "}
-            {settings?.maxBlogsGeneratedPerDay ?? 5}/day IST — increase in Settings
-            if jobs stay waiting.
+            {jobs.length} shown (scroll for more). Today IST: generated{" "}
+            {settings?.blogsGeneratedDate === todayIstDate()
+              ? settings?.blogsGeneratedToday ?? 0
+              : 0}
+            /{settings?.maxBlogsGeneratedPerDay ?? 5} · published{" "}
+            {settings?.blogsPublishedDate === todayIstDate()
+              ? settings?.blogsPublishedToday ?? 0
+              : 0}
+            /{settings?.maxBlogsPublishedPerDay ?? 2} — raise both in Settings.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -2344,24 +2364,57 @@ export default function AiBlogAutomationPage() {
             />
             <span className="mt-1 block text-xs text-ocean-600">
               New research tab — today:{" "}
-              {settings.researchCallsDate ===
-              new Date().toLocaleDateString("en-CA", {
-                timeZone: "Asia/Kolkata",
-              })
+              {settings.researchCallsDate === todayIstDate()
                 ? settings.researchCallsToday ?? 0
                 : 0}
               /{settings.maxResearchCallsPerDay ?? 100}
             </span>
           </label>
+          <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-ocean-900">
+            <p className="font-semibold text-amber-900">Daily blog limits (IST)</p>
+            <p className="mt-1 text-xs text-ocean-700">
+              Auto-approve respects both caps. Default was 5 generated / 2 published per
+              day — raise both for bulk runs. Max {MAX_BLOGS_PER_DAY_LIMIT}/day.
+            </p>
+            <p className="mt-2 text-xs font-semibold text-ocean-800">
+              Today: generated{" "}
+              {settings.blogsGeneratedDate === todayIstDate()
+                ? settings.blogsGeneratedToday ?? 0
+                : 0}
+              /{settings.maxBlogsGeneratedPerDay} · published{" "}
+              {settings.blogsPublishedDate === todayIstDate()
+                ? settings.blogsPublishedToday ?? 0
+                : 0}
+              /{settings.maxBlogsPublishedPerDay}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[100, 500, 1000].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={busy === "settings"}
+                  onClick={() => void applyDailyLimits(n)}
+                  className="rounded-full border border-ocean-300 bg-white px-3 py-1 text-xs font-bold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
+                >
+                  Set {n}/day
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="block text-sm">
             Max blogs generated / day
             <input
               type="number"
+              min={1}
+              max={MAX_BLOGS_PER_DAY_LIMIT}
               className="mt-1 w-24 rounded border border-ocean-200 px-2 py-1"
               value={settings.maxBlogsGeneratedPerDay}
               onChange={(e) =>
                 void saveSettings({
-                  maxBlogsGeneratedPerDay: Number(e.target.value) || 5,
+                  maxBlogsGeneratedPerDay: Math.min(
+                    MAX_BLOGS_PER_DAY_LIMIT,
+                    Math.max(1, Number(e.target.value) || 5),
+                  ),
                 })
               }
             />
@@ -2370,14 +2423,22 @@ export default function AiBlogAutomationPage() {
             Max blogs published / day
             <input
               type="number"
+              min={1}
+              max={MAX_BLOGS_PER_DAY_LIMIT}
               className="mt-1 w-24 rounded border border-ocean-200 px-2 py-1"
               value={settings.maxBlogsPublishedPerDay}
               onChange={(e) =>
                 void saveSettings({
-                  maxBlogsPublishedPerDay: Number(e.target.value) || 2,
+                  maxBlogsPublishedPerDay: Math.min(
+                    MAX_BLOGS_PER_DAY_LIMIT,
+                    Math.max(1, Number(e.target.value) || 2),
+                  ),
                 })
               }
             />
+            <span className="mt-1 block text-xs text-ocean-600">
+              Must match or exceed generated cap for auto-publish.
+            </span>
           </label>
           <div className="rounded-lg border border-ocean-100 bg-ocean-50/40 p-3">
             <p className="text-sm font-medium text-ocean-900">Featured image audit</p>

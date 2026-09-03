@@ -372,6 +372,12 @@ export interface SeoBlogCenterLog {
   createdAt: string;
 }
 
+/** Admin-configurable ceiling for daily blog generation / publish caps. */
+export const MAX_BLOGS_PER_DAY_LIMIT = 1000;
+
+/** Max waiting generation jobs before auto-approve stops queueing new clusters. */
+export const MAX_WAITING_GENERATION_JOBS = 1000;
+
 export const DEFAULT_SEO_BLOG_SETTINGS: SeoBlogCenterSettings = {
   id: "global",
   enabled: true,

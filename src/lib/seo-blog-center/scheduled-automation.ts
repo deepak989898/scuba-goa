@@ -14,6 +14,13 @@ import {
   updateSeoBlogSettings,
 } from "@/lib/seo-blog-center/store";
 import type { SeoBlogCenterSettings } from "@/lib/seo-blog-center/types";
+import { MAX_BLOGS_PER_DAY_LIMIT } from "@/lib/seo-blog-center/types";
+
+function clampDailyBlogLimit(n: unknown, fallback: number): number {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return fallback;
+  return Math.min(MAX_BLOGS_PER_DAY_LIMIT, Math.max(1, Math.round(v)));
+}
 
 function todayIst(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -80,9 +87,9 @@ export async function runScheduledAutomation(opts?: {
   }
 
   const imageMode = settings.automationImageMode || "stock";
-  const postsPerDay = Math.min(
-    20,
-    Math.max(1, settings.automationPostsPerDay ?? settings.maxBlogsPublishedPerDay ?? 5),
+  const postsPerDay = clampDailyBlogLimit(
+    settings.automationPostsPerDay ?? settings.maxBlogsPublishedPerDay ?? 5,
+    5,
   );
   const keywordsPerService = Math.min(
     250,
@@ -206,7 +213,7 @@ export async function startScheduledAutomation(
   input: StartAutomationInput,
   actorId: string,
 ): Promise<{ settings: SeoBlogCenterSettings; run: ScheduledAutomationResult }> {
-  const postsPerDay = Math.min(20, Math.max(1, input.postsPerDay));
+  const postsPerDay = clampDailyBlogLimit(input.postsPerDay, 5);
   const keywordsPerService = Math.min(250, Math.max(10, input.keywordsPerService));
   const imageMode = input.imageMode === "openai" ? "openai" : "stock";
 

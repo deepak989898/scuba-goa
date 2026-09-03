@@ -83,8 +83,8 @@ export async function GET(req: Request) {
   if (view === "summary") {
     const [keywordsSample, clusters, jobs, drafts] = await Promise.all([
       listKeywords(undefined, 200),
-      listClusters(150),
-      listGenerationJobs(undefined, 100),
+      listClusters(300),
+      listGenerationJobs(undefined, 300),
       listDrafts(undefined, 80),
     ]);
     return NextResponse.json({
@@ -107,7 +107,7 @@ export async function GET(req: Request) {
       },
       keywords: keywordsSample,
       clusters: clusters.filter((c) => c.status === "pending"),
-      jobs: jobs.slice(0, 50),
+      jobs: jobs.slice(0, 150),
       drafts: drafts.slice(0, 40),
       logs: [],
     });
@@ -162,7 +162,7 @@ export async function PATCH(req: Request) {
   if (body.action === "processQueue") {
     const processAll = body.processAll === true;
     const maxJobs = processAll
-      ? Math.min(20, Math.max(1, Number(body.maxJobs) || 1))
+      ? Math.min(5, Math.max(1, Number(body.maxJobs) || 1))
       : Math.min(20, Math.max(1, Number(body.maxJobs) || 10));
     const result = await processGenerationQueue(maxJobs, {
       skipPauseCheck: true,
