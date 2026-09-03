@@ -3,6 +3,7 @@
 export const VISITOR_LEAD_PROFILE_KEY = "bsg_visitor_lead_profile";
 export const VISITOR_LEAD_SUBMITTED_KEY = "bsg_lead_popup_submitted";
 export const VISITOR_LEAD_DISMISSED_SESSION_KEY = "bsg_lead_popup_dismissed";
+export const VISITOR_LEAD_SHOWN_SESSION_KEY = "bsg_lead_popup_shown";
 
 export type VisitorLeadProfile = {
   name: string;
@@ -75,6 +76,24 @@ export function isLeadPopupDismissedThisSession(): boolean {
   if (typeof window === "undefined") return false;
   try {
     return sessionStorage.getItem(VISITOR_LEAD_DISMISSED_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markLeadPopupShownThisSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(VISITOR_LEAD_SHOWN_SESSION_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isLeadPopupShownThisSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(VISITOR_LEAD_SHOWN_SESSION_KEY) === "1";
   } catch {
     return false;
   }

@@ -8,12 +8,14 @@ import {
   dismissLeadPopupForSession,
   hasVisitorLeadSubmitted,
   isLeadPopupDismissedThisSession,
+  isLeadPopupShownThisSession,
+  markLeadPopupShownThisSession,
   markVisitorLeadSubmitted,
   readVisitorLeadProfile,
   saveVisitorLeadProfile,
 } from "@/lib/visitor-lead-profile";
 
-const SHOW_DELAY_MS = 4500;
+const SHOW_DELAY_MS = 90_000;
 
 function cleanPhoneInput(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 12);
@@ -39,7 +41,20 @@ export function LeadCapturePopup() {
     pathname.startsWith("/admin") ||
     pathname.startsWith("/booking") ||
     hasVisitorLeadSubmitted() ||
-    isLeadPopupDismissedThisSession();
+    isLeadPopupDismissedThisSession() ||
+    isLeadPopupShownThisSession();
+
+  const tryOpen = useCallback(() => {
+    if (
+      hasVisitorLeadSubmitted() ||
+      isLeadPopupDismissedThisSession() ||
+      isLeadPopupShownThisSession()
+    ) {
+      return;
+    }
+    markLeadPopupShownThisSession();
+    setOpen(true);
+  }, []);
 
   useEffect(() => {
     if (shouldSkip) return;
@@ -48,12 +63,35 @@ export function LeadCapturePopup() {
     setEmail(profile.email);
     setPhone(profile.phone);
 
-    const timer = window.setTimeout(() => {
-      if (hasVisitorLeadSubmitted() || isLeadPopupDismissedThisSession()) return;
-      setOpen(true);
-    }, SHOW_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [shouldSkip, pathname]);
+    const timer = window.setTimeout(() => tryOpen(), SHOW_DELAY_MS);
+
+    const onMouseLeave = (e: MouseEvent) => {
+      if (e.clientY <= 0) tryOpen();
+    };
+
+    const onMouseOut = (e: MouseEvent) => {
+      if (e.clientY <= 8 && !e.relatedTarget) tryOpen();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") tryOpen();
+    };
+
+    const onPageHide = () => tryOpen();
+
+    document.documentElement.addEventListener("mouseleave", onMouseLeave);
+    document.addEventListener("mouseout", onMouseOut);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.documentElement.removeEventListener("mouseleave", onMouseLeave);
+      document.removeEventListener("mouseout", onMouseOut);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [shouldSkip, pathname, tryOpen]);
 
   useEffect(() => {
     if (!open) return;
