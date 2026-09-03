@@ -16,7 +16,10 @@ import {
   seoPageToFirestorePayload,
   type SeoPageFirestore,
 } from "@/lib/seo-page-firestore";
-import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
+import {
+  DEFAULT_BULK_SEO_IMPROVE_BATCH,
+  MAX_BULK_SEO_IMPROVE_PER_REQUEST,
+} from "@/lib/gsc-indexing-agent/blog-ranking-improve-ui";
 import type { BlogFaq } from "@/data/blog/post-types";
 import type { RankingStatus, SeoUrlRecord } from "./types";
 import { getSeoUrl, listSeoUrls, logAction, upsertSeoUrl } from "./store";
@@ -974,7 +977,7 @@ async function applyBlogRankingUpdateWithMeta(
 
 export async function generateBlogRankingImproveBulk(
   slugs: string[],
-  maxJobs = 10,
+  maxJobs = DEFAULT_BULK_SEO_IMPROVE_BATCH,
 ): Promise<{
   succeeded: number;
   failed: number;
@@ -985,9 +988,13 @@ export async function generateBlogRankingImproveBulk(
     error?: string;
   }>;
 }> {
+  const cap = Math.min(
+    MAX_BULK_SEO_IMPROVE_PER_REQUEST,
+    Math.max(1, Math.round(maxJobs)),
+  );
   const unique = [...new Set(slugs.map((s) => s.trim()).filter(Boolean))].slice(
     0,
-    maxJobs,
+    cap,
   );
   const results: Array<{
     slug: string;

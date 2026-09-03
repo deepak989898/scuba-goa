@@ -18,6 +18,10 @@ import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
 import type { ContentOverview } from "@/lib/admin-content-overview";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
+import {
+  DEFAULT_BULK_SEO_IMPROVE_BATCH,
+  MAX_BULK_SEO_IMPROVE_PER_REQUEST,
+} from "@/lib/gsc-indexing-agent/blog-ranking-improve-ui";
 
 type BlogTraffic = { views: number; visitors: number };
 
@@ -656,31 +660,52 @@ export default function AdminBlogAutomationPage() {
 
   async function bulkGenerateBlogSeoImprove(slugs: string[]): Promise<boolean> {
     if (slugs.length === 0) return false;
+    const batchSize = DEFAULT_BULK_SEO_IMPROVE_BATCH;
     if (
       !confirm(
-        `Generate SEO improvements for ${slugs.length} blog${slugs.length === 1 ? "" : "s"}? Updates title, meta & content only (no images). Max 10 per batch.`,
+        `Generate SEO improvements for ${slugs.length} blog${slugs.length === 1 ? "" : "s"}? Updates title, meta & content only (no images). Processes ${batchSize} per batch (max ${MAX_BULK_SEO_IMPROVE_PER_REQUEST} per API call).`,
       )
     ) {
       return false;
     }
     setBusy("seo-bulk");
     setErr(null);
-    try {
-      const data = await adminFetch("/api/admin/blog-automation/ranking-update", {
-        method: "POST",
-        body: JSON.stringify({ action: "generateBulk", slugs }),
-      });
-      const okN = Number(data.succeeded ?? 0);
-      const failN = Number(data.failed ?? 0);
+    let totalOk = 0;
+    let totalFail = 0;
+  try {
+      for (let i = 0; i < slugs.length; i += batchSize) {
+        const batch = slugs.slice(i, i + batchSize);
+        setOkMsg(
+          `SEO improve: processing ${i + 1}–${i + batch.length} of ${slugs.length}…`,
+        );
+        const data = await adminFetch(
+          "/api/admin/blog-automation/ranking-update",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              action: "generateBulk",
+              slugs: batch,
+              maxJobs: batch.length,
+            }),
+          },
+        );
+        totalOk += Number(data.succeeded ?? 0);
+        totalFail += Number(data.failed ?? 0);
+      }
       setOkMsg(
-        `SEO improve bulk: ${okN} updated · ${failN} failed (max 10 per request).`,
+        `SEO improve bulk complete: ${totalOk} updated · ${totalFail} failed (${slugs.length} selected, ${batchSize}/batch).`,
       );
       await refresh({ silent: Boolean(editing) });
       await loadOverview();
-      return okN > 0;
+      return totalOk > 0;
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Bulk SEO improve failed");
-      return false;
+      if (totalOk > 0) {
+        setOkMsg(
+          `Partial SEO improve: ${totalOk} updated before error · ${totalFail} failed.`,
+        );
+      }
+      return totalOk > 0;
     } finally {
       setBusy(null);
     }

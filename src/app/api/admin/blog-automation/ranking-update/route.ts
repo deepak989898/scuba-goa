@@ -7,16 +7,20 @@ import {
   suggestBlogRankingUpdate,
   type RankingImproveFields,
 } from "@/lib/gsc-indexing-agent/ranking-improve";
+import {
+  DEFAULT_BULK_SEO_IMPROVE_BATCH,
+  MAX_BULK_SEO_IMPROVE_PER_REQUEST,
+} from "@/lib/gsc-indexing-agent/blog-ranking-improve-ui";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /**
  * Blog posts table — ranking SEO improve:
  * POST { action: "suggest", slug } → suggestions only (no write)
  * POST { action: "apply", slug, fields } → apply after admin confirms
  * POST { action: "generate", slug } → AI improve title/meta/content (no images) + save
- * POST { action: "generateBulk", slugs } → bulk generate (max 10 per call)
+ * POST { action: "generateBulk", slugs, maxJobs? } → bulk generate (up to 100 per call)
  */
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
@@ -28,6 +32,7 @@ export async function POST(req: Request) {
     action?: string;
     slug?: string;
     slugs?: string[];
+    maxJobs?: number;
     fields?: RankingImproveFields;
   };
   try {
@@ -49,8 +54,20 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      const result = await generateBlogRankingImproveBulk(slugs, 10);
-      return NextResponse.json({ ok: true, ...result });
+      const maxJobs = Math.min(
+        MAX_BULK_SEO_IMPROVE_PER_REQUEST,
+        Math.max(
+          1,
+          Number(body.maxJobs) || DEFAULT_BULK_SEO_IMPROVE_BATCH,
+        ),
+      );
+      const result = await generateBlogRankingImproveBulk(slugs, maxJobs);
+      return NextResponse.json({
+        ok: true,
+        ...result,
+        maxJobsPerRequest: maxJobs,
+        cap: MAX_BULK_SEO_IMPROVE_PER_REQUEST,
+      });
     }
 
     const slug = String(body.slug ?? "").trim();

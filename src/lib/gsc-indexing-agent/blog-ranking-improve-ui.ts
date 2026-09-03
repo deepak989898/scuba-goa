@@ -7,6 +7,12 @@ export const BLOG_RANKING_IMPROVE_COOLDOWN_DAYS = 15;
 /** New GSC impressions since last improve required to re-enable Generate early. */
 export const BLOG_RANKING_IMPROVE_MIN_NEW_IMPRESSIONS = 10;
 
+/** Max blogs per bulk SEO improve API request. */
+export const MAX_BULK_SEO_IMPROVE_PER_REQUEST = 100;
+
+/** Default batch size for bulk SEO improve (admin UI + API). */
+export const DEFAULT_BULK_SEO_IMPROVE_BATCH = 50;
+
 export type BlogRankingImproveSnapshot = {
   at: string;
   estimatedPct: number;
