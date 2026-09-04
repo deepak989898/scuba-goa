@@ -4,6 +4,7 @@ import {
   getPublishedBlogPostBySlug,
   listPublishedBlogPostsServer,
 } from "@/lib/blog-posts-server";
+import { hasEditorialBlogFeaturedImage } from "@/lib/cms-image";
 
 /** Published Firestore blogs (source of truth for the public site). */
 export async function getAllBlogPostsMerged(): Promise<BlogPost[]> {
@@ -53,14 +54,31 @@ export async function getRelatedBlogPostsMerged(
   currentSlug: string,
   limit = 6,
 ): Promise<BlogPost[]> {
-  const all = await getAllBlogPostsMerged();
-  const current = all.find((p) => p.slug === currentSlug);
+  const allFs = await listPublishedBlogPostsServer();
+  const current = allFs.find((p) => p.slug === currentSlug);
   if (!current) return [];
-  const scored = all
-    .filter((p) => p.slug !== currentSlug)
-    .map((p) => ({ post: p, score: relatedScore(current, p) }))
+
+  const currentPost = blogFirestoreToBlogPost(current);
+  const editorialFs = allFs.filter(
+    (p) =>
+      p.slug !== currentSlug &&
+      hasEditorialBlogFeaturedImage(
+        p.featuredImageUrl,
+        p.ogImageUrl,
+        p.imageMeta,
+      ),
+  );
+
+  const scored = editorialFs
+    .map((p) => ({
+      post: blogFirestoreToBlogPost(p),
+      score: relatedScore(currentPost, blogFirestoreToBlogPost(p)),
+    }))
     .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score || b.post.date.localeCompare(a.post.date));
+    .sort(
+      (a, b) =>
+        b.score - a.score || b.post.date.localeCompare(a.post.date),
+    );
 
   const picked: BlogPost[] = [];
   const usedImages = new Set<string>();
@@ -71,7 +89,7 @@ export async function getRelatedBlogPostsMerged(
     if (img) usedImages.add(img);
     picked.push(row.post);
   }
-  // Fallback fill if uniqueness filter removed too many
+
   if (picked.length < Math.min(3, limit)) {
     for (const row of scored) {
       if (picked.length >= limit) break;

@@ -76,6 +76,85 @@ export function isStockFallbackImage(url: string | undefined | null): boolean {
   return false;
 }
 
+/** Free stock hosts (Pexels, Pixabay, Unsplash, Openverse) — not AI or manual admin uploads. */
+export function isFreeStockImageUrl(url: string | undefined | null): boolean {
+  const u = String(url ?? "").trim().toLowerCase();
+  if (!u) return false;
+  if (isStockFallbackImage(u)) return true;
+  try {
+    const host = new URL(u).hostname.toLowerCase();
+    if (host.includes("pexels.com")) return true;
+    if (host.includes("pixabay.com")) return true;
+    if (host.includes("openverse.org")) return true;
+  } catch {
+    /* invalid URL */
+  }
+  return false;
+}
+
+export type BlogFeaturedImageMeta = {
+  source?: string;
+  generationModel?: string;
+  generatedPrompt?: string;
+  validationNotes?: string[];
+  imageStatus?: string;
+};
+
+function isBlogStockImageMeta(meta?: BlogFeaturedImageMeta | null): boolean {
+  if (!meta) return false;
+  const source = String(meta.source ?? "").trim().toLowerCase();
+  if (source === "pexels" || source === "pixabay" || source === "unsplash") {
+    return true;
+  }
+  const model = String(meta.generationModel ?? "").trim().toLowerCase();
+  const stockModels = [
+    "pexels",
+    "pixabay",
+    "unsplash",
+    "wikimedia",
+    "openverse",
+    "curated_fallback",
+  ];
+  if (stockModels.includes(model)) return true;
+  const notes = (meta.validationNotes ?? []).join(" ").toLowerCase();
+  if (notes.includes("stock_")) return true;
+  const prompt = String(meta.generatedPrompt ?? "").trim().toLowerCase();
+  if (prompt.startsWith("stock:")) return true;
+  return false;
+}
+
+/**
+ * True when a blog post has an AI-generated or admin-uploaded featured image
+ * (not free stock from Pexels/Pixabay/Unsplash/Wikimedia fallbacks).
+ */
+export function hasEditorialBlogFeaturedImage(
+  featuredImageUrl?: string | null,
+  ogImageUrl?: string | null,
+  imageMeta?: BlogFeaturedImageMeta | null,
+): boolean {
+  if (isBlogStockImageMeta(imageMeta)) return false;
+
+  const featured = String(featuredImageUrl ?? "").trim();
+  const og = String(ogImageUrl ?? "").trim();
+  if (isFreeStockImageUrl(featured) || isFreeStockImageUrl(og)) return false;
+
+  const cms = pickBlogFeaturedImage(featured, og);
+  if (!cms) return false;
+  if (isFreeStockImageUrl(cms)) return false;
+  if (cms.includes("wikimedia.org")) return false;
+
+  const source = String(imageMeta?.source ?? "").trim().toLowerCase();
+  if (source === "openai" || source === "upload" || source === "manual") {
+    return true;
+  }
+  if (imageMeta?.imageStatus === "generated") return true;
+
+  if (isAdminUploadedImage(cms)) return true;
+  if (/^https?:\/\//i.test(cms)) return true;
+
+  return false;
+}
+
 function isFirebaseOrGcsHost(host: string): boolean {
   const h = host.toLowerCase();
   return (

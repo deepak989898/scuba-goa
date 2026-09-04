@@ -33,6 +33,7 @@ import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 import {
   blogFeaturedImageOrPlaceholder,
+  pickBlogFeaturedImage,
   resolveBlogFeaturedImages,
 } from "@/lib/cms-image";
 
@@ -349,6 +350,7 @@ export default async function BlogPostPage({ params }: Props) {
             mainFallback={heroGallery.mainFallback}
             mainAlt={heroGallery.mainAlt}
             serviceThumbs={heroGallery.serviceThumbs}
+            layout="bounded"
             priority
           />
 
@@ -449,7 +451,8 @@ export default async function BlogPostPage({ params }: Props) {
               </p>
               <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
                 {related.map((r) => {
-                  const cardImage = blogFeaturedImageOrPlaceholder(r.slug, r.title, r.imageUrl);
+                  const cardImage = pickBlogFeaturedImage(r.imageUrl);
+                  if (!cardImage) return null;
                   return (
                     <li key={r.slug} className="h-full">
                       <Link

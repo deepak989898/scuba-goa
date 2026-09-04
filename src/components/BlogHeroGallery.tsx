@@ -7,8 +7,8 @@ import type { BlogHeroGalleryData } from "@/lib/blog-hero-gallery";
 type Props = BlogHeroGalleryData & {
   priority?: boolean;
   /**
-   * `intrinsic` — full uncropped height (blog banners).
-   * `bounded` — capped hero box, full-width crop (guide pages).
+   * `intrinsic` — full uncropped height (legacy).
+   * `bounded` — full-width hero with max height cap (blog + guide pages).
    */
   layout?: "intrinsic" | "bounded";
 };
@@ -45,7 +45,7 @@ export function BlogHeroGallery({
 
   const mainWrapClass =
     layout === "bounded"
-      ? "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 aspect-[16/9] max-h-[min(260px,48vh)] min-h-[200px] sm:max-h-[min(340px,52vh)] sm:min-h-[240px] lg:max-h-[min(400px,55vh)] lg:min-h-[280px]"
+      ? "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 h-[min(260px,48vh)] min-h-[200px] sm:h-[min(340px,52vh)] sm:min-h-[240px] lg:h-[550px] lg:min-h-0 lg:max-h-[550px]"
       : "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-900/5 leading-[0]";
 
   return (
@@ -57,7 +57,7 @@ export function BlogHeroGallery({
             alt={displayAlt}
             fill
             className="object-cover object-center"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 720px"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 960px"
             priority={priority}
             onError={() => {
               if (!failedToFallback && mainFallback) {
