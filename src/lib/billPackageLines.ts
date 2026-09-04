@@ -24,9 +24,7 @@ export function buildPackageLinesForBill(booking: {
       const lt = Number(o.lineTotal);
       const totalInr = Number.isFinite(lt) ? Math.round(lt) : null;
       if (totalInr !== null) {
-        lines.push(
-          `${name} — ${q} person(s) — Rs.${totalInr.toLocaleString("en-IN")} (line total)`
-        );
+        lines.push(`${name} — ${q} person(s) — Rs.${totalInr.toLocaleString("en-IN")}`);
       } else {
         lines.push(`${name} — ${q} person(s)`);
       }

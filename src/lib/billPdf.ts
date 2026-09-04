@@ -150,6 +150,17 @@ function drawImageFit(
   return { w, h };
 }
 
+/** Split a package line into left label + right-aligned price. */
+function parsePackageLine(line: string): { label: string; price: string | null } {
+  const priceMatch = line.match(/Rs\.[\d,]+(?:\s*\(line total\))?/);
+  if (!priceMatch) return { label: line, price: null };
+  const label = line
+    .slice(0, line.indexOf(priceMatch[0]))
+    .replace(/[\s—\-|]+$/g, "")
+    .trim();
+  return { label, price: priceMatch[0].replace(/\s*\(line total\)/, "") };
+}
+
 const DO_NOTES = [
   "Bring a valid photo ID for each guest on activity day.",
   "Arrive 15 minutes early at the pickup / meeting point.",
@@ -176,7 +187,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     "book-scuba-goa-logo-transparent.png",
     "book-scuba-goa-logo.png",
   );
-  const turtle = await embedPng(doc, "bill/hero-turtle.png");
   const pkgIcon = await embedPng(doc, "bill/package-van.png");
   const footerArt = await embedPng(doc, "bill/footer-beach.png");
   const palmWm = await embedPng(doc, "bill/palm-watermark.png");
@@ -221,9 +231,9 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     color: COLORS.pageBg,
   });
 
-  // ── Header (navy wave band) ─────────────────────────────────────────────
-  const headerH = 168;
-  const logoSize = 78;
+  // ── Header (compact navy band) ──────────────────────────────────────────
+  const headerH = 112;
+  const logoSize = 92;
   page.drawRectangle({
     x: 0,
     y: height - headerH,
@@ -231,80 +241,44 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     height: headerH,
     color: COLORS.navy,
   });
-  // Soft wave / curve suggestion at header bottom
-  page.drawRectangle({
-    x: 0,
-    y: height - headerH - 8,
-    width,
-    height: 10,
-    color: COLORS.navyMid,
-    opacity: 0.55,
-  });
-  page.drawRectangle({
-    x: 0,
-    y: height - headerH - 14,
-    width,
-    height: 8,
-    color: COLORS.pageBg,
-  });
 
-  const logoTopPad = 14;
+  const logoTopPad = 10;
   const logoY = height - logoTopPad - logoSize;
   let brandTextX = margin;
   if (logo) {
     drawImageFit(page, logo, margin, logoY, logoSize, logoSize);
-    brandTextX = margin + logoSize + 12;
+    brandTextX = margin + logoSize + 10;
   }
 
   page.drawText(pdfSafeText(SITE_NAME, 40), {
     x: brandTextX,
-    y: logoY + logoSize - 28,
-    size: 18,
+    y: logoY + logoSize - 24,
+    size: 17,
     font: fontBold,
     color: COLORS.white,
   });
   page.drawText("PAYMENT RECEIPT / BILL", {
     x: brandTextX,
-    y: logoY + logoSize - 50,
-    size: 15,
+    y: logoY + logoSize - 44,
+    size: 13,
     font: fontBold,
     color: COLORS.white,
   });
   page.drawText("Thank you for choosing Book Scuba Goa", {
     x: brandTextX,
-    y: logoY + 8,
-    size: 9,
+    y: logoY + 6,
+    size: 8.5,
     font,
     color: rgb(0.75, 0.88, 0.98),
   });
 
-  // Turtle hero circle
-  if (turtle) {
-    const tSize = 86;
-    const tx = width - margin - tSize - 4;
-    const ty = height - logoTopPad - tSize;
-    page.drawCircle({
-      x: tx + tSize / 2,
-      y: ty + tSize / 2,
-      size: tSize / 2 + 3,
-      color: rgb(0.15, 0.35, 0.55),
-      opacity: 0.9,
-    });
-    page.drawImage(turtle, {
-      x: tx,
-      y: ty,
-      width: tSize,
-      height: tSize,
-    });
-  }
-
-  // Paid badge + stamp
+  // Paid badge + stamp (top-right; no hero image)
   const badgeLabel = input.isPartial ? "PARTIAL PAYMENT" : "PAID IN FULL";
   const badgeColor = input.isPartial ? COLORS.orange : COLORS.green;
   const badgeW = 118;
-  const badgeH = 22;
-  const badgeX = width - margin - badgeW - (turtle ? 98 : 0);
-  const badgeY = height - logoTopPad - 8 - badgeH;
+  const badgeH = 20;
+  const badgeX = width - margin - badgeW;
+  const badgeY = height - logoTopPad - 6 - badgeH;
   page.drawRectangle({
     x: badgeX,
     y: badgeY,
@@ -314,15 +288,15 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   });
   page.drawText(badgeLabel, {
     x: badgeX + 10,
-    y: badgeY + 7,
-    size: 9,
+    y: badgeY + 6,
+    size: 8.5,
     font: fontBold,
     color: COLORS.white,
   });
   page.drawText(input.isPartial ? "PARTIAL" : "PAID", {
     x: badgeX + 28,
-    y: badgeY - 22,
-    size: 18,
+    y: badgeY - 20,
+    size: 16,
     font: fontBold,
     color: badgeColor,
   });
@@ -332,31 +306,40 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const genW = Math.min(200, font.widthOfTextAtSize(genText, 8) + 18);
   page.drawRectangle({
     x: width - margin - genW,
-    y: height - headerH + 10,
+    y: height - headerH + 8,
     width: genW,
-    height: 18,
+    height: 16,
     color: COLORS.navyDeep,
   });
   page.drawText(genText, {
     x: width - margin - genW + 8,
-    y: height - headerH + 15,
-    size: 7.5,
+    y: height - headerH + 12,
+    size: 7,
     font,
     color: rgb(0.82, 0.9, 0.98),
   });
 
-  // ── Trust bar ───────────────────────────────────────────────────────────
-  let yTop = height - headerH - 22;
-  const trustH = 44;
-  const trustY = yTop - trustH;
+  // ── Trust bar (full width, flush under header) ───────────────────────────
+  const trustH = 38;
+  const trustY = height - headerH - trustH;
   page.drawRectangle({
-    x: margin,
+    x: 0,
     y: trustY,
-    width: width - margin * 2,
+    width,
     height: trustH,
-    color: COLORS.white,
-    borderColor: COLORS.cardBorder,
-    borderWidth: 1,
+    color: COLORS.trustBg,
+  });
+  page.drawLine({
+    start: { x: 0, y: trustY },
+    end: { x: width, y: trustY },
+    thickness: 0.6,
+    color: COLORS.cardBorder,
+  });
+  page.drawLine({
+    start: { x: 0, y: trustY + trustH },
+    end: { x: width, y: trustY + trustH },
+    thickness: 0.6,
+    color: COLORS.cardBorder,
   });
 
   const trustItems: { icon: PDFImage | null; title: string; sub: string }[] = [
@@ -365,36 +348,36 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     { icon: iconHeadset, title: "24/7 Support", sub: "We're here to help" },
     { icon: iconStar, title: "Best Experiences", sub: "Memorable & Hassle-free" },
   ];
-  const trustColW = (width - margin * 2) / 4;
+  const trustColW = width / 4;
   trustItems.forEach((item, i) => {
-    const cx = margin + i * trustColW + 8;
+    const cx = i * trustColW + 14;
     if (item.icon) {
       page.drawImage(item.icon, {
         x: cx,
-        y: trustY + 22,
-        width: 14,
-        height: 14,
+        y: trustY + 20,
+        width: 13,
+        height: 13,
       });
     }
     page.drawText(item.title, {
-      x: cx + 18,
-      y: trustY + 26,
+      x: cx + 17,
+      y: trustY + 24,
       size: 7,
       font: fontBold,
       color: COLORS.text,
-      maxWidth: trustColW - 28,
+      maxWidth: trustColW - 24,
     });
     page.drawText(item.sub, {
-      x: cx + 18,
-      y: trustY + 14,
-      size: 6.2,
+      x: cx + 17,
+      y: trustY + 13,
+      size: 6,
       font,
       color: COLORS.muted,
-      maxWidth: trustColW - 28,
+      maxWidth: trustColW - 24,
     });
   });
 
-  yTop = trustY - 12;
+  let yTop = trustY - 10;
 
   // Helper: section card header with icon
   const sectionHeader = (
@@ -534,40 +517,38 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   }
 
   const pkgTextX = margin + 78;
+  const priceRightX = width - margin - 18;
   let py = pkgTop - 48;
-  for (const line of packageLines) {
-    // Highlight "Rs." amounts in green when present
-    const rsIdx = line.lastIndexOf("Rs.");
-    if (rsIdx > 0) {
-      const left = line.slice(0, rsIdx).trimEnd();
-      const right = line.slice(rsIdx);
-      page.drawText(left, {
-        x: pkgTextX,
-        y: py,
-        size: 9.5,
-        font: fontBold,
-        color: COLORS.text,
-        maxWidth: width - pkgTextX - margin - 20,
-      });
-      const lw = fontBold.widthOfTextAtSize(left + " ", 9.5);
-      page.drawText(right, {
-        x: pkgTextX + lw,
+  for (let i = 0; i < packageLines.length; i++) {
+    const line = packageLines[i];
+    const { label, price } = parsePackageLine(line);
+    const isMetaLine = /total persons|units for this booking/i.test(label);
+    const displayPrice =
+      price ??
+      (!isMetaLine && i === 0 && input.fullAmountInr > 0
+        ? `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`
+        : null);
+
+    page.drawText(label, {
+      x: pkgTextX,
+      y: py,
+      size: 9.5,
+      font: fontBold,
+      color: COLORS.text,
+      maxWidth: priceRightX - pkgTextX - 72,
+    });
+
+    if (displayPrice) {
+      const pw = fontBold.widthOfTextAtSize(displayPrice, 9.5);
+      page.drawText(displayPrice, {
+        x: priceRightX - pw,
         y: py,
         size: 9.5,
         font: fontBold,
         color: COLORS.greenDark,
       });
-    } else {
-      page.drawText(line, {
-        x: pkgTextX,
-        y: py,
-        size: 9.5,
-        font: fontBold,
-        color: COLORS.text,
-        maxWidth: width - pkgTextX - margin - 20,
-      });
     }
-    py -= 12;
+    py -= 14;
   }
 
   page.drawText(
@@ -602,7 +583,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
       value: `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`,
     },
     {
-      label: "Paid now (this transaction)",
+      label: "Advance payment",
       value: `Rs.${input.amountPaidInr.toLocaleString("en-IN")}`,
       strong: true,
       highlight: true,
