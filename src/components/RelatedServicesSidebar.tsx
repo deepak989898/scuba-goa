@@ -4,17 +4,119 @@ import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { ServiceMetaBlock } from "@/components/ServiceMetaBlock";
 import { ServiceCardAddToCart } from "@/components/cart/ServiceCardAddToCart";
 
+function ServiceSidebarCard({
+  service,
+  compact,
+  showScarcity,
+}: {
+  service: ServiceItem;
+  compact: boolean;
+  showScarcity: boolean;
+}) {
+  return (
+    <article
+      className="u-depth-card group overflow-hidden rounded-xl border border-ocean-100 bg-sand"
+    >
+      <Link
+        href={`/services/${service.slug}`}
+        className={`relative block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ocean-500 ${
+          compact ? "aspect-[16/8]" : "aspect-[16/9]"
+        }`}
+        aria-label={`View ${service.title}`}
+      >
+        <CmsRemoteImage
+          src={service.image}
+          alt={service.title}
+          fill
+          className="object-cover transition duration-500 group-hover:scale-105"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
+          loading="lazy"
+        />
+        {showScarcity && service.mostBooked ? (
+          <span className="absolute left-2 top-2 rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white shadow">
+            Most Booked
+          </span>
+        ) : null}
+        {showScarcity && service.limitedSlots ? (
+          <span className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow">
+            Limited Slots
+          </span>
+        ) : null}
+      </Link>
+
+      <div className={compact ? "p-2.5" : "p-4"}>
+        <Link
+          href={`/services/${service.slug}`}
+          className={`font-display font-bold leading-snug text-ocean-900 transition hover:text-cyan-700 ${
+            compact ? "text-base" : "text-lg"
+          }`}
+        >
+          {service.title}
+        </Link>
+        <p
+          className={`line-clamp-2 text-ocean-700 ${
+            compact ? "mt-0.5 text-xs leading-snug" : "mt-1 text-sm leading-relaxed"
+          }`}
+        >
+          {service.short}
+        </p>
+        <ServiceMetaBlock
+          s={service}
+          variant="cardGrid"
+          showScarcity={showScarcity}
+        />
+
+        <div
+          className={`flex items-end justify-between gap-2 rounded-lg border border-ocean-200 bg-white ${
+            compact ? "mt-2 px-2.5 py-1.5" : "mt-3 px-3 py-2.5"
+          }`}
+        >
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-ocean-700">
+              Starting at
+            </p>
+            <p
+              className={`font-display font-extrabold tabular-nums text-ocean-950 ${
+                compact ? "text-lg" : "text-xl"
+              }`}
+            >
+              ₹{service.priceFrom.toLocaleString("en-IN")}
+              <span className="text-sm text-cyan-700">+</span>
+            </p>
+          </div>
+        </div>
+
+        <div className={`flex flex-wrap gap-1.5 ${compact ? "mt-2" : "mt-4 gap-2"}`}>
+          <ServiceCardAddToCart service={service} size="sm" />
+          <Link
+            href={`/services/${service.slug}`}
+            className="inline-flex min-h-10 items-center justify-center rounded-full bg-cyan-500 px-3.5 py-1.5 text-sm font-extrabold text-slate-950 shadow-md transition hover:bg-cyan-400"
+          >
+            Book Now
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export function RelatedServicesSidebar({
   services,
+  otherServices = [],
   compact = false,
   showScarcity = true,
 }: {
+  /** Topic-matched packages shown first. */
   services: ServiceItem[];
+  /** Extra catalog picks — collapsible “Other services”. */
+  otherServices?: ServiceItem[];
   compact?: boolean;
   /** When false, hide “Most Booked / Limited Slots / booked today” style claims. */
   showScarcity?: boolean;
 }) {
-  if (services.length === 0) return null;
+  if (services.length === 0 && otherServices.length === 0) return null;
+
+  const gridClass = `grid sm:grid-cols-2 lg:grid-cols-1 ${compact ? "gap-2.5" : "gap-4"}`;
 
   return (
     <div aria-labelledby="related-services-title" className="min-w-0">
@@ -32,99 +134,58 @@ export function RelatedServicesSidebar({
         </h2>
         {!compact ? (
           <p className="mt-0.5 text-sm leading-relaxed text-ocean-700">
-            Compare another experience or add it to your booking.
+            Packages matched to this guide — book or add to cart.
           </p>
         ) : null}
       </div>
 
-      <div className={`grid sm:grid-cols-2 lg:grid-cols-1 ${compact ? "gap-2.5" : "gap-4"}`}>
-        {services.map((service) => (
-          <article
-            key={service.slug}
-            className="u-depth-card group overflow-hidden rounded-xl border border-ocean-100 bg-sand"
-          >
-            <Link
-              href={`/services/${service.slug}`}
-              className={`relative block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ocean-500 ${
-                compact ? "aspect-[16/8]" : "aspect-[16/9]"
-              }`}
-              aria-label={`View ${service.title}`}
-            >
-              <CmsRemoteImage
-                src={service.image}
-                alt={service.title}
-                fill
-                className="object-cover transition duration-500 group-hover:scale-105"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
-                loading="lazy"
-              />
-              {showScarcity && service.mostBooked ? (
-                <span className="absolute left-2 top-2 rounded-full bg-ocean-800 px-2 py-0.5 text-[10px] font-bold text-white shadow">
-                  Most Booked
-                </span>
-              ) : null}
-              {showScarcity && service.limitedSlots ? (
-                <span className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow">
-                  Limited Slots
-                </span>
-              ) : null}
-            </Link>
+      {services.length > 0 ? (
+        <div className={gridClass}>
+          {services.map((service) => (
+            <ServiceSidebarCard
+              key={service.slug}
+              service={service}
+              compact={compact}
+              showScarcity={showScarcity}
+            />
+          ))}
+        </div>
+      ) : null}
 
-            <div className={compact ? "p-2.5" : "p-4"}>
-              <Link
-                href={`/services/${service.slug}`}
-                className={`font-display font-bold leading-snug text-ocean-900 transition hover:text-cyan-700 ${
-                  compact ? "text-base" : "text-lg"
-                }`}
-              >
-                {service.title}
-              </Link>
-              <p
-                className={`line-clamp-2 text-ocean-700 ${
-                  compact ? "mt-0.5 text-xs leading-snug" : "mt-1 text-sm leading-relaxed"
-                }`}
-              >
-                {service.short}
-              </p>
-              <ServiceMetaBlock
-                s={service}
-                variant="cardGrid"
+      {otherServices.length > 0 ? (
+        <details className={`group ${services.length > 0 ? "mt-4" : "mt-0"}`}>
+          <summary
+            className={`flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-ocean-200 bg-white px-3 py-2.5 transition hover:border-cyan-300 hover:bg-ocean-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
+              compact ? "text-sm" : ""
+            }`}
+          >
+            <span>
+              <span className="block font-display text-base font-bold text-ocean-900 sm:text-lg">
+                Other services
+              </span>
+              <span className="mt-0.5 block text-xs text-ocean-600 sm:text-sm">
+                Tap to explore more Goa activities
+              </span>
+            </span>
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ocean-200 bg-sand text-lg font-bold text-ocean-700 transition group-open:rotate-45"
+              aria-hidden
+            >
+              +
+            </span>
+          </summary>
+          <div className={`${gridClass} mt-3`}>
+            {otherServices.map((service) => (
+              <ServiceSidebarCard
+                key={service.slug}
+                service={service}
+                compact={compact}
                 showScarcity={showScarcity}
               />
-
-              <div
-                className={`flex items-end justify-between gap-2 rounded-lg border border-ocean-200 bg-white ${
-                  compact ? "mt-2 px-2.5 py-1.5" : "mt-3 px-3 py-2.5"
-                }`}
-              >
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-ocean-700">
-                    Starting at
-                  </p>
-                  <p
-                    className={`font-display font-extrabold tabular-nums text-ocean-950 ${
-                      compact ? "text-lg" : "text-xl"
-                    }`}
-                  >
-                    ₹{service.priceFrom.toLocaleString("en-IN")}
-                    <span className="text-sm text-cyan-700">+</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className={`flex flex-wrap gap-1.5 ${compact ? "mt-2" : "mt-4 gap-2"}`}>
-                <ServiceCardAddToCart service={service} size="sm" />
-                <Link
-                  href={`/services/${service.slug}`}
-                  className="inline-flex min-h-10 items-center justify-center rounded-full bg-cyan-500 px-3.5 py-1.5 text-sm font-extrabold text-slate-950 shadow-md transition hover:bg-cyan-400"
-                >
-                  Book Now
-                </Link>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
 
       <Link
         href="/services"

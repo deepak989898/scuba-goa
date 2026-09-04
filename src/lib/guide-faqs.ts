@@ -1,4 +1,5 @@
-import { BOOK_SCUBA_FAQ } from "@/lib/seo-health/faq-data";
+import { detectContentTopic } from "@/lib/content-topic";
+import { FAQ_POOL_BY_TOPIC } from "@/lib/seo-health/faq-data";
 
 export type GuideFaq = { question: string; answer: string };
 
@@ -8,19 +9,29 @@ export function buildGuideFaqs(input: {
   metaDescription: string;
   keywords: string[];
 }): GuideFaq[] {
-  const hay = `${input.headline} ${input.metaDescription} ${input.keywords.join(" ")}`.toLowerCase();
-  const scored = BOOK_SCUBA_FAQ.map((faq) => {
+  const topic = detectContentTopic({
+    title: input.headline,
+    keywords: input.keywords,
+  });
+  const pool = [...FAQ_POOL_BY_TOPIC[topic]];
+  const hay =
+    `${input.headline} ${input.metaDescription} ${input.keywords.join(" ")}`.toLowerCase();
+
+  const scored = pool.map((faq) => {
     const q = faq.question.toLowerCase();
+    const a = faq.answer.toLowerCase();
     let score = 0;
     for (const token of hay.split(/[^a-z0-9]+/).filter((t) => t.length >= 4)) {
-      if (q.includes(token) || faq.answer.toLowerCase().includes(token)) score += 1;
+      if (q.includes(token) || a.includes(token)) score += 1;
     }
-    if (hay.includes("calangute") && q.includes("where")) score += 2;
-    if (hay.includes("beginner") && q.includes("beginner")) score += 3;
     if (hay.includes("price") && q.includes("price")) score += 3;
-    if (hay.includes("water sport") && q.includes("water")) score += 2;
-    if (hay.includes("dudhsagar") && faq.answer.toLowerCase().includes("dudhsagar"))
-      score += 3;
+    if (hay.includes("book") && q.includes("book")) score += 2;
+    if (hay.includes("russian") && (q.includes("russian") || a.includes("russian"))) {
+      score += 4;
+    }
+    if (hay.includes("night") && (q.includes("night") || a.includes("night"))) {
+      score += 2;
+    }
     return { faq, score };
   }).sort((a, b) => b.score - a.score);
 
@@ -34,7 +45,7 @@ export function buildGuideFaqs(input: {
   }
 
   if (picked.length < 4) {
-    for (const faq of BOOK_SCUBA_FAQ) {
+    for (const faq of pool) {
       if (picked.length >= 5) break;
       if (seen.has(faq.question)) continue;
       picked.push({ question: faq.question, answer: faq.answer });

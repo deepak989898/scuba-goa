@@ -20,7 +20,7 @@ import {
 } from "@/lib/blog-firestore";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
-import { relatedServicesForContent } from "@/lib/related-services-for-content";
+import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
 import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
@@ -248,12 +248,14 @@ export default async function BlogPostPage({ params }: Props) {
   const bookHref = focusServiceSlug
     ? buildHeroBookingHref(encodeServiceBaseOption(focusServiceSlug))
     : "/booking";
-  const relatedServices = relatedServicesForContent(
-    catalog.services,
-    p,
-    focusServiceSlug,
-    4,
-  );
+  const { related: relatedServices, other: otherServices } =
+    splitServicesForContentSidebar(
+      catalog.services,
+      p,
+      focusServiceSlug,
+      3,
+      5,
+    );
   const focusService = resolveBlogFocusService(
     catalog.services,
     relatedServices,
@@ -388,7 +390,9 @@ export default async function BlogPostPage({ params }: Props) {
 
           <BlogLivePricing focusServiceSlug={focusServiceSlug} />
 
-          <BlogWhyChooseSection />
+          <BlogWhyChooseSection
+            content={{ title: p.title, keywords: p.keywords }}
+          />
 
           {faqs.length > 0 && (
             <section
@@ -546,6 +550,7 @@ export default async function BlogPostPage({ params }: Props) {
           <div className="mt-5 border-t border-ocean-100 pt-4 lg:hidden">
             <RelatedServicesSidebar
               services={relatedServices}
+              otherServices={otherServices}
               showScarcity={false}
               compact
             />
@@ -555,6 +560,7 @@ export default async function BlogPostPage({ params }: Props) {
         <aside className="hidden min-w-0 lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-4">
           <RelatedServicesSidebar
             services={relatedServices}
+            otherServices={otherServices}
             showScarcity={false}
             compact
           />

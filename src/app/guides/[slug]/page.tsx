@@ -17,7 +17,7 @@ import { buildGuideHeroGalleryData } from "@/lib/blog-hero-gallery";
 import { parseBookingOption } from "@/lib/booking-selection";
 import { buildGuideFaqs } from "@/lib/guide-faqs";
 import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
-import { relatedServicesForContent } from "@/lib/related-services-for-content";
+import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
 import {
   getPublishedSeoPageBySlug,
   getRelatedSeoGuides,
@@ -309,14 +309,16 @@ export default async function SeoGuidePage({
       page.bookingOption,
     );
 
-  const relatedServices =
-    relatedServicesForContent(
+  const { related: relatedServices, other: otherServices } =
+    splitServicesForContentSidebar(
       catalog.services,
       {
         title: page.headline,
         keywords: page.keywords,
       },
       focusServiceSlug,
+      3,
+      5,
     );
 
   const heroGallery = buildGuideHeroGalleryData({
@@ -629,7 +631,12 @@ export default async function SeoGuidePage({
             aria-label="Why book with us"
             className="mt-8"
           >
-            <BlogWhyChooseSection />
+            <BlogWhyChooseSection
+              content={{
+                title: page.headline,
+                keywords: page.keywords,
+              }}
+            />
           </section>
 
           {/* --------------------------------------------------------------- */}
@@ -1099,6 +1106,7 @@ export default async function SeoGuidePage({
         >
           <RelatedServicesSidebar
             services={relatedServices}
+            otherServices={otherServices}
           />
         </aside>
 
