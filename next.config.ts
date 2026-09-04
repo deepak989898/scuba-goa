@@ -50,6 +50,9 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Vercel image optimizer returns 402 on this project — serve originals so
+    // Firebase CMS photos, heroes, cart thumbs, and logos do not break.
+    unoptimized: true,
     // Prefer AVIF (smallest) and fall back to WebP — both are dramatically
     // smaller than JPEG/PNG and cut the "Improve image delivery" payload.
     formats: ["image/avif", "image/webp"],

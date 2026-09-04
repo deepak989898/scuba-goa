@@ -30,6 +30,9 @@ export function preferRawImageDelivery(src: string): boolean {
     if (host.includes("pexels.com")) return true;
     if (host.includes("pixabay.com")) return true;
     if (host.includes("images.unsplash.com")) return true;
+    if (host.includes("firebasestorage.googleapis.com")) return true;
+    if (host.endsWith(".storage.googleapis.com")) return true;
+    if (host === "storage.googleapis.com") return true;
   } catch {
     return false;
   }
