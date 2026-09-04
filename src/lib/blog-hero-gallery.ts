@@ -66,12 +66,12 @@ export function buildBlogHeroGalleryData(input: {
   };
 }
 
-/** Guide hero — main guide image + thumbnails from attached sidebar services only. */
+/** Guide hero — main guide image + thumbnails from the linked focus service only. */
 export function buildGuideHeroGalleryData(input: {
   title: string;
   heroPrimary: string;
   heroFallback: string;
-  relatedServices: ServiceItem[];
+  focusService?: ServiceItem | null;
 }): BlogHeroGalleryData {
   const title = input.title.trim() || "Goa guide";
   const mainUrl =
@@ -85,11 +85,10 @@ export function buildGuideHeroGalleryData(input: {
   const serviceThumbs: BlogHeroGallerySlide[] = [];
   const seen = new Set<string>();
 
-  for (const service of input.relatedServices) {
-    if (service.active === false) continue;
-    const href = `/services/${service.slug}`;
-    const label = `${service.title} in Goa`;
-    for (const img of serviceDetailImages(service)) {
+  if (input.focusService) {
+    const href = `/services/${input.focusService.slug}`;
+    const label = `${input.focusService.title} in Goa`;
+    for (const img of serviceDetailImages(input.focusService)) {
       pushThumb(serviceThumbs, seen, img, label, href);
     }
   }
@@ -119,12 +118,13 @@ export function resolveBlogFocusService(
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ");
 
-  if (/russian|night.?club|nightclub|disco|pub\b/.test(text)) {
+  if (/russian|ruskii|ruski|night.?club|nightclub|nightlife|disco|pub\b/.test(text)) {
     const nightlife = services.find(
       (s) =>
         s.slug === "night-club" ||
         s.slug.includes("night-club") ||
-        s.slug.includes("nightclub"),
+        s.slug.includes("nightclub") ||
+        /russian|night|club/i.test(s.title),
     );
     if (nightlife) return nightlife;
   }

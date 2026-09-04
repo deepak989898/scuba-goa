@@ -14,8 +14,9 @@ import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
 
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
-import { buildGuideHeroGalleryData } from "@/lib/blog-hero-gallery";
+import { buildGuideHeroGalleryData, resolveBlogFocusService } from "@/lib/blog-hero-gallery";
 import { parseBookingOption } from "@/lib/booking-selection";
+import { getTopicCta } from "@/lib/content-clusters";
 import { buildGuideFaqs } from "@/lib/guide-faqs";
 import {
   buildClusterCatalog,
@@ -31,6 +32,9 @@ type Props = {
 };
 
 export const dynamic = "force-dynamic";
+
+const guideBookNowClass =
+  "inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/70 transition hover:brightness-110 active:brightness-95";
 
 function absAssetUrl(url: string): string {
   const value = url.trim();
@@ -318,11 +322,25 @@ export default async function SeoGuidePage({
       5,
     );
 
+  const contentMeta = {
+    title: page.headline,
+    keywords: page.keywords,
+  };
+
+  const focusService = resolveBlogFocusService(
+    catalog.services,
+    relatedServices,
+    focusServiceSlug,
+    contentMeta,
+  );
+
+  const topicCta = getTopicCta(contentMeta, focusService?.slug ?? focusServiceSlug);
+
   const heroGallery = buildGuideHeroGalleryData({
     title: page.headline,
     heroPrimary: page.heroImageUrl.trim(),
     heroFallback: page.ogImageUrl.trim(),
-    relatedServices,
+    focusService,
   });
 
   const faqs = buildGuideFaqs({
@@ -348,11 +366,6 @@ export default async function SeoGuidePage({
     },
     clusterCatalog,
   );
-
-  const contentMeta = {
-    title: page.headline,
-    keywords: page.keywords,
-  };
 
   const updatedLabel = page.updatedAt.slice(0, 10);
 
@@ -516,6 +529,18 @@ export default async function SeoGuidePage({
                   layout="bounded"
                   priority
                 />
+
+                <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                  <Link href={topicCta.primaryHref} className={guideBookNowClass}>
+                    {topicCta.primaryLabel}
+                  </Link>
+                  <Link
+                    href="/services"
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-ocean-200 bg-white px-4 py-2 text-sm font-bold text-ocean-800 shadow-sm transition hover:bg-ocean-50"
+                  >
+                    View services
+                  </Link>
+                </div>
               </div>
             ) : null}
 
