@@ -73,6 +73,11 @@ export const NIGHTLIFE_GOA_FAQ = [
     answer:
       "Yes. Choose the Russian Night Club or nightlife package on Book Scuba Goa, pick your date, pay securely online, and receive WhatsApp confirmation with entry details, reporting time, and venue instructions.",
   },
+  {
+    question: "Are Russian night clubs open during monsoon in Goa?",
+    answer:
+      "Some venues reduce hours or close on heavy-rain nights during monsoon (June–September). Peak nightlife runs October–May. Check the latest event schedule on WhatsApp before you travel.",
+  },
 ] as const;
 
 export const CASINO_GOA_FAQ = [
@@ -131,12 +136,68 @@ export const GENERAL_GOA_FAQ = [
   },
 ] as const;
 
+export const WATERSPORTS_GOA_FAQ = [
+  {
+    question: "Which water sports are available in Goa?",
+    answer:
+      "Popular options include parasailing, jet ski, banana boat, flyboarding, and bungee jumping at select beaches. Packages vary by location, season, and duration—check each service page for inclusions.",
+  },
+  {
+    question: "How much do water sports cost in Goa?",
+    answer:
+      "Prices depend on the activity and combo packages. Book Scuba Goa lists live starting prices on water sports, flyboarding, and bungee pages. Confirm duration, safety gear, and photos before payment.",
+  },
+  {
+    question: "Is safety equipment included in water sports?",
+    answer:
+      "Yes. Licensed operators provide life jackets and standard safety briefings. Always follow crew instructions and disclose health conditions before high-adrenaline activities.",
+  },
+  {
+    question: "What is the best season for water sports in Goa?",
+    answer:
+      "October to May offers the calmest sea conditions. Monsoon months have limited operations—check live availability on the booking page or WhatsApp before you travel.",
+  },
+  {
+    question: "Can I book multiple water sports in one day?",
+    answer:
+      "Yes, but spacing activities reduces fatigue. Many guests book one main thrill (flyboarding or bungee) plus a lighter water sport on separate days for comfort.",
+  },
+] as const;
+
+export const DOLPHIN_GOA_FAQ = [
+  {
+    question: "What is the best time for a dolphin trip in Goa?",
+    answer:
+      "Early morning departures offer the best chance to spot dolphins when seas are calmer. October to May is peak season. Arrive at the jetty 15–20 minutes before reporting time.",
+  },
+  {
+    question: "How much does a dolphin trip cost in Goa?",
+    answer:
+      "Dolphin watching packages on Book Scuba Goa start from around ₹800+ depending on boat type, duration, and inclusions. Live prices are shown on the dolphin trip service page.",
+  },
+  {
+    question: "Is dolphin watching safe for families?",
+    answer:
+      "Yes, with life jackets and a trained crew on licensed boats. Children should be supervised at all times. Sightings are natural and not guaranteed every day.",
+  },
+  {
+    question: "Where do dolphin trips start in Goa?",
+    answer:
+      "Boats typically depart from coastal jetties in North Goa. Your booking confirmation includes the meeting point, reporting time, and pickup details if included.",
+  },
+  {
+    question: "Can I combine a dolphin trip with other activities?",
+    answer:
+      "Many travellers pair a morning dolphin trip with sightseeing or water sports later in the day. Message us on WhatsApp to align timings across packages.",
+  },
+] as const;
+
 export const FAQ_POOL_BY_TOPIC = {
   scuba: BOOK_SCUBA_FAQ,
   nightlife: NIGHTLIFE_GOA_FAQ,
   casino: CASINO_GOA_FAQ,
-  dolphin: BOOK_SCUBA_FAQ,
-  watersports: BOOK_SCUBA_FAQ,
+  dolphin: DOLPHIN_GOA_FAQ,
+  watersports: WATERSPORTS_GOA_FAQ,
   tour: GENERAL_GOA_FAQ,
   general: GENERAL_GOA_FAQ,
 } as const;

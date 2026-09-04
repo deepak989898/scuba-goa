@@ -7,10 +7,18 @@ import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
 import { BlogTrustBlock } from "@/components/BlogTrustBlock";
 import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import { MoreLikeThisSection } from "@/components/MoreLikeThisSection";
+import { TopicCtaSection } from "@/components/TopicCtaSection";
 import {
   getBlogPostBySlugMerged,
-  getRelatedBlogPostsMerged,
 } from "@/lib/blog-posts-unified";
+import {
+  buildClusterCatalog,
+  getMoreLikeThisForBlog,
+} from "@/lib/cluster-related-content";
+import { enrichMarkdownWithClusterLinks } from "@/lib/contextual-internal-links";
+import { getTopicAwareBlogFaqs } from "@/lib/blog-topic-faqs";
+import { getTopicCta } from "@/lib/content-clusters";
 import {
   getPublishedBlogPostBySlug,
   listPublishedBlogSlugsServer,
@@ -19,21 +27,17 @@ import {
   pickBlogDisplayUpdatedYmd,
 } from "@/lib/blog-firestore";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
-import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
 import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { getSeoBlogRedirect } from "@/lib/gsc-indexing-agent/seo-blog-redirects";
-import { encodeServiceBaseOption } from "@/lib/booking-selection";
-import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
 import { BlogHeroGallery } from "@/components/BlogHeroGallery";
 import { buildBlogHeroGalleryData, resolveBlogFocusService } from "@/lib/blog-hero-gallery";
 import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 import {
   blogFeaturedImageOrPlaceholder,
-  pickBlogFeaturedImage,
   resolveBlogFeaturedImages,
 } from "@/lib/cms-image";
 
@@ -218,14 +222,26 @@ export default async function BlogPostPage({ params }: Props) {
     if (dest) permanentRedirect(dest);
     notFound();
   }
-  const [fs, related, catalog] = await Promise.all([
+  const [fs, moreLikeThis, catalog, clusterCatalog] = await Promise.all([
     getPublishedBlogPostBySlug(slug),
-    getRelatedBlogPostsMerged(slug, 6),
+    getMoreLikeThisForBlog(slug, 6),
     buildBlogCatalogContext(),
+    buildClusterCatalog(),
   ]);
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
-  const faqs = p.faqs ?? [];
+  const contentMeta = { title: p.title, keywords: p.keywords };
+  const faqs = getTopicAwareBlogFaqs({
+    title: p.title,
+    excerpt: p.excerpt,
+    keywords: p.keywords,
+    faqs: p.faqs,
+  });
+  const enrichedContent = enrichMarkdownWithClusterLinks(
+    p.content,
+    { ...contentMeta, slug: p.slug, kind: "blog" },
+    clusterCatalog,
+  );
   const featuredImages = resolveBlogFeaturedImages(
     p.slug,
     p.title,
@@ -245,9 +261,7 @@ export default async function BlogPostPage({ params }: Props) {
     : p.updatedAt ?? p.date;
   const publishedLabel = (fs?.publishedAt || p.date || "").slice(0, 10);
   const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
-  const bookHref = focusServiceSlug
-    ? buildHeroBookingHref(encodeServiceBaseOption(focusServiceSlug))
-    : "/booking";
+  const topicCta = getTopicCta(contentMeta, focusServiceSlug);
   const { related: relatedServices, other: otherServices } =
     splitServicesForContentSidebar(
       catalog.services,
@@ -364,8 +378,8 @@ export default async function BlogPostPage({ params }: Props) {
               />
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-              <Link href={bookHref} className={blogBookNowClass}>
-                Book Now
+              <Link href={topicCta.primaryHref} className={blogBookNowClass}>
+                {topicCta.primaryLabel}
               </Link>
               <Link
                 href="/services"
@@ -385,10 +399,13 @@ export default async function BlogPostPage({ params }: Props) {
           </p>
 
           <div className="prose prose-ocean mt-2 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">
-            <BlogContent content={p.content} />
+            <BlogContent content={enrichedContent} />
           </div>
 
-          <BlogLivePricing focusServiceSlug={focusServiceSlug} />
+          <BlogLivePricing
+            focusServiceSlug={focusServiceSlug}
+            topicMeta={contentMeta}
+          />
 
           <BlogWhyChooseSection
             content={{ title: p.title, keywords: p.keywords }}
@@ -436,115 +453,18 @@ export default async function BlogPostPage({ params }: Props) {
             </section>
           )}
 
-          {related.length > 0 && (
-            <section
-              className="mt-5 border-t border-ocean-100 pt-4"
-              aria-labelledby="related-articles-heading"
-            >
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-700">
-                Continue exploring
-              </p>
-              <h2
-                id="related-articles-heading"
-                className="mt-0.5 font-display text-lg font-bold text-ocean-900 sm:text-xl"
-              >
-                Related articles
-              </h2>
-              <p className="mt-1 text-sm text-ocean-700">
-                Keep reading this topic cluster before booking.
-              </p>
-              <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
-                {related.map((r) => {
-                  const cardImage = pickBlogFeaturedImage(r.imageUrl);
-                  if (!cardImage) return null;
-                  return (
-                    <li key={r.slug} className="h-full">
-                      <Link
-                        href={`/blog/${r.slug}`}
-                        className="group flex h-full flex-col overflow-hidden rounded-lg border border-ocean-100 bg-sand shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                      >
-                        <div className="relative aspect-[16/9] overflow-hidden bg-ocean-100">
-                          <CmsRemoteImage
-                            src={cardImage}
-                            alt={r.imageAlt || r.title}
-                            fill
-                            className="object-cover transition duration-500 group-hover:scale-105"
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
-                            loading="lazy"
-                          />
-                        </div>
-                        <div className="flex flex-1 flex-col p-2.5">
-                          <p className="text-[10px] font-medium text-cyan-700">
-                            {r.date} · {r.readTime}
-                          </p>
-                          <h3 className="mt-0.5 font-display text-sm font-bold leading-snug text-ocean-900 transition group-hover:text-cyan-700 sm:text-base">
-                            {r.title}
-                          </h3>
-                          <p className="mt-1 line-clamp-2 text-xs leading-snug text-ocean-700 sm:text-sm">
-                            <SeoDescriptionWithPhone
-                              description={buildMetaDescriptionWithContact(
-                                r.excerpt,
-                              )}
-                            />
-                          </p>
-                          <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 sm:text-sm">
-                            Read article <span aria-hidden>→</span>
-                          </span>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
+          {moreLikeThis.length > 0 ? (
+            <MoreLikeThisSection
+              items={moreLikeThis}
+              currentTitle={p.title}
+              currentKeywords={p.keywords}
+            />
+          ) : null}
 
-          <section
-            className="mt-5 rounded-lg border border-ocean-100 bg-ocean-50/50 p-3 sm:p-4"
-            aria-labelledby="related-links-heading"
-          >
-            <h2
-              id="related-links-heading"
-              className="font-display text-base font-bold text-ocean-900 sm:text-lg"
-            >
-              Book & explore more
-            </h2>
-            <p className="mt-1 text-sm text-ocean-700">
-              Continue planning on our main pages — live packages and clear reporting
-              times.
-            </p>
-            <ul className="mt-2.5 flex flex-wrap gap-2 text-sm font-semibold">
-              <li>
-                <Link href={bookHref} className={blogBookNowClass}>
-                  Book Now
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/services/scuba-diving"
-                  className="inline-flex rounded-full border border-ocean-300 bg-white px-4 py-2 text-ocean-800 hover:border-ocean-400"
-                >
-                  Scuba diving
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/services"
-                  className="inline-flex rounded-full border border-ocean-200 bg-white px-4 py-2 text-ocean-700 hover:border-ocean-400"
-                >
-                  All services
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="inline-flex rounded-full border border-ocean-200 bg-white px-4 py-2 text-ocean-700 hover:border-ocean-400"
-                >
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </section>
+          <TopicCtaSection
+            content={contentMeta}
+            focusServiceSlug={focusServiceSlug}
+          />
 
           {/* Mobile: related services below article */}
           <div className="mt-5 border-t border-ocean-100 pt-4 lg:hidden">

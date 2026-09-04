@@ -6,8 +6,9 @@ import { BlogContent } from "@/components/BlogContent";
 import { BlogHeroGallery } from "@/components/BlogHeroGallery";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
-import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { MoreLikeThisSection } from "@/components/MoreLikeThisSection";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
+import { TopicCtaSection } from "@/components/TopicCtaSection";
 import { SocialShareButtons } from "@/components/SocialShareButtons";
 import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
 
@@ -16,12 +17,13 @@ import { buildBlogCatalogContext } from "@/lib/blog-automation/catalog-context";
 import { buildGuideHeroGalleryData } from "@/lib/blog-hero-gallery";
 import { parseBookingOption } from "@/lib/booking-selection";
 import { buildGuideFaqs } from "@/lib/guide-faqs";
-import { buildHeroBookingHref } from "@/lib/hero-slide-booking";
-import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
 import {
-  getPublishedSeoPageBySlug,
-  getRelatedSeoGuides,
-} from "@/lib/seo-pages-server";
+  buildClusterCatalog,
+  getMoreLikeThisForGuide,
+} from "@/lib/cluster-related-content";
+import { enrichMarkdownWithClusterLinks } from "@/lib/contextual-internal-links";
+import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
+import { getPublishedSeoPageBySlug } from "@/lib/seo-pages-server";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 type Props = {
@@ -293,16 +295,11 @@ export default async function SeoGuidePage({
     notFound();
   }
 
-  const [catalog, related] = await Promise.all([
+  const [catalog, moreLikeThis, clusterCatalog] = await Promise.all([
     buildBlogCatalogContext(),
-    getRelatedSeoGuides(slug, 4),
+    getMoreLikeThisForGuide(slug, 6),
+    buildClusterCatalog(),
   ]);
-
-  const bookHref = buildHeroBookingHref(
-    page.bookingOption.trim()
-      ? page.bookingOption
-      : undefined,
-  );
 
   const focusServiceSlug =
     focusSlugFromBookingOption(
@@ -341,8 +338,23 @@ export default async function SeoGuidePage({
     page.metaDescription.trim(),
   );
 
-  const updatedLabel =
-    page.updatedAt.slice(0, 10);
+  const enrichedBody = enrichMarkdownWithClusterLinks(
+    page.bodyContent,
+    {
+      title: page.headline,
+      keywords: page.keywords,
+      slug: page.slug,
+      kind: "guide",
+    },
+    clusterCatalog,
+  );
+
+  const contentMeta = {
+    title: page.headline,
+    keywords: page.keywords,
+  };
+
+  const updatedLabel = page.updatedAt.slice(0, 10);
 
   return (
     <article className="bg-white py-3 sm:py-4">
@@ -585,7 +597,7 @@ export default async function SeoGuidePage({
                 "
               >
                 <BlogContent
-                  content={page.bodyContent}
+                  content={enrichedBody}
                 />
               </div>
 
@@ -617,9 +629,8 @@ export default async function SeoGuidePage({
             className="mt-8"
           >
             <BlogLivePricing
-              focusServiceSlug={
-                focusServiceSlug
-              }
+              focusServiceSlug={focusServiceSlug}
+              topicMeta={contentMeta}
             />
           </section>
 
@@ -770,339 +781,33 @@ export default async function SeoGuidePage({
             </section>
           ) : null}
 
-          {/* --------------------------------------------------------------- */}
-          {/* Related Guides                                                   */}
-          {/* --------------------------------------------------------------- */}
-
-          {related.length > 0 ? (
-            <section
-              className="
-                mt-10
-                border-t
-                border-ocean-100
-                pt-8
-              "
-              aria-labelledby="related-guides-heading"
-            >
-
-              <p
-                className="
-                  text-xs
-                  font-extrabold
-                  uppercase
-                  tracking-[0.16em]
-                  text-amber-700
-                "
-              >
-                Continue exploring
-              </p>
-
-              <h2
-                id="related-guides-heading"
-                className="
-                  mt-1
-                  font-display
-                  text-xl
-                  font-bold
-                  text-ocean-900
-                  sm:text-2xl
-                "
-              >
-                Related Goa Guides
-              </h2>
-
-              <p className="mt-2 text-sm text-ocean-700">
-                Explore more Goa activities, travel tips and
-                booking guides.
-              </p>
-
-              <ul className="mt-5 grid gap-4 sm:grid-cols-2">
-
-                {related.map((guide, index) => {
-
-                  const fallbackImage =
-                    relatedServices[
-                      index %
-                        Math.max(
-                          relatedServices.length,
-                          1,
-                        )
-                    ]?.image ||
-                    catalog.services[
-                      index %
-                        Math.max(
-                          catalog.services.length,
-                          1,
-                        )
-                    ]?.image ||
-                    "";
-
-                  const cardImage =
-                    guide.imageUrl ||
-                    fallbackImage;
-
-                  return (
-                    <li
-                      key={guide.slug}
-                      className="h-full"
-                    >
-
-                      <Link
-                        href={`/guides/${guide.slug}`}
-                        className="
-                          group
-                          flex
-                          h-full
-                          flex-col
-                          overflow-hidden
-                          rounded-xl
-                          border
-                          border-ocean-100
-                          bg-sand
-                          shadow-sm
-                          transition
-                          hover:-translate-y-0.5
-                          hover:border-cyan-300
-                          hover:shadow-md
-                          focus-visible:outline-none
-                          focus-visible:ring-2
-                          focus-visible:ring-cyan-500
-                        "
-                      >
-
-                        {cardImage ? (
-                          <div
-                            className="
-                              relative
-                              aspect-[16/9]
-                              overflow-hidden
-                              bg-ocean-100
-                            "
-                          >
-                            <CmsRemoteImage
-                              src={cardImage}
-                              alt={guide.headline}
-                              fill
-                              className="
-                                object-cover
-                                transition
-                                duration-500
-                                group-hover:scale-105
-                              "
-                              sizes="
-                                (max-width: 640px) 100vw,
-                                (max-width: 1024px) 50vw,
-                                360px
-                              "
-                              loading="lazy"
-                            />
-                          </div>
-                        ) : null}
-
-                        <div className="flex flex-1 flex-col p-4">
-
-                          <p className="text-[11px] font-medium text-cyan-700">
-                            Updated{" "}
-                            {guide.updatedAt.slice(0, 10)}
-                          </p>
-
-                          <h3
-                            className="
-                              mt-1
-                              font-display
-                              text-base
-                              font-bold
-                              leading-snug
-                              text-ocean-900
-                              transition
-                              group-hover:text-cyan-700
-                              sm:text-lg
-                            "
-                          >
-                            {guide.headline}
-                          </h3>
-
-                          {guide.metaDescription ? (
-                            <p
-                              className="
-                                mt-1.5
-                                line-clamp-3
-                                text-sm
-                                leading-relaxed
-                                text-ocean-700
-                              "
-                            >
-                              <SeoDescriptionWithPhone
-                                description={buildMetaDescriptionWithContact(
-                                  guide.metaDescription,
-                                )}
-                              />
-                            </p>
-                          ) : null}
-
-                          <span
-                            className="
-                              mt-3
-                              inline-flex
-                              items-center
-                              gap-1
-                              text-sm
-                              font-bold
-                              text-amber-700
-                            "
-                          >
-                            Read guide
-                            <span aria-hidden="true">
-                              →
-                            </span>
-                          </span>
-
-                        </div>
-
-                      </Link>
-
-                    </li>
-                  );
-                })}
-
-              </ul>
-
-            </section>
+          {/* More like this — cluster-matched guides + blogs */}
+          {moreLikeThis.length > 0 ? (
+            <MoreLikeThisSection
+              items={moreLikeThis}
+              currentTitle={page.headline}
+              currentKeywords={page.keywords}
+            />
           ) : null}
 
-          {/* --------------------------------------------------------------- */}
-          {/* Booking CTA                                                      */}
-          {/* --------------------------------------------------------------- */}
+          <TopicCtaSection
+            content={contentMeta}
+            focusServiceSlug={focusServiceSlug}
+          />
 
-          <section
-            className="
-              mt-10
-              rounded-2xl
-              border
-              border-cyan-100
-              bg-ocean-50
-              p-5
-              sm:p-6
-            "
-            aria-labelledby="guide-book-heading"
-          >
-
-            <p
-              className="
-                text-xs
-                font-extrabold
-                uppercase
-                tracking-[0.16em]
-                text-cyan-700
-              "
-            >
-              Ready to plan?
-            </p>
-
-            <h2
-              id="guide-book-heading"
-              className="
-                mt-1
-                font-display
-                text-xl
-                font-bold
-                text-ocean-900
-                sm:text-2xl
-              "
-            >
-              Book your Goa experience
-            </h2>
-
-            <p
-              className="
-                mt-2
-                max-w-2xl
-                text-sm
-                leading-6
-                text-ocean-700
-              "
-            >
-              Check available packages, current prices and
-              booking options before you choose your activity.
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-2.5">
-
-              <Link
-                href={bookHref}
-                className="
-                  inline-flex
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-ocean-gradient
-                  px-5
-                  py-2.5
-                  text-sm
-                  font-bold
-                  text-white
-                  shadow-sm
-                  hover:opacity-95
-                "
-              >
-                Book now
-              </Link>
-
-              <Link
-                href="/services"
-                className="
-                  inline-flex
-                  items-center
-                  justify-center
-                  rounded-full
-                  border
-                  border-ocean-300
-                  bg-white
-                  px-5
-                  py-2.5
-                  text-sm
-                  font-semibold
-                  text-ocean-800
-                  hover:border-ocean-400
-                "
-              >
-                All activities
-              </Link>
-
-              <Link
-                href="/contact"
-                className="
-                  inline-flex
-                  items-center
-                  justify-center
-                  rounded-full
-                  border
-                  border-ocean-200
-                  bg-white
-                  px-5
-                  py-2.5
-                  text-sm
-                  font-semibold
-                  text-ocean-700
-                  hover:border-ocean-400
-                "
-              >
-                Contact us
-              </Link>
-
-            </div>
-
-          </section>
+          <div className="mt-5 border-t border-ocean-100 pt-4 lg:hidden">
+            <RelatedServicesSidebar
+              services={relatedServices}
+              otherServices={otherServices}
+              compact
+            />
+          </div>
 
         </div>
 
-        {/* ================================================================= */}
-        {/* SIDEBAR                                                           */}
-        {/* ================================================================= */}
-
         <aside
           aria-label="Related activities"
-          className="min-w-0"
+          className="hidden min-w-0 lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-4"
         >
           <RelatedServicesSidebar
             services={relatedServices}

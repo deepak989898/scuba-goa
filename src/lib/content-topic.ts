@@ -40,10 +40,9 @@ export const TOPIC_SERVICE_PRIORITY: Record<ContentTopicId, string[]> = {
   casino: ["casino-bookings"],
   scuba: [
     "scuba-diving",
-    "scuba-diving-with-island-trip",
-    "island-trip",
-    "grande-island",
     "water-sports",
+    "north-goa-tour",
+    "south-goa-tour",
   ],
   dolphin: ["dolphin-trip"],
   watersports: ["water-sports", "flyboarding", "bungee-jumping"],

@@ -1,3 +1,8 @@
+import {
+  classifyContent,
+  scoreClusterRelevance,
+  type ClusterContentItem,
+} from "@/lib/content-clusters";
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
   isValidSeoSlug,
@@ -63,16 +68,25 @@ export async function listPublishedSeoPagesServer(): Promise<SeoPageListItem[]> 
   }
 }
 
-function guideTokenSet(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((t) => t.length >= 3),
-  );
+function toGuideClusterItem(g: SeoPageListItem): ClusterContentItem {
+  return {
+    kind: "guide",
+    slug: g.slug,
+    title: g.headline,
+    description: g.metaDescription ?? "",
+    keywords: g.keywords ?? [],
+    imageUrl: g.imageUrl,
+    updatedAt: g.updatedAt,
+    href: `/guides/${g.slug}`,
+    topic: classifyContent({
+      title: g.headline,
+      keywords: g.keywords ?? [],
+      slug: g.slug,
+    }),
+  };
 }
 
-/** Related published guides for a guide detail page (card grid). */
+/** Related published guides for a guide detail page (topic-cluster aware). */
 export async function getRelatedSeoGuides(
   currentSlug: string,
   limit = 4,
@@ -82,21 +96,27 @@ export async function getRelatedSeoGuides(
   if (!current) {
     return all.filter((g) => g.slug !== currentSlug).slice(0, limit);
   }
-  const tokens = guideTokenSet(
-    `${current.headline} ${current.metaDescription ?? ""} ${(current.keywords ?? []).join(" ")}`,
-  );
+
+  const currentMeta = {
+    kind: "guide" as const,
+    slug: currentSlug,
+    title: current.headline,
+    description: current.metaDescription ?? "",
+    keywords: current.keywords ?? [],
+    topic: classifyContent({
+      title: current.headline,
+      keywords: current.keywords ?? [],
+      slug: currentSlug,
+    }),
+  };
+
   return all
     .filter((g) => g.slug !== currentSlug)
-    .map((g) => {
-      const hay = guideTokenSet(
-        `${g.headline} ${g.metaDescription ?? ""} ${(g.keywords ?? []).join(" ")}`,
-      );
-      let score = 0;
-      for (const t of tokens) {
-        if (hay.has(t)) score += 1;
-      }
-      return { g, score };
-    })
+    .map((g) => ({
+      g,
+      score: scoreClusterRelevance(currentMeta, toGuideClusterItem(g)),
+    }))
+    .filter((row) => row.score > 0)
     .sort(
       (a, b) =>
         b.score - a.score || b.g.updatedAt.localeCompare(a.g.updatedAt),

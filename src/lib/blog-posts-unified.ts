@@ -1,10 +1,15 @@
 import type { BlogPost } from "@/data/blog/post-types";
 import {
+  classifyContent,
+  scoreClusterRelevance,
+  type ClusterContentItem,
+} from "@/lib/content-clusters";
+import { hasEditorialBlogFeaturedImage } from "@/lib/cms-image";
+import {
   blogFirestoreToBlogPost,
   getPublishedBlogPostBySlug,
   listPublishedBlogPostsServer,
 } from "@/lib/blog-posts-server";
-import { hasEditorialBlogFeaturedImage } from "@/lib/cms-image";
 
 /** Published Firestore blogs (source of truth for the public site). */
 export async function getAllBlogPostsMerged(): Promise<BlogPost[]> {
@@ -27,27 +32,22 @@ export async function getAllBlogSlugsMerged(): Promise<string[]> {
   return merged.map((p) => p.slug);
 }
 
-function normalizeToken(s: string): string[] {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, " ")
-    .split(/[\s-]+/)
-    .filter((x) => x.length >= 3);
-}
-
-function postKeywordSet(p: BlogPost): Set<string> {
-  const set = new Set<string>();
-  for (const kw of p.keywords) for (const t of normalizeToken(kw)) set.add(t);
-  for (const t of normalizeToken(p.title)) set.add(t);
-  return set;
-}
-
-function relatedScore(a: BlogPost, b: BlogPost): number {
-  const as = postKeywordSet(a);
-  const bs = postKeywordSet(b);
-  let score = 0;
-  for (const t of as) if (bs.has(t)) score += 1;
-  return score;
+function toClusterItem(post: BlogPost): ClusterContentItem {
+  return {
+    kind: "blog",
+    slug: post.slug,
+    title: post.title,
+    description: post.excerpt,
+    keywords: post.keywords,
+    imageUrl: post.imageUrl,
+    updatedAt: post.updatedAt ?? post.date,
+    href: `/blog/${post.slug}`,
+    topic: classifyContent({
+      title: post.title,
+      keywords: post.keywords,
+      slug: post.slug,
+    }),
+  };
 }
 
 export async function getRelatedBlogPostsMerged(
@@ -59,6 +59,19 @@ export async function getRelatedBlogPostsMerged(
   if (!current) return [];
 
   const currentPost = blogFirestoreToBlogPost(current);
+  const currentMeta = {
+    kind: "blog" as const,
+    slug: currentSlug,
+    title: currentPost.title,
+    description: currentPost.excerpt,
+    keywords: currentPost.keywords,
+    topic: classifyContent({
+      title: currentPost.title,
+      keywords: currentPost.keywords,
+      slug: currentSlug,
+    }),
+  };
+
   const editorialFs = allFs.filter(
     (p) =>
       p.slug !== currentSlug &&
@@ -70,10 +83,14 @@ export async function getRelatedBlogPostsMerged(
   );
 
   const scored = editorialFs
-    .map((p) => ({
-      post: blogFirestoreToBlogPost(p),
-      score: relatedScore(currentPost, blogFirestoreToBlogPost(p)),
-    }))
+    .map((p) => {
+      const post = blogFirestoreToBlogPost(p);
+      const item = toClusterItem(post);
+      return {
+        post,
+        score: scoreClusterRelevance(currentMeta, item),
+      };
+    })
     .filter((x) => x.score > 0)
     .sort(
       (a, b) =>
