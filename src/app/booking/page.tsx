@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BookingForm } from "@/components/BookingForm";
 import { BookingHero } from "@/components/booking/BookingHero";
@@ -32,7 +32,7 @@ export default function BookingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
       <div className="bg-gradient-to-b from-sky-100 via-ocean-50 to-white pb-6 pt-2 sm:pb-8 sm:pt-3">
-        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="site-container">
           <BookingHero />
           <div className="mt-3">
             <Suspense

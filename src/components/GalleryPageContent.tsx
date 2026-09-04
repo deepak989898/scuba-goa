@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
@@ -238,7 +238,7 @@ export function GalleryPageContent() {
 
   return (
     <div className="bg-gradient-to-b from-ocean-50 via-white to-sand/30">
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+      <div className="site-container py-5 sm:py-7">
         <header className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ocean-700">
             Gallery

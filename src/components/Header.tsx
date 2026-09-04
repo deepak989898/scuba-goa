@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -137,13 +137,13 @@ export function Header() {
           : "sticky top-0 z-50 border-b border-slate-700/80 bg-slate-950/90 shadow-depth backdrop-blur-md"
       }
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-1.5 sm:px-6 lg:px-8 sm:py-2">
+      <div className="site-container flex items-center justify-between gap-3 py-1.5 sm:py-2">
         <Link
           href="/"
           className={
             overHero
-              ? "inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-ocean-900"
-              : "inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              ? "inline-flex shrink-0 items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-ocean-900"
+              : "inline-flex shrink-0 items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           }
           aria-label="Book Scuba Goa home"
         >
@@ -159,7 +159,7 @@ export function Header() {
             fetchPriority={isHome ? "low" : "high"}
           />
         </Link>
-        <nav className="hidden items-center gap-0.5 md:flex">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 md:flex lg:gap-1">
           {navItems.map((item) => {
             const active =
               item.href === "/booking"
@@ -187,7 +187,7 @@ export function Header() {
             );
           })}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <a
             href={whatsappLink()}
             target="_blank"
@@ -205,7 +205,7 @@ export function Header() {
             className={
               isBooking
                 ? "hidden"
-                : "inline-flex min-h-11 min-w-[8.5rem] touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300"
+                : "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-md shadow-cyan-500/30 transition hover:bg-cyan-400 active:bg-cyan-300 sm:px-5"
             }
           >
             Book now

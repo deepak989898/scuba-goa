@@ -50,7 +50,7 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-7 lg:px-8">
+      <div className="site-container site-sidebar-grid">
         <div className="min-w-0">
           <nav className="text-sm text-ocean-700" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-ocean-800">

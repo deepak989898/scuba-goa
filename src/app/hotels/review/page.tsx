@@ -126,7 +126,7 @@ export default function HotelReviewPage() {
 
   return (
     <div className="bg-white py-5 sm:py-7">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container max-w-2xl">
         <HotelBookingProgress />
         <h1 className="font-display text-2xl font-bold text-ocean-900">Review booking</h1>
         <div className="mt-6 rounded-2xl border border-ocean-100 p-4 text-sm text-ocean-800">

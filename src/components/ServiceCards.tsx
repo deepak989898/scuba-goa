@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
@@ -13,7 +13,7 @@ export function ServiceCards() {
   if (loading) {
     return (
       <section className="relative z-0 bg-white pt-2 pb-5 sm:pt-6 sm:pb-6" id="services">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="site-container">
           <div className="mb-3 sm:mb-4">
             <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
               More ways to love Goa
@@ -38,7 +38,7 @@ export function ServiceCards() {
 
   return (
     <section className="relative z-0 bg-white pt-2 pb-5 sm:pt-6 sm:pb-6" id="services">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <div className="mb-3 sm:mb-4">
           <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">
             More ways to love Goa
@@ -71,9 +71,7 @@ export function ServiceCards() {
                 <div className="pointer-events-none relative z-[1] flex min-h-0 flex-1 flex-col">
                   {/* 1536×1024 (3:2) — mobile: +5px height vs pure 3:2 in 2-col grid */}
                   <div className="pointer-events-none shrink-0 overflow-hidden rounded-t-xl">
-                    <div
-                      className="relative aspect-[3/2] max-sm:aspect-auto max-sm:h-[calc((50vw-22px)*2/3+5px)] overflow-hidden"
-                    >
+                    <div className="relative aspect-[3/2] overflow-hidden">
                       <CmsRemoteImage
                         src={firstImg}
                         alt={s.title}

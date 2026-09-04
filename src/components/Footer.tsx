@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Image from "next/image";
 import { FooterQuickLinks } from "@/components/FooterQuickLinks";
 import { OfficeMapEmbed } from "@/components/OfficeMapEmbed";
@@ -22,7 +22,7 @@ const legal = [
 export function Footer() {
   return (
     <footer className="border-t border-slate-800 bg-slate-950">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <div className="site-container py-8 sm:py-10">
         <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-12">
           <div className="lg:col-span-3">
             <Link
@@ -36,7 +36,7 @@ export function Footer() {
                 width={240}
                 height={88}
                 sizes="180px"
-                className="h-auto w-[180px]"
+                className="h-auto w-full max-w-[180px]"
                 loading="lazy"
               />
             </Link>

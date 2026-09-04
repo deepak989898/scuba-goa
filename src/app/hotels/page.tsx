@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { HotelBookingProgress } from "@/components/hotels/HotelBookingProgress";
 import { HotelSearchForm } from "@/components/hotels/HotelSearchForm";
 import { HotelsCatalogBrowse } from "@/components/hotels/HotelsCatalogBrowse";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function HotelsPage() {
   return (
     <div className="bg-white py-5 sm:py-7">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <HotelBookingProgress />
         <h1 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl">
           Hotels in Goa

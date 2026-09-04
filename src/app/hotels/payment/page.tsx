@@ -111,7 +111,7 @@ export default function HotelPaymentPage() {
 
   return (
     <div className="bg-white py-5 sm:py-7">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container max-w-2xl">
         <HotelBookingProgress />
         <h1 className="font-display text-2xl font-bold text-ocean-900">Payment</h1>
         {booking ? (

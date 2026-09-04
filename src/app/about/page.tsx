@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import {
@@ -337,7 +337,7 @@ export default async function AboutPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-ocean-950/80 via-transparent to-ocean-950/20" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 sm:pb-28 sm:pt-12 lg:px-8 lg:pb-32">
+        <div className="relative site-container pb-24 pt-10 sm:pb-28 sm:pt-12 lg:pb-32">
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-300">
             About us
           </p>
@@ -370,8 +370,8 @@ export default async function AboutPage() {
       </section>
 
       {/* Feature strip overlapping hero */}
-      <section className="relative z-10 -mt-14 px-4 sm:-mt-16 sm:px-6 lg:px-8" aria-label="Why book with us">
-        <div className="mx-auto grid max-w-7xl gap-3 rounded-2xl border border-ocean-100 bg-white p-4 shadow-depth sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-4">
+      <section className="relative z-10 -mt-14 sm:-mt-16" aria-label="Why book with us">
+        <div className="site-container grid gap-3 rounded-2xl border border-ocean-100 bg-white p-4 shadow-depth sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-4">
           {FEATURES.map(({ title, body, Icon }) => (
             <div key={title} className="flex gap-3 sm:block sm:text-center lg:text-left">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 sm:mx-auto lg:mx-0">
@@ -391,8 +391,8 @@ export default async function AboutPage() {
       </section>
 
       {/* Mid: expect | image | visit */}
-      <section className="bg-white px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_minmax(14rem,22rem)_1fr] lg:items-stretch lg:gap-8">
+      <section className="bg-white py-10 sm:py-12">
+        <div className="site-container grid gap-8 lg:grid-cols-[1fr_minmax(14rem,22rem)_1fr] lg:items-stretch lg:gap-8">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-700">
               What you can expect
@@ -519,10 +519,10 @@ export default async function AboutPage() {
 
       {/* Stats bar */}
       <section
-        className="border-t border-ocean-100 bg-gradient-to-b from-sky-50/80 to-white px-4 py-7 sm:px-6 sm:py-8 lg:px-8"
+        className="border-t border-ocean-100 bg-gradient-to-b from-sky-50/80 to-white py-7 sm:py-8"
         aria-label="Book Scuba Goa highlights"
       >
-        <ul className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+        <ul className="site-container grid gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           {STATS.map(({ value, label, hint, ring, bg, Icon }) => (
             <li key={label} className="flex flex-col items-center text-center">
               <span

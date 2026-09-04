@@ -174,10 +174,7 @@ export default async function OffersPage() {
     <div className="relative overflow-x-hidden pb-2 md:pb-4">
       {/* Full-width hero; natural scale, then clip 80px from the bottom */}
       <div
-        className="relative w-full overflow-hidden bg-[#6eb8d8]"
-        style={{
-          height: "max(11rem, calc(100vw * 793 / 1983 - 80px))",
-        }}
+        className="relative w-full overflow-hidden bg-[#6eb8d8] aspect-[1983/793] max-h-[min(28rem,42vh)] min-h-[11rem]"
       >
         <Image
           src="/offer-header.webp"
@@ -186,13 +183,13 @@ export default async function OffersPage() {
           height={793}
           priority
           quality={80}
-          className="absolute inset-x-0 top-0 block h-auto w-full max-w-none"
+          className="absolute inset-0 block h-full w-full object-cover object-top"
           sizes="100vw"
         />
         <h1 className="sr-only">Offers &amp; Promo Codes</h1>
       </div>
 
-      <div className="relative z-10 mx-auto max-w-5xl px-2 pt-3 sm:px-4 sm:pt-4 lg:px-6">
+      <div className="relative z-10 site-container max-w-5xl pt-3 sm:pt-4">
         <div className="overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_12px_40px_rgba(8,40,80,0.14)] sm:rounded-[1.25rem]">
           <div className="px-2 py-2 sm:px-3 sm:py-2.5">
             {offers.length === 0 ? (

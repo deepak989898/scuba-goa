@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -530,7 +530,7 @@ export function BookingForm() {
   }, [cartReady, lines, name, phone, date, leadSentAt, contactStepOpen]);
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="w-full">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.8fr)] lg:items-start lg:gap-4">
         <div className="rounded-xl border border-ocean-100 bg-white p-3 shadow-md sm:p-4">
           <div className="flex flex-wrap items-center gap-2">

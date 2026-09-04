@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import {
@@ -281,7 +281,7 @@ export function RatingsSection() {
 
   return (
     <section className="border-t border-ocean-100 bg-white py-5 sm:py-6">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <h2 id="guest-reviews" className="sr-only">
           Guest reviews
         </h2>
@@ -298,7 +298,7 @@ export function RatingsSection() {
                 {averageRatingFixed.toFixed(1)} / 5
               </span>
             </p>
-            <div className="mt-5 -mx-4 sm:-mx-6 lg:-mx-8">
+            <div className="mt-5 -mx-[var(--site-gutter)]">
               <ReviewCarousel reviews={carouselReviews} />
             </div>
           </>

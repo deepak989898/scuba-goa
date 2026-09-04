@@ -23,7 +23,7 @@ export function HomeBookingCTASection() {
       aria-labelledby="home-book-cta-heading"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />
-      <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+      <div className="relative site-container max-w-4xl text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-cyan-200/90">
           Ready when you are
         </p>

@@ -5,10 +5,19 @@
 :root {
   --foreground: #0c4a6e;
   --background: #faf8f5;
+  --site-gutter: clamp(1rem, 2.5vw, 2rem);
+  --site-max-width: 80rem;
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --site-max-width: min(90rem, calc(100vw - 2 * var(--site-gutter)));
+  }
 }
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 /* Slightly smaller root type on phones so more copy fits in cards while desktop stays unchanged. */
@@ -21,6 +30,7 @@ html {
 body {
   color: var(--foreground);
   background: var(--background);
+  overflow-x: clip;
 }
 
 /** Layered “3D” depth: cards tilt in perspective + soft mesh behind content */
@@ -39,6 +49,63 @@ body.site-3d {
 }
 
 @layer components {
+  /** Shared page width + horizontal padding (replaces repeated max-w-7xl patterns). */
+  .site-container {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--site-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--site-gutter);
+    padding-right: var(--site-gutter);
+  }
+
+  /** Content + sidebar layouts (blog, guides, services detail). */
+  .site-sidebar-grid {
+    display: grid;
+    gap: clamp(0.75rem, 1.5vw, 1.75rem);
+  }
+
+  @media (min-width: 1024px) {
+    .site-sidebar-grid {
+      grid-template-columns: minmax(0, 1fr) clamp(17rem, 19vw, 20rem);
+      align-items: start;
+    }
+  }
+
+  .site-sidebar-grid--wide {
+    display: grid;
+    gap: clamp(0.75rem, 1.5vw, 1.75rem);
+  }
+
+  @media (min-width: 1024px) {
+    .site-sidebar-grid--wide {
+      grid-template-columns: minmax(0, 1fr) clamp(18rem, 22vw, 22rem);
+      align-items: start;
+    }
+  }
+
+  /** Bounded hero gallery height — scales across desktop resolutions. */
+  .hero-gallery-bounded {
+    height: min(260px, 48vh);
+    min-height: 200px;
+  }
+
+  @media (min-width: 640px) {
+    .hero-gallery-bounded {
+      height: min(340px, 52vh);
+      min-height: 240px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .hero-gallery-bounded {
+      height: min(550px, 52vh, 42vw);
+      min-height: 0;
+      max-height: 550px;
+    }
+  }
+
   .u-depth-card {
     transform-style: preserve-3d;
     transition:

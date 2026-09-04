@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import {
   CONTACT_EMAIL,
@@ -101,7 +101,7 @@ export default function ContactPage() {
               "radial-gradient(ellipse 80% 60% at 20% 40%, rgba(34,211,238,0.28), transparent 55%), radial-gradient(ellipse 60% 50% at 90% 20%, rgba(14,165,233,0.22), transparent 50%)",
           }}
         />
-        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <div className="relative site-container py-8 sm:py-10">
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-300">
             Contact
           </p>
@@ -138,7 +138,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <div className="site-container py-8 sm:py-10">
         <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
           {/* Reach us */}
           <section aria-labelledby="reach-us-heading">

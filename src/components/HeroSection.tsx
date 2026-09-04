@@ -171,7 +171,7 @@ export function HeroSection() {
   );
 
   return (
-    <section className="relative isolate -mt-20 overflow-visible bg-white pt-20 sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:bg-ocean-900 sm:pt-[4.75rem]">
+    <section className="relative isolate -mt-20 overflow-x-clip bg-white pt-20 sm:-mt-[4.75rem] sm:min-h-[min(72vh,640px)] sm:overflow-hidden sm:bg-ocean-900 sm:pt-[4.75rem]">
       {/*
         Mobile: taller hero media + deeper card overlap so the ocean-blue band
         under the booking card is covered / not visible.
@@ -211,7 +211,7 @@ export function HeroSection() {
           Pay ₹{ADVANCE_BOOKING_INR} advance online; rest at the centre.
         </h1>
 
-        <div className="pointer-events-none absolute inset-0 z-10 hidden items-end justify-end p-6 pb-8 sm:flex lg:px-8">
+        <div className="pointer-events-none absolute inset-0 z-10 hidden items-end justify-end p-4 pb-8 sm:flex sm:p-6">
           <div className="pointer-events-auto w-full max-w-sm md:max-w-md">
             <HeroConversionCard
               bookHref={bookingCard.bookHref}
@@ -226,7 +226,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="relative z-10 -mt-[min(28vw,9.5rem)] px-[14px] pb-2 sm:hidden">
+      <div className="relative z-10 -mt-[min(28vw,9.5rem)] px-4 pb-2 sm:hidden">
         <HeroConversionCard
           bookHref={bookingCard.bookHref}
           detailsHref={bookingCard.detailsHref}

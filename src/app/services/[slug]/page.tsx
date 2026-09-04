@@ -132,7 +132,7 @@ export default async function ServiceDetailPage({ params }: Props) {
 
     return (
       <article className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-4 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-5 lg:px-8">
+        <div className="site-container site-sidebar-grid py-4 sm:py-5">
           <div className="min-w-0">
             <ServiceDetailGallery images={heroImages} title={s.title} />
 

@@ -399,20 +399,7 @@ export default async function SeoGuidePage({
       {/* Main Layout                                                        */}
       {/* ------------------------------------------------------------------ */}
 
-      <div
-        className="
-          mx-auto
-          grid
-          max-w-7xl
-          gap-6
-          px-4
-          sm:px-6
-          lg:grid-cols-[minmax(0,1fr)_20rem]
-          lg:items-start
-          lg:gap-7
-          lg:px-8
-        "
-      >
+      <div className="site-container site-sidebar-grid">
 
         {/* ================================================================= */}
         {/* MAIN CONTENT                                                      */}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { cmsImageOrPlaceholder, pickCmsImage } from "@/lib/cms-image";
 import { getAllServicesServer } from "@/lib/get-services-server";
@@ -45,7 +45,7 @@ export async function HomeInternalLinksSection() {
       className="bg-sand/50 py-4 sm:py-5"
       aria-labelledby="home-internal-links-heading"
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-amber-700">
           Plan your Goa day
         </p>

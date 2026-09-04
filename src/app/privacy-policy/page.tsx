@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
   const updated = "11 Apr 2026";
   return (
     <main className="bg-white">
-      <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
+      <div className="site-container max-w-3xl py-14 sm:py-16">
         <h1 className="font-display text-3xl font-bold text-ocean-900 sm:text-4xl">
           Privacy Policy
         </h1>

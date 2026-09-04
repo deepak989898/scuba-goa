@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -55,7 +55,7 @@ export default function HotelResultsPage() {
 
   return (
     <div className="bg-white py-5 sm:py-7">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <HotelBookingProgress />
         <h1 className="font-display text-2xl font-bold text-ocean-900">Hotels in Goa</h1>
         {search && (

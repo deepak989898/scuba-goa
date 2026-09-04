@@ -64,7 +64,7 @@ export default async function PackageSharePage({ params }: Props) {
 
   return (
     <article className="bg-white py-10 sm:py-16">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+      <div className="site-container max-w-3xl">
         <div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-ocean-100">
           <CmsRemoteImage
             src={image}

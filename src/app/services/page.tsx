@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { ServicesGrid } from "@/components/ServicesGrid";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default function ServicesPage() {
   return (
     <div className="bg-white py-5 sm:py-7">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <h1 className="font-display text-2xl font-bold text-ocean-900 sm:text-3xl">
           All services
         </h1>

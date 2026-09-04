@@ -110,21 +110,30 @@ export async function BlogLivePricing({ focusServiceSlug, topicMeta }: Props) {
             </p>
             <h2
               id="live-pricing-heading"
-              className="mt-0.5 font-display text-base font-extrabold sm:text-lg"
+              className="mt-0.5 font-display text-base font-extrabold text-cyan-800 sm:text-lg"
             >
-              <span className="text-cyan-800">Live prices</span>
-              <span className="text-ocean-600"> — </span>
-              <span className="text-amber-700">{sectionLabel}</span>
+              Live prices
             </h2>
             <p className="mt-1 text-xs text-ocean-700 sm:text-sm">
-              Topic-matched rates for this page. Click to expand packages and starting prices.
+              {sectionLabel} — tap to view starting prices and packages.
             </p>
           </div>
           <span
             aria-hidden
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-cyan-800 shadow-sm transition group-open:rotate-180 group-open:bg-cyan-100"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-200 bg-white text-cyan-800 shadow-sm transition duration-200 group-open:rotate-180 group-open:border-cyan-400 group-open:bg-cyan-100"
           >
-            ⌄
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
           </span>
         </summary>
 

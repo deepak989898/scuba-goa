@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { HOMEPAGE_PACKAGE_GUIDES } from "@/data/blog-posts";
 import { getPublishedBlogPostBySlug } from "@/lib/blog-posts-server";
@@ -62,7 +62,7 @@ export async function BlogPreview() {
 
   return (
     <section className="bg-white py-4 sm:py-5" id="blog">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="font-display text-xl font-bold text-ocean-900 sm:text-2xl">

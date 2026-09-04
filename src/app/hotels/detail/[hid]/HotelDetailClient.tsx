@@ -93,7 +93,7 @@ export default function HotelDetailClient() {
 
   return (
     <div className="bg-white py-5 sm:py-7">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <HotelBookingProgress />
         {loading ? (
           <p className="text-ocean-600">Loading hotel…</p>

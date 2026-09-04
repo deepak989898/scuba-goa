@@ -75,7 +75,7 @@ export default async function BlogIndexPage({ searchParams }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
-      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-4 lg:px-6">
+      <div className="site-container site-sidebar-grid">
         <div className="min-w-0">
           <nav className="text-xs text-ocean-700 sm:text-sm" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-ocean-800">

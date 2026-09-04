@@ -8,7 +8,7 @@ export function HomeInfoFaqSplit() {
       className="border-t border-ocean-100 bg-sand/40 py-4 sm:py-5"
       aria-label="Scuba diving information and FAQs"
     >
-      <div className="mx-auto grid max-w-7xl gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:px-8">
+      <div className="site-container site-sidebar-grid--wide">
         <HomeScubaInfoSection />
         <HomeFaqSection />
       </div>

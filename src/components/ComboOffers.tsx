@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePackages } from "@/hooks/usePackages";
@@ -13,7 +13,7 @@ export function ComboOffers() {
 
   return (
     <section className="bg-ocean-900 py-16 text-white sm:py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <h2 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">
           Combo offers
         </h2>

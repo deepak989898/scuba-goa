@@ -327,7 +327,7 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       ) : null}
-      <div className="mx-auto grid max-w-7xl gap-3 px-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-4 lg:px-6">
+      <div className="site-container site-sidebar-grid">
         <div className="min-w-0">
           <nav
             className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-xs text-ocean-700"

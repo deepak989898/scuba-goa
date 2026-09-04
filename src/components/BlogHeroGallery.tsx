@@ -45,7 +45,7 @@ export function BlogHeroGallery({
 
   const mainWrapClass =
     layout === "bounded"
-      ? "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 h-[min(260px,48vh)] min-h-[200px] sm:h-[min(340px,52vh)] sm:min-h-[240px] lg:h-[550px] lg:min-h-0 lg:max-h-[550px]"
+      ? "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-950 hero-gallery-bounded"
       : "relative w-full overflow-hidden rounded-lg border border-ocean-100 bg-ocean-900/5 leading-[0]";
 
   return (
