@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  Timestamp,
   collection,
   getDocs,
   limit,
   orderBy,
   query,
   where,
-  type Timestamp,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { adminFetch } from "@/lib/admin-fetch";
@@ -290,6 +290,40 @@ function formatDayLabel(ymd: string, todayYmd: string): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function todayMonthIst(): string {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).slice(0, 7);
+}
+
+function istMonthKey(ymd: string): string {
+  return ymd.slice(0, 7);
+}
+
+function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** IST calendar month bounds for Firestore range queries. */
+function istMonthStartTs(ym: string): Timestamp {
+  const [y, m] = ym.split("-").map(Number);
+  const utcMs = Date.UTC(y, m - 1, 1, 0, 0, 0, 0) - 5.5 * 60 * 60 * 1000;
+  return Timestamp.fromMillis(utcMs);
+}
+
+function istMonthEndTs(ym: string): Timestamp {
+  const [y, m] = ym.split("-").map(Number);
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  const utcMs =
+    Date.UTC(nextY, nextM - 1, 1, 0, 0, 0, 0) - 5.5 * 60 * 60 * 1000 - 1;
+  return Timestamp.fromMillis(utcMs);
 }
 
 function formatTs(v: unknown): string {
@@ -714,13 +748,18 @@ const SESSION_LIMIT = 150;
 /** Heartbeat is ~3 min — allow two missed beats before going offline. */
 const ONLINE_WINDOW_MS = 420_000;
 const ANALYTICS_POLL_MS = 120_000;
-const MAX_DAYS = 30;
+const MAX_DAYS = 31;
+const MONTH_SAMPLE_LIMIT = 3000;
+const MONTH_SESSION_LIMIT = 1000;
 
 export default function AdminAnalyticsPage() {
   const db = getDb();
   const [rows, setRows] = useState<Row[]>([]);
   const [sessions, setSessions] = useState<SessionDoc[]>([]);
-  const [expandedDate, setExpandedDate] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState(todayMonthIst);
+  const [expandedDate, setExpandedDate] = useState<string | null>(() =>
+    new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+  );
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -773,9 +812,7 @@ export default function AdminAnalyticsPage() {
     [capturedLeads],
   );
 
-  useEffect(() => {
-    if (!expandedDate) setExpandedDate(todayIstYmd);
-  }, [expandedDate, todayIstYmd]);
+  const isViewingCurrentMonth = selectedMonth === todayMonthIst();
 
   useEffect(() => {
     let cancelled = false;
@@ -855,24 +892,105 @@ export default function AdminAnalyticsPage() {
       return;
     }
     let cancelled = false;
+    setLoading(true);
 
     const load = async (isInitial: boolean) => {
       if (isInitial) setLoadError(null);
       try {
-        const viewsQuery = query(
-          collection(db, "pageViews"),
-          orderBy("createdAt", "desc"),
-          limit(SAMPLE_LIMIT)
-        );
-        const sessionsQuery = query(
-          collection(db, "analyticsSessions"),
-          orderBy("lastSeenAt", "desc"),
-          limit(SESSION_LIMIT)
-        );
-        const [viewsSnap, sessionsSnap] = await Promise.all([
-          getDocs(viewsQuery),
-          getDocs(sessionsQuery),
-        ]);
+        const monthStart = istMonthStartTs(selectedMonth);
+        const monthEnd = istMonthEndTs(selectedMonth);
+
+        let viewsSnap;
+        let sessionsSnap;
+
+        if (isViewingCurrentMonth) {
+          viewsSnap = await getDocs(
+            query(
+              collection(db, "pageViews"),
+              orderBy("createdAt", "desc"),
+              limit(SAMPLE_LIMIT),
+            ),
+          );
+          sessionsSnap = await getDocs(
+            query(
+              collection(db, "analyticsSessions"),
+              orderBy("lastSeenAt", "desc"),
+              limit(SESSION_LIMIT),
+            ),
+          );
+        } else {
+          try {
+            viewsSnap = await getDocs(
+              query(
+                collection(db, "pageViews"),
+                where("createdAt", ">=", monthStart),
+                where("createdAt", "<=", monthEnd),
+                orderBy("createdAt", "desc"),
+                limit(MONTH_SAMPLE_LIMIT),
+              ),
+            );
+          } catch {
+            const fallback = await getDocs(
+              query(
+                collection(db, "pageViews"),
+                orderBy("createdAt", "desc"),
+                limit(5000),
+              ),
+            );
+            viewsSnap = {
+              docs: fallback.docs.filter((d) => {
+                const ts = toTimestamp(
+                  (d.data() as Record<string, unknown>).createdAt,
+                );
+                return ts ? istMonthKey(istCalendarDate(ts)) === selectedMonth : false;
+              }),
+            };
+          }
+
+          try {
+            sessionsSnap = await getDocs(
+              query(
+                collection(db, "analyticsSessions"),
+                where("firstSeenAt", ">=", monthStart),
+                where("firstSeenAt", "<=", monthEnd),
+                orderBy("firstSeenAt", "desc"),
+                limit(MONTH_SESSION_LIMIT),
+              ),
+            );
+          } catch {
+            try {
+              sessionsSnap = await getDocs(
+                query(
+                  collection(db, "analyticsSessions"),
+                  where("lastSeenAt", ">=", monthStart),
+                  where("lastSeenAt", "<=", monthEnd),
+                  orderBy("lastSeenAt", "desc"),
+                  limit(MONTH_SESSION_LIMIT),
+                ),
+              );
+            } catch {
+              const fallback = await getDocs(
+                query(
+                  collection(db, "analyticsSessions"),
+                  orderBy("lastSeenAt", "desc"),
+                  limit(3000),
+                ),
+              );
+              sessionsSnap = {
+                docs: fallback.docs.filter((d) => {
+                  const data = d.data() as Record<string, unknown>;
+                  const ts =
+                    toTimestamp(data.firstSeenAt) ||
+                    toTimestamp(data.lastSeenAt);
+                  return ts
+                    ? istMonthKey(istCalendarDate(ts)) === selectedMonth
+                    : false;
+                }),
+              };
+            }
+          }
+        }
+
         if (cancelled) return;
         const list: Row[] = viewsSnap.docs.map((d) => {
           const data = d.data() as Record<string, unknown>;
@@ -1020,21 +1138,24 @@ export default function AdminAnalyticsPage() {
     };
 
     void load(true);
-    // Sparse poll — pause while the tab is hidden to stop runaway Firestore reads.
-    const poll = window.setInterval(() => {
-      if (
-        typeof document !== "undefined" &&
-        document.visibilityState === "hidden"
-      ) {
-        return;
-      }
-      void load(false);
-    }, ANALYTICS_POLL_MS);
+    // Sparse poll — only while viewing the current month.
+    const poll =
+      isViewingCurrentMonth
+        ? window.setInterval(() => {
+            if (
+              typeof document !== "undefined" &&
+              document.visibilityState === "hidden"
+            ) {
+              return;
+            }
+            void load(false);
+          }, ANALYTICS_POLL_MS)
+        : undefined;
     return () => {
       cancelled = true;
-      window.clearInterval(poll);
+      if (poll) window.clearInterval(poll);
     };
-  }, [db]);
+  }, [db, selectedMonth, isViewingCurrentMonth]);
 
   const analytics = useMemo(() => {
     const sessionById = new Map(sessions.map((s) => [s.sessionId, s]));
@@ -1162,7 +1283,14 @@ export default function AdminAnalyticsPage() {
       list.sort((a, b) => b.arrivedAtMs - a.arrivedAtMs);
     }
 
-    const allDays = new Set([...visitorsByDay.keys(), todayIstYmd]);
+    const allDays = new Set(
+      [...visitorsByDay.keys()].filter(
+        (date) => istMonthKey(date) === selectedMonth,
+      ),
+    );
+    if (isViewingCurrentMonth) {
+      allDays.add(todayIstYmd);
+    }
     const dayGroupsRaw: DayGroup[] = [...allDays]
       .sort((a, b) => b.localeCompare(a))
       .slice(0, MAX_DAYS)
@@ -1220,7 +1348,7 @@ export default function AdminAnalyticsPage() {
       todayHumans,
       googleHighConfidence,
     };
-  }, [rows, sessions, todayIstYmd, visitorFilter, leadOnly, pushOnly]);
+  }, [rows, sessions, todayIstYmd, visitorFilter, leadOnly, pushOnly, selectedMonth, isViewingCurrentMonth]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1245,8 +1373,24 @@ export default function AdminAnalyticsPage() {
     };
   }, []);
 
-  const expandedGroup = analytics.dayGroups.find((d) => d.date === expandedDate);
+  const expandedGroup = expandedDate
+    ? analytics.dayGroups.find((d) => d.date === expandedDate)
+    : undefined;
   const expandedVisitors = expandedGroup?.visitors ?? [];
+
+  const monthSummary = useMemo(
+    () =>
+      analytics.dayGroups.reduce(
+        (acc, day) => ({
+          visitors: acc.visitors + day.visitors.length,
+          pageViews: acc.pageViews + day.pageViews,
+          daysWithTraffic:
+            acc.daysWithTraffic + (day.visitors.length > 0 ? 1 : 0),
+        }),
+        { visitors: 0, pageViews: 0, daysWithTraffic: 0 },
+      ),
+    [analytics.dayGroups],
+  );
 
   useEffect(() => {
     if (expandedVisitors.length === 0) {
@@ -1870,16 +2014,72 @@ export default function AdminAnalyticsPage() {
           ) : null}
 
           <div className="mt-4">
-            <h2 className="font-display text-base font-semibold text-ocean-900">
-              Visitors by date
-            </h2>
-            <p className="mt-1 text-sm text-ocean-600">
-              Tap a date to expand. Only one day is open at a time. Today opens
-              by default.
-            </p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="font-display text-base font-semibold text-ocean-900">
+                  Visitors by date
+                </h2>
+                <p className="mt-1 text-sm text-ocean-600">
+                  Tap a date to expand or collapse. Only one day is open at a
+                  time.
+                </p>
+              </div>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-ocean-700">
+                Month
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  max={todayMonthIst()}
+                  onChange={(e) => {
+                    const ym = e.target.value;
+                    if (!ym) return;
+                    setSelectedMonth(ym);
+                    setSelectedSessionId("");
+                    if (ym === todayMonthIst()) {
+                      setExpandedDate(todayIstYmd);
+                    } else {
+                      setExpandedDate(null);
+                    }
+                  }}
+                  className="rounded-lg border border-ocean-200 bg-white px-2.5 py-1.5 text-sm font-medium text-ocean-900 shadow-sm"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-ocean-100 bg-ocean-50/60 px-3 py-2 text-sm text-ocean-800">
+              <span className="font-semibold text-ocean-900">
+                {formatMonthLabel(selectedMonth)}
+              </span>
+              <span>
+                {monthSummary.visitors} visitor
+                {monthSummary.visitors === 1 ? "" : "s"}
+              </span>
+              <span>
+                {monthSummary.pageViews} page view
+                {monthSummary.pageViews === 1 ? "" : "s"}
+              </span>
+              <span className="text-ocean-600">
+                {monthSummary.daysWithTraffic} day
+                {monthSummary.daysWithTraffic === 1 ? "" : "s"} with traffic
+              </span>
+              {!isViewingCurrentMonth ? (
+                <span className="text-xs text-ocean-600">
+                  Historical month — live refresh paused
+                </span>
+              ) : null}
+            </div>
 
             <div className="mt-4 space-y-2">
-              {analytics.dayGroups.map((day) => {
+              {loading ? (
+                <p className="py-6 text-center text-sm text-ocean-600">
+                  Loading visitors for {formatMonthLabel(selectedMonth)}…
+                </p>
+              ) : analytics.dayGroups.length === 0 ? (
+                <p className="py-6 text-center text-sm text-ocean-600">
+                  No visitors recorded in {formatMonthLabel(selectedMonth)}.
+                </p>
+              ) : (
+              analytics.dayGroups.map((day) => {
                 const isOpen = expandedDate === day.date;
                 return (
                   <div
@@ -1893,7 +2093,7 @@ export default function AdminAnalyticsPage() {
                       <button
                         type="button"
                       onClick={() => {
-                        setExpandedDate(day.date);
+                        setExpandedDate(isOpen ? null : day.date);
                         setSelectedSessionId("");
                       }}
                       className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-ocean-50/50"
@@ -2525,14 +2725,18 @@ export default function AdminAnalyticsPage() {
                     ) : null}
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
-          </div>
 
-          <p className="mt-3 text-xs text-ocean-500">
-            Showing the latest {SAMPLE_LIMIT.toLocaleString("en-IN")} events.
-            Location uses Vercel/Cloudflare IP headers on production.
-          </p>
+            <p className="mt-3 text-xs text-ocean-500">
+              {isViewingCurrentMonth
+                ? `Showing the latest ${SAMPLE_LIMIT.toLocaleString("en-IN")} events for the current month.`
+                : `Showing up to ${MONTH_SAMPLE_LIMIT.toLocaleString("en-IN")} events for ${formatMonthLabel(selectedMonth)}.`}
+              {" "}
+              Location uses Vercel/Cloudflare IP headers on production.
+            </p>
+          </div>
         </>
       )}
     </div>
