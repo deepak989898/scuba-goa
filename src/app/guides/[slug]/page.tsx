@@ -343,7 +343,7 @@ export default async function SeoGuidePage({
     page.updatedAt.slice(0, 10);
 
   return (
-    <article className="bg-white py-5 sm:py-7">
+    <article className="bg-white py-3 sm:py-4">
 
       {/* ------------------------------------------------------------------ */}
       {/* Structured Data                                                    */}
@@ -406,12 +406,41 @@ export default async function SeoGuidePage({
 
         <div className="min-w-0">
 
+          {/* Back + share — above breadcrumb to save vertical space */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+
+            <Link
+              href="/guides"
+              className="
+                inline-flex
+                items-center
+                text-sm
+                font-semibold
+                text-ocean-700
+                hover:text-ocean-900
+              "
+            >
+              ← All guides
+            </Link>
+
+            <SocialShareButtons
+              title={
+                page.metaTitle.trim() ||
+                page.headline
+              }
+              path={`/guides/${page.slug}`}
+              compact
+              className="sm:justify-end"
+            />
+
+          </div>
+
           {/* --------------------------------------------------------------- */}
           {/* Breadcrumb                                                      */}
           {/* --------------------------------------------------------------- */}
 
           <nav
-            className="text-sm text-ocean-700"
+            className="mt-1 text-xs text-ocean-700 sm:text-sm"
             aria-label="Breadcrumb"
           >
             <Link
@@ -442,60 +471,28 @@ export default async function SeoGuidePage({
               /
             </span>
 
-            <span className="text-ocean-500">
+            <span className="text-ocean-500 line-clamp-1">
               {page.headline}
             </span>
           </nav>
 
           {/* --------------------------------------------------------------- */}
-          {/* Guide Navigation + Share                                        */}
-          {/* --------------------------------------------------------------- */}
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-
-            <Link
-              href="/guides"
-              className="
-                inline-flex
-                items-center
-                text-sm
-                font-semibold
-                text-ocean-700
-                hover:text-ocean-900
-              "
-            >
-              ← All guides
-            </Link>
-
-            <SocialShareButtons
-              title={
-                page.metaTitle.trim() ||
-                page.headline
-              }
-              path={`/guides/${page.slug}`}
-              compact
-              className="sm:justify-end"
-            />
-
-          </div>
-
-          {/* --------------------------------------------------------------- */}
           {/* Article Header                                                   */}
           {/* --------------------------------------------------------------- */}
 
-          <header className="mt-4">
+          <header className="mt-2 sm:mt-2.5">
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
 
               <h1
                 className="
                   font-display
-                  text-2xl
+                  text-xl
                   font-extrabold
                   leading-tight
                   text-ocean-900
-                  sm:text-3xl
-                  lg:text-4xl
+                  sm:text-2xl
+                  lg:text-3xl
                 "
               >
                 {page.headline}
@@ -509,7 +506,7 @@ export default async function SeoGuidePage({
 
             {/* Hero + attached service photos (same pattern as blog) */}
             {heroGallery.mainUrl || heroGallery.serviceThumbs.length > 0 ? (
-              <div className="mt-4">
+              <div className="mt-3">
                 <BlogHeroGallery
                   mainUrl={heroGallery.mainUrl}
                   mainFallback={heroGallery.mainFallback}
