@@ -8,7 +8,8 @@ import {
   getMoreLikeThisSubheading,
 } from "@/lib/content-clusters";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
-import { blogFeaturedImageOrPlaceholder, pickBlogFeaturedImage } from "@/lib/cms-image";
+import { isFreeStockImageUrl, pickBlogFeaturedImage } from "@/lib/cms-image";
+import { MORE_LIKE_THIS_LIMIT } from "@/lib/cluster-related-content";
 
 type Props = {
   items: ClusterContentItem[];
@@ -21,7 +22,11 @@ export function MoreLikeThisSection({
   currentTitle,
   currentKeywords,
 }: Props) {
-  if (items.length === 0) return null;
+  const visibleItems = items
+    .filter((item) => item.editorialImage === true)
+    .slice(0, MORE_LIKE_THIS_LIMIT);
+
+  if (visibleItems.length === 0) return null;
 
   const topic = classifyContent({
     title: currentTitle,
@@ -46,13 +51,9 @@ export function MoreLikeThisSection({
         {getMoreLikeThisSubheading(topic)}
       </p>
       <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
-        {items.map((item) => {
-          const cardImage =
-            pickBlogFeaturedImage(item.imageUrl) ||
-            (item.kind === "guide"
-              ? blogFeaturedImageOrPlaceholder(item.slug, item.title, item.imageUrl)
-              : "");
-          if (!cardImage) return null;
+        {visibleItems.map((item) => {
+          const cardImage = pickBlogFeaturedImage(item.imageUrl);
+          if (!cardImage || isFreeStockImageUrl(cardImage)) return null;
 
           const cta =
             item.kind === "guide" ? "Read guide" : "Read article";

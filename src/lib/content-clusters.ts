@@ -15,6 +15,8 @@ export type ClusterContentItem = {
   updatedAt?: string;
   href: string;
   topic: ContentTopicId;
+  /** True when hero image is AI-generated or admin-uploaded (not free stock). */
+  editorialImage?: boolean;
 };
 
 export type ContentMeta = {
@@ -97,13 +99,14 @@ export function scoreClusterRelevance(
 export function pickClusterRelated(
   current: ContentMeta & { slug: string; kind: ClusterContentKind },
   catalog: ClusterContentItem[],
-  limit = 6,
+  limit = 2,
 ): ClusterContentItem[] {
   const currentTopic = classifyContent(current);
   const scored = catalog
     .filter(
       (item) =>
-        !(item.kind === current.kind && item.slug === current.slug),
+        !(item.kind === current.kind && item.slug === current.slug) &&
+        item.editorialImage === true,
     )
     .map((item) => ({
       item,
@@ -126,7 +129,7 @@ export function pickClusterRelated(
     picked.push(row.item);
   }
 
-  if (picked.length < Math.min(3, limit)) {
+  if (picked.length < limit) {
     for (const row of scored) {
       if (picked.length >= limit) break;
       const key = `${row.item.kind}:${row.item.slug}`;

@@ -2,10 +2,13 @@ import type { ServiceItem } from "@/data/services";
 import { pickBlogFeaturedImage } from "@/lib/cms-image";
 import { serviceDetailImages } from "@/lib/service-images";
 
+export type BlogHeroGallerySlideKind = "image" | "reel" | "video";
+
 export type BlogHeroGallerySlide = {
   url: string;
   alt: string;
   href?: string;
+  kind?: BlogHeroGallerySlideKind;
 };
 
 export type BlogHeroGalleryData = {
@@ -22,13 +25,47 @@ function pushThumb(
   url: string,
   alt: string,
   href?: string,
+  kind: BlogHeroGallerySlideKind = "image",
 ): void {
-  const clean =
-    pickBlogFeaturedImage(url) ||
-    (url.trim().startsWith("http") ? url.trim() : "");
+  if (kind === "image") {
+    const clean =
+      pickBlogFeaturedImage(url) ||
+      (url.trim().startsWith("http") ? url.trim() : "");
+    if (!clean || seen.has(clean)) return;
+    seen.add(clean);
+    thumbs.push({ url: clean, alt, href, kind });
+    return;
+  }
+
+  const clean = url.trim();
   if (!clean || seen.has(clean)) return;
   seen.add(clean);
-  thumbs.push({ url: clean, alt, href });
+  thumbs.push({ url: clean, alt, href, kind });
+}
+
+/** Photos + posts + reels + videos for the focus service hero thumbnail row. */
+function appendServiceGalleryThumbs(
+  thumbs: BlogHeroGallerySlide[],
+  seen: Set<string>,
+  service: ServiceItem,
+): void {
+  const href = `/services/${service.slug}`;
+  const label = `${service.title} in Goa`;
+
+  for (const img of serviceDetailImages(service)) {
+    pushThumb(thumbs, seen, img, label, href, "image");
+  }
+
+  const media = service.serviceMedia;
+  for (const url of media?.posts ?? []) {
+    pushThumb(thumbs, seen, url, `${label} — photo`, href, "image");
+  }
+  for (const url of media?.reels ?? []) {
+    pushThumb(thumbs, seen, url, `${label} — reel`, href, "reel");
+  }
+  for (const url of media?.videos ?? []) {
+    pushThumb(thumbs, seen, url, `${label} — video`, href, "video");
+  }
 }
 
 /**
@@ -51,11 +88,7 @@ export function buildBlogHeroGalleryData(input: {
   const seen = new Set<string>();
 
   if (input.focusService) {
-    const href = `/services/${input.focusService.slug}`;
-    const label = `${input.focusService.title} in Goa`;
-    for (const img of serviceDetailImages(input.focusService)) {
-      pushThumb(serviceThumbs, seen, img, label, href);
-    }
+    appendServiceGalleryThumbs(serviceThumbs, seen, input.focusService);
   }
 
   return {
@@ -86,11 +119,7 @@ export function buildGuideHeroGalleryData(input: {
   const seen = new Set<string>();
 
   if (input.focusService) {
-    const href = `/services/${input.focusService.slug}`;
-    const label = `${input.focusService.title} in Goa`;
-    for (const img of serviceDetailImages(input.focusService)) {
-      pushThumb(serviceThumbs, seen, img, label, href);
-    }
+    appendServiceGalleryThumbs(serviceThumbs, seen, input.focusService);
   }
 
   return {

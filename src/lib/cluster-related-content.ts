@@ -6,13 +6,18 @@ import {
   scoreClusterRelevance,
 } from "@/lib/content-clusters";
 import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
+import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
+import { hasEditorialBlogFeaturedImage } from "@/lib/cms-image";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import type { SeoPageListItem } from "@/lib/seo-pages-server";
 
+/** Max cards in “More like this” on blog + guide detail pages. */
+export const MORE_LIKE_THIS_LIMIT = 2;
+
 async function buildClusterCatalog(): Promise<ClusterContentItem[]> {
-  const [guides, blogs] = await Promise.all([
+  const [guides, blogPosts] = await Promise.all([
     listPublishedSeoPagesServer(),
-    getAllBlogPostsMerged(),
+    listPublishedBlogPostsServer(),
   ]);
 
   const guideItems: ClusterContentItem[] = guides.map((g) => ({
@@ -29,15 +34,19 @@ async function buildClusterCatalog(): Promise<ClusterContentItem[]> {
       keywords: g.keywords ?? [],
       slug: g.slug,
     }),
+    editorialImage: hasEditorialBlogFeaturedImage(
+      g.heroImageUrl,
+      g.ogImageUrl,
+    ),
   }));
 
-  const blogItems: ClusterContentItem[] = blogs.map((b) => ({
+  const blogItems: ClusterContentItem[] = blogPosts.map((b) => ({
     kind: "blog",
     slug: b.slug,
     title: b.title,
     description: b.excerpt,
     keywords: b.keywords,
-    imageUrl: b.imageUrl,
+    imageUrl: b.featuredImageUrl || b.ogImageUrl || undefined,
     updatedAt: b.updatedAt ?? b.date,
     href: `/blog/${b.slug}`,
     topic: classifyContent({
@@ -45,6 +54,11 @@ async function buildClusterCatalog(): Promise<ClusterContentItem[]> {
       keywords: b.keywords,
       slug: b.slug,
     }),
+    editorialImage: hasEditorialBlogFeaturedImage(
+      b.featuredImageUrl,
+      b.ogImageUrl,
+      b.imageMeta,
+    ),
   }));
 
   return [...guideItems, ...blogItems];
@@ -52,7 +66,7 @@ async function buildClusterCatalog(): Promise<ClusterContentItem[]> {
 
 export async function getMoreLikeThisForGuide(
   slug: string,
-  limit = 6,
+  limit = MORE_LIKE_THIS_LIMIT,
 ): Promise<ClusterContentItem[]> {
   const catalog = await buildClusterCatalog();
   const current = catalog.find((c) => c.kind === "guide" && c.slug === slug);
@@ -66,7 +80,7 @@ export async function getMoreLikeThisForGuide(
 
 export async function getMoreLikeThisForBlog(
   slug: string,
-  limit = 6,
+  limit = MORE_LIKE_THIS_LIMIT,
 ): Promise<ClusterContentItem[]> {
   const catalog = await buildClusterCatalog();
   const current = catalog.find((c) => c.kind === "blog" && c.slug === slug);

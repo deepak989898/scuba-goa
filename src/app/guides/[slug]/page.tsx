@@ -301,7 +301,7 @@ export default async function SeoGuidePage({
 
   const [catalog, moreLikeThis, clusterCatalog] = await Promise.all([
     buildBlogCatalogContext(),
-    getMoreLikeThisForGuide(slug, 6),
+    getMoreLikeThisForGuide(slug),
     buildClusterCatalog(),
   ]);
 

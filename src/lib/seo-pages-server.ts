@@ -36,6 +36,8 @@ export type SeoPageListItem = {
   updatedAt: string;
   metaDescription?: string;
   imageUrl?: string;
+  heroImageUrl?: string;
+  ogImageUrl?: string;
   keywords?: string[];
 };
 
@@ -58,6 +60,8 @@ export async function listPublishedSeoPagesServer(): Promise<SeoPageListItem[]> 
         updatedAt: p.updatedAt,
         metaDescription: p.metaDescription,
         imageUrl,
+        heroImageUrl: p.heroImageUrl,
+        ogImageUrl: p.ogImageUrl,
         keywords: p.keywords,
       });
     }

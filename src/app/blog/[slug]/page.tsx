@@ -224,7 +224,7 @@ export default async function BlogPostPage({ params }: Props) {
   }
   const [fs, moreLikeThis, catalog, clusterCatalog] = await Promise.all([
     getPublishedBlogPostBySlug(slug),
-    getMoreLikeThisForBlog(slug, 6),
+    getMoreLikeThisForBlog(slug),
     buildBlogCatalogContext(),
     buildClusterCatalog(),
   ]);
