@@ -33,8 +33,14 @@ import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 import { findBlogRedirectDestination } from "@/lib/blog-redirects";
 import { getSeoBlogRedirect } from "@/lib/gsc-indexing-agent/seo-blog-redirects";
 import { BlogHeroGallery } from "@/components/BlogHeroGallery";
+import { ContentConversionSection } from "@/components/ContentConversionSection";
+import { ContentFaqSection } from "@/components/ContentFaqSection";
 import { buildBlogHeroGalleryData, resolveBlogFocusService } from "@/lib/blog-hero-gallery";
 import { SeoDescriptionWithPhone } from "@/components/SeoDescriptionWithPhone";
+import {
+  buildContentSeoEnhancement,
+  resolveEnhancedSeoFields,
+} from "@/lib/content-seo-enhancements";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 import {
   blogFeaturedImageOrPlaceholder,
@@ -60,13 +66,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!p) return { title: "Article" };
   const fs = await getPublishedBlogPostBySlug(slug);
   const canonical = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;
-  // Absolute title (no layout template double-branding)
+  const enhanced = resolveEnhancedSeoFields({
+    slug: p.slug,
+    title: p.title,
+    metaTitle: fs?.metaTitle?.trim() || p.metaTitle?.trim(),
+    headline: p.title,
+    metaDescription: fs?.metaDescription?.trim() || p.excerpt,
+    keywords: fs?.keywords?.length ? fs.keywords : p.keywords,
+  });
   const title =
+    enhanced.metaTitle ||
     fs?.metaTitle?.trim() ||
     p.metaTitle?.trim() ||
     p.title;
   const description = buildMetaDescriptionWithContact(
-    fs?.metaDescription?.trim() || p.excerpt,
+    enhanced.metaDescription ||
+      fs?.metaDescription?.trim() ||
+      p.excerpt,
   );
   const ogImage = blogFeaturedImageOrPlaceholder(
     slug,
@@ -253,15 +269,26 @@ export default async function BlogPostPage({ params }: Props) {
     featuredImages.primary || featuredImages.fallback;
   const featuredImageAlt =
     fs?.featuredImageAlt?.trim() || p.imageAlt?.trim() || p.title;
+  const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
+  const topicCta = getTopicCta(contentMeta, focusServiceSlug);
+  const enhancedSeo = resolveEnhancedSeoFields({
+    slug: p.slug,
+    title: p.title,
+    metaTitle: fs?.metaTitle?.trim() || p.metaTitle?.trim(),
+    headline: p.title,
+    metaDescription: fs?.metaDescription?.trim() || p.excerpt,
+    keywords: p.keywords,
+  });
+  const displayTitle = enhancedSeo.headline || p.title;
   const seoDescription = buildMetaDescriptionWithContact(
-    fs?.metaDescription?.trim() || p.excerpt,
+    enhancedSeo.metaDescription ||
+      fs?.metaDescription?.trim() ||
+      p.excerpt,
   );
   const dateModified = fs
     ? pickBlogDisplayUpdatedYmd(fs)
     : p.updatedAt ?? p.date;
   const publishedLabel = (fs?.publishedAt || p.date || "").slice(0, 10);
-  const focusServiceSlug = fs?.serviceSlug?.trim() || undefined;
-  const topicCta = getTopicCta(contentMeta, focusServiceSlug);
   const { related: relatedServices, other: otherServices } =
     splitServicesForContentSidebar(
       catalog.services,
@@ -276,6 +303,17 @@ export default async function BlogPostPage({ params }: Props) {
     focusServiceSlug,
     { title: p.title, keywords: p.keywords },
   );
+  const conversionBlocks = buildContentSeoEnhancement({
+    slug: p.slug,
+    meta: {
+      title: p.title,
+      keywords: p.keywords,
+      description: fs?.metaDescription?.trim() || p.excerpt,
+    },
+    focusService,
+    focusServiceSlug: focusService?.slug ?? focusServiceSlug,
+    whatsappMessage: topicCta.whatsappMessage,
+  });
   const heroGallery = buildBlogHeroGalleryData({
     title: p.title,
     featuredPrimary: featuredImages.primary,
@@ -293,7 +331,7 @@ export default async function BlogPostPage({ params }: Props) {
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(
             blogPostingJsonLd({
-              title: p.title,
+              title: displayTitle,
               excerpt: seoDescription,
               date: publishedLabel || p.date,
               dateModified,
@@ -341,7 +379,7 @@ export default async function BlogPostPage({ params }: Props) {
               Blog
             </Link>
             <span className="text-ocean-400">/</span>
-            <span className="truncate text-ocean-500">{p.title}</span>
+            <span className="truncate text-ocean-500">{displayTitle}</span>
             <span className="text-ocean-300" aria-hidden>
               ·
             </span>
@@ -354,7 +392,7 @@ export default async function BlogPostPage({ params }: Props) {
           </nav>
           <div className="mt-1 flex flex-wrap items-start justify-between gap-x-2 gap-y-0">
             <h1 className="min-w-0 flex-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 bg-clip-text font-display text-lg font-extrabold leading-snug text-transparent sm:text-xl lg:text-2xl">
-              {p.title}
+              {displayTitle}
             </h1>
             <p className="shrink-0 pt-0.5 text-[11px] text-ocean-500 sm:text-xs sm:text-right">
               {p.date} · {p.readTime}
@@ -398,7 +436,16 @@ export default async function BlogPostPage({ params }: Props) {
             />
           </p>
 
-          <div className="prose prose-ocean mt-2 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">
+          {conversionBlocks ? (
+            <ContentConversionSection
+              data={conversionBlocks}
+              venueLabel={conversionBlocks.location?.venueName ?? undefined}
+            />
+          ) : null}
+
+          <ContentFaqSection faqs={faqs} id="blog-faq-heading" className="mt-4 border-t border-ocean-100 pt-4" />
+
+          <div className="prose prose-ocean mt-4 max-w-none text-ocean-800 prose-headings:font-display prose-a:text-ocean-700 prose-p:my-2 prose-headings:mb-1.5 prose-headings:mt-4">
             <BlogContent content={enrichedContent} />
           </div>
 
@@ -410,48 +457,6 @@ export default async function BlogPostPage({ params }: Props) {
           <BlogWhyChooseSection
             content={{ title: p.title, keywords: p.keywords }}
           />
-
-          {faqs.length > 0 && (
-            <section
-              className="mt-5 border-t border-ocean-100 pt-4"
-              aria-labelledby="faq-heading"
-            >
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-cyan-700">
-                Helpful answers
-              </p>
-              <h2
-                id="faq-heading"
-                className="mt-0.5 font-display text-lg font-bold text-ocean-900 sm:text-xl"
-              >
-                Frequently asked questions
-              </h2>
-              <p className="mt-1 text-sm leading-snug text-ocean-700">
-                Open any question for a quick answer before planning or booking.
-              </p>
-              <div className="mt-2.5 space-y-1.5">
-                {faqs.map((f, index) => (
-                  <details
-                    key={f.question}
-                    className="group rounded-lg border border-ocean-100 bg-sand px-3 shadow-sm open:border-cyan-300 open:bg-cyan-50/40 sm:px-4"
-                    open={index === 0}
-                  >
-                    <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 py-2 text-sm font-semibold text-ocean-900 marker:hidden">
-                      <span>{f.question}</span>
-                      <span
-                        aria-hidden
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-base text-ocean-700 shadow-sm transition group-open:rotate-45"
-                      >
-                        +
-                      </span>
-                    </summary>
-                    <p className="border-t border-ocean-100 pb-2.5 pt-2 text-sm leading-snug text-ocean-800">
-                      {f.answer}
-                    </p>
-                  </details>
-                ))}
-              </div>
-            </section>
-          )}
 
           {moreLikeThis.length > 0 ? (
             <MoreLikeThisSection

@@ -141,7 +141,7 @@ export function BlogContent({ content }: { content: string }) {
           id={id}
           className="mt-4 scroll-mt-20 border-l-4 border-teal-500 bg-gradient-to-r from-cyan-600 via-teal-600 to-ocean-700 bg-clip-text py-0.5 pl-2.5 text-lg font-extrabold text-transparent first:mt-0 sm:text-xl"
         >
-          {text}
+          {parseInline(text)}
         </h2>,
       );
       i += 1;
@@ -156,7 +156,7 @@ export function BlogContent({ content }: { content: string }) {
           id={id}
           className="mt-3 scroll-mt-20 bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-base font-extrabold text-transparent sm:text-lg"
         >
-          {text}
+          {parseInline(text)}
         </h3>,
       );
       i += 1;

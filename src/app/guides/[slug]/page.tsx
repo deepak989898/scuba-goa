@@ -6,6 +6,8 @@ import { BlogContent } from "@/components/BlogContent";
 import { BlogHeroGallery } from "@/components/BlogHeroGallery";
 import { BlogLivePricing } from "@/components/BlogLivePricing";
 import { BlogWhyChooseSection } from "@/components/BlogWhyChooseSection";
+import { ContentConversionSection } from "@/components/ContentConversionSection";
+import { ContentFaqSection } from "@/components/ContentFaqSection";
 import { MoreLikeThisSection } from "@/components/MoreLikeThisSection";
 import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { TopicCtaSection } from "@/components/TopicCtaSection";
@@ -25,6 +27,10 @@ import {
 import { enrichMarkdownWithClusterLinks } from "@/lib/contextual-internal-links";
 import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
 import { getPublishedSeoPageBySlug } from "@/lib/seo-pages-server";
+import {
+  buildContentSeoEnhancement,
+  resolveEnhancedSeoFields,
+} from "@/lib/content-seo-enhancements";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 type Props = {
@@ -95,12 +101,22 @@ export async function generateMetadata({
 
   const canonical = `${base}/guides/${page.slug}`;
 
+  const enhanced = resolveEnhancedSeoFields({
+    slug: page.slug,
+    title: page.headline,
+    metaTitle: page.metaTitle.trim(),
+    headline: page.headline,
+    metaDescription: page.metaDescription.trim(),
+    keywords: page.keywords,
+  });
+
   const title =
+    enhanced.metaTitle ||
     page.metaTitle.trim() ||
     `${page.headline} | ${SITE_NAME}`;
 
   const description = buildMetaDescriptionWithContact(
-    page.metaDescription.trim(),
+    enhanced.metaDescription || page.metaDescription.trim(),
   ).slice(0, 320);
 
   const ogImage = absAssetUrl(page.ogImageUrl);
@@ -119,9 +135,7 @@ export async function generateMetadata({
     },
 
     openGraph: {
-      title:
-        page.metaTitle.trim() ||
-        page.headline,
+      title: enhanced.metaTitle || page.metaTitle.trim() || page.headline,
 
       description: description.slice(0, 200),
 
@@ -148,9 +162,7 @@ export async function generateMetadata({
         ? "summary_large_image"
         : "summary",
 
-      title:
-        page.metaTitle.trim() ||
-        page.headline,
+      title: enhanced.metaTitle || page.metaTitle.trim() || page.headline,
 
       description: description.slice(0, 200),
 
@@ -336,6 +348,30 @@ export default async function SeoGuidePage({
 
   const topicCta = getTopicCta(contentMeta, focusService?.slug ?? focusServiceSlug);
 
+  const conversionBlocks = buildContentSeoEnhancement({
+    slug: page.slug,
+    meta: {
+      title: page.headline,
+      keywords: page.keywords,
+      description: page.metaDescription,
+    },
+    focusService,
+    focusServiceSlug: focusService?.slug ?? focusServiceSlug,
+    whatsappMessage: topicCta.whatsappMessage,
+  });
+
+  const displayHeadline =
+    conversionBlocks?.headline ?? page.headline;
+
+  const enhancedSeo = resolveEnhancedSeoFields({
+    slug: page.slug,
+    title: page.headline,
+    metaTitle: page.metaTitle.trim(),
+    headline: page.headline,
+    metaDescription: page.metaDescription.trim(),
+    keywords: page.keywords,
+  });
+
   const heroGallery = buildGuideHeroGalleryData({
     title: page.headline,
     heroPrimary: page.heroImageUrl.trim(),
@@ -353,7 +389,7 @@ export default async function SeoGuidePage({
     `${SITE_URL.replace(/\/$/, "")}/guides/${page.slug}`;
 
   const seoDescription = buildMetaDescriptionWithContact(
-    page.metaDescription.trim(),
+    enhancedSeo.metaDescription || page.metaDescription.trim(),
   );
 
   const enrichedBody = enrichMarkdownWithClusterLinks(
@@ -382,6 +418,7 @@ export default async function SeoGuidePage({
           __html: JSON.stringify(
             webPageJsonLd({
               ...page,
+              headline: displayHeadline,
               metaDescription: seoDescription,
             }),
           ),
@@ -439,8 +476,9 @@ export default async function SeoGuidePage({
 
             <SocialShareButtons
               title={
+                enhancedSeo.metaTitle ||
                 page.metaTitle.trim() ||
-                page.headline
+                displayHeadline
               }
               path={`/guides/${page.slug}`}
               compact
@@ -486,7 +524,7 @@ export default async function SeoGuidePage({
             </span>
 
             <span className="text-ocean-500 line-clamp-1">
-              {page.headline}
+              {displayHeadline}
             </span>
           </nav>
 
@@ -509,7 +547,7 @@ export default async function SeoGuidePage({
                   lg:text-3xl
                 "
               >
-                {page.headline}
+                {displayHeadline}
               </h1>
 
               <p className="text-sm text-ocean-500">
@@ -567,6 +605,17 @@ export default async function SeoGuidePage({
                 </p>
               </div>
             ) : null}
+
+            {conversionBlocks ? (
+              <ContentConversionSection
+                data={conversionBlocks}
+                venueLabel={
+                  conversionBlocks.location?.venueName ?? undefined
+                }
+              />
+            ) : null}
+
+            <ContentFaqSection faqs={faqs} id="guide-faq-heading" />
 
           </header>
 
@@ -661,137 +710,6 @@ export default async function SeoGuidePage({
               }}
             />
           </section>
-
-          {/* --------------------------------------------------------------- */}
-          {/* FAQ                                                              */}
-          {/* --------------------------------------------------------------- */}
-
-          {faqs.length > 0 ? (
-            <section
-              className="
-                mt-10
-                border-t
-                border-ocean-100
-                pt-8
-              "
-              aria-labelledby="guide-faq-heading"
-            >
-
-              <p
-                className="
-                  text-xs
-                  font-extrabold
-                  uppercase
-                  tracking-[0.16em]
-                  text-cyan-700
-                "
-              >
-                Helpful answers
-              </p>
-
-              <h2
-                id="guide-faq-heading"
-                className="
-                  mt-1
-                  font-display
-                  text-xl
-                  font-bold
-                  text-ocean-900
-                  sm:text-2xl
-                "
-              >
-                Frequently Asked Questions
-              </h2>
-
-              <p className="mt-2 text-sm leading-6 text-ocean-700">
-                Find quick answers about pricing, location,
-                booking, safety and other important details
-                related to this activity.
-              </p>
-
-              <div className="mt-5 space-y-3">
-
-                {faqs.map((faq, index) => (
-                  <details
-                    key={faq.question}
-                    className="
-                      group
-                      rounded-xl
-                      border
-                      border-ocean-100
-                      bg-sand
-                      px-4
-                      shadow-sm
-                      open:border-cyan-300
-                      open:bg-cyan-50/40
-                      sm:px-5
-                    "
-                    open={index === 0}
-                  >
-
-                    <summary
-                      className="
-                        flex
-                        min-h-12
-                        cursor-pointer
-                        list-none
-                        items-center
-                        justify-between
-                        gap-4
-                        py-3
-                        font-semibold
-                        text-ocean-900
-                        marker:hidden
-                      "
-                    >
-
-                      <span>
-                        {faq.question}
-                      </span>
-
-                      <span
-                        aria-hidden="true"
-                        className="
-                          flex
-                          h-7
-                          w-7
-                          shrink-0
-                          items-center
-                          justify-center
-                          rounded-full
-                          bg-white
-                          text-lg
-                          text-ocean-700
-                          shadow-sm
-                          transition
-                          group-open:rotate-45
-                        "
-                      >
-                        +
-                      </span>
-
-                    </summary>
-
-                    <div
-                      className="
-                        border-t
-                        border-ocean-100
-                        pb-4
-                        pt-3
-                      "
-                    >
-                      <p className="text-sm leading-6 text-ocean-800">
-                        {faq.answer}
-                      </p>
-                    </div>
-
-                  </details>
-                ))}
-
-              </div>
-
-            </section>
-          ) : null}
 
           {/* More like this — cluster-matched guides + blogs */}
           {moreLikeThis.length > 0 ? (
