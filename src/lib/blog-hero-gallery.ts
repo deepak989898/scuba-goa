@@ -1,6 +1,9 @@
 import type { ServiceItem } from "@/data/services";
-import { pickBlogFeaturedImage } from "@/lib/cms-image";
-import { serviceDetailImages } from "@/lib/service-images";
+import {
+  pickBlogFeaturedImage,
+  sanitizePublicImageUrl,
+  SITE_IMAGE_PLACEHOLDER,
+} from "@/lib/cms-image";
 
 export type BlogHeroGallerySlideKind = "image" | "reel" | "video";
 
@@ -19,6 +22,37 @@ export type BlogHeroGalleryData = {
   serviceThumbs: BlogHeroGallerySlide[];
 };
 
+/** True when URL points to video/reel media (not a raster image). */
+export function isVideoMediaUrl(url: string | undefined | null): boolean {
+  const t = String(url ?? "").trim().toLowerCase();
+  if (!t) return false;
+  if (/\.(mp4|webm|mov|m4v|ogv|ogg)(\?|#|$)/i.test(t)) return true;
+  if (t.includes("video%2f") || t.includes("/video/")) return true;
+  if (t.includes("reel%2f") || t.includes("/reels/")) return true;
+  return false;
+}
+
+function normalizeMediaKey(url: string): string {
+  return url.trim();
+}
+
+/** Gallery image URLs only — no placeholder, no videos. */
+function collectServiceImageUrls(service: ServiceItem): string[] {
+  const main = sanitizePublicImageUrl(service.image);
+  const extras =
+    service.galleryUrls
+      ?.map((u) => sanitizePublicImageUrl(u))
+      .filter((u) => u.length > 0 && !isVideoMediaUrl(u)) ?? [];
+  const out: string[] = [];
+  if (main && main !== SITE_IMAGE_PLACEHOLDER && !isVideoMediaUrl(main)) {
+    out.push(main);
+  }
+  for (const u of extras) {
+    if (u !== SITE_IMAGE_PLACEHOLDER && !out.includes(u)) out.push(u);
+  }
+  return out;
+}
+
 function pushThumb(
   thumbs: BlogHeroGallerySlide[],
   seen: Set<string>,
@@ -27,20 +61,29 @@ function pushThumb(
   href?: string,
   kind: BlogHeroGallerySlideKind = "image",
 ): void {
+  const key = normalizeMediaKey(url);
+  if (!key || seen.has(key)) return;
+
   if (kind === "image") {
+    if (isVideoMediaUrl(key)) return;
     const clean =
-      pickBlogFeaturedImage(url) ||
-      (url.trim().startsWith("http") ? url.trim() : "");
-    if (!clean || seen.has(clean)) return;
-    seen.add(clean);
+      sanitizePublicImageUrl(key) || pickBlogFeaturedImage(key);
+    if (
+      !clean ||
+      clean === SITE_IMAGE_PLACEHOLDER ||
+      clean.includes("booking-header") ||
+      isVideoMediaUrl(clean)
+    ) {
+      return;
+    }
+    seen.add(key);
     thumbs.push({ url: clean, alt, href, kind });
     return;
   }
 
-  const clean = url.trim();
-  if (!clean || seen.has(clean)) return;
-  seen.add(clean);
-  thumbs.push({ url: clean, alt, href, kind });
+  if (!isVideoMediaUrl(key)) return;
+  seen.add(key);
+  thumbs.push({ url: key, alt, href, kind });
 }
 
 /** Photos + posts + reels + videos for the focus service hero thumbnail row. */
@@ -51,20 +94,47 @@ function appendServiceGalleryThumbs(
 ): void {
   const href = `/services/${service.slug}`;
   const label = `${service.title} in Goa`;
+  const media = service.serviceMedia;
 
-  for (const img of serviceDetailImages(service)) {
+  const reelUrls = new Set(
+    (media?.reels ?? []).map((u) => normalizeMediaKey(u)).filter(Boolean),
+  );
+  const videoUrls = new Set(
+    (media?.videos ?? []).map((u) => normalizeMediaKey(u)).filter(Boolean),
+  );
+
+  for (const img of collectServiceImageUrls(service)) {
+    const key = normalizeMediaKey(img);
+    if (reelUrls.has(key)) continue;
+    if (videoUrls.has(key)) continue;
+    if (isVideoMediaUrl(key)) continue;
     pushThumb(thumbs, seen, img, label, href, "image");
   }
 
-  const media = service.serviceMedia;
   for (const url of media?.posts ?? []) {
+    const key = normalizeMediaKey(url);
+    if (!key || reelUrls.has(key) || videoUrls.has(key)) continue;
+    if (isVideoMediaUrl(key)) continue;
     pushThumb(thumbs, seen, url, `${label} — photo`, href, "image");
   }
-  for (const url of media?.reels ?? []) {
+
+  for (const url of reelUrls) {
     pushThumb(thumbs, seen, url, `${label} — reel`, href, "reel");
   }
-  for (const url of media?.videos ?? []) {
+
+  for (const url of videoUrls) {
+    if (reelUrls.has(url)) continue;
     pushThumb(thumbs, seen, url, `${label} — video`, href, "video");
+  }
+
+  // Video files stored only in galleryUrls (not in reels/videos tabs).
+  for (const raw of service.galleryUrls ?? []) {
+    const key = normalizeMediaKey(raw);
+    if (!key || seen.has(key) || reelUrls.has(key) || videoUrls.has(key)) {
+      continue;
+    }
+    if (!isVideoMediaUrl(key)) continue;
+    pushThumb(thumbs, seen, key, `${label} — video`, href, "video");
   }
 }
 

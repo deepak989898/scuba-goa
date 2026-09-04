@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import {
   AutoVideoThumbnail,
@@ -20,6 +20,10 @@ function isVideoSlide(slide?: BlogHeroGallerySlide): boolean {
   return slide?.kind === "reel" || slide?.kind === "video";
 }
 
+function thumbKey(slide: BlogHeroGallerySlide): string {
+  return `${slide.kind ?? "image"}:${slide.url}`;
+}
+
 /**
  * Blog / guide hero — main image + thumbnails for linked services.
  */
@@ -31,12 +35,26 @@ export function BlogHeroGallery({
   priority,
   layout = "intrinsic",
 }: Props) {
-  const thumbs = serviceThumbs.filter((s) => s.url.trim());
+  const allThumbs = serviceThumbs.filter((s) => s.url.trim());
+  const [hiddenThumbKeys, setHiddenThumbKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const thumbs = useMemo(
+    () => allThumbs.filter((s) => !hiddenThumbKeys.has(thumbKey(s))),
+    [allThumbs, hiddenThumbKeys],
+  );
+
   const [useBlogMain, setUseBlogMain] = useState(true);
   const [thumbIndex, setThumbIndex] = useState(0);
   const [failedToFallback, setFailedToFallback] = useState(false);
 
-  const activeThumb = thumbs[Math.min(thumbIndex, thumbs.length - 1)];
+  useEffect(() => {
+    if (thumbIndex >= thumbs.length && thumbs.length > 0) {
+      setThumbIndex(0);
+    }
+  }, [thumbIndex, thumbs.length]);
+
+  const activeThumb = thumbs[Math.min(thumbIndex, Math.max(0, thumbs.length - 1))];
 
   const displayUrl = useBlogMain
     ? mainUrl || mainFallback
@@ -166,6 +184,15 @@ export function BlogHeroGallery({
                     className="object-cover"
                     sizes="96px"
                     loading="lazy"
+                    onError={() => {
+                      const key = thumbKey(slide);
+                      setHiddenThumbKeys((prev) => {
+                        if (prev.has(key)) return prev;
+                        const next = new Set(prev);
+                        next.add(key);
+                        return next;
+                      });
+                    }}
                   />
                 )}
               </button>
