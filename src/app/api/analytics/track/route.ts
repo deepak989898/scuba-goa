@@ -222,7 +222,7 @@ export async function POST(req: Request) {
 
   const ua = req.headers.get("user-agent") ?? "";
   const botUa = classifyBotFromUserAgent(ua);
-  const { category, label, uaSnippet } = parseRequestDevice(req.headers);
+  const { category, label, deviceModel, uaSnippet } = parseRequestDevice(req.headers);
 
   const purpose =
     req.headers.get("purpose")?.toLowerCase() ||
@@ -464,6 +464,34 @@ export async function POST(req: Request) {
           ? Math.max(0, Math.round(Number(snap.data()?.visitCount) || 0))
           : 0;
         const next = prev + 1;
+        const historyGeoLine = [
+          geo.geoCity,
+          geo.geoRegionName || geo.geoRegion,
+          geo.geoCountryName || geo.geoCountry,
+        ]
+          .filter(Boolean)
+          .join(", ")
+          .slice(0, 200);
+        const historyEntry: Record<string, unknown> = {
+          sessionId: sessionId || "anon",
+          at: new Date().toISOString(),
+          landingPath: path,
+          deviceModel: deviceModel || undefined,
+          deviceLabel: label,
+        };
+        if (historyGeoLine) historyEntry.geoLine = historyGeoLine;
+        if (geo.geoCity) historyEntry.geoCity = geo.geoCity;
+        if (geo.geoRegionName || geo.geoRegion) {
+          historyEntry.geoRegionName = geo.geoRegionName || geo.geoRegion;
+        }
+        if (geo.geoCountryName || geo.geoCountry) {
+          historyEntry.geoCountryName = geo.geoCountryName || geo.geoCountry;
+        }
+        const prevHistory = Array.isArray(snap.data()?.visitHistory)
+          ? (snap.data()?.visitHistory as Record<string, unknown>[]).filter(
+              (e) => e && typeof e === "object",
+            )
+          : [];
         const payload: Record<string, unknown> = {
           visitorId,
           visitCount: next,
@@ -472,7 +500,9 @@ export async function POST(req: Request) {
           lastPath: path,
           deviceCategory: category,
           deviceLabel: label,
+          deviceModel: deviceModel || undefined,
           updatedAt: FieldValue.serverTimestamp(),
+          visitHistory: [...prevHistory, historyEntry].slice(-40),
         };
         if (!snap.exists) {
           payload.firstSeenAt = FieldValue.serverTimestamp();
@@ -520,6 +550,7 @@ export async function POST(req: Request) {
           lastPath: path,
           deviceCategory: category,
           deviceLabel: label,
+          deviceModel: deviceModel || undefined,
           updatedAt: FieldValue.serverTimestamp(),
         };
         if (timeZone) refresh.timeZone = timeZone;
@@ -540,6 +571,7 @@ export async function POST(req: Request) {
     lastSeenAt: FieldValue.serverTimestamp(),
     deviceCategory: category,
     deviceLabel: label,
+    deviceModel: deviceModel || undefined,
     uaSnippet,
     analyticsVersion: ANALYTICS_DATA_VERSION,
     visitorType,
@@ -675,6 +707,7 @@ export async function POST(req: Request) {
     durationMs,
     deviceCategory: category,
     deviceLabel: label,
+    deviceModel: deviceModel || undefined,
     uaSnippet,
     isBot: false,
     visitorType,

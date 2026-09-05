@@ -6,6 +6,9 @@ import { siteId } from "./normalize-url";
 const COL = "seoSettings";
 const DOC = "settings";
 
+/** Max URL Inspection calls per manual “Inspect queue” click (matches daily GSC quota). */
+export const GSC_INSPECT_QUEUE_BATCH = 50;
+
 export function defaultSeoSettings(): SeoSettings {
   const now = new Date().toISOString();
   const property =
@@ -28,7 +31,7 @@ export function defaultSeoSettings(): SeoSettings {
     automationScheduleEnabled: false,
     automationFrequency: "daily",
     automationPositionThreshold: 10,
-    automationInspectPerRun: 8,
+    automationInspectPerRun: GSC_INSPECT_QUEUE_BATCH,
     automationRankingImproveMax: 5,
     automationStartedAt: null,
     automationStartedBy: null,

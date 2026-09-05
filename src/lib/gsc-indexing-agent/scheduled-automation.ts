@@ -5,7 +5,7 @@ import {
 } from "./ranking-improve";
 import { applyStockImageForRankingBlog } from "./ranking-stock-image";
 import { hasRecentRankingContentImprove } from "./ranking-opportunity-ui";
-import { getSeoSettings, saveSeoSettings } from "./settings";
+import { getSeoSettings, saveSeoSettings, GSC_INSPECT_QUEUE_BATCH } from "./settings";
 import { listSeoUrls, logAction } from "./store";
 import type {
   GscAutomationOpenAiImageItem,
@@ -139,7 +139,7 @@ export async function runGscScheduledAutomation(opts?: {
   );
   const inspectPerRun = Math.min(
     20,
-    Math.max(1, settings.automationInspectPerRun ?? 8),
+    Math.max(1, settings.automationInspectPerRun ?? GSC_INSPECT_QUEUE_BATCH),
   );
   const improveMax = Math.min(
     12,

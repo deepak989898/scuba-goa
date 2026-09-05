@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { getSeoSettings, saveSeoSettings } from "@/lib/gsc-indexing-agent";
+import { GSC_INSPECT_QUEUE_BATCH } from "@/lib/gsc-indexing-agent/settings";
 import {
   runGscScheduledAutomation,
   startGscScheduledAutomation,
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       {
         frequency: frequency as "daily" | "weekly" | "monthly",
         positionThreshold: Number(body.positionThreshold) || 10,
-        inspectPerRun: Number(body.inspectPerRun) || 8,
+        inspectPerRun: Number(body.inspectPerRun) || GSC_INSPECT_QUEUE_BATCH,
         rankingImproveMax: Number(body.rankingImproveMax) || 5,
       },
       auth.uid || "admin",

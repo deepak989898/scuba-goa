@@ -12,6 +12,7 @@ import { GscAutomationStartWizard } from "@/app/admin/gsc-agent/GscAutomationWiz
 import {
   RANKING_IMPROVE_HIDE_MS,
 } from "@/lib/gsc-indexing-agent/ranking-opportunity-ui";
+import { GSC_INSPECT_QUEUE_BATCH } from "@/lib/gsc-indexing-agent/settings";
 
 type Overview = {
   totalUrls: number;
@@ -431,7 +432,7 @@ export default function GscIndexingAgentPage() {
       if (job === "inspect") {
         const data = await adminFetch("/api/admin/gsc-agent/inspect", {
           method: "POST",
-          body: JSON.stringify({ processQueue: true, max: 8 }),
+          body: JSON.stringify({ processQueue: true, max: GSC_INSPECT_QUEUE_BATCH }),
         });
         const d = data.detail as {
           processed?: number;
@@ -445,7 +446,7 @@ export default function GscIndexingAgentPage() {
           `Inspect queue: ${processed} URL(s) checked` +
             (errors ? ` · ${errors} failed` : "") +
             (skipped ? ` · ${skipped} skipped (daily quota)` : "") +
-            ". Runs 8 per click (~50/day GSC quota) — click again for more.",
+            `. Runs up to ${GSC_INSPECT_QUEUE_BATCH} per click (daily GSC quota ~50) — quota resets at IST midnight.`,
         );
       } else {
         const data = await adminFetch("/api/admin/gsc-agent/run", {
@@ -749,7 +750,7 @@ export default function GscIndexingAgentPage() {
     try {
       const data = await adminFetch("/api/admin/gsc-agent/inspect", {
         method: "POST",
-        body: JSON.stringify({ urlIds, max: 8 }),
+        body: JSON.stringify({ urlIds, max: GSC_INSPECT_QUEUE_BATCH }),
       });
       const detail = data.detail as {
         processed?: number;
@@ -777,7 +778,7 @@ export default function GscIndexingAgentPage() {
     try {
       const data = await adminFetch("/api/admin/gsc-agent/inspect", {
         method: "POST",
-        body: JSON.stringify({ refreshPending: true, max: 8 }),
+        body: JSON.stringify({ refreshPending: true, max: GSC_INSPECT_QUEUE_BATCH }),
       });
       const detail = data.detail as {
         processed?: number;
@@ -1174,7 +1175,7 @@ export default function GscIndexingAgentPage() {
                   <p className="mt-2 text-xs font-semibold text-violet-900">
                     ON · {automationSettings.automationFrequency || "daily"} · position
                     &gt; {automationSettings.automationPositionThreshold ?? 10} ·
-                    inspect {automationSettings.automationInspectPerRun ?? 8}/run ·
+                    inspect {automationSettings.automationInspectPerRun ?? GSC_INSPECT_QUEUE_BATCH}/run ·
                     improve {automationSettings.automationRankingImproveMax ?? 5}/run
                     {automationSettings.automationLastRunAt
                       ? ` · last run ${new Date(

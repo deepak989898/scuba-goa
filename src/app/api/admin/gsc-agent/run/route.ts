@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
+import { GSC_INSPECT_QUEUE_BATCH } from "@/lib/gsc-indexing-agent/settings";
 import {
   runGscAgentJob,
   proposeContentImprovements,
@@ -54,7 +55,10 @@ export async function POST(req: Request) {
   const result = await runGscAgentJob(job as AgentJob, {
     inspectMax:
       job === "inspect"
-        ? Math.min(12, Math.max(1, Number(body.max) || 8))
+        ? Math.min(
+            GSC_INSPECT_QUEUE_BATCH,
+            Math.max(1, Number(body.max) || GSC_INSPECT_QUEUE_BATCH),
+          )
         : undefined,
   });
   return NextResponse.json(result);

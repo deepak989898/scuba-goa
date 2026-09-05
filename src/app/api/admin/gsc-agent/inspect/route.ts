@@ -8,6 +8,7 @@ import {
   refreshSeoUrlInspection,
   refreshSeoUrlInspectionBulk,
 } from "@/lib/gsc-indexing-agent";
+import { GSC_INSPECT_QUEUE_BATCH } from "@/lib/gsc-indexing-agent/settings";
 import { urlIdFromNormalized } from "@/lib/gsc-indexing-agent/normalize-url";
 import { assertSafeAuditUrl } from "@/lib/gsc-indexing-agent/ssrf";
 
@@ -36,13 +37,19 @@ export async function POST(req: Request) {
   }
 
   if (body.processQueue) {
-    const max = Math.min(12, Math.max(1, Number(body.max) || 8));
+    const max = Math.min(
+      GSC_INSPECT_QUEUE_BATCH,
+      Math.max(1, Number(body.max) || GSC_INSPECT_QUEUE_BATCH),
+    );
     const detail = await processInspectionQueue(max);
     return NextResponse.json({ ok: true, detail });
   }
 
   if (body.refreshPending) {
-    const max = Math.min(12, Math.max(1, Number(body.max) || 8));
+    const max = Math.min(
+      GSC_INSPECT_QUEUE_BATCH,
+      Math.max(1, Number(body.max) || GSC_INSPECT_QUEUE_BATCH),
+    );
     const urls = await listSeoUrls({ limit: 500, filter: "unknown" });
     const ids = urls
       .filter(
@@ -62,7 +69,10 @@ export async function POST(req: Request) {
     ? body.urlIds.map(String).filter(Boolean)
     : [];
   if (urlIds.length > 1) {
-    const max = Math.min(12, Math.max(1, Number(body.max) || 8));
+    const max = Math.min(
+      GSC_INSPECT_QUEUE_BATCH,
+      Math.max(1, Number(body.max) || GSC_INSPECT_QUEUE_BATCH),
+    );
     const detail = await refreshSeoUrlInspectionBulk(urlIds, max);
     return NextResponse.json({ ok: true, detail });
   }

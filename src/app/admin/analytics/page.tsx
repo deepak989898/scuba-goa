@@ -33,6 +33,8 @@ import {
   matchesAdminVisitorKind,
   type AdminVisitorKind,
 } from "@/lib/analytics-visitor-kind";
+import { deviceModelFromUserAgent } from "@/lib/device-model";
+import { VisitorHistoryDialog } from "@/components/admin/VisitorHistoryDialog";
 
 type VisitorKindFilter = "human" | "suspected" | "bot" | "all";
 
@@ -49,6 +51,7 @@ type Row = {
   durationMs: number | null;
   deviceCategory: DeviceCategory | "";
   deviceLabel: string;
+  deviceModel?: string;
   uaSnippet: string;
   isBot?: boolean;
   createdAt: unknown;
@@ -96,6 +99,7 @@ type SessionDoc = {
   lastEventType: string;
   deviceCategory: DeviceCategory | "";
   deviceLabel: string;
+  deviceModel?: string;
   uaSnippet: string;
   isBot?: boolean;
   lastSeenAt: unknown;
@@ -169,12 +173,14 @@ type VisitorSummary = {
   lastPath: string;
   deviceCategory: DeviceCategory | "unknown";
   deviceLabel: string;
+  deviceModel: string;
   deviceLine: string;
   geoLine: string;
   timeZone: string;
   language: string;
   screenWidth?: number;
   screenHeight?: number;
+  visitorId: string;
   visitorVisitCount: number;
   isReturningVisitor: boolean;
   trafficChannel: TrafficChannel | "";
@@ -386,6 +392,8 @@ function pickDeviceMeta(data: Record<string, unknown>) {
 function formatDeviceLine(parts: {
   deviceCategory?: string;
   deviceLabel?: string;
+  deviceModel?: string;
+  uaSnippet?: string;
   screenWidth?: number;
   screenHeight?: number;
   viewportWidth?: number;
@@ -394,10 +402,16 @@ function formatDeviceLine(parts: {
   timeZone?: string;
 }): string {
   const bits: string[] = [];
+  const model =
+    parts.deviceModel?.trim() ||
+    (parts.uaSnippet ? deviceModelFromUserAgent(parts.uaSnippet) : "");
   const label = parts.deviceLabel?.trim();
   const cat = parts.deviceCategory?.trim();
-  if (label) bits.push(label);
+  if (model) bits.push(model);
+  else if (label) bits.push(label);
   else if (cat && cat !== "unknown") bits.push(cat);
+  else bits.push("Device");
+  if (label && model && !label.includes(model)) bits.push(label);
   if (parts.screenWidth && parts.screenHeight) {
     bits.push(`${parts.screenWidth}×${parts.screenHeight}`);
   } else if (parts.viewportWidth && parts.viewportHeight) {
@@ -576,6 +590,9 @@ function buildVisitorSummary(
     sess?.deviceCategory ||
     "unknown") as DeviceCategory | "unknown";
   const deviceLabel = sess?.deviceLabel || first?.deviceLabel || "";
+  const deviceModel =
+    String(sess?.deviceModel ?? first?.deviceModel ?? "").trim() ||
+    deviceModelFromUserAgent(sess?.uaSnippet || first?.uaSnippet || "");
   const timeZone =
     sess?.timeZone || first?.timeZone || sess?.geoTimezone || "";
   const language = sess?.language || first?.language || "";
@@ -604,9 +621,12 @@ function buildVisitorSummary(
     lastPath: last?.path ?? sess?.lastPath ?? "—",
     deviceCategory,
     deviceLabel,
+    deviceModel,
     deviceLine: formatDeviceLine({
       deviceCategory,
       deviceLabel,
+      deviceModel,
+      uaSnippet: sess?.uaSnippet || first?.uaSnippet || "",
       screenWidth,
       screenHeight,
       viewportWidth,
@@ -627,6 +647,7 @@ function buildVisitorSummary(
     language,
     screenWidth,
     screenHeight,
+    visitorId: String(sess?.visitorId ?? "").trim(),
     visitorVisitCount,
     isReturningVisitor,
     ...(() => {
@@ -779,6 +800,11 @@ export default function AdminAnalyticsPage() {
   const [sessionTimeline, setSessionTimeline] = useState<Row[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [visitorHistoryOpen, setVisitorHistoryOpen] = useState<{
+    visitorId: string;
+    sessionId: string;
+    visitCount: number;
+  } | null>(null);
   const [gscToday, setGscToday] = useState<{
     ok: boolean;
     date: string;
@@ -1018,6 +1044,7 @@ export default function AdminAnalyticsPage() {
               String(data.deviceCategory ?? "")
             ),
             deviceLabel: String(data.deviceLabel ?? ""),
+            deviceModel: String(data.deviceModel ?? "").trim() || undefined,
             uaSnippet: String(data.uaSnippet ?? ""),
             isBot:
               typeof data.isBot === "boolean" ? data.isBot : undefined,
@@ -1040,6 +1067,7 @@ export default function AdminAnalyticsPage() {
               String(data.deviceCategory ?? "")
             ),
             deviceLabel: String(data.deviceLabel ?? ""),
+            deviceModel: String(data.deviceModel ?? "").trim() || undefined,
             uaSnippet: String(data.uaSnippet ?? ""),
             isBot:
               typeof data.isBot === "boolean" ? data.isBot : undefined,
@@ -2183,10 +2211,24 @@ export default function AdminAnalyticsPage() {
                             </span>
                                         ) : null}
                                         {v.isReturningVisitor ? (
-                                          <span className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (!v.visitorId) return;
+                                              setVisitorHistoryOpen({
+                                                visitorId: v.visitorId,
+                                                sessionId: v.sessionId,
+                                                visitCount:
+                                                  v.visitorVisitCount || 0,
+                                              });
+                                            }}
+                                            className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950 underline-offset-2 hover:underline"
+                                            title="View previous visits"
+                                          >
                                             Returning · visit #
                                             {v.visitorVisitCount || "?"}
-                            </span>
+                                          </button>
                                         ) : v.visitorVisitCount === 1 ? (
                                           <span className="rounded-md border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-900">
                                             New visitor
@@ -2445,6 +2487,13 @@ export default function AdminAnalyticsPage() {
                                             Not recorded
                       </span>
                                         )}
+                                        {selectedVisitor.deviceModel &&
+                                        selectedVisitor.deviceModel !==
+                                          selectedVisitor.deviceLabel ? (
+                                          <p className="mt-1 text-xs font-medium text-violet-900">
+                                            Model: {selectedVisitor.deviceModel}
+                                          </p>
+                                        ) : null}
                                         {selectedVisitor.uaSnippet ? (
                                           <p
                                             className="mt-0.5 truncate text-[10px] text-slate-500"
@@ -2463,11 +2512,28 @@ export default function AdminAnalyticsPage() {
                                         {selectedVisitor.visitorVisitCount >
                                         0 ? (
                                           selectedVisitor.isReturningVisitor ? (
-                                            <span className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (!selectedVisitor.visitorId) {
+                                                  return;
+                                                }
+                                                setVisitorHistoryOpen({
+                                                  visitorId:
+                                                    selectedVisitor.visitorId,
+                                                  sessionId:
+                                                    selectedVisitor.sessionId,
+                                                  visitCount:
+                                                    selectedVisitor.visitorVisitCount,
+                                                });
+                                              }}
+                                              className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950 underline-offset-2 hover:underline"
+                                              title="View all previous visits"
+                                            >
                                               Returning · visit #
                                               {selectedVisitor.visitorVisitCount}{" "}
-                                              (lifetime)
-                      </span>
+                                              (lifetime) — tap for history
+                                            </button>
                                           ) : (
                                             <span className="rounded-md border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">
                                               New visitor · first visit
@@ -2739,6 +2805,16 @@ export default function AdminAnalyticsPage() {
           </div>
         </>
       )}
+      {visitorHistoryOpen ? (
+        <VisitorHistoryDialog
+          open
+          visitorId={visitorHistoryOpen.visitorId}
+          currentSessionId={visitorHistoryOpen.sessionId}
+          visitorVisitCount={visitorHistoryOpen.visitCount}
+          knownSessions={sessions}
+          onClose={() => setVisitorHistoryOpen(null)}
+        />
+      ) : null}
     </div>
   );
 }

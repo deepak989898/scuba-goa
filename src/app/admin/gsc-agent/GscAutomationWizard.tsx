@@ -23,7 +23,7 @@ export function GscAutomationStartWizard({
   const [frequency, setFrequency] =
     useState<"daily" | "weekly" | "monthly">("daily");
   const [positionThreshold, setPositionThreshold] = useState(10);
-  const [inspectPerRun, setInspectPerRun] = useState(8);
+  const [inspectPerRun, setInspectPerRun] = useState(50);
   const [rankingImproveMax, setRankingImproveMax] = useState(5);
 
   if (!open) return null;

@@ -1,5 +1,5 @@
 import { inspectUrlInGsc, type UrlInspectionResult } from "./gsc-client";
-import { getSeoSettings, saveSeoSettings } from "./settings";
+import { GSC_INSPECT_QUEUE_BATCH, getSeoSettings, saveSeoSettings } from "./settings";
 import {
   getSeoUrl,
   listSeoUrls,
@@ -183,7 +183,9 @@ export async function refreshSeoUrlInspectionBulk(
 }
 
 /** Process due URL Inspection jobs within quota (read status only). */
-export async function processInspectionQueue(max = 8): Promise<{
+export async function processInspectionQueue(
+  max = GSC_INSPECT_QUEUE_BATCH,
+): Promise<{
   processed: number;
   skippedQuota: number;
   errors: number;
@@ -193,7 +195,11 @@ export async function processInspectionQueue(max = 8): Promise<{
     return { processed: 0, skippedQuota: 0, errors: 0 };
   }
 
-  const batchMax = Math.min(15, Math.max(1, max));
+  const batchMax = Math.min(
+    GSC_INSPECT_QUEUE_BATCH,
+    Math.max(1, max),
+    settings.inspectionDailyQuota,
+  );
   const slots = await reserveInspectionSlots(batchMax);
   if (slots === 0) {
     return { processed: 0, skippedQuota: batchMax, errors: 0 };

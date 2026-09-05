@@ -1,4 +1,5 @@
 import { isBotUserAgent } from "@/lib/analytics-bot";
+import { deviceModelFromUserAgent } from "@/lib/device-model";
 
 export type DeviceCategory = "mobile" | "tablet" | "desktop" | "unknown";
 
@@ -66,15 +67,18 @@ export function deviceLabelFromUserAgent(
           ? "Desktop"
           : "Device";
 
+  const model = deviceModelFromUserAgent(u);
   const parts = [type];
+  if (model) parts.push(model);
   if (br) parts.push(br);
   if (os) parts.push(os);
-  return parts.join(" · ").slice(0, 140);
+  return parts.join(" · ").slice(0, 180);
 }
 
 export function parseRequestDevice(headers: Headers): {
   category: DeviceCategory;
   label: string;
+  deviceModel: string;
   uaSnippet: string;
   isBot: boolean;
 } {
@@ -82,8 +86,9 @@ export function parseRequestDevice(headers: Headers): {
   const secMobile = headers.get("sec-ch-ua-mobile");
   let category = deviceCategoryFromUserAgent(ua);
   category = refineCategoryWithClientHints(category, secMobile);
+  const deviceModel = deviceModelFromUserAgent(ua);
   const label = deviceLabelFromUserAgent(ua, category);
   const uaSnippet = ua.slice(0, 220);
   const isBot = isBotUserAgent(ua);
-  return { category, label, uaSnippet, isBot };
+  return { category, label, deviceModel, uaSnippet, isBot };
 }

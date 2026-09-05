@@ -10,6 +10,7 @@ import {
   listSeoUrls,
   listSitemapRecords,
 } from "@/lib/gsc-indexing-agent";
+import { GSC_INSPECT_QUEUE_BATCH } from "@/lib/gsc-indexing-agent/settings";
 
 export const runtime = "nodejs";
 
@@ -45,7 +46,7 @@ export async function GET(req: Request) {
         automationScheduleEnabled: settings.automationScheduleEnabled ?? false,
         automationFrequency: settings.automationFrequency ?? "daily",
         automationPositionThreshold: settings.automationPositionThreshold ?? 10,
-        automationInspectPerRun: settings.automationInspectPerRun ?? 8,
+        automationInspectPerRun: settings.automationInspectPerRun ?? GSC_INSPECT_QUEUE_BATCH,
         automationRankingImproveMax: settings.automationRankingImproveMax ?? 5,
         automationStartedAt: settings.automationStartedAt,
         automationLastRunAt: settings.automationLastRunAt,
