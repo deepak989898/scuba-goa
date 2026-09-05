@@ -2,18 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
-import type { BlogLanguage, BlogPostFirestore } from "@/lib/blog-firestore";
+import type { BlogPostFirestore } from "@/lib/blog-firestore";
 import type { BlogAutomationSettings } from "@/lib/blog-automation/settings";
-import { defaultSlotsForCount } from "@/lib/blog-automation/schedule-utils";
-import type { BlogTopicQueueItem } from "@/lib/blog-automation/topics";
 import { BlogPostsTable } from "@/app/admin/blog-automation/BlogPostsTable";
 import { GuidesScheduleTable } from "@/app/admin/blog-automation/GuidesScheduleTable";
 import { ContentOverviewBar } from "@/app/admin/blog-automation/ContentOverviewBar";
-import { PendingIndexOptimizerPanel } from "@/app/admin/blog-automation/PendingIndexOptimizerPanel";
-import { BlogDailySchedulePanel } from "@/app/admin/blog-automation/BlogDailySchedulePanel";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
-import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
-import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
 import type { ContentOverview } from "@/lib/admin-content-overview";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
@@ -51,7 +45,6 @@ async function adminFetch(path: string, init?: RequestInit) {
 
 export default function AdminBlogAutomationPage() {
   const [settings, setSettings] = useState<BlogAutomationSettings | null>(null);
-  const [queue, setQueue] = useState<BlogTopicQueueItem[]>([]);
   const [posts, setPosts] = useState<BlogPostFirestore[]>([]);
   const [blogTrafficBySlug, setBlogTrafficBySlug] = useState<
     Record<string, BlogTraffic>
@@ -85,28 +78,6 @@ export default function AdminBlogAutomationPage() {
   postsRef.current = posts;
   /** Estimated % while OpenAI image generation runs (API has no real progress stream). */
   const [aiImageProgress, setAiImageProgress] = useState<number | null>(null);
-
-  const [titleInput, setTitleInput] = useState("");
-  const [bulkTitles, setBulkTitles] = useState("");
-  const [newLang, setNewLang] = useState<BlogLanguage>("hinglish");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const gbp = params.get("gbp");
-    if (!gbp) return;
-    if (gbp === "connected") {
-      setOkMsg("Google Business account connected. Choose your location below.");
-    } else if (gbp === "error") {
-      const msg = params.get("msg") ?? "OAuth failed";
-      setErr(`Google Business connect failed: ${msg}`);
-    }
-    params.delete("gbp");
-    params.delete("msg");
-    const q = params.toString();
-    const next = `${window.location.pathname}${q ? `?${q}` : ""}`;
-    window.history.replaceState({}, "", next);
-  }, []);
 
   /**
    * Cheap traffic load: one aggregated collection read + merge blogPosts.viewCount
@@ -221,14 +192,12 @@ export default function AdminBlogAutomationPage() {
     if (!silent) setLoading(true);
     if (!silent) setErr(null);
     try {
-      const [s, q, p, guidesRes] = await Promise.all([
+      const [s, p, guidesRes] = await Promise.all([
         adminFetch("/api/admin/blog-automation"),
-        adminFetch("/api/admin/blog-queue"),
         adminFetch("/api/admin/blog-posts"),
         adminFetch("/api/admin/seo-pages").catch(() => ({ pages: [] })),
       ]);
       setSettings(s.settings);
-      setQueue(q.items ?? []);
       const loadedPosts = (p.posts ?? []) as BlogPostFirestore[];
       setPosts(loadedPosts);
       setGuidePages((guidesRes.pages ?? []) as SeoPageFirestore[]);
@@ -375,118 +344,6 @@ export default function AdminBlogAutomationPage() {
     for (const t of settings.publishSlotsIst) s.add(t);
     return [...s].sort((a, b) => a.localeCompare(b));
   }, [settings]);
-
-  async function saveSettings(patch: Partial<BlogAutomationSettings>) {
-    setBusy("settings");
-    setErr(null);
-    try {
-      const data = await adminFetch("/api/admin/blog-automation", {
-        method: "PATCH",
-        body: JSON.stringify(patch),
-      });
-      setSettings(data.settings);
-      setOkMsg("Settings saved.");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  function changePostsPerDay(next: number) {
-    if (!settings) return;
-    const count = Math.min(5, Math.max(1, next));
-    let slots = [...settings.publishSlotsIst];
-    const defaults = defaultSlotsForCount(count);
-    while (slots.length < count) {
-      slots.push(defaults[slots.length] ?? "09:00");
-    }
-    slots = slots.slice(0, count);
-    void saveSettings({ postsPerDay: count, publishSlotsIst: slots });
-  }
-
-  function changeSlotTime(index: number, value: string) {
-    if (!settings || !value) return;
-    const slots = [...settings.publishSlotsIst];
-    slots[index] = value;
-    void saveSettings({ publishSlotsIst: slots });
-  }
-
-  async function addTitles() {
-    const lines = bulkTitles
-      .split(/\n+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const single = titleInput.trim();
-    const titles = single ? [single, ...lines] : lines;
-    if (titles.length === 0) {
-      setErr("Enter at least one title.");
-      return;
-    }
-    setBusy("queue");
-    setErr(null);
-    try {
-      await adminFetch("/api/admin/blog-queue", {
-        method: "POST",
-        body: JSON.stringify({ titles, language: newLang }),
-      });
-      setTitleInput("");
-      setBulkTitles("");
-      await refresh();
-      setOkMsg(`Added ${titles.length} title(s) to queue.`);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Queue add failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function generateNow(opts?: {
-    runDaily?: boolean;
-    runNextSlot?: boolean;
-    title?: string;
-  }) {
-    setBusy("generate");
-    setErr(null);
-    setOkMsg(null);
-    try {
-      const data = await adminFetch("/api/admin/blog-generate", {
-        method: "POST",
-        body: JSON.stringify({
-          runDaily: opts?.runDaily,
-          runNextSlot: opts?.runNextSlot,
-          title: opts?.title,
-        }),
-      });
-      if (data.published?.length) {
-        setOkMsg(`Published: ${data.published.join(", ")}`);
-      } else if (data.slug) {
-        setOkMsg(`Published: /blog/${data.slug}`);
-      } else {
-        setOkMsg("Run finished (see skipped/errors in response).");
-      }
-      await refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Generate failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function removeQueue(id: string) {
-    if (!confirm("Remove this queued title?")) return;
-    setBusy(`q-${id}`);
-    try {
-      await adminFetch(`/api/admin/blog-queue?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
-      await refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Delete failed");
-    } finally {
-      setBusy(null);
-    }
-  }
 
   async function unpublishPost(slug: string) {
     if (!confirm(`Unpublish blog “${slug}”?`)) return;
@@ -711,56 +568,6 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
-  async function prepareScheduledToday() {
-    setBusy("prepare");
-    setErr(null);
-    try {
-      const data = await adminFetch("/api/admin/blog-generate", {
-        method: "POST",
-        body: JSON.stringify({ prepareToday: true }),
-      });
-      const n = data.prepared?.length ?? 0;
-      setOkMsg(
-        n > 0
-          ? `Prepared ${n} scheduled post(s). Review below before auto-publish.`
-          : "No new posts prepared (slots may already exist for today).",
-      );
-      await refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Prepare failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function migrateTop5ScubaArticle() {
-    if (
-      !confirm(
-        "Publish rewritten Top 5 Scuba Spots to /blog/top-5-scuba-diving-spots-in-goa and unpublish the old -6 slug? (301 redirect is already in next.config)",
-      )
-    ) {
-      return;
-    }
-    setBusy("migrate-top5");
-    setErr(null);
-    setOkMsg(null);
-    try {
-      const data = await adminFetch("/api/admin/blog-migrate-top5", {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-      const steps = Array.isArray(data.steps) ? data.steps.join(" · ") : "";
-      setOkMsg(
-        `Migrated ${data.cleanSlug}. Old ${data.oldSlug} unpublished. ${steps}`,
-      );
-      await refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Migration failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function uploadBlogImage(file: File | null) {
     if (!file || !editing) return;
     const scrollY =
@@ -884,17 +691,6 @@ export default function AdminBlogAutomationPage() {
     }
   }
 
-  const pending = queue.filter((q) => q.status === "pending");
-
-  const automationHint = settings
-    ? `${settings.enabled ? "Auto-publish on" : "Auto-publish off"} · ${settings.postsPerDay} post(s)/day · slots ${settings.publishSlotsIst.join(", ")}`
-    : undefined;
-
-  const titleQueueHint =
-    pending.length === 0
-      ? "No pending titles — auto topics will be used"
-      : `${pending.length} title${pending.length === 1 ? "" : "s"} waiting in queue`;
-
   return (
     <div>
       {aiImageProgress != null ? (
@@ -932,22 +728,9 @@ export default function AdminBlogAutomationPage() {
       ) : null}
 
       <AdminContentSeoNav />
-      <div className="flex flex-wrap items-end justify-between gap-2.5">
-        <div>
-          <h1 className="font-display text-lg font-bold text-ocean-900">
-            Blog posts & schedule
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-ocean-700">
-            Generates SEO blogs ahead of time as <strong>Scheduled</strong> (review & edit
-            below), then auto-publishes at each IST slot. Published posts show exact publish
-            time (IST).
-          </p>
-          <p className="mt-2 text-xs font-medium text-ocean-600">
-            Build: v2-multi-slot-watermark (May 2026) — you should see time pickers below, not
-            “Preferred hour”. Hard-refresh (Ctrl+Shift+R) after Vercel shows this commit live.
-          </p>
-        </div>
-      </div>
+      <h1 className="font-display text-lg font-bold text-ocean-900">
+        Blog posts & schedule
+      </h1>
 
       {err && (
         <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
@@ -970,262 +753,6 @@ export default function AdminBlogAutomationPage() {
               loading={overviewLoading}
             />
           </div>
-
-          <PendingIndexOptimizerPanel
-            onDone={() => {
-              void loadOverview();
-              void refresh({ silent: true });
-            }}
-          />
-
-          <AdminCollapseSection title="Automation settings" hint={automationHint}>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-ocean-800">
-                <input
-                  type="checkbox"
-                  checked={settings.enabled}
-                  onChange={(e) => void saveSettings({ enabled: e.target.checked })}
-                  disabled={busy === "settings"}
-                />
-                Auto-publish daily (cron)
-              </label>
-              <label className="text-sm text-ocean-800">
-                Posts per day (max 5)
-                <input
-                  type="number"
-                  min={1}
-                  max={5}
-                  className="ml-2 w-16 rounded border border-ocean-200 px-2 py-1"
-                  value={settings.postsPerDay}
-                  onChange={(e) => changePostsPerDay(Number(e.target.value))}
-                  disabled={busy === "settings"}
-                />
-              </label>
-            </div>
-            <div className="mt-3">
-              <p className="text-sm font-medium text-ocean-800">
-                Publish times (IST) — one per post
-              </p>
-              <ul className="mt-2 flex flex-wrap gap-2.5">
-                {settings.publishSlotsIst.map((slot, i) => (
-                  <li key={`${i}-${settings.postsPerDay}`}>
-                    <label className="block text-xs text-ocean-600">
-                      Post {i + 1}
-                      <input
-                        type="time"
-                        className="mt-1 block rounded-lg border border-ocean-200 px-3 py-2 text-sm"
-                        value={slot}
-                        disabled={busy === "settings"}
-                        onChange={(e) => changeSlotTime(i, e.target.value)}
-                      />
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <p className="mt-2 text-xs text-ocean-500">
-              Set{" "}
-              <code className="rounded bg-sand px-1">CRON_SECRET</code>,{" "}
-              <code className="rounded bg-sand px-1">OPENAI_API_KEY</code>,{" "}
-              <code className="rounded bg-sand px-1">PEXELS_API_KEY</code> on Vercel.
-            </p>
-            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              <strong>External scheduler required:</strong> the single Vercel Hobby daily
-              cron is reserved for the analytics fallback. To publish at every configured
-              IST slot, use free{" "}
-              <a
-                href="https://cron-job.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                cron-job.org
-              </a>{" "}
-              to call{" "}
-              <code className="rounded bg-white px-1">GET /api/cron/blog-publish</code> every{" "}
-              <strong>30 minutes</strong> with{" "}
-              <code className="rounded bg-white px-1">
-                Authorization: Bearer YOUR_CRON_SECRET
-              </code>
-              . A correct test returns <strong>HTTP 202</strong>. HTTP 401 means the header
-              is missing or does not exactly match Vercel&apos;s{" "}
-              <code className="rounded bg-white px-1">CRON_SECRET</code>. Each run publishes{" "}
-              <strong>at most 1</strong> post for the next due slot.
-            </p>
-            {settings.lastRunAt && (
-              <p className="mt-2 text-xs text-ocean-600">
-                Last run: {settings.lastRunAt} — {settings.lastRunStatus}
-                {settings.lastRunError ? ` (${settings.lastRunError})` : ""}
-              </p>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={busy === "generate"}
-                onClick={() => void generateNow({ title: titleInput.trim() || undefined })}
-                className="rounded-full bg-ocean-gradient px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {busy === "generate" ? "Working…" : "Generate 1 post now"}
-              </button>
-              <button
-                type="button"
-                disabled={busy === "prepare"}
-                onClick={() => void prepareScheduledToday()}
-                className="rounded-full border border-sky-300 bg-sky-50 px-4 py-1.5 text-sm font-semibold text-sky-900 disabled:opacity-50"
-              >
-                {busy === "prepare"
-                  ? "Preparing…"
-                  : "Prepare today's scheduled posts"}
-              </button>
-              <button
-                type="button"
-                disabled={busy === "generate"}
-                onClick={() => void generateNow({ runNextSlot: true })}
-                className="rounded-full border border-ocean-300 px-4 py-1.5 text-sm font-semibold text-ocean-800 disabled:opacity-50"
-              >
-                Run cron now (publish due)
-              </button>
-              <button
-                type="button"
-                disabled={busy === "migrate-top5"}
-                onClick={() => void migrateTop5ScubaArticle()}
-                className="rounded-full border border-emerald-400 bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-900 disabled:opacity-50"
-              >
-                {busy === "migrate-top5"
-                  ? "Migrating…"
-                  : "Migrate Top 5 spots → clean slug"}
-              </button>
-              <button
-                type="button"
-                disabled={busy === "generate"}
-                onClick={() => {
-                  if (
-                    !confirm(
-                      "Publish ALL remaining posts for today at once (ignores IST times). Use only for testing.",
-                    )
-                  ) {
-                    return;
-                  }
-                  void generateNow({ runDaily: true });
-                }}
-                className="rounded-full border border-amber-300 bg-amber-50 px-4 py-1.5 text-sm font-semibold text-amber-950 disabled:opacity-50"
-              >
-                Publish all remaining today
-              </button>
-            </div>
-          </AdminCollapseSection>
-
-          <BlogDailySchedulePanel
-            adminFetch={adminFetch}
-            settings={settings}
-            onMessage={(m) => {
-              if (m.ok) setOkMsg(m.ok);
-              if (m.err) setErr(m.err);
-            }}
-            onSaved={() => void refresh()}
-          />
-
-          <GoogleBusinessSection
-            onMessage={(m) => {
-              if (m.ok) setOkMsg(m.ok);
-              if (m.err) setErr(m.err);
-            }}
-          />
-
-          <AdminCollapseSection
-            title="Title queue (admin priority)"
-            hint={titleQueueHint}
-          >
-            <p className="text-xs text-ocean-600">
-              Pending titles are used before auto-generated topics. One title per line for
-              bulk add.
-            </p>
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-              <label className="block text-sm text-ocean-800">
-                Single title
-                <input
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2"
-                  value={titleInput}
-                  onChange={(e) => setTitleInput(e.target.value)}
-                  placeholder="Best scuba diving packages in Goa 2026"
-                />
-              </label>
-              <label className="block text-sm text-ocean-800">
-                Language
-                <select
-                  className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2"
-                  value={newLang}
-                  onChange={(e) => setNewLang(e.target.value as BlogLanguage)}
-                >
-                  <option value="hinglish">Hinglish</option>
-                  <option value="en">English</option>
-                  <option value="hi">Hindi</option>
-                </select>
-              </label>
-            </div>
-            <label className="mt-3 block text-sm text-ocean-800">
-              Bulk titles (one per line)
-              <textarea
-                className="mt-1 min-h-[80px] w-full rounded-lg border border-ocean-200 px-3 py-2 font-mono text-sm"
-                value={bulkTitles}
-                onChange={(e) => setBulkTitles(e.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              disabled={busy === "queue"}
-              onClick={() => void addTitles()}
-              className="mt-3 rounded-full border border-ocean-300 px-4 py-1.5 text-sm font-semibold text-ocean-800 disabled:opacity-50"
-            >
-              Add to queue
-            </button>
-
-            <details className="group mt-3 overflow-hidden rounded-xl border border-ocean-100 bg-sand/20 open:border-cyan-300 open:bg-cyan-50/30">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 marker:hidden transition hover:bg-ocean-50/80">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-ocean-900">Pending queue titles</p>
-                  <p className="mt-0.5 text-xs text-ocean-600">
-                    {pending.length === 0
-                      ? "No pending titles — auto topics will be used."
-                      : `${pending.length} title${pending.length === 1 ? "" : "s"} waiting · click to expand`}
-                  </p>
-                </div>
-                <span
-                  aria-hidden
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-base font-bold text-ocean-800 shadow-sm transition group-open:rotate-180 group-open:bg-cyan-100"
-                >
-                  ⌄
-                </span>
-              </summary>
-              <ul className="space-y-2 border-t border-ocean-100 px-3 py-3">
-                {pending.length === 0 ? (
-                  <li className="text-sm text-ocean-500">
-                    No pending titles — auto topics will be used.
-                  </li>
-                ) : (
-                  pending.map((q, i) => (
-                    <li
-                      key={q.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ocean-100 bg-white px-3 py-2 text-sm"
-                    >
-                      <span>
-                        <span className="text-ocean-400">#{i + 1}</span> {q.title}{" "}
-                        <span className="text-ocean-500">({q.language})</span>
-                      </span>
-                      <button
-                        type="button"
-                        className="text-red-600 hover:underline"
-                        disabled={busy === `q-${q.id}`}
-                        onClick={() => void removeQueue(q.id)}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </details>
-          </AdminCollapseSection>
 
           <div data-blog-editor-panel>
           <BlogPostsTable
