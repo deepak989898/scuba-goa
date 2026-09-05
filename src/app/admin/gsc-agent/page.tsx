@@ -12,7 +12,7 @@ import { GscAutomationStartWizard } from "@/app/admin/gsc-agent/GscAutomationWiz
 import {
   RANKING_IMPROVE_HIDE_MS,
 } from "@/lib/gsc-indexing-agent/ranking-opportunity-ui";
-import { GSC_INSPECT_QUEUE_BATCH } from "@/lib/gsc-indexing-agent/settings";
+import { GSC_INSPECT_QUEUE_BATCH } from "@/lib/gsc-indexing-agent/constants";
 
 type Overview = {
   totalUrls: number;

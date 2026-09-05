@@ -1,16 +1,13 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { stripUndefinedDeep } from "@/lib/firestore-json";
+import { GSC_INSPECT_QUEUE_BATCH } from "./constants";
 import type { AgentMode, SeoSettings } from "./types";
 import { siteId } from "./normalize-url";
 
 const COL = "seoSettings";
 const DOC = "settings";
 
-/** Max URL Inspection calls per manual “Inspect queue” click (matches daily GSC quota). */
-export const GSC_INSPECT_QUEUE_BATCH = 50;
-
-export function defaultSeoSettings(): SeoSettings {
-  const now = new Date().toISOString();
+export function defaultSeoSettings(): SeoSettings {  const now = new Date().toISOString();
   const property =
     process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim() ||
     `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bookscubagoa.com").replace(/\/$/, "")}/`;
@@ -83,3 +80,5 @@ export function isAutoFixAllowed(mode: AgentMode, paused: boolean): boolean {
 export function isMonitorOnly(mode: AgentMode, paused: boolean): boolean {
   return paused || mode === "monitor_only";
 }
+
+export { GSC_INSPECT_QUEUE_BATCH } from "./constants";
