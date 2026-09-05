@@ -307,7 +307,14 @@ export default function AdminSocialMediaPage() {
         message: string;
       }>;
       const summary = results
-        .map((r) => `${r.platform}: ${r.posted ? "posted" : r.message}`)
+        .map((r) => {
+          if (r.platform === "youtube") {
+            return r.posted
+              ? "youtube: posted"
+              : "youtube: manual — paste caption in YouTube Studio → Community (see Recent activity)";
+          }
+          return `${r.platform}: ${r.posted ? "posted" : r.message}`;
+        })
         .join(" · ");
       await loadStatus();
       setMsg({ ok: summary || "Post dispatched." });

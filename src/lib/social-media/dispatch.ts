@@ -102,14 +102,15 @@ async function postToYouTubePlatform(
 ): Promise<SocialPlatformResult> {
   try {
     const { message } = await prepareYouTubeShare(payload.title, payload.url);
-    const posted = !message.includes("not connected");
+    if (message.includes("not connected")) {
+      return { platform: "youtube", ok: true, posted: false, message };
+    }
+    const caption = buildSocialCaption(payload);
     return {
       platform: "youtube",
       ok: true,
-      posted,
-      message: posted
-        ? "YouTube connected — open YouTube Studio → Community to paste the caption (API limit). Caption copied in post log."
-        : message,
+      posted: false,
+      message: `Manual post only (YouTube API cannot publish Community posts). Copy this caption into YouTube Studio → Community:\n\n${caption}`,
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : "YouTube share failed";
