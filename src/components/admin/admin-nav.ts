@@ -21,8 +21,6 @@ export type AdminNavSection = {
 
 /**
  * Grouped admin sidebar — fewer top-level items, related tools kept together.
- * Blogs / AI blogs / SEO guides live in one section so admins are not hunting.
- * Extra AI agent pages stay on Command Center (not duplicated here).
  */
 export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
@@ -32,18 +30,11 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     priority: true,
     items: [
       {
-        href: "/admin/command-center",
-        label: "Command Center",
-        description: "Daily brief, alerts & all AI agents",
-        highlight: true,
-        badge: "daily",
-      },
-      {
         href: "/admin/bookings",
         label: "Bookings",
         description: "Orders, bills & customer emails",
         highlight: true,
-        badge: "action",
+        badge: "daily",
       },
       {
         href: "/admin/hotel-bookings",

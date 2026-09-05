@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Dashboard removed — sidebar covers everything. Land on Command Center. */
+/** Admin home — land on bookings. */
 export default function AdminHomePage() {
-  redirect("/admin/command-center");
+  redirect("/admin/bookings");
 }

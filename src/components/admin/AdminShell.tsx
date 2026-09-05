@@ -181,7 +181,7 @@ export function AdminLoginForm() {
         setErr("This account is not an admin.");
         return;
       }
-      router.replace("/admin/command-center");
+      router.replace("/admin/bookings");
     } catch {
       setErr("Invalid email or password.");
     } finally {
