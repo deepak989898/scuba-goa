@@ -804,6 +804,7 @@ export default function AdminAnalyticsPage() {
     visitorId: string;
     sessionId: string;
     visitCount: number;
+    currentDurationMs: number;
   } | null>(null);
   const [gscToday, setGscToday] = useState<{
     ok: boolean;
@@ -2222,6 +2223,8 @@ export default function AdminAnalyticsPage() {
                                                 sessionId: v.sessionId,
                                                 visitCount:
                                                   v.visitorVisitCount || 0,
+                                                currentDurationMs:
+                                                  v.totalDurationMs,
                                               });
                                             }}
                                             onKeyDown={(e) => {
@@ -2236,6 +2239,8 @@ export default function AdminAnalyticsPage() {
                                                 sessionId: v.sessionId,
                                                 visitCount:
                                                   v.visitorVisitCount || 0,
+                                                currentDurationMs:
+                                                  v.totalDurationMs,
                                               });
                                             }}
                                             className="cursor-pointer rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950 underline-offset-2 hover:underline"
@@ -2540,6 +2545,8 @@ export default function AdminAnalyticsPage() {
                                                     selectedVisitor.sessionId,
                                                   visitCount:
                                                     selectedVisitor.visitorVisitCount,
+                                                  currentDurationMs:
+                                                    selectedVisitor.totalDurationMs,
                                                 });
                                               }}
                                               className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950 underline-offset-2 hover:underline"
@@ -2826,7 +2833,7 @@ export default function AdminAnalyticsPage() {
           visitorId={visitorHistoryOpen.visitorId}
           currentSessionId={visitorHistoryOpen.sessionId}
           visitorVisitCount={visitorHistoryOpen.visitCount}
-          knownSessions={sessions}
+          currentDurationMs={visitorHistoryOpen.currentDurationMs}
           onClose={() => setVisitorHistoryOpen(null)}
         />
       ) : null}

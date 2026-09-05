@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { adminFetch } from "@/lib/admin-fetch";
-import { deviceModelFromUserAgent } from "@/lib/device-model";
-import { formatGeoLine } from "@/lib/analytics-display";
+import { formatDurationMs } from "@/lib/analytics-display";
 
 export type VisitorHistoryRow = {
   sessionId: string;
   atMs: number;
   atLabel: string;
+  durationMs: number;
+  durationLabel: string;
   geoLine: string;
   deviceModel: string;
   deviceLabel: string;
@@ -16,86 +17,16 @@ export type VisitorHistoryRow = {
   isCurrent: boolean;
 };
 
-type StoredVisit = {
-  sessionId?: string;
-  at?: string;
-  geoLine?: string;
-  geoCity?: string;
-  geoRegionName?: string;
-  geoCountryName?: string;
-  deviceModel?: string;
-  deviceLabel?: string;
-  landingPath?: string;
-};
-
-type SessionLite = {
+type VisitPayload = {
   sessionId: string;
-  visitorId?: string;
-  firstSeenAt?: unknown;
-  lastSeenAt?: unknown;
-  deviceLabel?: string;
-  deviceModel?: string;
-  uaSnippet?: string;
-  geoCity?: string;
-  geoRegion?: string;
-  geoRegionName?: string;
-  geoCountry?: string;
-  geoCountryName?: string;
-  landingPath?: string;
-  lastPath?: string;
+  at: string;
+  durationMs: number;
+  geoLine: string;
+  deviceModel: string;
+  deviceLabel: string;
+  landingPath: string;
+  isCurrent: boolean;
 };
-
-function toMs(v: unknown): number {
-  if (v == null) return 0;
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string") {
-    const parsed = Date.parse(v);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  if (typeof v !== "object") return 0;
-
-  if (
-    "toMillis" in v &&
-    typeof (v as { toMillis?: () => number }).toMillis === "function"
-  ) {
-    try {
-      return (v as { toMillis: () => number }).toMillis();
-    } catch {
-      // Fall through.
-    }
-  }
-  if (
-    "toDate" in v &&
-    typeof (v as { toDate?: () => Date }).toDate === "function"
-  ) {
-    try {
-      return (v as { toDate: () => Date }).toDate().getTime();
-    } catch {
-      // Fall through.
-    }
-  }
-
-  const raw = v as {
-    seconds?: unknown;
-    nanoseconds?: unknown;
-    _seconds?: unknown;
-    _nanoseconds?: unknown;
-  };
-  const sec =
-    typeof raw.seconds === "number"
-      ? raw.seconds
-      : typeof raw._seconds === "number"
-        ? raw._seconds
-        : null;
-  if (sec == null) return 0;
-  const nano =
-    typeof raw.nanoseconds === "number"
-      ? raw.nanoseconds
-      : typeof raw._nanoseconds === "number"
-        ? raw._nanoseconds
-        : 0;
-  return sec * 1000 + Math.floor(nano / 1e6);
-}
 
 function formatIst(ms: number): string {
   if (!ms) return "—";
@@ -111,50 +42,25 @@ function formatIst(ms: number): string {
   });
 }
 
-function geoFromSession(s: SessionLite): string {
-  return formatGeoLine({
-    geoCity: s.geoCity,
-    geoRegion: s.geoRegion,
-    geoRegionName: s.geoRegionName,
-    geoCountry: s.geoCountry,
-    geoCountryName: s.geoCountryName,
-  });
-}
-
-function geoFromStored(v: StoredVisit): string {
-  if (v.geoLine?.trim()) return v.geoLine.trim();
-  return formatGeoLine({
-    geoCity: v.geoCity,
-    geoRegionName: v.geoRegionName,
-    geoCountryName: v.geoCountryName,
-  });
-}
-
-function modelFromSession(s: SessionLite): string {
-  if (s.deviceModel?.trim()) return s.deviceModel.trim();
-  if (s.uaSnippet) return deviceModelFromUserAgent(s.uaSnippet);
-  return "";
-}
-
 export function VisitorHistoryDialog({
   open,
   onClose,
   visitorId,
   currentSessionId,
   visitorVisitCount,
-  knownSessions,
+  currentDurationMs = 0,
 }: {
   open: boolean;
   onClose: () => void;
   visitorId: string;
   currentSessionId: string;
   visitorVisitCount: number;
-  knownSessions: SessionLite[];
+  /** Live duration for the current session from the analytics dashboard. */
+  currentDurationMs?: number;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [storedVisits, setStoredVisits] = useState<StoredVisit[]>([]);
-  const [extraSessions, setExtraSessions] = useState<SessionLite[]>([]);
+  const [visits, setVisits] = useState<VisitPayload[]>([]);
 
   useEffect(() => {
     if (!open || !visitorId) return;
@@ -165,19 +71,18 @@ export function VisitorHistoryDialog({
 
     void (async () => {
       try {
+        const params = new URLSearchParams({
+          visitorId,
+          currentSessionId,
+          visitCount: String(Math.max(1, visitorVisitCount || 1)),
+        });
         const data = (await adminFetch(
-          `/api/admin/analytics/visitor-history?visitorId=${encodeURIComponent(visitorId)}`,
-        )) as {
-          visitHistory?: StoredVisit[];
-          sessions?: SessionLite[];
-        };
+          `/api/admin/analytics/visitor-history?${params.toString()}`,
+        )) as { visits?: VisitPayload[] };
 
-        if (cancelled) return;
-
-        setStoredVisits(
-          Array.isArray(data.visitHistory) ? data.visitHistory : [],
-        );
-        setExtraSessions(Array.isArray(data.sessions) ? data.sessions : []);
+        if (!cancelled) {
+          setVisits(Array.isArray(data.visits) ? data.visits : []);
+        }
       } catch (e) {
         if (!cancelled) {
           setError(
@@ -192,60 +97,29 @@ export function VisitorHistoryDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, visitorId]);
+  }, [open, visitorId, currentSessionId, visitorVisitCount]);
 
-  const rows = useMemo(() => {
-    const bySession = new Map<string, VisitorHistoryRow>();
-
-    const upsert = (row: VisitorHistoryRow) => {
-      const prev = bySession.get(row.sessionId);
-      if (!prev || row.atMs >= prev.atMs) {
-        bySession.set(row.sessionId, row);
-      }
-    };
-
-    for (const v of storedVisits) {
-      const sid = String(v.sessionId ?? "").trim();
-      if (!sid) continue;
+  const rows = useMemo((): VisitorHistoryRow[] => {
+    return visits.map((v) => {
       const atMs = v.at ? Date.parse(v.at) : 0;
-      upsert({
-        sessionId: sid,
+      const durationMs =
+        v.isCurrent && currentDurationMs > 0
+          ? Math.max(v.durationMs, currentDurationMs)
+          : v.durationMs;
+      return {
+        sessionId: v.sessionId,
         atMs,
         atLabel: atMs ? formatIst(atMs) : "—",
-        geoLine: geoFromStored(v),
-        deviceModel: String(v.deviceModel ?? "").trim(),
-        deviceLabel: String(v.deviceLabel ?? "").trim(),
-        landingPath: String(v.landingPath ?? "").trim(),
-        isCurrent: sid === currentSessionId,
-      });
-    }
-
-    const allSessions = [...knownSessions, ...extraSessions];
-    for (const s of allSessions) {
-      if (s.visitorId && s.visitorId !== visitorId) continue;
-      const sid = s.sessionId;
-      if (!sid) continue;
-      const atMs = toMs(s.firstSeenAt) || toMs(s.lastSeenAt);
-      upsert({
-        sessionId: sid,
-        atMs,
-        atLabel: formatIst(atMs),
-        geoLine: geoFromSession(s),
-        deviceModel: modelFromSession(s),
-        deviceLabel: s.deviceLabel?.trim() ?? "",
-        landingPath: (s.landingPath || s.lastPath || "").trim(),
-        isCurrent: sid === currentSessionId,
-      });
-    }
-
-    return [...bySession.values()].sort((a, b) => b.atMs - a.atMs);
-  }, [
-    storedVisits,
-    knownSessions,
-    extraSessions,
-    visitorId,
-    currentSessionId,
-  ]);
+        durationMs,
+        durationLabel: formatDurationMs(durationMs),
+        geoLine: v.geoLine,
+        deviceModel: v.deviceModel,
+        deviceLabel: v.deviceLabel,
+        landingPath: v.landingPath,
+        isCurrent: v.isCurrent,
+      };
+    });
+  }, [visits, currentDurationMs]);
 
   if (!open) return null;
 
@@ -277,7 +151,9 @@ export function VisitorHistoryDialog({
                 {visitorVisitCount > 0
                   ? `${visitorVisitCount} lifetime visit${visitorVisitCount === 1 ? "" : "s"}`
                   : "Previous visits"}
-                {rows.length > 0 ? ` · ${rows.length} session(s) found` : ""}
+                {rows.length > 0
+                  ? ` · showing ${rows.length} visit${rows.length === 1 ? "" : "s"}`
+                  : ""}
               </p>
             </div>
             <button
@@ -334,6 +210,12 @@ export function VisitorHistoryDialog({
                     </time>
                   </div>
                   <p className="mt-1.5 text-xs text-slate-700">
+                    <span className="font-semibold text-cyan-800">
+                      Time on site:
+                    </span>{" "}
+                    {row.durationLabel}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-700">
                     <span className="font-semibold text-teal-800">
                       Location:
                     </span>{" "}
