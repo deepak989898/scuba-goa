@@ -6,26 +6,68 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function tsToIso(v: unknown): string | undefined {
-  if (!v) return undefined;
-  if (typeof v === "object" && v !== null && "toDate" in v) {
-    const toDate = (v as { toDate?: () => Date }).toDate;
-    if (typeof toDate === "function") {
-      return toDate().toISOString();
+  if (v == null) return undefined;
+  if (typeof v === "string" && v.trim()) return v;
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return new Date(v).toISOString();
+  }
+  if (typeof v !== "object") return undefined;
+
+  if (
+    "toDate" in v &&
+    typeof (v as { toDate?: () => Date }).toDate === "function"
+  ) {
+    try {
+      return (v as { toDate: () => Date }).toDate().toISOString();
+    } catch {
+      // Fall through to seconds/_seconds parsing.
     }
   }
-  if (
-    typeof v === "object" &&
-    v !== null &&
-    "seconds" in v &&
-    typeof (v as { seconds?: unknown }).seconds === "number"
-  ) {
-    const raw = v as { seconds: number; nanoseconds?: number };
-    const ms =
-      raw.seconds * 1000 + Math.floor((raw.nanoseconds ?? 0) / 1e6);
-    return new Date(ms).toISOString();
-  }
-  if (typeof v === "string" && v.trim()) return v;
-  return undefined;
+
+  const raw = v as {
+    seconds?: unknown;
+    nanoseconds?: unknown;
+    _seconds?: unknown;
+    _nanoseconds?: unknown;
+  };
+  const sec =
+    typeof raw.seconds === "number"
+      ? raw.seconds
+      : typeof raw._seconds === "number"
+        ? raw._seconds
+        : null;
+  if (sec == null) return undefined;
+  const nano =
+    typeof raw.nanoseconds === "number"
+      ? raw.nanoseconds
+      : typeof raw._nanoseconds === "number"
+        ? raw._nanoseconds
+        : 0;
+  return new Date(sec * 1000 + Math.floor(nano / 1e6)).toISOString();
+}
+
+function sanitizeVisitHistory(
+  visitHistory: unknown,
+): Array<Record<string, string>> {
+  if (!Array.isArray(visitHistory)) return [];
+  return visitHistory
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry) => {
+      const e = entry as Record<string, unknown>;
+      const at =
+        typeof e.at === "string" ? e.at : tsToIso(e.at) ?? "";
+      return {
+        sessionId: String(e.sessionId ?? ""),
+        at,
+        geoLine: String(e.geoLine ?? ""),
+        geoCity: String(e.geoCity ?? ""),
+        geoRegionName: String(e.geoRegionName ?? ""),
+        geoCountryName: String(e.geoCountryName ?? ""),
+        deviceModel: String(e.deviceModel ?? ""),
+        deviceLabel: String(e.deviceLabel ?? ""),
+        landingPath: String(e.landingPath ?? ""),
+      };
+    });
 }
 
 export async function GET(req: Request) {
@@ -57,9 +99,7 @@ export async function GET(req: Request) {
     const visitorData = visitorSnap.exists
       ? (visitorSnap.data() as Record<string, unknown>)
       : null;
-    const visitHistory = Array.isArray(visitorData?.visitHistory)
-      ? visitorData.visitHistory
-      : [];
+    const visitHistory = sanitizeVisitHistory(visitorData?.visitHistory);
 
     const sessions = sessionsSnap.docs.map((d) => {
       const data = d.data() as Record<string, unknown>;

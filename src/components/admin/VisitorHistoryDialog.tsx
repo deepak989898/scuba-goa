@@ -46,30 +46,55 @@ type SessionLite = {
 };
 
 function toMs(v: unknown): number {
-  if (!v) return 0;
-  if (typeof v === "object" && v !== null) {
-    if (
-      "toMillis" in v &&
-      typeof (v as { toMillis?: () => number }).toMillis === "function"
-    ) {
-      return (v as { toMillis: () => number }).toMillis();
-    }
-    if (
-      "seconds" in v &&
-      typeof (v as { seconds?: unknown }).seconds === "number"
-    ) {
-      const raw = v as { seconds: number; nanoseconds?: unknown };
-      const nano =
-        typeof raw.nanoseconds === "number" ? raw.nanoseconds : 0;
-      return raw.seconds * 1000 + Math.floor(nano / 1e6);
-    }
-  }
+  if (v == null) return 0;
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string") {
     const parsed = Date.parse(v);
     return Number.isFinite(parsed) ? parsed : 0;
   }
-  return 0;
+  if (typeof v !== "object") return 0;
+
+  if (
+    "toMillis" in v &&
+    typeof (v as { toMillis?: () => number }).toMillis === "function"
+  ) {
+    try {
+      return (v as { toMillis: () => number }).toMillis();
+    } catch {
+      // Fall through.
+    }
+  }
+  if (
+    "toDate" in v &&
+    typeof (v as { toDate?: () => Date }).toDate === "function"
+  ) {
+    try {
+      return (v as { toDate: () => Date }).toDate().getTime();
+    } catch {
+      // Fall through.
+    }
+  }
+
+  const raw = v as {
+    seconds?: unknown;
+    nanoseconds?: unknown;
+    _seconds?: unknown;
+    _nanoseconds?: unknown;
+  };
+  const sec =
+    typeof raw.seconds === "number"
+      ? raw.seconds
+      : typeof raw._seconds === "number"
+        ? raw._seconds
+        : null;
+  if (sec == null) return 0;
+  const nano =
+    typeof raw.nanoseconds === "number"
+      ? raw.nanoseconds
+      : typeof raw._nanoseconds === "number"
+        ? raw._nanoseconds
+        : 0;
+  return sec * 1000 + Math.floor(nano / 1e6);
 }
 
 function formatIst(ms: number): string {
