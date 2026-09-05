@@ -67,12 +67,10 @@ function toMs(v: unknown): number {
       "seconds" in v &&
       typeof (v as { seconds?: unknown }).seconds === "number"
     ) {
-      const sec = (v as { seconds: number }).seconds;
+      const raw = v as { seconds: number; nanoseconds?: unknown };
       const nano =
-        typeof (v as { nanoseconds?: unknown }).nanoseconds === "number"
-          ? (v as { nanoseconds: number }).nanoseconds
-          : 0;
-      return sec * 1000 + Math.floor(nano / 1e6);
+        typeof raw.nanoseconds === "number" ? raw.nanoseconds : 0;
+      return raw.seconds * 1000 + Math.floor(nano / 1e6);
     }
   }
   if (typeof v === "number" && Number.isFinite(v)) return v;
