@@ -47,12 +47,39 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/api/image",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/:all*(webp|avif|jpg|jpeg|png|gif|ico|svg)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
     ];
   },
   images: {
-    // Vercel image optimizer returns 402 on this project — serve originals so
-    // Firebase CMS photos, heroes, cart thumbs, and logos do not break.
-    unoptimized: true,
+    // Vercel `/_next/image` returns 402 — use our `/api/image` sharp proxy instead.
+    loader: "custom",
+    loaderFile: "./src/lib/cms-image-loader.ts",
     // Prefer AVIF (smallest) and fall back to WebP — both are dramatically
     // smaller than JPEG/PNG and cut the "Improve image delivery" payload.
     formats: ["image/avif", "image/webp"],

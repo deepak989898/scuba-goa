@@ -161,8 +161,10 @@ export async function regenerateBlogPostFeaturedImage(
         blogSlug: slug,
         title: post.title,
         featuredImageUrl: imageUrl,
+        ogImageUrl: ogUrl,
         serviceSlug: post.serviceSlug,
         published: true,
+        imageMeta: mergedMeta as import("@/lib/cms-image").BlogFeaturedImageMeta,
       });
     } catch {
       /* gallery sync optional */

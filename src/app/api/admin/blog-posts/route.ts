@@ -266,8 +266,10 @@ export async function PATCH(req: Request) {
         blogSlug: slug,
         title: String(next.title ?? current.title),
         featuredImageUrl: String(next.featuredImageUrl),
+        ogImageUrl: String(next.ogImageUrl ?? current.ogImageUrl ?? ""),
         serviceSlug: String(next.serviceSlug ?? current.serviceSlug ?? ""),
         published: true,
+        imageMeta: (next.imageMeta ?? current.imageMeta) as import("@/lib/cms-image").BlogFeaturedImageMeta | undefined,
       });
     } catch (e) {
       console.error("[blog-posts] gallery sync on image change:", e);

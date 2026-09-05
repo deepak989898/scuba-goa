@@ -7,7 +7,10 @@ import {
 } from "@/lib/blog-automation/blog-image-topic";
 
 /** Local brand asset when a UI needs an src and no CMS image exists (booking flows). */
-export const SITE_IMAGE_PLACEHOLDER = "/booking-header.png";
+export const SITE_IMAGE_PLACEHOLDER = "/booking-header.webp";
+
+/** Small card image for guides hub when no CMS photo is available. */
+export const GUIDES_CARD_PLACEHOLDER = "/guides-card.webp";
 
 /** Default blog hero when no featured image — Goa beach (not booking promo banner). */
 export const BLOG_FEATURED_PLACEHOLDER =
@@ -98,9 +101,11 @@ export type BlogFeaturedImageMeta = {
   generatedPrompt?: string;
   validationNotes?: string[];
   imageStatus?: string;
+  sha256?: string;
+  perceptualHash?: string;
 };
 
-function isBlogStockImageMeta(meta?: BlogFeaturedImageMeta | null): boolean {
+export function isBlogStockImageMeta(meta?: BlogFeaturedImageMeta | null): boolean {
   if (!meta) return false;
   const source = String(meta.source ?? "").trim().toLowerCase();
   if (source === "pexels" || source === "pixabay" || source === "unsplash") {

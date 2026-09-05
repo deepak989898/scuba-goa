@@ -1,11 +1,6 @@
 /**
- * `next.config.ts` enables `remotePatterns: [{ protocol: "https", hostname: "**" }]`,
- * so every well-formed HTTP/HTTPS URL is safe to pass through next/image. The
- * Vercel image optimizer takes care of size limits, content sniffing, and
- * caching the AVIF/WebP variants.
- *
- * We still reject obviously malformed strings (so we don't blow up downstream
- * with a `new URL()` crash inside the component render).
+ * `next.config.ts` uses a custom loader (`/api/image`) so every well-formed
+ * HTTP/HTTPS URL can be resized without Vercel `/_next/image` (402 on this project).
  */
 export function isRemoteUrlOptimizableByNext(src: string): boolean {
   const t = src?.trim() ?? "";
@@ -19,20 +14,19 @@ export function isRemoteUrlOptimizableByNext(src: string): boolean {
   }
 }
 
-/** Wikimedia and some CDNs block or break the Vercel image optimizer — use native img. */
+/**
+ * Hosts that must bypass `/api/image` (optimizer blocks or returns errors).
+ * Firebase/GCS are intentionally NOT listed — they are resized via `/api/image`.
+ */
 export function preferRawImageDelivery(src: string): boolean {
   const t = src?.trim() ?? "";
   if (!t) return false;
   try {
     const host = new URL(t).hostname.toLowerCase();
-    if (host.includes("wikimedia.org")) return true;
-    if (host.includes("wikipedia.org")) return true;
-    if (host.includes("pexels.com")) return true;
-    if (host.includes("pixabay.com")) return true;
-    if (host.includes("images.unsplash.com")) return true;
-    if (host.includes("firebasestorage.googleapis.com")) return true;
-    if (host.endsWith(".storage.googleapis.com")) return true;
-    if (host === "storage.googleapis.com") return true;
+    // SVG/data URLs are not handled by the raster pipeline.
+    if (t.startsWith("data:")) return true;
+    if (host.includes("wikimedia.org")) return false;
+    if (host.includes("wikipedia.org")) return false;
   } catch {
     return false;
   }

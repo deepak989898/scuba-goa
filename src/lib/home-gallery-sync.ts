@@ -1,8 +1,11 @@
 import { getAdminDb } from "@/lib/firebase-admin";
+import type { BlogFeaturedImageMeta } from "@/lib/cms-image";
+import { isBlogGalleryEligible } from "@/lib/gallery-blog-stock-lookup";
 import {
   inferGalleryCategoryFromBlog,
   type GalleryCategoryId,
 } from "@/lib/gallery-categories";
+import { isPublicGalleryStockMedia } from "@/lib/gallery-stock-filter";
 import { galleryMediaDedupeKey } from "@/lib/home-gallery-dedupe";
 
 const BLOG_DOC_PREFIX = "blog-";
@@ -11,15 +14,32 @@ export function blogHomeGalleryDocId(blogSlug: string): string {
   return `${BLOG_DOC_PREFIX}${blogSlug}`;
 }
 
+function galleryBlogSlug(
+  docId: string,
+  data: Record<string, unknown>,
+): string {
+  const fromField = String(data.sourceSlug ?? "").trim();
+  if (fromField) return fromField;
+  if (docId.startsWith(BLOG_DOC_PREFIX)) return docId.slice(BLOG_DOC_PREFIX.length);
+  return "";
+}
+
+function imageMetaSource(meta: unknown): string {
+  if (!meta || typeof meta !== "object") return "";
+  return String((meta as BlogFeaturedImageMeta).source ?? "").trim();
+}
+
 export type SyncBlogToGalleryInput = {
   blogSlug: string;
   title: string;
   featuredImageUrl: string;
+  ogImageUrl?: string;
   serviceSlug?: string;
   published?: boolean;
   category?: GalleryCategoryId;
   sha256?: string;
   perceptualHash?: string;
+  imageMeta?: BlogFeaturedImageMeta | null;
 };
 
 /** Upsert or remove a blog featured image in `homeGallery` (public /gallery). */
@@ -47,6 +67,20 @@ export async function syncBlogImageToHomeGallery(
   const mediaUrl = input.featuredImageUrl.trim();
   if (!mediaUrl) return;
 
+  const editorial = isBlogGalleryEligible(
+    mediaUrl,
+    input.ogImageUrl,
+    input.imageMeta,
+  );
+  if (!editorial) {
+    try {
+      await ref.delete();
+    } catch {
+      /* doc may not exist */
+    }
+    return;
+  }
+
   const category =
     input.category ??
     inferGalleryCategoryFromBlog(String(input.serviceSlug ?? "").trim());
@@ -66,7 +100,6 @@ export async function syncBlogImageToHomeGallery(
     if (ph && otherPh && ph === otherPh) return true;
     return false;
   });
-  // Same file already listed under another gallery entry — keep one copy.
   if (alreadyElsewhere) {
     try {
       await ref.delete();
@@ -77,6 +110,7 @@ export async function syncBlogImageToHomeGallery(
   }
 
   const sortOrder = -Math.floor(Date.now() / 1000);
+  const imageSource = imageMetaSource(input.imageMeta);
 
   await ref.set(
     {
@@ -87,6 +121,8 @@ export async function syncBlogImageToHomeGallery(
       category,
       source: "blog",
       sourceSlug: slug,
+      editorialImage: true,
+      ...(imageSource ? { imageSource } : {}),
       sortOrder,
       updatedAt: new Date().toISOString(),
       ...(sha ? { sha256: sha } : {}),
@@ -94,6 +130,67 @@ export async function syncBlogImageToHomeGallery(
     },
     { merge: true },
   );
+}
+
+/** Remove free-stock photos from `homeGallery` (blog backfill + direct stock URLs). */
+export async function purgeStockFromHomeGallery(): Promise<{
+  deleted: number;
+  kept: number;
+}> {
+  const db = getAdminDb();
+  if (!db) throw new Error("Firebase Admin not configured");
+
+  const [gallerySnap, blogSnap] = await Promise.all([
+    db.collection("homeGallery").get(),
+    db.collection("blogPosts").get(),
+  ]);
+
+  const blogBySlug = new Map(
+    blogSnap.docs.map((d) => [d.id, d.data() as Record<string, unknown>]),
+  );
+
+  let deleted = 0;
+  let kept = 0;
+
+  for (const docSnap of gallerySnap.docs) {
+    const data = docSnap.data();
+    const slug = galleryBlogSlug(docSnap.id, data);
+    const blog = slug ? blogBySlug.get(slug) : undefined;
+    const imageMeta = (blog?.imageMeta ?? data.imageMeta) as
+      | BlogFeaturedImageMeta
+      | undefined;
+
+    const stock = isPublicGalleryStockMedia({
+      type: data.type === "video" ? "video" : "image",
+      mediaUrl: String(data.mediaUrl ?? data.imageUrl ?? ""),
+      posterUrl: String(data.posterUrl ?? ""),
+      source: String(data.source ?? ""),
+      sourceSlug: slug,
+      imageSource: String(data.imageSource ?? imageMetaSource(imageMeta)),
+      editorialImage: data.editorialImage === true,
+      imageMeta,
+    });
+
+    if (stock) {
+      await docSnap.ref.delete();
+      deleted += 1;
+    } else {
+      kept += 1;
+      if (slug && blog && data.editorialImage !== true) {
+        const src = imageMetaSource(imageMeta);
+        await docSnap.ref.set(
+          {
+            editorialImage: true,
+            ...(src ? { imageSource: src } : {}),
+            sourceSlug: slug,
+          },
+          { merge: true },
+        );
+      }
+    }
+  }
+
+  return { deleted, kept };
 }
 
 /** Delete Firestore gallery docs that share the same media file (keep first by sortOrder). */
@@ -148,16 +245,17 @@ export async function purgeDuplicateHomeGalleryDocs(): Promise<{
   return { kept: keep.size, deleted };
 }
 
-/** Backfill all published blog posts that have a featured image. */
+/** Backfill editorial blog photos; purge stock + duplicates first. */
 export async function backfillBlogImagesToHomeGallery(): Promise<{
   synced: number;
   skipped: number;
   purged?: number;
+  stockRemoved?: number;
 }> {
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
 
-  // Remove existing duplicate rows first so the public gallery stays unique
+  const stockPurge = await purgeStockFromHomeGallery();
   const purge = await purgeDuplicateHomeGalleryDocs();
 
   const snap = await db
@@ -185,13 +283,26 @@ export async function backfillBlogImagesToHomeGallery(): Promise<{
   for (const doc of snap.docs) {
     const data = doc.data();
     const url = String(data.featuredImageUrl ?? "").trim();
-    if (!url) {
+    const imageMeta = data.imageMeta as BlogFeaturedImageMeta | undefined;
+    if (
+      !url ||
+      !isBlogGalleryEligible(
+        url,
+        String(data.ogImageUrl ?? ""),
+        imageMeta,
+      )
+    ) {
+      try {
+        await db.collection("homeGallery").doc(blogHomeGalleryDocId(doc.id)).delete();
+      } catch {
+        /* ignore */
+      }
       skipped += 1;
       continue;
     }
     const key = galleryMediaDedupeKey(url);
-    const sha = String(data.imageMeta?.sha256 ?? "").trim().toLowerCase();
-    const ph = String(data.imageMeta?.perceptualHash ?? "").trim().toLowerCase();
+    const sha = String(imageMeta?.sha256 ?? "").trim().toLowerCase();
+    const ph = String(imageMeta?.perceptualHash ?? "").trim().toLowerCase();
     const dup =
       seenMedia.has(key) ||
       (sha && seenSha.has(sha)) ||
@@ -209,10 +320,12 @@ export async function backfillBlogImagesToHomeGallery(): Promise<{
       blogSlug: doc.id,
       title: String(data.title ?? doc.id),
       featuredImageUrl: url,
+      ogImageUrl: String(data.ogImageUrl ?? ""),
       serviceSlug: String(data.serviceSlug ?? ""),
       published: true,
       sha256: sha || undefined,
       perceptualHash: ph || undefined,
+      imageMeta,
     });
     seenMedia.add(key);
     if (sha) seenSha.add(sha);
@@ -220,5 +333,10 @@ export async function backfillBlogImagesToHomeGallery(): Promise<{
     synced += 1;
   }
 
-  return { synced, skipped, purged: purge.deleted };
+  return {
+    synced,
+    skipped,
+    purged: purge.deleted,
+    stockRemoved: stockPurge.deleted,
+  };
 }

@@ -41,7 +41,6 @@ export function HotelCard({ hotel, checkIn, checkOut, href }: Props) {
           fill
           className="object-cover transition group-hover:scale-[1.02]"
           sizes="(max-width: 768px) 100vw, 33vw"
-          unoptimized={img.startsWith("http")}
         />
         {hotel.starRating && (
           <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2 py-0.5 text-xs font-semibold text-ocean-800">

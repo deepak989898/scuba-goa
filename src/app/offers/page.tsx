@@ -183,7 +183,6 @@ export default async function OffersPage() {
           height={793}
           priority
           quality={80}
-          unoptimized
           className="absolute inset-0 block h-full w-full object-cover object-top"
           sizes="100vw"
         />

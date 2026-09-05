@@ -90,8 +90,8 @@ export function DeferredSiteWidgets() {
     <>
       {interacted || hasSavedCart ? <LazyCartFAB /> : null}
       {showChatbot ? <LazyAiChatbot /> : null}
-      <LazyLeadCapturePopup />
-      <LazyPushNotificationPrompt />
+      {interacted ? <LazyLeadCapturePopup /> : null}
+      {interacted ? <LazyPushNotificationPrompt /> : null}
     </>
   );
 }

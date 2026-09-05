@@ -105,7 +105,7 @@ export default function HotelDetailClient() {
                 alt={hotelName}
                 fill
                 className="object-cover"
-                unoptimized={hero.startsWith("http")}
+                sizes="100vw"
               />
             </div>
             <h1 className="font-display text-2xl font-bold text-ocean-900">{hotelName}</h1>

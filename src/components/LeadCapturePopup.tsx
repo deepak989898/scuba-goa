@@ -218,10 +218,22 @@ export function LeadCapturePopup() {
               </p>
             </div>
           </div>
-          <ul className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold">
-            <li className="rounded-full bg-white/20 px-2.5 py-1">Up to 20% off alerts</li>
-            <li className="rounded-full bg-white/20 px-2.5 py-1">Priority slot updates</li>
-            <li className="rounded-full bg-white/20 px-2.5 py-1">No spam — Goa trips only</li>
+          <ul className="mt-4 flex flex-wrap gap-2">
+            <li
+              className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-extrabold tracking-tight text-amber-950 shadow-[0_2px_10px_rgba(0,0,0,0.18)] ring-2 ring-amber-200/90"
+            >
+              Up to 20% off alerts
+            </li>
+            <li
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-extrabold tracking-tight text-slate-900 shadow-[0_2px_10px_rgba(0,0,0,0.18)] ring-2 ring-white/90"
+            >
+              Priority slot updates
+            </li>
+            <li
+              className="rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-extrabold tracking-tight text-cyan-950 shadow-[0_2px_10px_rgba(0,0,0,0.18)] ring-2 ring-cyan-200/90"
+            >
+              No spam — Goa trips only
+            </li>
           </ul>
         </div>
 

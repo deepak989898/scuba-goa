@@ -3,7 +3,7 @@ import type { PackageDoc } from "@/lib/types";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
 
 const base = SITE_URL.replace(/\/$/, "");
-const FALLBACK_IMAGE = `${base}/booking-header.png`;
+const FALLBACK_IMAGE = `${base}/booking-header.webp`;
 const LOGO = `${base}/book-scuba-goa-logo.png`;
 
 function toAbsoluteImage(url: string | undefined | null): string {

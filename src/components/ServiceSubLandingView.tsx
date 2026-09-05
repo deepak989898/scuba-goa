@@ -106,7 +106,7 @@ export function ServiceSubLandingView({
   const productImages = (
     heroImages.length > 0
       ? heroImages.slice(0, 4)
-      : [`${baseUrl}/booking-header.png`]
+      : [`${baseUrl}/booking-header.webp`]
   ).map((src) =>
     src.startsWith("http")
       ? src

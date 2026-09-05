@@ -31,13 +31,14 @@ export function Footer() {
               className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
             >
               <Image
-                src="/book-scuba-goa-logo-transparent.webp"
+                src="/book-scuba-goa-logo-header.webp"
                 alt={SITE_NAME}
-                width={240}
-                height={88}
+                width={280}
+                height={103}
                 sizes="180px"
                 className="h-auto w-full max-w-[180px]"
                 loading="lazy"
+                quality={80}
               />
             </Link>
             <p className="mt-4 bg-gradient-to-r from-cyan-300 via-sky-200 to-amber-300 bg-clip-text font-display text-xl font-bold text-transparent">

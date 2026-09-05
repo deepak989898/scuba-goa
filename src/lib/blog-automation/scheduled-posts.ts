@@ -92,8 +92,12 @@ export async function publishBlogPostNow(
         blogSlug: slug,
         title: post.title,
         featuredImageUrl: post.featuredImageUrl,
+        ogImageUrl: post.ogImageUrl,
         serviceSlug: post.serviceSlug,
         published: true,
+        imageMeta: post.imageMeta,
+        sha256: post.imageMeta?.sha256,
+        perceptualHash: post.imageMeta?.perceptualHash,
       });
     } catch (e) {
       console.error("[blog] gallery sync on publish:", e);

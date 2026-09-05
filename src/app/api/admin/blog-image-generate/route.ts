@@ -84,8 +84,10 @@ async function persistFeaturedImage(
         blogSlug: slug,
         title: post.title,
         featuredImageUrl: meta.imageUrl,
+        ogImageUrl: meta.ogImageUrl,
         serviceSlug: post.serviceSlug,
         published: true,
+        imageMeta,
       });
     } catch (e) {
       console.error("[blog-image-generate] gallery sync:", e);

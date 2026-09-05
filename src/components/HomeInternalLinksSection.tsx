@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
-import { cmsImageOrPlaceholder, pickCmsImage } from "@/lib/cms-image";
+import { cmsImageOrPlaceholder, GUIDES_CARD_PLACEHOLDER, pickCmsImage } from "@/lib/cms-image";
 import { getAllServicesServer } from "@/lib/get-services-server";
 
 const LINKS = [
@@ -65,7 +65,10 @@ export async function HomeInternalLinksSection() {
               item.slug != null
                 ? pickCmsImage(bySlug.get(item.slug)?.image)
                 : "";
-            const imageSrc = cmsImageOrPlaceholder(fromCatalog);
+            const imageSrc =
+              item.slug != null
+                ? cmsImageOrPlaceholder(fromCatalog)
+                : GUIDES_CARD_PLACEHOLDER;
             return (
               <li key={item.href}>
                 <Link

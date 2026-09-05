@@ -148,13 +148,13 @@ export function Header() {
           aria-label="Book Scuba Goa home"
         >
           <Image
-            src="/book-scuba-goa-logo-transparent.webp"
+            src="/book-scuba-goa-logo-header.webp"
             alt="Book Scuba Goa"
-            width={240}
-            height={88}
+            width={280}
+            height={103}
             sizes="(max-width: 640px) 120px, 140px"
             className="h-9 w-auto sm:h-10"
-            quality={65}
+            quality={80}
             priority={!isHome}
             fetchPriority={isHome ? "low" : "high"}
           />

@@ -70,8 +70,10 @@ export async function POST(req: Request) {
             blogSlug: slug,
             title: post.title,
             featuredImageUrl: urls.featuredImageUrl,
+            ogImageUrl: post.ogImageUrl,
             serviceSlug: post.serviceSlug,
             published: true,
+            imageMeta: post.imageMeta,
           });
         } catch (e) {
           console.error("[blog-image-upload] gallery sync:", e);

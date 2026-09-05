@@ -58,7 +58,7 @@ export function ServicesGrid() {
                     <CmsRemoteImage
                       src={
                         s.image?.trim() ||
-                        "/booking-header.png"
+                        "/booking-header.webp"
                       }
                       alt={s.title}
                       fill

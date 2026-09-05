@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { buildOptimizedImageUrl, buildSrcSet } from "@/lib/image-optimize";
 import { isRemoteUrlOptimizableByNext } from "@/lib/remote-image";
 
 type Props = {
@@ -20,7 +21,7 @@ type Props = {
   sizes?: string;
   priority?: boolean;
   loading?: "lazy" | "eager";
-  /** next/image quality 1–100; lower = smaller files (default 78) */
+  /** next/image quality 1–100; lower = smaller files (default 65) */
   quality?: number;
   onError?: () => void;
 };
@@ -38,13 +39,21 @@ function RawImg({
   className = "",
   priority,
   loading,
+  quality = DEFAULT_QUALITY,
+  sizes,
   onError,
 }: Props) {
   const load = priority ? "eager" : loading ?? "lazy";
+  const displayWidth = width ?? (fill ? 640 : 1200);
+  const optimizedSrc = buildOptimizedImageUrl(src, displayWidth, quality);
+  const srcSet = buildSrcSet(src, undefined, quality);
+
   if (fill) {
     return (
       <img
-        src={src}
+        src={optimizedSrc}
+        srcSet={srcSet}
+        sizes={sizes ?? DEFAULT_SIZES}
         alt={alt}
         className={`absolute inset-0 h-full w-full ${className}`.trim()}
         loading={load}
@@ -58,7 +67,9 @@ function RawImg({
   if (showFull) {
     return (
       <img
-        src={src}
+        src={optimizedSrc}
+        srcSet={srcSet}
+        sizes={sizes ?? DEFAULT_SIZES}
         alt={alt}
         className={`h-auto w-full ${className}`.trim()}
         loading={load}
@@ -71,7 +82,9 @@ function RawImg({
   }
   return (
     <img
-      src={src}
+      src={optimizedSrc}
+      srcSet={srcSet}
+      sizes={sizes ?? DEFAULT_SIZES}
       alt={alt}
       width={width}
       height={height}
@@ -87,7 +100,7 @@ function RawImg({
 
 /**
  * CMS / catalog images — local public assets and remote Firebase URLs.
- * Falls back to a native `<img>` if next/image fails (e.g. optimizer outage).
+ * Falls back to a native `<img>` with `/api/image` srcset if next/image fails.
  */
 export function CmsRemoteImage(props: Props) {
   const {
@@ -124,11 +137,6 @@ export function CmsRemoteImage(props: Props) {
     return <RawImg {...props} src={trimmed} onError={onError} />;
   }
 
-  // Full intrinsic display — never crop designed banners / featured images.
-  if (showFull && !fill) {
-    return <RawImg {...props} src={trimmed} onError={onError} />;
-  }
-
   const isLocalPublic = trimmed.startsWith("/");
   const useNext =
     !forceRaw &&
@@ -144,7 +152,6 @@ export function CmsRemoteImage(props: Props) {
         src={trimmed}
         alt={alt}
         fill
-        unoptimized
         className={className}
         sizes={sizes ?? DEFAULT_SIZES}
         priority={priority}
@@ -156,13 +163,31 @@ export function CmsRemoteImage(props: Props) {
     );
   }
 
+  if (showFull) {
+    return (
+      <Image
+        src={trimmed}
+        alt={alt}
+        width={width ?? 1200}
+        height={height ?? 800}
+        className={`h-auto w-full ${className}`.trim()}
+        sizes={sizes ?? DEFAULT_SIZES}
+        priority={priority}
+        fetchPriority={priority ? "high" : undefined}
+        quality={quality}
+        loading={priority ? undefined : loading ?? "lazy"}
+        style={{ width: "100%", height: "auto" }}
+        onError={handleError}
+      />
+    );
+  }
+
   return (
     <Image
       src={trimmed}
       alt={alt}
       width={width ?? 1600}
       height={height ?? 900}
-      unoptimized
       className={className}
       sizes={sizes ?? DEFAULT_SIZES}
       priority={priority}

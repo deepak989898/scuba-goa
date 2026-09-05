@@ -51,6 +51,7 @@ export default function AdminGalleryPage() {
     category: "underwater",
   });
   const [syncingBlog, setSyncingBlog] = useState(false);
+  const [purgingStock, setPurgingStock] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   const counts = useMemo(() => {
@@ -205,17 +206,57 @@ export default function AdminGalleryPage() {
         synced?: number;
         skipped?: number;
         purged?: number;
+        stockRemoved?: number;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? "Sync failed");
       setSyncMsg(
-        `Gallery sync: ${data.synced ?? 0} blog photos kept/added, ${data.skipped ?? 0} skipped, ${data.purged ?? 0} duplicate images removed.`,
+        `Gallery sync: ${data.synced ?? 0} editorial photos kept, ${data.skipped ?? 0} skipped, ${data.stockRemoved ?? 0} stock photos removed, ${data.purged ?? 0} duplicates removed.`,
       );
       await refresh();
     } catch (e) {
       setSyncMsg(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setSyncingBlog(false);
+    }
+  }
+
+  async function purgeStockPhotos() {
+    if (
+      !confirm(
+        "Remove all free stock photos from the public gallery?\n\nThis deletes Pexels, Pixabay, Unsplash, and Wikimedia-style images. Manual uploads and AI-generated photos stay. Blog posts are not re-synced.",
+      )
+    ) {
+      return;
+    }
+    setPurgingStock(true);
+    setSyncMsg(null);
+    try {
+      const auth = getFirebaseAuth();
+      const user = auth?.currentUser;
+      if (!user) {
+        throw new Error("Sign in at /admin/login first.");
+      }
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/gallery-purge-stock", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        deleted?: number;
+        kept?: number;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Purge failed");
+      setSyncMsg(
+        `Stock purge: ${data.deleted ?? 0} free stock photo(s) removed, ${data.kept ?? 0} editorial item(s) kept.`,
+      );
+      await refresh();
+    } catch (e) {
+      setSyncMsg(e instanceof Error ? e.message : "Purge failed");
+    } finally {
+      setPurgingStock(false);
     }
   }
 
@@ -275,11 +316,19 @@ export default function AdminGalleryPage() {
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={syncingBlog}
+          disabled={syncingBlog || purgingStock}
           onClick={syncBlogPhotos}
           className="rounded-full border border-ocean-300 bg-white px-4 py-2 text-sm font-semibold text-ocean-900 hover:bg-ocean-50 disabled:opacity-50"
         >
           {syncingBlog ? "Syncing…" : "Sync all blog photos to gallery"}
+        </button>
+        <button
+          type="button"
+          disabled={syncingBlog || purgingStock}
+          onClick={purgeStockPhotos}
+          className="rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-100 disabled:opacity-50"
+        >
+          {purgingStock ? "Removing stock…" : "Remove all stock from gallery"}
         </button>
         {syncMsg ? <p className="text-sm text-ocean-700">{syncMsg}</p> : null}
       </div>

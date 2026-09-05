@@ -230,7 +230,7 @@ export default function RefundCancellationPage() {
       {/* Compact hero — image stays visible; card stays small */}
       <section className="relative isolate h-[9.5rem] overflow-hidden sm:h-[11rem] lg:h-[12rem]">
         <Image
-          src="/booking-header.png"
+          src="/booking-header.webp"
           alt=""
           fill
           priority

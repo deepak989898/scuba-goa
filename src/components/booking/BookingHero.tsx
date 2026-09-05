@@ -11,12 +11,13 @@ export function BookingHero() {
         select your date, then pay online.
       </h1>
       <Image
-        src="/booking-header.png"
+        src="/booking-header.webp"
         alt="Reserve your dive — clear price, small advance. Instant confirmation, secure Razorpay, 4.9 star rated, WhatsApp support. Pay ₹199 per person now as advance."
-        width={1920}
-        height={720}
+        width={1280}
+        height={480}
         priority
-        sizes="(max-width: 1280px) 100vw, 1280px"
+        sizes="(max-width: 768px) 100vw, 1280px"
+        quality={78}
         className="h-auto w-full"
       />
     </section>
