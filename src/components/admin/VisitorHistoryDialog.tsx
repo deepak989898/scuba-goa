@@ -56,11 +56,30 @@ type SessionLite = {
 
 function toMs(v: unknown): number {
   if (!v) return 0;
-  if (typeof v === "object" && v !== null && "toMillis" in v) {
-    const fn = (v as { toMillis?: () => number }).toMillis;
-    if (typeof fn === "function") return fn();
+  if (typeof v === "object" && v !== null) {
+    if (
+      "toMillis" in v &&
+      typeof (v as { toMillis?: () => number }).toMillis === "function"
+    ) {
+      return (v as { toMillis: () => number }).toMillis();
+    }
+    if (
+      "seconds" in v &&
+      typeof (v as { seconds?: unknown }).seconds === "number"
+    ) {
+      const sec = (v as { seconds: number }).seconds;
+      const nano =
+        typeof (v as { nanoseconds?: unknown }).nanoseconds === "number"
+          ? (v as { nanoseconds: number }).nanoseconds
+          : 0;
+      return sec * 1000 + Math.floor(nano / 1e6);
+    }
   }
   if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const parsed = Date.parse(v);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
   return 0;
 }
 

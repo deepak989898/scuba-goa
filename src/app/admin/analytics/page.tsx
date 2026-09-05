@@ -2211,8 +2211,9 @@ export default function AdminAnalyticsPage() {
                             </span>
                                         ) : null}
                                         {v.isReturningVisitor ? (
-                                          <button
-                                            type="button"
+                                          <span
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               if (!v.visitorId) return;
@@ -2223,12 +2224,26 @@ export default function AdminAnalyticsPage() {
                                                   v.visitorVisitCount || 0,
                                               });
                                             }}
-                                            className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950 underline-offset-2 hover:underline"
+                                            onKeyDown={(e) => {
+                                              if (e.key !== "Enter" && e.key !== " ") {
+                                                return;
+                                              }
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              if (!v.visitorId) return;
+                                              setVisitorHistoryOpen({
+                                                visitorId: v.visitorId,
+                                                sessionId: v.sessionId,
+                                                visitCount:
+                                                  v.visitorVisitCount || 0,
+                                              });
+                                            }}
+                                            className="cursor-pointer rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950 underline-offset-2 hover:underline"
                                             title="View previous visits"
                                           >
                                             Returning · visit #
                                             {v.visitorVisitCount || "?"}
-                                          </button>
+                                          </span>
                                         ) : v.visitorVisitCount === 1 ? (
                                           <span className="rounded-md border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-900">
                                             New visitor
