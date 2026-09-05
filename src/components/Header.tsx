@@ -49,13 +49,6 @@ const navIcons = {
       <path d="M8 14h4" />
     </MenuIcon>
   ),
-  gallery: (
-    <MenuIcon>
-      <rect x="3.5" y="5" width="17" height="14" rx="2" />
-      <circle cx="9" cy="10" r="1.75" />
-      <path d="m3.5 16 4.5-4.5 3.5 3.5L16 11l4.5 5" />
-    </MenuIcon>
-  ),
   offers: (
     <MenuIcon>
       <path d="M12 3.5 14.2 8l4.8.5-3.6 3.3 1.1 4.7L12 14.3 7.5 16.5l1.1-4.7L5 8.5 9.8 8 12 3.5Z" />
@@ -107,7 +100,6 @@ const nav = [
   { href: "/services", label: "Services", icon: navIcons.services },
   { href: "/hotels", label: "Hotels", icon: navIcons.hotels, hotelsOnly: true },
   { href: "/booking", label: "Book", icon: navIcons.book },
-  { href: "/gallery", label: "Gallery", icon: navIcons.gallery },
   { href: "/offers", label: "Offers", icon: navIcons.offers },
   { href: "/about", label: "About", icon: navIcons.about },
   { href: "/contact", label: "Contact", icon: navIcons.contact },
