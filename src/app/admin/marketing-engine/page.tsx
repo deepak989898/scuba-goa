@@ -171,8 +171,8 @@ export default function AdminMarketingEnginePage() {
           <Link href="/admin/marketing" className="font-semibold text-ocean-700 underline">
             Lead templates →
           </Link>
-          <Link href="/admin/seo-agent" className="font-semibold text-ocean-700 underline">
-            SEO AI →
+          <Link href="/admin/seo-intelligence" className="font-semibold text-ocean-700 underline">
+            SEO Intelligence →
           </Link>
         </div>
       </div>

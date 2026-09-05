@@ -255,8 +255,9 @@ export default function AdminChatLogsPage() {
             Book with us · Chat logs
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-ocean-700">
-            Tap a date → tap a visitor → read the full conversation. Grouped by
-            IST day and visitor (phone / name).
+            Tap a date → tap a visitor → read the full conversation. Only chats
+            the visitor started (booking flow, a question, or contact) — not
+            auto-open welcome popups.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -281,7 +282,7 @@ export default function AdminChatLogsPage() {
               : "border border-ocean-200 text-ocean-800"
           }`}
         >
-          All chats
+          All started chats
         </button>
         <button
           type="button"
@@ -311,7 +312,8 @@ export default function AdminChatLogsPage() {
         <p className="mt-4 text-sm text-ocean-600">Loading…</p>
       ) : days.length === 0 ? (
         <p className="mt-4 text-sm text-ocean-600">
-          No chat sessions yet. Conversations appear when visitors use Book with us.
+          No chat sessions yet. Logs appear when a visitor taps Start booking,
+          asks a question, or continues the flow — not from the welcome popup alone.
         </p>
       ) : (
         <div className="mt-4 space-y-2">

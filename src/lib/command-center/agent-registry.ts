@@ -5,7 +5,7 @@ export const AGENT_REGISTRY: CommandCenterAgentMeta[] = [
     id: "seo",
     name: "SEO Agent",
     description: "Rankings, metadata, internal linking, content clusters",
-    adminPath: "/admin/seo-agent",
+    adminPath: "/admin/seo-intelligence",
     cronPath: "/api/cron/seo-weekly",
     cronSchedule: "0 5 * * 1",
     pipelineFn: "runSeoWeeklyPipeline",

@@ -74,16 +74,6 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         highlight: true,
       },
       {
-        href: "/admin/seo-agent",
-        label: "SEO AI report",
-        description: "Weekly GSC rankings & meta fixes",
-      },
-      {
-        href: "/admin/seo-health",
-        label: "SEO health",
-        description: "Sitemap, schema, technical audit",
-      },
-      {
         href: "/admin/gsc-agent",
         label: "GSC Indexing Agent",
         description: "Index status, sitemaps, approvals",

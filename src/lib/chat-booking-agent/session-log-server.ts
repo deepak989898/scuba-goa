@@ -5,6 +5,7 @@ import type {
   BookWithUsChatMessage,
   BookWithUsChatSession,
 } from "./session-log-types";
+import { isEngagedChatSession } from "./session-log-engage";
 
 export function istActivityDate(iso: string): string {
   try {
@@ -66,6 +67,20 @@ export async function upsertBookWithUsChatSession(input: {
     step: m.step,
   }));
 
+  const engaged = isEngagedChatSession({
+    step: input.step,
+    messages,
+    converted: input.converted,
+    customerName: input.customerName,
+    phone: input.phone,
+    email: input.email,
+    tripDate: input.tripDate,
+    people: input.people,
+    selectedPackages: input.selectedPackages,
+  });
+  if (!engaged && !prev) return;
+  if (!engaged && prev && !isEngagedChatSession(prev)) return;
+
   const row: BookWithUsChatSession = {
     id,
     sessionId: input.sessionId.trim(),
@@ -100,6 +115,7 @@ export async function listChatDaysSummary(limitDays = 60): Promise<BookWithUsCha
 
   for (const doc of snap.docs) {
     const data = doc.data() as BookWithUsChatSession;
+    if (!isEngagedChatSession(data)) continue;
     const key = data.activityDate || istActivityDate(data.updatedAt || data.createdAt);
     const bucket = byDate.get(key) ?? { count: 0, converted: 0 };
     bucket.count += 1;
@@ -131,6 +147,7 @@ export async function listChatSessionsForDate(
       .get();
     return snap.docs
       .map((d) => ({ id: d.id, ...d.data() }) as BookWithUsChatSession)
+      .filter(isEngagedChatSession)
       .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   } catch {
     const snap = await db.collection("bookWithUsChatSessions").limit(2000).get();
@@ -140,6 +157,7 @@ export async function listChatSessionsForDate(
         (s) =>
           (s.activityDate || istActivityDate(s.updatedAt)) === dateKey,
       )
+      .filter(isEngagedChatSession)
       .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   }
 }

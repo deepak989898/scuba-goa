@@ -43,6 +43,7 @@ import {
   flushBookWithUsSessionSync,
   scheduleBookWithUsSessionSync,
 } from "@/lib/chat-booking-agent/sync-session-log";
+import { isEngagedChatSession } from "@/lib/chat-booking-agent/session-log-engage";
 import type {
   ChatBubble,
   ChatBookingLine,
@@ -218,7 +219,9 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
 
   useEffect(() => {
     if (!hydrated) return;
-    scheduleBookWithUsSessionSync(buildSyncPayload());
+    const payload = buildSyncPayload();
+    if (!isEngagedChatSession(payload)) return;
+    scheduleBookWithUsSessionSync(payload);
   }, [hydrated, buildSyncPayload]);
 
   async function askBot(message: string) {
@@ -460,6 +463,7 @@ export function ChatBookingAgent({ lang, services, servicesLoading }: Props) {
               type="button"
               onClick={() => {
                 setQaMode(true);
+                pushUser(t("askQuestion", lang));
                 pushAssistant(
                   lang === "Hindi"
                     ? "बताइए — प्राइस, पैकेज या बुकिंग में क्या जानना है?"

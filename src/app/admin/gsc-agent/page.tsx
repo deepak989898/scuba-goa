@@ -2114,12 +2114,12 @@ export default function GscIndexingAgentPage() {
 
       <p className="text-xs text-ocean-500">
         Related:{" "}
-        <Link href="/admin/seo-agent" className="underline">
-          SEO AI report
+        <Link href="/admin/seo-intelligence" className="underline">
+          SEO Intelligence
         </Link>{" "}
         ·{" "}
-        <Link href="/admin/seo-health" className="underline">
-          SEO health
+        <Link href="/admin/seo-intelligence" className="underline">
+          SEO Intelligence
         </Link>{" "}
         · Docs: <code>docs/GSC-INDEXING-AGENT.md</code>
       </p>

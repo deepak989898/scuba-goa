@@ -141,8 +141,8 @@ export default function AdminBusinessAgentPage() {
           <Link href="/admin/ai-analytics" className="underline">
             AI analytics →
           </Link>
-          <Link href="/admin/seo-agent" className="underline">
-            SEO agent →
+          <Link href="/admin/seo-intelligence" className="underline">
+            SEO Intelligence →
           </Link>
           <Link href="/admin/conversion-opt" className="underline">
             Conversion AI →
