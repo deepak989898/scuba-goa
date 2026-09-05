@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  query,
-  where,
-} from "firebase/firestore";
-import { getDb } from "@/lib/firebase";
+import { adminFetch } from "@/lib/admin-fetch";
 import { deviceModelFromUserAgent } from "@/lib/device-model";
 import { formatGeoLine } from "@/lib/analytics-display";
 
@@ -142,11 +133,6 @@ export function VisitorHistoryDialog({
 
   useEffect(() => {
     if (!open || !visitorId) return;
-    const db = getDb();
-    if (!db) {
-      setError("Firestore not configured.");
-      return;
-    }
 
     let cancelled = false;
     setLoading(true);
@@ -154,47 +140,19 @@ export function VisitorHistoryDialog({
 
     void (async () => {
       try {
-        const [visitorSnap, sessionsSnap] = await Promise.all([
-          getDoc(doc(db, "analyticsVisitors", visitorId)),
-          getDocs(
-            query(
-              collection(db, "analyticsSessions"),
-              where("visitorId", "==", visitorId),
-              limit(40),
-            ),
-          ),
-        ]);
+        const data = (await adminFetch(
+          `/api/admin/analytics/visitor-history?visitorId=${encodeURIComponent(visitorId)}`,
+        )) as {
+          visitHistory?: StoredVisit[];
+          sessions?: SessionLite[];
+        };
 
         if (cancelled) return;
 
-        const visitorData = visitorSnap.exists()
-          ? (visitorSnap.data() as Record<string, unknown>)
-          : null;
-        const history = Array.isArray(visitorData?.visitHistory)
-          ? (visitorData.visitHistory as StoredVisit[])
-          : [];
-        setStoredVisits(history);
-
-        const fromQuery: SessionLite[] = sessionsSnap.docs.map((d) => {
-          const data = d.data() as Record<string, unknown>;
-          return {
-            sessionId: String(data.sessionId ?? d.id),
-            visitorId: String(data.visitorId ?? ""),
-            firstSeenAt: data.firstSeenAt,
-            lastSeenAt: data.lastSeenAt,
-            deviceLabel: String(data.deviceLabel ?? ""),
-            deviceModel: String(data.deviceModel ?? ""),
-            uaSnippet: String(data.uaSnippet ?? ""),
-            geoCity: String(data.geoCity ?? ""),
-            geoRegion: String(data.geoRegion ?? ""),
-            geoRegionName: String(data.geoRegionName ?? ""),
-            geoCountry: String(data.geoCountry ?? ""),
-            geoCountryName: String(data.geoCountryName ?? ""),
-            landingPath: String(data.landingPath ?? ""),
-            lastPath: String(data.lastPath ?? ""),
-          };
-        });
-        setExtraSessions(fromQuery);
+        setStoredVisits(
+          Array.isArray(data.visitHistory) ? data.visitHistory : [],
+        );
+        setExtraSessions(Array.isArray(data.sessions) ? data.sessions : []);
       } catch (e) {
         if (!cancelled) {
           setError(
