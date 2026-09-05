@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error");
-  const adminPath = "/admin/blog-automation";
+  const adminPath = "/admin/social-media";
 
   if (oauthError) {
     return NextResponse.redirect(

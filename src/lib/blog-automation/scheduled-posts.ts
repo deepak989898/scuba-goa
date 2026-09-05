@@ -106,15 +106,32 @@ export async function publishBlogPostNow(
 
   if (!options?.skipGbp) {
     try {
-      await postBlogToGoogleBusinessProfile({
-        slug,
-        title: post.title,
-        excerpt: post.excerpt,
-        featuredImageUrl: post.featuredImageUrl || undefined,
-        language: post.language,
-      });
+      const { getSocialMediaSettings, enabledPlatforms } = await import(
+        "@/lib/social-media/settings"
+      );
+      const { dispatchSocialPost } = await import("@/lib/social-media/dispatch");
+      const { blogToSocialPayload } = await import(
+        "@/lib/social-media/build-content"
+      );
+      const social = await getSocialMediaSettings();
+      const platforms = enabledPlatforms(social.automation);
+      if (platforms.length > 0) {
+        await dispatchSocialPost(
+          blogToSocialPayload({ ...post, published: true }),
+          platforms,
+          "auto",
+        );
+      } else {
+        await postBlogToGoogleBusinessProfile({
+          slug,
+          title: post.title,
+          excerpt: post.excerpt,
+          featuredImageUrl: post.featuredImageUrl || undefined,
+          language: post.language,
+        });
+      }
     } catch (e) {
-      console.error("[blog] GBP on publish:", e);
+      console.error("[blog] social post on publish:", e);
     }
   }
 

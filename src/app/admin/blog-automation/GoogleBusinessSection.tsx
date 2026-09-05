@@ -39,8 +39,11 @@ async function adminFetch(path: string, init?: RequestInit) {
 
 export function GoogleBusinessSection({
   onMessage,
+  hideAutoPostToggle = false,
 }: {
   onMessage: (msg: { ok?: string; err?: string }) => void;
+  /** When true, auto-post is controlled from Social media page automation toggles. */
+  hideAutoPostToggle?: boolean;
 }) {
   const [settings, setSettings] = useState<GbpPublicSettings | null>(null);
   const [redirectUri, setRedirectUri] = useState("");
@@ -397,15 +400,17 @@ export function GoogleBusinessSection({
         </button>
       </div>
 
-      <label className="mt-5 flex items-center gap-2 text-sm font-medium text-ocean-800">
-        <input
-          type="checkbox"
-          checked={settings.enabled}
-          disabled={!settings.configured || busy != null}
-          onChange={(e) => void saveEnabled(e.target.checked)}
-        />
-        Auto-post each new blog to Google Business
-      </label>
+      {!hideAutoPostToggle ? (
+        <label className="mt-5 flex items-center gap-2 text-sm font-medium text-ocean-800">
+          <input
+            type="checkbox"
+            checked={settings.enabled}
+            disabled={!settings.configured || busy != null}
+            onChange={(e) => void saveEnabled(e.target.checked)}
+          />
+          Auto-post each new blog to Google Business
+        </label>
+      ) : null}
 
       {accounts.length > 0 ? (
         <div className="mt-4">

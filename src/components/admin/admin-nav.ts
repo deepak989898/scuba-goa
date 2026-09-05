@@ -65,6 +65,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         highlight: true,
       },
       {
+        href: "/admin/social-media",
+        label: "Social media",
+        description: "Connect GBP, Facebook, Instagram, YouTube — post & automate",
+        highlight: true,
+        badge: "action",
+      },
+      {
         href: "/admin/gsc-agent",
         label: "GSC Indexing Agent",
         description: "Index status, sitemaps, approvals",

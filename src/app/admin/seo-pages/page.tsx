@@ -303,6 +303,9 @@ export default function AdminSeoPagesPage() {
       return;
     }
     const now = new Date().toISOString();
+    const prevSnap = await getDoc(doc(db, "seoPages", slug));
+    const wasPublished =
+      prevSnap.exists() && (prevSnap.data() as { published?: boolean }).published === true;
     const payload = seoPageToFirestorePayload({
       ...page,
       slug,
@@ -317,6 +320,27 @@ export default function AdminSeoPagesPage() {
       createdAt: isNew ? now : page.createdAt,
     });
     await setDoc(doc(db, "seoPages", slug), payload, { merge: true });
+
+    if (page.published && !wasPublished) {
+      try {
+        const auth = getFirebaseAuth();
+        const user = auth?.currentUser;
+        if (user) {
+          const token = await user.getIdToken();
+          await fetch("/api/admin/social-media/auto-publish", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ contentType: "guide", slug }),
+          });
+        }
+      } catch (e) {
+        console.error("[seo-pages] social auto-publish:", e);
+      }
+    }
+
     await refresh();
     setEditing(null);
     if (isNew) {
