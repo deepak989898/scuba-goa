@@ -1,4 +1,4 @@
-import { SEO_CANNIBALIZATION_REDIRECTS } from "@/lib/seo-cannibalization/redirects";
+import { SEO_CANNIBALIZATION_REDIRECTS } from "./seo-cannibalization/redirects";
 
 /**
  * Permanent blog URL redirects (old slug → canonical slug).

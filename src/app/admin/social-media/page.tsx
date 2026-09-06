@@ -7,8 +7,8 @@ import type { BlogPostFirestore } from "@/lib/blog-firestore";
 import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
 import type { SocialPlatform } from "@/lib/social-media/types";
 import type { SocialAutomationFlags } from "@/lib/social-media/settings";
-import type { SocialQueueItem, SocialScheduleSettings } from "@/lib/social-media/schedule";
-import { MAX_SOCIAL_POSTS_PER_DAY } from "@/lib/social-media/schedule";
+import type { SocialQueueItem, SocialScheduleSettings } from "@/lib/social-media/schedule-types";
+import { MAX_SOCIAL_POSTS_PER_DAY } from "@/lib/social-media/schedule-types";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import {

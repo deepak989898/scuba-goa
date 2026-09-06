@@ -1,10 +1,13 @@
-import type { BlogRedirect } from "@/lib/blog-redirects";
+type PermanentRedirect = {
+  source: string;
+  destination: string;
+};
 
 /**
  * Phase 1 SEO cannibalization fixes — permanent 301 sources.
  * Firestore documents are NOT deleted; HTTP redirects prevent duplicate indexing.
  */
-export const SEO_CANNIBALIZATION_REDIRECTS: BlogRedirect[] = [
+export const SEO_CANNIBALIZATION_REDIRECTS: PermanentRedirect[] = [
   // 1. Russian nightlife duplicate guides
   {
     source: "/guides/russian-club-goa",
