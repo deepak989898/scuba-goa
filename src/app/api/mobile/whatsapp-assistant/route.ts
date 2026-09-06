@@ -41,14 +41,17 @@ export async function POST(req: Request) {
     phone?: string;
     senderName?: string;
     message?: string;
+    text?: string;
   };
 
-  const message = String(body.message ?? "").trim();
+  const message = String(body.message ?? body.text ?? "").trim();
   const senderName = String(body.senderName ?? "").trim();
   const phoneRaw = String(body.phone ?? "").trim();
+  const phoneDigits = phoneRaw.replace(/\D/g, "");
   const phone =
-    phoneRaw.replace(/\D/g, "") ||
-    senderName.toLowerCase().replace(/\s+/g, "_").slice(0, 24);
+    (phoneDigits.length >= 6 ? phoneDigits : "") ||
+    phoneRaw ||
+    senderName;
 
   if (!message) {
     return NextResponse.json({ error: "message required" }, { status: 400 });

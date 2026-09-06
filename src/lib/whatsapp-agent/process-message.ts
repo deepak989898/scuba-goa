@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import {
   appendConversationMessage,
   loadConversation,
@@ -16,11 +17,19 @@ import {
 import { getWhatsAppAgentSettings } from "@/lib/whatsapp-agent/settings";
 
 export function normalizeWhatsAppPhone(from: string): string {
-  const d = from.replace(/\D/g, "");
-  if (d.length >= 10) return d.length > 12 ? d.slice(-12) : d;
-  const nameKey = from.trim().toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24);
-  if (nameKey.length >= 3) return `name_${nameKey}`;
-  return "";
+  const raw = from.trim();
+  if (!raw) return "";
+
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length >= 10) return digits.length > 12 ? digits.slice(-12) : digits;
+  if (digits.length >= 6) return digits;
+
+  const nameKey = raw.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24);
+  if (nameKey.length >= 2) return `name_${nameKey}`;
+
+  // Hindi / emoji / symbols-only contact names from WhatsApp notifications
+  const hash = createHash("sha256").update(raw).digest("hex").slice(0, 12);
+  return `name_${hash}`;
 }
 
 export function sessionIdForWhatsAppPhone(phone: string): string {

@@ -44,8 +44,10 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         Prefs.appendLog(this, "${timestamp()} IN: $sender — ${message.take(80)}")
 
         val phone = WhatsAppReplyHelper.extractPhoneHint(sbn).ifEmpty {
-            sender.lowercase().replace(Regex("[^a-z0-9]"), "").take(20)
+            WhatsAppReplyHelper.extractPhoneFromText(sender).ifEmpty { sender.trim() }
         }
+
+        Prefs.appendLog(this, "${timestamp()} API → phone=${phone.take(20)} msg=${message.take(40)}")
 
         val result = ApiClient.fetchReply(this, sender, phone, message)
         if (!result.ok) {
