@@ -30,7 +30,7 @@ import { RelatedServicesSidebar } from "@/components/RelatedServicesSidebar";
 import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
 import { packageOfferCatalogJsonLd } from "@/lib/blog-seo/package-offer-jsonld";
 import { stripUndefinedJsonLd } from "@/lib/blog-seo/json-ld";
-import { findBlogRedirectDestination } from "@/lib/blog-redirects";
+import { findBlogRedirectDestination, findPermanentRedirectDestination } from "@/lib/blog-redirects";
 import { getSeoBlogRedirect } from "@/lib/gsc-indexing-agent/seo-blog-redirects";
 import { BlogHeroGallery } from "@/components/BlogHeroGallery";
 import { ContentConversionSection } from "@/components/ContentConversionSection";
@@ -42,6 +42,7 @@ import {
   resolveEnhancedSeoFields,
 } from "@/lib/content-seo-enhancements";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
+import { appendContentSupplement } from "@/lib/seo-cannibalization/content-supplements";
 import {
   blogFeaturedImageOrPlaceholder,
   resolveBlogFeaturedImages,
@@ -73,6 +74,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     headline: p.title,
     metaDescription: fs?.metaDescription?.trim() || p.excerpt,
     keywords: fs?.keywords?.length ? fs.keywords : p.keywords,
+    kind: "blog",
   });
   const title =
     enhanced.metaTitle ||
@@ -229,6 +231,9 @@ export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const blogPath = `/blog/${slug}`;
 
+  const configRedirect = findPermanentRedirectDestination(blogPath);
+  if (configRedirect) permanentRedirect(configRedirect);
+
   const p = await getBlogPostBySlugMerged(slug);
   if (!p) {
     const fsRedirect = await getSeoBlogRedirect(blogPath);
@@ -254,7 +259,7 @@ export default async function BlogPostPage({ params }: Props) {
     faqs: p.faqs,
   });
   const enrichedContent = enrichMarkdownWithClusterLinks(
-    p.content,
+    appendContentSupplement(p.slug, "blog", p.content),
     { ...contentMeta, slug: p.slug, kind: "blog" },
     clusterCatalog,
   );
@@ -278,6 +283,7 @@ export default async function BlogPostPage({ params }: Props) {
     headline: p.title,
     metaDescription: fs?.metaDescription?.trim() || p.excerpt,
     keywords: p.keywords,
+    kind: "blog",
   });
   const displayTitle = enhancedSeo.headline || p.title;
   const seoDescription = buildMetaDescriptionWithContact(
@@ -313,6 +319,7 @@ export default async function BlogPostPage({ params }: Props) {
     focusService,
     focusServiceSlug: focusService?.slug ?? focusServiceSlug,
     whatsappMessage: topicCta.whatsappMessage,
+    kind: "blog",
   });
   const heroGallery = buildBlogHeroGalleryData({
     title: p.title,

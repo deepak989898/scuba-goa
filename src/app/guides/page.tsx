@@ -9,6 +9,7 @@ import { cmsImageOrPlaceholder } from "@/lib/cms-image";
 import { getPageSlice } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+import { isPermanentRedirectSource } from "@/lib/blog-redirects";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +40,11 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
     listPublishedSeoPagesServer(),
     getAllBlogPostsMerged(),
   ]);
-  const slice = getPageSlice(guides.length, sp.page);
-  const pageGuides = guides.slice(slice.start, slice.end);
+  const visibleGuides = guides.filter(
+    (g) => !isPermanentRedirectSource(`/guides/${g.slug}`),
+  );
+  const slice = getPageSlice(visibleGuides.length, sp.page);
+  const pageGuides = visibleGuides.slice(slice.start, slice.end);
   const sidebarBlogs = blogs.slice(0, 5);
   const faqLd = faqPageJsonLd(BOOK_SCUBA_FAQ.slice(0, 6));
 
@@ -67,7 +71,7 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
             WhatsApp support.
           </p>
 
-          {guides.length === 0 ? (
+          {visibleGuides.length === 0 ? (
             <p className="mt-5 rounded-xl border border-ocean-100 bg-white p-5 text-sm text-ocean-700">
               New guides will appear here once your team publishes them from the admin panel
               (SEO pages).

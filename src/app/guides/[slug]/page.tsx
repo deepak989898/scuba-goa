@@ -31,6 +31,7 @@ import {
   buildContentSeoEnhancement,
   resolveEnhancedSeoFields,
 } from "@/lib/content-seo-enhancements";
+import { appendContentSupplement } from "@/lib/seo-cannibalization/content-supplements";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 type Props = {
@@ -108,6 +109,7 @@ export async function generateMetadata({
     headline: page.headline,
     metaDescription: page.metaDescription.trim(),
     keywords: page.keywords,
+    kind: "guide",
   });
 
   const title =
@@ -358,10 +360,8 @@ export default async function SeoGuidePage({
     focusService,
     focusServiceSlug: focusService?.slug ?? focusServiceSlug,
     whatsappMessage: topicCta.whatsappMessage,
+    kind: "guide",
   });
-
-  const displayHeadline =
-    conversionBlocks?.headline ?? page.headline;
 
   const enhancedSeo = resolveEnhancedSeoFields({
     slug: page.slug,
@@ -370,7 +370,13 @@ export default async function SeoGuidePage({
     headline: page.headline,
     metaDescription: page.metaDescription.trim(),
     keywords: page.keywords,
+    kind: "guide",
   });
+
+  const displayHeadline =
+    conversionBlocks?.headline ??
+    enhancedSeo.headline ??
+    page.headline;
 
   const heroGallery = buildGuideHeroGalleryData({
     title: page.headline,
@@ -393,7 +399,7 @@ export default async function SeoGuidePage({
   );
 
   const enrichedBody = enrichMarkdownWithClusterLinks(
-    page.bodyContent,
+    appendContentSupplement(page.slug, "guide", page.bodyContent),
     {
       title: page.headline,
       keywords: page.keywords,

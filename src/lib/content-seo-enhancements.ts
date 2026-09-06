@@ -3,6 +3,8 @@ import type { ContentTopicId } from "@/lib/content-topic";
 import { detectContentTopic } from "@/lib/content-topic";
 import { classifyContent, type ContentMeta } from "@/lib/content-clusters";
 import { whatsappLink } from "@/lib/constants";
+import { applySeoMetadataPatch } from "@/lib/seo-cannibalization/metadata-patches";
+import { mergeHubLinks } from "@/lib/seo-cannibalization/hub-internal-links";
 
 export type QuickFactRow = {
   label: string;
@@ -317,6 +319,7 @@ function buildInternalLinks(
   topic: ContentTopicId,
   slug: string,
   focusServiceSlug?: string,
+  kind: "guide" | "blog" = "guide",
 ): { label: string; href: string }[] {
   const links: { label: string; href: string }[] = [];
 
@@ -345,7 +348,7 @@ function buildInternalLinks(
     links.push({ label: "Guides", href: "/guides" });
   }
 
-  return links.slice(0, 5);
+  return mergeHubLinks(slug, kind, links, 6);
 }
 
 export function resolveEnhancedSeoFields(input: {
@@ -355,26 +358,28 @@ export function resolveEnhancedSeoFields(input: {
   headline?: string;
   metaDescription: string;
   keywords: string[];
+  kind?: "guide" | "blog";
 }): {
   metaTitle: string;
   headline: string;
   metaDescription: string;
 } {
   const venue = matchVenue(input.slug, input.title);
+  const kind = input.kind ?? "guide";
 
   if (venue) {
-    return {
+    return applySeoMetadataPatch(input.slug, kind, {
       metaTitle: venue.metaTitle,
       headline: venue.headline,
       metaDescription: venue.metaDescription,
-    };
+    });
   }
 
-  return {
+  return applySeoMetadataPatch(input.slug, kind, {
     metaTitle: input.metaTitle?.trim() || input.title,
     headline: input.headline?.trim() || input.title,
     metaDescription: input.metaDescription.trim(),
-  };
+  });
 }
 
 export function buildContentSeoEnhancement(input: {
@@ -383,6 +388,7 @@ export function buildContentSeoEnhancement(input: {
   focusService?: ServiceItem | null;
   focusServiceSlug?: string;
   whatsappMessage?: string;
+  kind?: "guide" | "blog";
 }): ContentSeoEnhancement | null {
   const topic = classifyContent(input.meta);
   const venue = matchVenue(input.slug, input.meta.title);
@@ -437,6 +443,7 @@ export function buildContentSeoEnhancement(input: {
       topic,
       input.slug,
       input.focusServiceSlug,
+      input.kind ?? "guide",
     ),
   };
 

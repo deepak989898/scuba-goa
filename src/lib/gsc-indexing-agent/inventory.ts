@@ -1,8 +1,5 @@
 import { createHash } from "crypto";
-import {
-  BLOG_PERMANENT_REDIRECTS,
-  SITE_PERMANENT_REDIRECTS,
-} from "@/lib/blog-redirects";
+import { getAllPermanentRedirects } from "@/lib/blog-redirects";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
 import { listSubServicePaths } from "@/lib/service-sub-helpers";
@@ -108,9 +105,7 @@ export async function collectLiveDiscoveredUrls(): Promise<{
   livePaths: string[];
 }> {
   const redirected = new Set(
-    [...BLOG_PERMANENT_REDIRECTS, ...SITE_PERMANENT_REDIRECTS].map(
-      (r) => r.source,
-    ),
+    getAllPermanentRedirects().map((r) => r.source),
   );
   const items: Discovered[] = [];
 
@@ -190,6 +185,8 @@ export async function collectLiveDiscoveredUrls(): Promise<{
 
   const guides = await listPublishedSeoPagesServer();
   for (const g of guides) {
+    const path = `/guides/${g.slug}`;
+    if (redirected.has(path)) continue;
     items.push({
       path: `/guides/${g.slug}`,
       pageType: "guide",

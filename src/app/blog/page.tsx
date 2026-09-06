@@ -10,6 +10,7 @@ import { blogFeaturedImageOrPlaceholder } from "@/lib/cms-image";
 import { getPageSlice, LIST_PAGE_SIZE } from "@/lib/list-pagination";
 import { BOOK_SCUBA_FAQ, faqPageJsonLd } from "@/lib/seo-health/faq-data";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
+import { isPermanentRedirectSource } from "@/lib/blog-redirects";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
 /** Public /blog index: only 3 pages of highest-view posts. */
@@ -63,7 +64,9 @@ export default async function BlogIndexPage({ searchParams }: Props) {
     if (vb !== va) return vb - va;
     return b.date.localeCompare(a.date) || a.title.localeCompare(b.title);
   });
-  const capped = byViews.slice(0, LIST_PAGE_SIZE * BLOG_LIST_MAX_PAGES);
+  const capped = byViews
+    .filter((p) => !isPermanentRedirectSource(`/blog/${p.slug}`))
+    .slice(0, LIST_PAGE_SIZE * BLOG_LIST_MAX_PAGES);
   const slice = getPageSlice(capped.length, sp.page);
   const pagePosts = capped.slice(slice.start, slice.end);
   const sidebarGuides = guides.slice(0, 5);

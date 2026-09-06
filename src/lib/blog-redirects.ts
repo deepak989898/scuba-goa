@@ -1,3 +1,5 @@
+import { SEO_CANNIBALIZATION_REDIRECTS } from "@/lib/seo-cannibalization/redirects";
+
 /**
  * Permanent blog URL redirects (old slug → canonical slug).
  * Consumed by next.config.ts and admin tooling.
@@ -46,11 +48,32 @@ export const SITE_PERMANENT_REDIRECTS: BlogRedirect[] = [
 ];
 
 export function getAllPermanentRedirects(): BlogRedirect[] {
-  return [...BLOG_PERMANENT_REDIRECTS, ...SITE_PERMANENT_REDIRECTS];
+  return [
+    ...BLOG_PERMANENT_REDIRECTS,
+    ...SITE_PERMANENT_REDIRECTS,
+    ...SEO_CANNIBALIZATION_REDIRECTS,
+  ];
+}
+
+export function findPermanentRedirectDestination(
+  pathname: string,
+): string | null {
+  const normalized = pathname.replace(/\/$/, "") || "/";
+  const hit = getAllPermanentRedirects().find((r) => r.source === normalized);
+  return hit?.destination ?? null;
 }
 
 export function findBlogRedirectDestination(pathname: string): string | null {
   const normalized = pathname.replace(/\/$/, "") || "/";
   const hit = BLOG_PERMANENT_REDIRECTS.find((r) => r.source === normalized);
-  return hit?.destination ?? null;
+  if (hit) return hit.destination;
+  const cannibal = SEO_CANNIBALIZATION_REDIRECTS.find(
+    (r) => r.source.startsWith("/blog/") && r.source === normalized,
+  );
+  return cannibal?.destination ?? null;
+}
+
+export function isPermanentRedirectSource(pathname: string): boolean {
+  const normalized = pathname.replace(/\/$/, "") || "/";
+  return getAllPermanentRedirects().some((r) => r.source === normalized);
 }

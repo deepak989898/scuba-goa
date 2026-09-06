@@ -4,18 +4,13 @@ import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { getAllPackagesServer } from "@/lib/get-packages-server";
 import { listSubServicePaths } from "@/lib/service-sub-helpers";
-import {
-  BLOG_PERMANENT_REDIRECTS,
-  SITE_PERMANENT_REDIRECTS,
-} from "@/lib/blog-redirects";
+import { getAllPermanentRedirects } from "@/lib/blog-redirects";
 import { getServicesForPublicSeo } from "@/lib/services-for-seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
   const redirectedPaths = new Set(
-    [...BLOG_PERMANENT_REDIRECTS, ...SITE_PERMANENT_REDIRECTS].map(
-      (r) => r.source,
-    ),
+    getAllPermanentRedirects().map((r) => r.source),
   );
   const staticPaths = [
     "",
@@ -94,6 +89,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   const guides = await listPublishedSeoPagesServer();
   for (const g of guides) {
+    const path = `/guides/${g.slug}`;
+    if (redirectedPaths.has(path)) continue;
     entries.push({
       url: `${base}/guides/${g.slug}`,
       lastModified: new Date(g.updatedAt),

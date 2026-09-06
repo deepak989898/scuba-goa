@@ -8,6 +8,19 @@ function publicFallbackServices(): ServiceItem[] {
   return fallbackServices.map((s) => sanitizeServiceImages(s));
 }
 
+/** Merge missing fallback slugs so commercial pages (e.g. casino-bookings) stay reachable. */
+function mergeServicesWithFallback(live: ServiceItem[]): ServiceItem[] {
+  const bySlug = new Map(live.map((s) => [s.slug, s]));
+  for (const fb of publicFallbackServices()) {
+    if (!bySlug.has(fb.slug)) bySlug.set(fb.slug, fb);
+  }
+  return [...bySlug.values()].sort(
+    (a, b) =>
+      (a.sortOrder ?? 999) - (b.sortOrder ?? 999) ||
+      a.slug.localeCompare(b.slug),
+  );
+}
+
 /** Server-only: metadata & SSR when FIREBASE_SERVICE_ACCOUNT_KEY is set */
 export async function getAllServicesServer(): Promise<ServiceItem[]> {
   const db = getAdminDb();
@@ -29,7 +42,7 @@ export async function getAllServicesServer(): Promise<ServiceItem[]> {
         (a.sortOrder ?? 999) - (b.sortOrder ?? 999) ||
         a.slug.localeCompare(b.slug),
     );
-    return list.length === 0 ? publicFallbackServices() : list;
+    return mergeServicesWithFallback(list);
   } catch {
     return publicFallbackServices();
   }
