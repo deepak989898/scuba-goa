@@ -15,7 +15,6 @@ class WhatsAppNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         DebugLog.d(this, "LISTENER", "Connected — active notifications: ${activeNotifications?.size ?: 0}")
-        AssistantForegroundService.start(this)
     }
 
     override fun onListenerDisconnected() {
@@ -37,7 +36,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
 
         val sender = WhatsAppReplyHelper.extractSenderTitle(sbn)
         val message = WhatsAppReplyHelper.extractMessageText(sbn)
-        val ignoreReason = WhatsAppReplyHelper.ignoreReason(message, sender)
+        val ignoreReason = WhatsAppReplyHelper.ignoreReason(sbn, message, sender)
         if (ignoreReason != null) {
             DebugLog.d(this, "SKIP", "Ignored: $ignoreReason | sender=\"$sender\" text=\"${message.take(60)}\"")
             return
@@ -55,14 +54,15 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         }
         if (recentKeys.size > 200) recentKeys.clear()
 
+        val convKey = ReplyGuard.conversationKey(sbn)
         DebugLog.d(
             this,
             "PROCESS",
-            "New message from \"$sender\" | replyActions=${WhatsAppReplyHelper.hasReplyAction(sbn)} | active=${activeNotifications?.size ?: 0}",
+            "Customer message from \"$sender\" | conv=$convKey | active=${activeNotifications?.size ?: 0}",
         )
 
         scope.launch {
-            processMessage(sbn, sender, message)
+            processMessage(sbn, sender, message, convKey)
         }
     }
 
@@ -79,6 +79,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         sbn: StatusBarNotification,
         sender: String,
         message: String,
+        convKey: String,
     ) {
         val phone = WhatsAppReplyHelper.extractPhoneHint(sbn).ifEmpty {
             WhatsAppReplyHelper.extractPhoneFromText(sender).ifEmpty { sender.trim() }
@@ -111,12 +112,15 @@ class WhatsAppNotificationListener : NotificationListenerService() {
             this,
             "REPLY",
             "Trying ${candidates.size} notification candidate(s): " +
-                candidates.map { "id=${it.id} actions=${WhatsAppReplyHelper.describeActions(it)}" }.joinToString(" | "),
+                candidates.map { "id=${it.id} tag=${it.tag?.take(8)} actions=${WhatsAppReplyHelper.describeActions(it)}" }
+                    .joinToString(" | "),
         )
 
         val sendResult = WhatsAppReplyHelper.sendReply(this, sbn, sender, result.reply)
         if (sendResult.success) {
-            DebugLog.d(this, "OUT", "Reply sent — ${sendResult.detail}")
+            ReplyGuard.recordOutbound(result.reply)
+            ReplyGuard.markInboundReplied(convKey, message)
+            DebugLog.d(this, "OUT", "Reply sent (1 per customer message) — ${sendResult.detail}")
         } else {
             DebugLog.e(
                 this,

@@ -20,7 +20,9 @@ object WhatsAppReplyHelper {
     fun extractSenderTitle(sbn: StatusBarNotification): String {
         val extras = sbn.notification.extras ?: return ""
         val messaging = extractMessagingStyle(extras)
-        if (!messaging.sender.isNullOrBlank()) return messaging.sender.trim()
+        if (!messaging.sender.isNullOrBlank() && !messaging.isFromSelf) {
+            return messaging.sender.trim()
+        }
 
         val title = extras.getCharSequence("android.title")?.toString()?.trim() ?: ""
         if (title.isNotEmpty() && !isGroupSummary(title)) return title
@@ -32,7 +34,9 @@ object WhatsAppReplyHelper {
     fun extractMessageText(sbn: StatusBarNotification): String {
         val extras = sbn.notification.extras ?: return ""
         val messaging = extractMessagingStyle(extras)
-        if (!messaging.text.isNullOrBlank()) return messaging.text.trim()
+        if (!messaging.text.isNullOrBlank() && !messaging.isFromSelf) {
+            return messaging.text.trim()
+        }
 
         val text = extras.getCharSequence("android.text")?.toString()?.trim() ?: ""
         val big = extras.getCharSequence("android.bigText")?.toString()?.trim()
@@ -58,21 +62,44 @@ object WhatsAppReplyHelper {
 
     fun extractPhoneFromText(text: String): String = digitsFromPhoneLike(text) ?: ""
 
-    fun ignoreReason(text: String, sender: String): String? {
+    fun ignoreReason(sbn: StatusBarNotification, text: String, sender: String): String? {
         if (text.isBlank()) return "empty message text"
+        if (isOutgoingNotification(sbn, sender)) return "own outgoing message"
+        if (ReplyGuard.isEchoOfOurReply(text)) return "echo of our bot reply"
+
+        val convKey = ReplyGuard.conversationKey(sbn)
+        if (ReplyGuard.alreadyRepliedToInbound(convKey, text)) {
+            return "already replied to this customer message"
+        }
+
         val lower = text.lowercase()
         if (lower == "checking for new messages") return "whatsapp sync notification"
         if (lower == "waiting for this message. this may take a while.") return "e2e wait notification"
         if (Regex("""\d+\s+new messages?""").containsMatchIn(lower)) return "summary notification"
         if (sender.isBlank()) return "empty sender title"
         if (sender.equals("WhatsApp", ignoreCase = true)) return "summary notification"
+        if (isSelfSenderLabel(sender)) return "own outgoing message"
         if (text.length > 4000) return "message too long"
         if (lower.startsWith("you:")) return "own message"
         return null
     }
 
-    fun shouldIgnoreMessage(text: String, sender: String): Boolean =
-        ignoreReason(text, sender) != null
+    fun shouldIgnoreMessage(sbn: StatusBarNotification, text: String, sender: String): Boolean =
+        ignoreReason(sbn, text, sender) != null
+
+    fun isOutgoingNotification(sbn: StatusBarNotification, sender: String): Boolean {
+        if (isSelfSenderLabel(sender)) return true
+        val extras = sbn.notification.extras ?: return false
+        if (extractMessagingStyle(extras).isFromSelf) return true
+        val selfName = extras.getCharSequence("android.selfDisplayName")?.toString()?.trim()
+        if (!selfName.isNullOrBlank() && sender.equals(selfName, ignoreCase = true)) return true
+        return false
+    }
+
+    private fun isSelfSenderLabel(sender: String): Boolean {
+        val s = sender.trim().lowercase()
+        return s == "you" || s == "me" || s == "yourself" || s == "आप"
+    }
 
     fun dumpNotification(sbn: StatusBarNotification): String {
         val extras = sbn.notification.extras
@@ -111,19 +138,26 @@ object WhatsAppReplyHelper {
     fun findReplyCandidates(
         service: NotificationListenerService,
         original: StatusBarNotification,
-        sender: String,
+        customerSender: String,
     ): List<StatusBarNotification> {
         val active = service.activeNotifications?.toList() ?: emptyList()
         val whatsapp = active.filter { isWhatsAppPackage(it.packageName) }
         val withReply = whatsapp.filter { hasReplyAction(it) }
+        val convTag = original.tag
 
+        val byTag = if (!convTag.isNullOrBlank()) {
+            withReply.filter { it.tag == convTag }
+        } else {
+            emptyList()
+        }
         val bySender = withReply.filter {
-            extractSenderTitle(it).equals(sender, ignoreCase = true)
+            val title = extractSenderTitle(it)
+            title.equals(customerSender, ignoreCase = true) && !isSelfSenderLabel(title)
         }
         val byId = withReply.filter { it.id == original.id && it.tag == original.tag }
         val originalIfReply = if (hasReplyAction(original)) listOf(original) else emptyList()
 
-        return (bySender + byId + originalIfReply + withReply)
+        return (byTag + bySender + byId + originalIfReply)
             .distinctBy { "${it.packageName}|${it.tag}|${it.id}" }
     }
 
@@ -199,7 +233,11 @@ object WhatsAppReplyHelper {
         return null
     }
 
-    private data class MessagingParts(val sender: String?, val text: String?)
+    private data class MessagingParts(
+        val sender: String?,
+        val text: String?,
+        val isFromSelf: Boolean = false,
+    )
 
     private fun extractMessagingStyle(extras: Bundle): MessagingParts {
         val raw = extras.get("android.messages")
@@ -214,10 +252,17 @@ object WhatsAppReplyHelper {
         val text = latest.getCharSequence("text")?.toString()?.trim()
             ?: latest.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim()
 
-        val sender = extractPersonName(latest.get("sender"))
+        val senderPerson = latest.get("sender")
+        val sender = extractPersonName(senderPerson)
             ?: latest.getCharSequence("sender")?.toString()?.trim()
 
-        return MessagingParts(sender, text)
+        val isFromSelf = when (senderPerson) {
+            is Person -> senderPerson.isBot() == false && senderPerson.key == "self"
+            is Bundle -> senderPerson.getString("key") == "self"
+            else -> false
+        } || isSelfSenderLabel(sender ?: "")
+
+        return MessagingParts(sender, text, isFromSelf)
     }
 
     private fun extractPersonName(raw: Any?): String? {
