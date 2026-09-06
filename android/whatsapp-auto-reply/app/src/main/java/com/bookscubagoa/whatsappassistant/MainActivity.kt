@@ -1,22 +1,32 @@
 package com.bookscubagoa.whatsappassistant
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.lifecycleScope
 import com.bookscubagoa.whatsappassistant.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private val logRefreshHandler = Handler(Looper.getMainLooper())
+    private val logRefreshRunnable = object : Runnable {
+        override fun run() {
+            binding.logText.text = Prefs.readLog(this@MainActivity)
+            logRefreshHandler.postDelayed(this, 2000)
+        }
+    }
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -34,8 +44,12 @@ class MainActivity : AppCompatActivity() {
 
         binding.saveButton.setOnClickListener { saveSettings() }
         binding.testButton.setOnClickListener { testConnection() }
+        binding.testReplyButton.setOnClickListener { testAiReply() }
         binding.notificationAccessButton.setOnClickListener { openNotificationAccess() }
         binding.batteryButton.setOnClickListener { openBatterySettings() }
+        binding.copyLogButton.setOnClickListener { copyLog() }
+        binding.clearLogButton.setOnClickListener { clearLog() }
+        binding.refreshLogButton.setOnClickListener { refreshLogs() }
 
         requestPostNotificationsIfNeeded()
         refreshStatus()
@@ -43,8 +57,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        binding.logText.text = Prefs.readLog(this)
+        refreshLogs()
         refreshStatus()
+        logRefreshHandler.post(logRefreshRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        logRefreshHandler.removeCallbacks(logRefreshRunnable)
     }
 
     private fun saveSettings() {
@@ -72,8 +92,8 @@ class MainActivity : AppCompatActivity() {
             AssistantForegroundService.stop(this)
         }
 
-        Prefs.appendLog(this, "Settings saved — auto-reply ${if (enabled) "ON" else "OFF"}")
-        binding.logText.text = Prefs.readLog(this)
+        DebugLog.d(this, "APP", "Settings saved — auto-reply ${if (enabled) "ON" else "OFF"}")
+        refreshLogs()
         refreshStatus()
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
     }
@@ -84,9 +104,48 @@ class MainActivity : AppCompatActivity() {
             val result = ApiClient.testConnection(this@MainActivity)
             binding.testButton.isEnabled = true
             Toast.makeText(this@MainActivity, result, Toast.LENGTH_LONG).show()
-            Prefs.appendLog(this@MainActivity, "Test: $result")
-            binding.logText.text = Prefs.readLog(this@MainActivity)
+            refreshLogs()
         }
+    }
+
+    private fun testAiReply() {
+        lifecycleScope.launch {
+            binding.testReplyButton.isEnabled = false
+            DebugLog.d(this@MainActivity, "TEST", "Manual AI test with message \"Hi\"")
+            val result = ApiClient.fetchReply(
+                context = this@MainActivity,
+                senderName = "Debug Test User",
+                phone = "9999999999",
+                message = "Hi",
+            )
+            binding.testReplyButton.isEnabled = true
+            val summary = when {
+                !result.ok -> "AI test failed: ${result.error}"
+                result.skipped -> "AI test skipped: ${result.debugReason ?: "unknown"}"
+                result.reply.isNullOrBlank() -> "AI test: empty reply"
+                else -> "AI test OK (${result.elapsedMs}ms): ${result.reply.take(120)}"
+            }
+            DebugLog.d(this@MainActivity, "TEST", summary)
+            Toast.makeText(this@MainActivity, summary, Toast.LENGTH_LONG).show()
+            refreshLogs()
+        }
+    }
+
+    private fun copyLog() {
+        val log = Prefs.readLog(this)
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard.setPrimaryClip(ClipData.newPlainText("WhatsApp Assistant Debug Log", log))
+        Toast.makeText(this, "Debug log copied — paste in chat", Toast.LENGTH_LONG).show()
+    }
+
+    private fun clearLog() {
+        Prefs.clearLog(this)
+        DebugLog.d(this, "APP", "Log cleared")
+        refreshLogs()
+    }
+
+    private fun refreshLogs() {
+        binding.logText.text = Prefs.readLog(this)
     }
 
     private fun openNotificationAccess() {
@@ -125,10 +184,9 @@ class MainActivity : AppCompatActivity() {
             add("Notification access: ${if (listener) "ON" else "OFF — tap button above"}")
             add("Website: ${Prefs.baseUrl(this@MainActivity)}")
             if (enabled && listener) {
-                add("Ready — WhatsApp messages will get AI replies from your website.")
+                add("Ready — send a test WhatsApp, then check Debug log below.")
             }
         }
         binding.statusText.text = lines.joinToString("\n")
-        binding.logText.text = Prefs.readLog(this)
     }
 }

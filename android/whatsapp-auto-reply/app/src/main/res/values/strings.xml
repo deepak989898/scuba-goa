@@ -8,6 +8,11 @@
     <string name="battery_optimization">Disable battery optimization (recommended)</string>
     <string name="save_settings">Save settings</string>
     <string name="test_connection">Test website connection</string>
+    <string name="test_ai_reply">Test AI reply (Hi)</string>
+    <string name="copy_log">Copy log</string>
+    <string name="clear_log">Clear log</string>
+    <string name="refresh_log">Refresh</string>
+    <string name="debug_log_header">Debug log (screenshot this and share)</string>
     <string name="website_url_hint">Website URL</string>
     <string name="api_secret_hint">Mobile API secret</string>
     <string name="fg_channel_name">WhatsApp Assistant</string>

@@ -33,12 +33,18 @@ object Prefs {
     fun appendLog(context: Context, line: String) {
         val key = "log"
         val prev = prefs(context).getString(key, "") ?: ""
-        val merged = (line + "\n" + prev).lines().take(40).joinToString("\n")
+        val merged = (line + "\n" + prev).lines().take(150).joinToString("\n")
         prefs(context).edit().putString(key, merged).apply()
     }
 
-    fun readLog(context: Context): String =
-        prefs(context).getString("log", "No activity yet.") ?: "No activity yet."
+    fun clearLog(context: Context) {
+        prefs(context).edit().putString("log", "").apply()
+    }
+
+    fun readLog(context: Context): String {
+        val raw = prefs(context).getString("log", "") ?: ""
+        return if (raw.isBlank()) "No activity yet. Send a WhatsApp message to test." else raw
+    }
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
