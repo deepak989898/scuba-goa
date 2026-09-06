@@ -14,26 +14,65 @@ class WhatsAppNotificationListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        Prefs.appendLog(this, "${timestamp()} Listener connected")
+        DebugLog.d(this, "LISTENER", "Connected — active notifications: ${activeNotifications?.size ?: 0}")
         AssistantForegroundService.start(this)
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        DebugLog.w(this, "LISTENER", "Disconnected — re-enable notification access if this keeps happening")
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        if (!Prefs.isAutoReplyEnabled(this)) return
+
         if (!WhatsAppReplyHelper.isWhatsAppPackage(sbn.packageName)) return
+
+        DebugLog.d(this, "NOTIF", "Posted: ${WhatsAppReplyHelper.dumpNotification(sbn)}")
+
+        if (!Prefs.isAutoReplyEnabled(this)) {
+            DebugLog.d(this, "SKIP", "Auto-reply OFF or API secret missing")
+            return
+        }
 
         val sender = WhatsAppReplyHelper.extractSenderTitle(sbn)
         val message = WhatsAppReplyHelper.extractMessageText(sbn)
-        if (WhatsAppReplyHelper.shouldIgnoreMessage(message, sender)) return
+        val ignoreReason = WhatsAppReplyHelper.ignoreReason(message, sender)
+        if (ignoreReason != null) {
+            DebugLog.d(this, "SKIP", "Ignored: $ignoreReason | sender=\"$sender\" text=\"${message.take(60)}\"")
+            return
+        }
+
+        if (!WhatsAppReplyHelper.hasReplyAction(sbn)) {
+            DebugLog.d(this, "SKIP", "No Reply button on notification (likely summary) | text=\"${message.take(60)}\"")
+            return
+        }
 
         val key = WhatsAppReplyHelper.dedupeKey(sbn, message)
-        if (!recentKeys.add(key)) return
+        if (!recentKeys.add(key)) {
+            DebugLog.d(this, "SKIP", "Duplicate notification key")
+            return
+        }
         if (recentKeys.size > 200) recentKeys.clear()
+
+        DebugLog.d(
+            this,
+            "PROCESS",
+            "New message from \"$sender\" | replyActions=${WhatsAppReplyHelper.hasReplyAction(sbn)} | active=${activeNotifications?.size ?: 0}",
+        )
 
         scope.launch {
             processMessage(sbn, sender, message)
         }
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        if (sbn == null || !WhatsAppReplyHelper.isWhatsAppPackage(sbn.packageName)) return
+        DebugLog.d(
+            this,
+            "NOTIF",
+            "Removed: id=${sbn.id} tag=${sbn.tag ?: "-"} sender=\"${WhatsAppReplyHelper.extractSenderTitle(sbn).take(30)}\"",
+        )
     }
 
     private suspend fun processMessage(
@@ -41,37 +80,49 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         sender: String,
         message: String,
     ) {
-        Prefs.appendLog(this, "${timestamp()} IN: $sender — ${message.take(80)}")
-
         val phone = WhatsAppReplyHelper.extractPhoneHint(sbn).ifEmpty {
             WhatsAppReplyHelper.extractPhoneFromText(sender).ifEmpty { sender.trim() }
         }
 
-        Prefs.appendLog(this, "${timestamp()} API → phone=${phone.take(20)} msg=${message.take(40)}")
+        DebugLog.d(this, "IN", "From=\"$sender\" phone=\"$phone\" msg=\"${message.take(120)}\"")
+        DebugLog.d(this, "API", "Calling website…")
 
+        val started = System.currentTimeMillis()
         val result = ApiClient.fetchReply(this, sender, phone, message)
+        val elapsed = System.currentTimeMillis() - started
+
         if (!result.ok) {
-            Prefs.appendLog(this, "${timestamp()} API error: ${result.error}")
+            DebugLog.e(this, "API", "Failed in ${elapsed}ms: ${result.error}")
             return
         }
-        if (result.skipped || result.reply.isNullOrBlank()) {
-            Prefs.appendLog(this, "${timestamp()} Skipped: ${result.error ?: "no reply"}")
+        if (result.skipped) {
+            DebugLog.w(this, "API", "Skipped in ${elapsed}ms: ${result.debugReason ?: "no reason"}")
+            return
+        }
+        if (result.reply.isNullOrBlank()) {
+            DebugLog.w(this, "API", "Empty reply in ${elapsed}ms")
             return
         }
 
-        val sent = WhatsAppReplyHelper.sendReply(this@WhatsAppNotificationListener, sbn, result.reply)
-        Prefs.appendLog(
+        DebugLog.d(this, "API", "OK in ${elapsed}ms — reply ${result.reply.length} chars: \"${result.reply.take(80)}\"")
+
+        val candidates = WhatsAppReplyHelper.findReplyCandidates(this, sbn, sender)
+        DebugLog.d(
             this,
-            if (sent) {
-                "${timestamp()} OUT: ${result.reply.take(100)}"
-            } else {
-                "${timestamp()} Could not send reply (open WhatsApp once or check notification reply)"
-            },
+            "REPLY",
+            "Trying ${candidates.size} notification candidate(s): " +
+                candidates.map { "id=${it.id} actions=${WhatsAppReplyHelper.describeActions(it)}" }.joinToString(" | "),
         )
-    }
 
-    private fun timestamp(): String {
-        val fmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-        return fmt.format(java.util.Date())
+        val sendResult = WhatsAppReplyHelper.sendReply(this, sbn, sender, result.reply)
+        if (sendResult.success) {
+            DebugLog.d(this, "OUT", "Reply sent — ${sendResult.detail}")
+        } else {
+            DebugLog.e(
+                this,
+                "OUT",
+                "Could not send WhatsApp reply — ${sendResult.detail}. Tip: close the chat, keep WhatsApp in background, ensure notification shows Reply button.",
+            )
+        }
     }
 }

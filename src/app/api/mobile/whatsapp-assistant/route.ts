@@ -4,7 +4,7 @@ import {
   isWhatsAppMobileAssistantConfigured,
   verifyWhatsAppMobileRequest,
 } from "@/lib/whatsapp-agent/mobile-auth";
-import { processWhatsAppInboundMessage } from "@/lib/whatsapp-agent/process-message";
+import { processWhatsAppInboundMessage, resolveMobileSenderId } from "@/lib/whatsapp-agent/process-message";
 import { getWhatsAppAgentSettings } from "@/lib/whatsapp-agent/settings";
 
 export const runtime = "nodejs";
@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     agentEnabled: settings.enabled,
     configured: isWhatsAppMobileAssistantConfigured(),
     bookingUrl: `${SITE_URL.replace(/\/$/, "")}/booking`,
+    apiVersion: 2,
   });
 }
 
@@ -47,21 +48,17 @@ export async function POST(req: Request) {
   const message = String(body.message ?? body.text ?? "").trim();
   const senderName = String(body.senderName ?? "").trim();
   const phoneRaw = String(body.phone ?? "").trim();
-  const phoneDigits = phoneRaw.replace(/\D/g, "");
-  const phone =
-    (phoneDigits.length >= 6 ? phoneDigits : "") ||
-    phoneRaw ||
-    senderName;
+  const senderId = resolveMobileSenderId(phoneRaw || senderName, senderName);
 
   if (!message) {
     return NextResponse.json({ error: "message required" }, { status: 400 });
   }
-  if (!phone) {
+  if (!senderId) {
     return NextResponse.json({ error: "phone or senderName required" }, { status: 400 });
   }
 
   const result = await processWhatsAppInboundMessage({
-    phone,
+    phone: senderId,
     text: message,
     profileName: senderName || undefined,
     source: "mobile_app",

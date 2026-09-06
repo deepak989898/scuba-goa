@@ -15,6 +15,9 @@ data class AssistantReply(
     val reply: String?,
     val skipped: Boolean,
     val error: String?,
+    val debugReason: String? = null,
+    val httpCode: Int? = null,
+    val elapsedMs: Long = 0,
 )
 
 object ApiClient {
@@ -31,6 +34,8 @@ object ApiClient {
         val secret = Prefs.apiSecret(context)
         if (secret.isEmpty()) return@withContext "Add API secret first"
 
+        DebugLog.d(context, "TEST", "GET $url")
+
         val request = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer $secret")
@@ -38,14 +43,22 @@ object ApiClient {
             .build()
 
         runCatching {
+            val started = System.currentTimeMillis()
             client.newCall(request).execute().use { res ->
                 val body = res.body?.string() ?: ""
+                val elapsed = System.currentTimeMillis() - started
+                DebugLog.d(context, "TEST", "HTTP ${res.code} in ${elapsed}ms body=${body.take(200)}")
                 if (!res.isSuccessful) return@withContext "HTTP ${res.code}: $body"
                 val json = JSONObject(body)
                 val enabled = json.optBoolean("agentEnabled", false)
-                "OK — agentEnabled=$enabled site=${json.optString("siteUrl")}"
+                val configured = json.optBoolean("configured", false)
+                val apiVersion = json.optInt("apiVersion", 1)
+                "OK ${elapsed}ms — apiVersion=$apiVersion agentEnabled=$enabled configured=$configured"
             }
-        }.getOrElse { "Error: ${it.message}" }
+        }.getOrElse {
+            DebugLog.e(context, "TEST", "Network error", it)
+            "Error: ${it.message}"
+        }
     }
 
     suspend fun fetchReply(
@@ -65,6 +78,12 @@ object ApiClient {
             .put("phone", phone)
             .put("message", message)
 
+        DebugLog.d(
+            context,
+            "API",
+            "POST $url | sender=\"$senderName\" phone=\"$phone\" msg=\"${message.take(80)}\"",
+        )
+
         val request = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer $secret")
@@ -73,17 +92,38 @@ object ApiClient {
             .build()
 
         runCatching {
+            val started = System.currentTimeMillis()
             client.newCall(request).execute().use { res ->
                 val body = res.body?.string() ?: ""
+                val elapsed = System.currentTimeMillis() - started
+                DebugLog.d(context, "API", "HTTP ${res.code} in ${elapsed}ms body=${body.take(300)}")
+
                 if (!res.isSuccessful) {
-                    return@withContext AssistantReply(false, null, false, "HTTP ${res.code}: $body")
+                    return@withContext AssistantReply(
+                        ok = false,
+                        reply = null,
+                        skipped = false,
+                        error = "HTTP ${res.code}: $body",
+                        httpCode = res.code,
+                        elapsedMs = elapsed,
+                    )
                 }
                 val json = JSONObject(body)
                 val skipped = json.optBoolean("skipped", false)
                 val reply = json.optString("reply", "").trim().ifEmpty { null }
-                AssistantReply(true, reply, skipped, json.optString("reason", null))
+                val reason = json.optString("reason", "").trim().ifEmpty { null }
+                AssistantReply(
+                    ok = true,
+                    reply = reply,
+                    skipped = skipped,
+                    error = null,
+                    debugReason = reason,
+                    httpCode = res.code,
+                    elapsedMs = elapsed,
+                )
             }
         }.getOrElse {
+            DebugLog.e(context, "API", "Network error", it)
             AssistantReply(false, null, false, it.message ?: "network error")
         }
     }

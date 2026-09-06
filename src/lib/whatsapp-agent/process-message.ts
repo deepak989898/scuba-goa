@@ -27,9 +27,19 @@ export function normalizeWhatsAppPhone(from: string): string {
   const nameKey = raw.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24);
   if (nameKey.length >= 2) return `name_${nameKey}`;
 
-  // Hindi / emoji / symbols-only contact names from WhatsApp notifications
-  const hash = createHash("sha256").update(raw).digest("hex").slice(0, 12);
+  // Hindi / emoji / short symbols from WhatsApp contact names (e.g. "दी")
+  const hash = createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 12);
   return `name_${hash}`;
+}
+
+/** Resolve a stable sender id from phone and/or display name (mobile app). */
+export function resolveMobileSenderId(phone: string, profileName?: string): string {
+  const candidates = [phone, profileName ?? "", `${profileName ?? ""}|${phone}`];
+  for (const candidate of candidates) {
+    const id = normalizeWhatsAppPhone(candidate);
+    if (id) return id;
+  }
+  return "";
 }
 
 export function sessionIdForWhatsAppPhone(phone: string): string {
@@ -59,10 +69,13 @@ export async function processWhatsAppInboundMessage(
     return { ok: true, skipped: true, reason: "WhatsApp agent disabled in admin" };
   }
 
-  const phone = normalizeWhatsAppPhone(input.phone);
+  const phone = resolveMobileSenderId(input.phone, input.profileName);
   const text = input.text.trim();
-  if (!phone || !text) {
-    return { ok: false, reason: "phone and text required" };
+  if (!text) {
+    return { ok: false, reason: "message text required" };
+  }
+  if (!phone) {
+    return { ok: false, reason: `sender id required (phone="${input.phone}" name="${input.profileName ?? ""}")` };
   }
 
   const sessionId = sessionIdForWhatsAppPhone(phone);

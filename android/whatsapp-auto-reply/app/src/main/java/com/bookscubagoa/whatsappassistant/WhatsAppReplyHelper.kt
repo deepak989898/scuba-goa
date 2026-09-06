@@ -2,9 +2,9 @@ package com.bookscubagoa.whatsappassistant
 
 import android.app.Notification
 import android.app.Person
-import android.content.Context
-import android.content.Intent
+import android.app.RemoteInput
 import android.os.Bundle
+import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
 object WhatsAppReplyHelper {
@@ -58,6 +58,139 @@ object WhatsAppReplyHelper {
 
     fun extractPhoneFromText(text: String): String = digitsFromPhoneLike(text) ?: ""
 
+    fun ignoreReason(text: String, sender: String): String? {
+        if (text.isBlank()) return "empty message text"
+        val lower = text.lowercase()
+        if (lower == "checking for new messages") return "whatsapp sync notification"
+        if (lower == "waiting for this message. this may take a while.") return "e2e wait notification"
+        if (Regex("""\d+\s+new messages?""").containsMatchIn(lower)) return "summary notification"
+        if (sender.isBlank()) return "empty sender title"
+        if (sender.equals("WhatsApp", ignoreCase = true)) return "summary notification"
+        if (text.length > 4000) return "message too long"
+        if (lower.startsWith("you:")) return "own message"
+        return null
+    }
+
+    fun shouldIgnoreMessage(text: String, sender: String): Boolean =
+        ignoreReason(text, sender) != null
+
+    fun dumpNotification(sbn: StatusBarNotification): String {
+        val extras = sbn.notification.extras
+        val keys = extras?.keySet()?.sorted()?.joinToString(", ") ?: "none"
+        val title = extras?.getCharSequence("android.title")?.toString() ?: ""
+        val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+        val sub = extras?.getString("android.subText") ?: ""
+        val actions = describeActions(sbn)
+        return "pkg=${sbn.packageName} id=${sbn.id} tag=${sbn.tag ?: "-"} " +
+            "title=\"${title.take(40)}\" text=\"${text.take(40)}\" sub=\"${sub.take(30)}\" " +
+            "keys=[$keys] actions=[$actions]"
+    }
+
+    fun describeActions(sbn: StatusBarNotification): String {
+        val actions = sbn.notification.actions
+        if (actions == null || actions.isEmpty()) return "none"
+        return actions.mapIndexed { index, action ->
+            if (action == null) {
+                "[$index]=null"
+            } else {
+                val title = action.title?.toString() ?: "?"
+                val inputs = action.remoteInputs?.size ?: 0
+                val key = action.remoteInputs?.firstOrNull()?.resultKey ?: "-"
+                "[$index]\"$title\" inputs=$inputs key=$key"
+            }
+        }.joinToString("; ")
+    }
+
+    fun hasReplyAction(sbn: StatusBarNotification): Boolean {
+        val actions = sbn.notification.actions ?: return false
+        return actions.any { action ->
+            action != null && action.remoteInputs != null && action.remoteInputs.isNotEmpty()
+        }
+    }
+
+    fun findReplyCandidates(
+        service: NotificationListenerService,
+        original: StatusBarNotification,
+        sender: String,
+    ): List<StatusBarNotification> {
+        val active = service.activeNotifications?.toList() ?: emptyList()
+        val whatsapp = active.filter { isWhatsAppPackage(it.packageName) }
+        val withReply = whatsapp.filter { hasReplyAction(it) }
+
+        val bySender = withReply.filter {
+            extractSenderTitle(it).equals(sender, ignoreCase = true)
+        }
+        val byId = withReply.filter { it.id == original.id && it.tag == original.tag }
+        val originalIfReply = if (hasReplyAction(original)) listOf(original) else emptyList()
+
+        return (bySender + byId + originalIfReply + withReply)
+            .distinctBy { "${it.packageName}|${it.tag}|${it.id}" }
+    }
+
+    fun sendReply(
+        service: NotificationListenerService,
+        original: StatusBarNotification,
+        sender: String,
+        replyText: String,
+    ): ReplySendResult {
+        val candidates = findReplyCandidates(service, original, sender)
+        if (candidates.isEmpty()) {
+            return ReplySendResult(
+                success = false,
+                detail = "No reply-capable notification found among ${service.activeNotifications?.size ?: 0} active",
+            )
+        }
+
+        val attempts = mutableListOf<String>()
+        for ((index, candidate) in candidates.withIndex()) {
+            val actions = candidate.notification.actions
+            if (actions == null || actions.isEmpty()) {
+                attempts.add("#$index id=${candidate.id}: no actions")
+                continue
+            }
+
+            for ((actionIndex, action) in actions.withIndex()) {
+                if (action == null) continue
+                val remoteInputs = action.remoteInputs
+                if (remoteInputs == null || remoteInputs.isEmpty()) continue
+
+                val remoteInput = remoteInputs[0]
+                val pendingIntent = action.actionIntent
+                if (pendingIntent == null) {
+                    attempts.add("#$index action#$actionIndex: no PendingIntent")
+                    continue
+                }
+
+                val fillInIntent = android.content.Intent()
+                val bundle = Bundle()
+                bundle.putCharSequence(remoteInput.resultKey, replyText)
+                RemoteInput.addResultsToIntent(arrayOf(remoteInput), fillInIntent, bundle)
+
+                try {
+                    pendingIntent.send(service, 0, fillInIntent)
+                    val actionTitle = action.title?.toString() ?: "?"
+                    return ReplySendResult(
+                        success = true,
+                        detail = "Sent via candidate #$index action#$actionIndex \"$actionTitle\" key=${remoteInput.resultKey}",
+                    )
+                } catch (e: Exception) {
+                    attempts.add("#$index action#$actionIndex: ${e.javaClass.simpleName}: ${e.message}")
+                }
+            }
+            attempts.add("#$index id=${candidate.id}: ${describeActions(candidate)}")
+        }
+
+        return ReplySendResult(
+            success = false,
+            detail = "All reply attempts failed: ${attempts.joinToString(" | ")}",
+        )
+    }
+
+    fun dedupeKey(sbn: StatusBarNotification, message: String): String {
+        val sender = extractSenderTitle(sbn)
+        return "${sbn.packageName}|${sbn.tag ?: ""}|${sbn.id}|$sender|$message"
+    }
+
     private fun digitsFromPhoneLike(text: String?): String? {
         if (text.isNullOrBlank()) return null
         val match = PHONE_IN_TEXT.find(text)?.value ?: text
@@ -99,45 +232,5 @@ object WhatsAppReplyHelper {
     private fun isGroupSummary(title: String): Boolean {
         val lower = title.lowercase()
         return lower.contains("messages from") || lower.contains("new messages")
-    }
-
-    fun shouldIgnoreMessage(text: String, sender: String): Boolean {
-        if (text.isBlank()) return true
-        val lower = text.lowercase()
-        if (lower == "checking for new messages") return true
-        if (lower == "waiting for this message. this may take a while.") return true
-        if (sender.isBlank()) return true
-        if (sender.equals("WhatsApp", ignoreCase = true)) return true
-        if (text.length > 4000) return true
-        if (lower.startsWith("you:")) return true
-        return false
-    }
-
-    fun sendReply(context: Context, sbn: StatusBarNotification, replyText: String): Boolean {
-        val notification = sbn.notification
-        val actions = notification.actions ?: return false
-        for (action in actions) {
-            if (action == null) continue
-            val remoteInputs = action.remoteInputs
-            if (remoteInputs == null || remoteInputs.isEmpty()) continue
-            val remoteInput = remoteInputs[0]
-            val pendingIntent = action.actionIntent ?: continue
-            val fillInIntent = Intent()
-            val bundle = Bundle()
-            bundle.putCharSequence(remoteInput.resultKey, replyText)
-            RemoteInput.addResultsToIntent(arrayOf(remoteInput), fillInIntent, bundle)
-            try {
-                pendingIntent.send(context, 0, fillInIntent)
-                return true
-            } catch (_: Exception) {
-                continue
-            }
-        }
-        return false
-    }
-
-    fun dedupeKey(sbn: StatusBarNotification, message: String): String {
-        val sender = extractSenderTitle(sbn)
-        return "${sbn.packageName}|${sbn.tag ?: ""}|${sbn.id}|$sender|$message"
     }
 }
