@@ -657,7 +657,7 @@ export default function AdminSocialMediaPage() {
             <p className="mt-1 max-w-2xl text-sm text-ocean-600">
               Build a queue from blogs, guides, videos &amp; reels. Set how many posts per day (max{" "}
               {MAX_SOCIAL_POSTS_PER_DAY}), pick IST times for each post, choose platforms, then start
-              — one queue item posts at each time slot (cron checks every 30 minutes).
+              — one queue item posts at each time slot (daily cron processes all due slots).
             </p>
           </div>
           {schedule?.enabled ? (

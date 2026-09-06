@@ -49,7 +49,7 @@
     },
     {
       "path": "/api/cron/social-schedule",
-      "schedule": "*/30 * * * *"
+      "schedule": "29 18 * * *"
     }
   ],
   "rewrites": [

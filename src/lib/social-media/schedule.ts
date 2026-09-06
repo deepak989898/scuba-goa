@@ -409,6 +409,47 @@ export async function runSocialScheduleOnce(
   }
 }
 
+export type SocialScheduleBatchResult = {
+  ok: boolean;
+  runs: SocialScheduleRunResult[];
+  summary: string;
+};
+
+/** Process every IST slot that is due now (for once-daily Vercel cron on Hobby). */
+export async function runSocialScheduleDueBatch(): Promise<SocialScheduleBatchResult> {
+  const runs: SocialScheduleRunResult[] = [];
+  const maxRuns = MAX_SOCIAL_POSTS_PER_DAY;
+
+  for (let i = 0; i < maxRuns; i += 1) {
+    const schedule = await getSocialScheduleSettings();
+    const dueSlot = getScheduleDueSlot(schedule);
+    if (!dueSlot) break;
+
+    const result = await runSocialScheduleOnce();
+    runs.push(result);
+
+    if (!result.ok && !result.skipped) {
+      return {
+        ok: false,
+        runs,
+        summary: result.error ?? "Social schedule batch failed",
+      };
+    }
+    if (result.skipped) break;
+  }
+
+  if (!runs.length) {
+    return { ok: true, runs, summary: "Not due yet" };
+  }
+
+  const posted = runs.filter((r) => r.ok && !r.skipped && r.summary);
+  const summary = posted.length
+    ? `Processed ${posted.length} slot(s): ${posted.map((r) => r.summary).join("; ")}`
+    : runs[runs.length - 1]?.summary ?? "No posts due";
+
+  return { ok: true, runs, summary };
+}
+
 /** Admin status: today's slot progress. */
 export function getScheduleSlotStatus(schedule: SocialScheduleSettings): {
   slotsToday: string[];
