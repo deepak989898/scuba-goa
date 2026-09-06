@@ -30,33 +30,35 @@ export async function generateWhatsAppAgentReply(opts: {
     ? opts.settings.businessIntro.trim()
     : "You work at Book Scuba Goa — a real travel desk in Baga, North Goa (scuba, water sports, packages).";
 
-  const fallback = `Hi! 👋 Thanks for messaging Book Scuba Goa.\n\nWe help with scuba diving & water sports in Goa with clear prices and instant confirmation.\n\n📅 Share your date + number of people and I'll suggest the best package.\n\nBook online: ${bookingUrl}\nOr tell me what you're looking for!`;
+  const fallback = `Hi! 👋 Book Scuba Goa here — scuba & water sports in Baga. What date and how many people?`;
 
   if (!key) return fallback;
 
   const model = process.env.AI_ANALYTICS_OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
-  const system = `You are a friendly human sales executive at Book Scuba Goa replying on WhatsApp.
+  const system = `You are Priya from Book Scuba Goa — a real person replying on WhatsApp (Baga, North Goa).
 
 ${intro}
 
-CRITICAL RULES:
-- NEVER say you are AI, bot, chatbot, or automated. You are a real team member (use name like Priya or Rahul if needed).
-- Write like WhatsApp: warm, short paragraphs, light emoji (1-2 max), Indian tourist tone.
-- Reply in ${lang} — match how the customer writes (English, Hindi, or Hinglish).
-- Use ONLY prices and packages from CATALOG below. Never invent ₹ amounts.
-- Answer questions about scuba safety, location (Baga/Goa), timing, what's included, pickup, photos/videos.
-- For booking: collect date → number of people → activity/package interest → send booking link.
-- If the customer asks 2-3 questions in ONE message, answer ALL of them in ONE single WhatsApp reply (do not split into multiple messages).
-- One clear follow-up question at the end when collecting booking info.
-- Booking is confirmed only after Razorpay payment on website.
-- Max 500 characters unless listing 2-3 package options with prices.
-- If customer asks for human/call: give office support and say team will call back.
+STYLE (most important):
+- Sound like a busy but friendly human on WhatsApp — NOT a brochure or email.
+- Keep replies SHORT: usually 1-3 short lines, under 200 characters. Hard max 280 characters.
+- Use 0-1 emoji only. No markdown, no **bold**, no numbered lists unless customer asked for prices/options.
+- One short answer + one short question is perfect. Example: "Hi! 😊 Scuba from ₹1200 in Baga. Which date works for you?"
+- If they ask 2-3 things in one message, answer briefly in the same message — still keep it under 280 chars.
 
-BOOKING PROGRESS (internal — guide the conversation):
+RULES:
+- NEVER say AI/bot/automated.
+- Reply in ${lang} — match customer (English, Hindi, or Hinglish).
+- Use ONLY catalog prices. Never invent ₹ amounts.
+- Booking flow: date → people → activity → send link when ready.
+- Booking confirms only after Razorpay on website.
+- If they want a human/call: say team will call back shortly.
+
+BOOKING PROGRESS:
 ${bookingCtx}
 
-When step is ready_to_book OR you have date + people + activity, include this exact link on its own line:
+When ready to book, add link on its own line:
 ${bookingUrl}
 
 ${catalog.textBlock}`;
@@ -85,21 +87,48 @@ ${catalog.textBlock}`;
       body: JSON.stringify({
         model,
         messages,
-        temperature: 0.65,
-        max_tokens: 550,
+        temperature: 0.55,
+        max_tokens: 180,
       }),
     });
     const data = await res.json();
     if (!res.ok) return fallback;
     const text = data?.choices?.[0]?.message?.content?.trim();
     if (!text) return fallback;
-    return text.slice(0, 4000);
+    return compactWhatsAppReply(text);
   } catch {
     return fallback;
   }
 }
 
+const WHATSAPP_REPLY_MAX = 320;
+
+/** Trim AI output to short WhatsApp-style messages. */
+function compactWhatsAppReply(text: string): string {
+  let out = text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/^\s*[-•]\s+/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (out.length <= WHATSAPP_REPLY_MAX) return out;
+
+  // Keep booking link if present
+  const urlMatch = out.match(/(https?:\/\/[^\s]+)/);
+  const url = urlMatch?.[1];
+  const withoutUrl = url ? out.replace(url, "").trim() : out;
+  const budget = WHATSAPP_REPLY_MAX - (url ? url.length + 2 : 0);
+
+  let short = withoutUrl.slice(0, Math.max(80, budget)).trim();
+  const lastSpace = short.lastIndexOf(" ");
+  if (lastSpace > 60) short = short.slice(0, lastSpace).trim();
+  if (!short.endsWith(".") && !short.endsWith("?") && !short.endsWith("!")) {
+    short += "…";
+  }
+  return url ? `${short}\n${url}` : short;
+}
+
 export function handoffReplyMessage(): string {
   const site = SITE_URL.replace(/\/$/, "");
-  return `Sure! 🙏 I'll ask our team to help you personally.\n\nYou can also call us or continue on:\n${site}/booking\n\nSomeone from Book Scuba Goa will reply shortly.`;
+  return `Sure 🙏 Our team will call you shortly. You can also book here: ${site}/booking`;
 }
