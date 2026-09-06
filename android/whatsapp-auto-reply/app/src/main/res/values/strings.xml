@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Book Scuba WhatsApp Assistant</string>
+    <string name="notification_listener_label">Book Scuba Goa WhatsApp Auto-Reply</string>
+    <string name="status_running">Auto-reply is ON — keep this phone online with WhatsApp.</string>
+    <string name="status_stopped">Auto-reply is OFF</string>
+    <string name="enable_notification_access">Enable notification access</string>
+    <string name="battery_optimization">Disable battery optimization (recommended)</string>
+    <string name="save_settings">Save settings</string>
+    <string name="test_connection">Test website connection</string>
+    <string name="website_url_hint">Website URL</string>
+    <string name="api_secret_hint">Mobile API secret</string>
+    <string name="fg_channel_name">WhatsApp Assistant</string>
+    <string name="fg_channel_desc">Keeps auto-reply active in background</string>
+    <string name="fg_title">Book Scuba WhatsApp Assistant active</string>
+    <string name="fg_text">Listening for WhatsApp messages…</string>
+</resources>

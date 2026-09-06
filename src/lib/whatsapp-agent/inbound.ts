@@ -1,36 +1,18 @@
-import {
-  appendConversationMessage,
-  loadConversation,
-} from "@/lib/recovery-agent/conversations";
-import { upsertRecoveryLead } from "@/lib/recovery-agent/lead-tracker";
 import { countOutboundWhatsAppLastHour, sendRecoveryWhatsApp } from "@/lib/recovery-agent/whatsapp";
 import {
-  isHandoffActive,
-  loadWhatsAppBookingSession,
-  saveWhatsAppBookingSession,
-  updateBookingSessionFromMessage,
-} from "@/lib/whatsapp-agent/booking-session";
-import {
-  generateWhatsAppAgentReply,
-  handoffReplyMessage,
-} from "@/lib/whatsapp-agent/openai-reply";
+  processWhatsAppInboundMessage,
+  normalizeWhatsAppPhone,
+} from "@/lib/whatsapp-agent/process-message";
 import {
   getWhatsAppAgentSettings,
   isWhatsAppCloudConfigured,
 } from "@/lib/whatsapp-agent/settings";
 
 function normalizePhone(from: string): string {
-  const d = from.replace(/\D/g, "");
-  if (d.length < 10) return "";
-  return d.length > 12 ? d.slice(-12) : d;
+  return normalizeWhatsAppPhone(from);
 }
 
-function sessionIdForPhone(phone: string): string {
-  return `wa_${phone}`;
-}
-
-type InboundMessage = {
-  from: string;
+type InboundMessage = {  from: string;
   text: string;
   messageId?: string;
   profileName?: string;
@@ -97,72 +79,27 @@ async function handleInboundWhatsAppMessage(
   settings: Awaited<ReturnType<typeof getWhatsAppAgentSettings>>,
 ): Promise<void> {
   const phone = msg.from;
-  const sessionId = sessionIdForPhone(phone);
 
   const outboundLastHour = await countOutboundWhatsAppLastHour(phone);
   if (outboundLastHour >= settings.maxRepliesPerUserPerHour) {
     return;
   }
 
-  let bookingSession = await loadWhatsAppBookingSession(phone);
-  bookingSession = updateBookingSessionFromMessage(
-    bookingSession,
-    msg.text,
-    msg.profileName,
-    settings.handoffCooldownHours,
-  );
-  await saveWhatsAppBookingSession(bookingSession);
-
-  void upsertRecoveryLead({
-    sessionId,
+  const result = await processWhatsAppInboundMessage({
     phone,
-    name: bookingSession.customerName || msg.profileName,
-    event: "session_visit",
-    path: "/whatsapp-inbound",
-  }).catch(() => {});
-
-  let reply: string;
-
-  if (isHandoffActive(bookingSession)) {
-    reply = handoffReplyMessage();
-  } else {
-    const prev = await loadConversation(sessionId);
-    const history =
-      prev?.messages.map((m) => ({ role: m.role, text: m.text })) ?? [];
-
-    reply = await generateWhatsAppAgentReply({
-      message: msg.text,
-      phone,
-      history,
-      bookingSession,
-      settings,
-      customerName: bookingSession.customerName || msg.profileName,
-    });
-  }
-
-  if (!reply.trim()) return;
-
-  await appendConversationMessage({
-    sessionId,
-    language: "auto",
-    role: "user",
     text: msg.text,
-    leadId: `phone_${phone}`,
+    profileName: msg.profileName,
+    source: "cloud_api",
   });
-  await appendConversationMessage({
-    sessionId,
-    language: "auto",
-    role: "assistant",
-    text: reply,
-    leadId: `phone_${phone}`,
-  });
+
+  if (!result.ok || result.skipped || !result.reply?.trim()) return;
 
   const humanDelayMs = 800 + Math.min(1200, msg.text.length * 20);
   await new Promise((r) => setTimeout(r, humanDelayMs));
 
   await sendRecoveryWhatsApp({
     phone,
-    message: reply,
+    message: result.reply,
     leadId: `phone_${phone}`,
   });
 }

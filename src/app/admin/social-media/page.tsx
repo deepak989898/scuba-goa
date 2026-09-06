@@ -1090,7 +1090,9 @@ export default function AdminSocialMediaPage() {
             <a href="/admin/recovery-agent" className="text-cyan-700 underline">
               Recovery agent
             </a>
-            .
+            . For the business phone (without Meta webhook), use the Android app in{" "}
+            <code className="text-xs">android/whatsapp-auto-reply</code> — separate from Cloud API
+            settings above.
           </p>
         </AdminCollapseSection>
       </div>
