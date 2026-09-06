@@ -7,6 +7,10 @@
     <string name="enable_notification_access">Enable notification access</string>
     <string name="battery_optimization">Disable battery optimization (recommended)</string>
     <string name="save_settings">Save settings</string>
+    <string name="whatsapp_target_hint">Auto-reply on which app?</string>
+    <string name="whatsapp_target_both">Both WhatsApp apps</string>
+    <string name="whatsapp_target_normal">WhatsApp only</string>
+    <string name="whatsapp_target_business">WhatsApp Business only</string>
     <string name="test_connection">Test website connection</string>
     <string name="test_ai_reply">Test AI reply (Hi)</string>
     <string name="copy_log">Copy log</string>

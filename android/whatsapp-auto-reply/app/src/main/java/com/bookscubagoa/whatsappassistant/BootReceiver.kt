@@ -8,7 +8,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
         if (Prefs.isAutoReplyEnabled(context)) {
-            AssistantForegroundService.start(context)
+            DebugLog.d(context, "BOOT", "Auto-reply ON — notification listener reconnects after reboot")
         }
     }
 }

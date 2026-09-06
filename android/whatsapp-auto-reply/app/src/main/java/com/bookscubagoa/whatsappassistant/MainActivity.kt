@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -41,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         binding.urlInput.setText(Prefs.baseUrl(this))
         binding.secretInput.setText(Prefs.apiSecret(this))
         binding.autoReplySwitch.isChecked = Prefs.isAutoReplyEnabled(this)
+        setupWhatsAppTargetDropdown()
 
         binding.saveButton.setOnClickListener { saveSettings() }
         binding.testButton.setOnClickListener { testConnection() }
@@ -77,22 +79,22 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        Prefs.save(this, url, secret, enabled)
-        if (enabled) {
-            AssistantForegroundService.start(this)
-            if (!isNotificationListenerEnabled()) {
-                Toast.makeText(
-                    this,
-                    "Enable notification access for WhatsApp auto-reply",
-                    Toast.LENGTH_LONG,
-                ).show()
-                openNotificationAccess()
-            }
-        } else {
-            AssistantForegroundService.stop(this)
+        Prefs.save(this, url, secret, enabled, readWhatsAppTargetSelection())
+
+        if (enabled && !isNotificationListenerEnabled()) {
+            Toast.makeText(
+                this,
+                "Enable notification access for WhatsApp auto-reply",
+                Toast.LENGTH_LONG,
+            ).show()
+            openNotificationAccess()
         }
 
-        DebugLog.d(this, "APP", "Settings saved — auto-reply ${if (enabled) "ON" else "OFF"}")
+        DebugLog.d(
+            this,
+            "APP",
+            "Settings saved — auto-reply ${if (enabled) "ON" else "OFF"}, target=${readWhatsAppTargetSelection().displayLabel()}",
+        )
         refreshLogs()
         refreshStatus()
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
@@ -176,11 +178,37 @@ class MainActivity : AppCompatActivity() {
         return flat.contains(cn.flattenToString())
     }
 
+    private fun setupWhatsAppTargetDropdown() {
+        val options = listOf(
+            WhatsAppAppTarget.BOTH,
+            WhatsAppAppTarget.NORMAL,
+            WhatsAppAppTarget.BUSINESS,
+        )
+        val labels = options.map { it.displayLabel() }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, labels)
+        binding.whatsappTargetInput.setAdapter(adapter)
+        binding.whatsappTargetInput.setText(Prefs.whatsAppTarget(this).displayLabel(), false)
+        binding.whatsappTargetInput.setOnItemClickListener { _, _, position, _ ->
+            binding.whatsappTargetInput.setText(labels[position], false)
+        }
+    }
+
+    private fun readWhatsAppTargetSelection(): WhatsAppAppTarget {
+        val label = binding.whatsappTargetInput.text?.toString()?.trim() ?: ""
+        return when (label) {
+            WhatsAppAppTarget.NORMAL.displayLabel() -> WhatsAppAppTarget.NORMAL
+            WhatsAppAppTarget.BUSINESS.displayLabel() -> WhatsAppAppTarget.BUSINESS
+            else -> WhatsAppAppTarget.BOTH
+        }
+    }
+
     private fun refreshStatus() {
         val enabled = Prefs.isAutoReplyEnabled(this)
         val listener = isNotificationListenerEnabled()
+        val target = Prefs.whatsAppTarget(this)
         val lines = buildList {
             add(if (enabled) getString(R.string.status_running) else getString(R.string.status_stopped))
+            add("Listening: ${target.displayLabel()}")
             add("Notification access: ${if (listener) "ON" else "OFF — tap button above"}")
             add("Website: ${Prefs.baseUrl(this@MainActivity)}")
             if (enabled && listener) {

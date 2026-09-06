@@ -72,6 +72,25 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/secretLayout" />
 
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/whatsappTargetLayout"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/whatsapp_target_hint"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/autoReplySwitch">
+
+        <AutoCompleteTextView
+            android:id="@+id/whatsappTargetInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="none"
+            android:importantForAutofill="no" />
+    </com.google.android.material.textfield.TextInputLayout>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/saveButton"
         android:layout_width="0dp"
@@ -80,7 +99,7 @@
         android:text="@string/save_settings"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/autoReplySwitch" />
+        app:layout_constraintTop_toBottomOf="@id/whatsappTargetLayout" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/testButton"

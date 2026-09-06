@@ -8,8 +8,12 @@ object Prefs {
     private const val KEY_BASE_URL = "base_url"
     private const val KEY_SECRET = "api_secret"
     private const val KEY_ENABLED = "auto_reply_enabled"
+    private const val KEY_WHATSAPP_TARGET = "whatsapp_target"
 
     private const val DEFAULT_URL = "https://www.bookscubagoa.com"
+
+    const val PKG_WHATSAPP = "com.whatsapp"
+    const val PKG_WHATSAPP_BUSINESS = "com.whatsapp.w4b"
 
     fun baseUrl(context: Context): String {
         val raw = prefs(context).getString(KEY_BASE_URL, DEFAULT_URL)?.trim() ?: DEFAULT_URL
@@ -19,14 +23,26 @@ object Prefs {
     fun apiSecret(context: Context): String =
         prefs(context).getString(KEY_SECRET, "")?.trim() ?: ""
 
+    fun whatsAppTarget(context: Context): WhatsAppAppTarget =
+        WhatsAppAppTarget.fromPref(
+            prefs(context).getString(KEY_WHATSAPP_TARGET, WhatsAppAppTarget.BOTH.prefValue),
+        )
+
     fun isAutoReplyEnabled(context: Context): Boolean =
         prefs(context).getBoolean(KEY_ENABLED, false) && apiSecret(context).isNotEmpty()
 
-    fun save(context: Context, baseUrl: String, secret: String, enabled: Boolean) {
+    fun save(
+        context: Context,
+        baseUrl: String,
+        secret: String,
+        enabled: Boolean,
+        target: WhatsAppAppTarget = whatsAppTarget(context),
+    ) {
         prefs(context).edit()
             .putString(KEY_BASE_URL, baseUrl.trim().removeSuffix("/"))
             .putString(KEY_SECRET, secret.trim())
             .putBoolean(KEY_ENABLED, enabled)
+            .putString(KEY_WHATSAPP_TARGET, target.prefValue)
             .apply()
     }
 

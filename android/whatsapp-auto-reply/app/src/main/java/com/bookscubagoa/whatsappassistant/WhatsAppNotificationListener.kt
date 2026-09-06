@@ -25,7 +25,13 @@ class WhatsAppNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
 
-        if (!WhatsAppReplyHelper.isWhatsAppPackage(sbn.packageName)) return
+        if (!WhatsAppReplyHelper.isWhatsAppPackage(sbn.packageName, this)) {
+            val skip = WhatsAppReplyHelper.targetSkipReason(sbn.packageName, this)
+            if (skip != null) {
+                DebugLog.d(this, "SKIP", skip)
+            }
+            return
+        }
 
         DebugLog.d(this, "NOTIF", "Posted: ${WhatsAppReplyHelper.dumpNotification(sbn)}")
 
@@ -67,7 +73,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        if (sbn == null || !WhatsAppReplyHelper.isWhatsAppPackage(sbn.packageName)) return
+        if (sbn == null || !WhatsAppReplyHelper.isWhatsAppPackage(sbn.packageName, this)) return
         DebugLog.d(
             this,
             "NOTIF",

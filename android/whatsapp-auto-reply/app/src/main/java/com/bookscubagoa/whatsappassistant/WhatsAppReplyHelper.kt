@@ -3,19 +3,32 @@ package com.bookscubagoa.whatsappassistant
 import android.app.Notification
 import android.app.Person
 import android.app.RemoteInput
+import android.content.Context
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
 object WhatsAppReplyHelper {
-    private val WHATSAPP_PACKAGES = setOf(
-        "com.whatsapp",
-        "com.whatsapp.w4b",
-    )
-
     private val PHONE_IN_TEXT = Regex("""\+?\d[\d\s\-()]{8,}\d""")
 
-    fun isWhatsAppPackage(pkg: String?): Boolean = pkg != null && WHATSAPP_PACKAGES.contains(pkg)
+    fun isWhatsAppPackage(pkg: String?, context: Context): Boolean {
+        if (pkg.isNullOrBlank()) return false
+        return when (Prefs.whatsAppTarget(context)) {
+            WhatsAppAppTarget.BOTH ->
+                pkg == Prefs.PKG_WHATSAPP || pkg == Prefs.PKG_WHATSAPP_BUSINESS
+            WhatsAppAppTarget.NORMAL -> pkg == Prefs.PKG_WHATSAPP
+            WhatsAppAppTarget.BUSINESS -> pkg == Prefs.PKG_WHATSAPP_BUSINESS
+        }
+    }
+
+    fun targetSkipReason(pkg: String?, context: Context): String? {
+        if (pkg.isNullOrBlank()) return null
+        if (isWhatsAppPackage(pkg, context)) return null
+        if (pkg != Prefs.PKG_WHATSAPP && pkg != Prefs.PKG_WHATSAPP_BUSINESS) return null
+        val selected = Prefs.whatsAppTarget(context).displayLabel()
+        val appName = if (pkg == Prefs.PKG_WHATSAPP_BUSINESS) "WhatsApp Business" else "WhatsApp"
+        return "ignored $appName — listening to: $selected"
+    }
 
     fun extractSenderTitle(sbn: StatusBarNotification): String {
         val extras = sbn.notification.extras ?: return ""
@@ -141,7 +154,7 @@ object WhatsAppReplyHelper {
         customerSender: String,
     ): List<StatusBarNotification> {
         val active = service.activeNotifications?.toList() ?: emptyList()
-        val whatsapp = active.filter { isWhatsAppPackage(it.packageName) }
+        val whatsapp = active.filter { isWhatsAppPackage(it.packageName, service) }
         val withReply = whatsapp.filter { hasReplyAction(it) }
         val convTag = original.tag
 
