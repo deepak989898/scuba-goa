@@ -17,6 +17,10 @@ type Props = {
   guideGscBySlug: Record<string, BlogGscRow>;
   onRefreshTraffic?: () => void;
   trafficRefreshing?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  listLoading?: boolean;
+  listLoaded?: boolean;
 };
 
 function gscForSlug(
@@ -76,6 +80,10 @@ export function GuidesScheduleTable({
   guideGscBySlug,
   onRefreshTraffic,
   trafficRefreshing,
+  defaultOpen = false,
+  onOpenChange,
+  listLoading = false,
+  listLoaded = true,
 }: Props) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -166,15 +174,34 @@ export function GuidesScheduleTable({
   return (
     <AdminCollapseSection
       title="SEO guides (/guides)"
-      hint={`${liveCount} live · ${pages.length} total · same Views / Imp / Clk / Pos / Idx as blogs · in sitemap`}
-      defaultOpen={pages.length > 0}
+      hint={
+        listLoaded
+          ? `${liveCount} live · ${pages.length} total · same Views / Imp / Clk / Pos / Idx as blogs · in sitemap`
+          : "Collapsed — expand to load guides (saves Firestore reads until you need them)"
+      }
+      defaultOpen={defaultOpen}
+      onOpenChange={onOpenChange}
       className="border-teal-200 open:border-teal-300 open:ring-teal-100"
       badge={
-        <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-teal-900">
-          {pages.length}
-        </span>
+        listLoaded ? (
+          <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-teal-900">
+            {pages.length}
+          </span>
+        ) : (
+          <span className="rounded-full bg-ocean-100 px-2 py-0.5 text-[10px] font-medium text-ocean-600">
+            Load on expand
+          </span>
+        )
       }
     >
+      {listLoading ? (
+        <p className="text-sm text-ocean-600">Loading guides…</p>
+      ) : !listLoaded ? (
+        <p className="text-sm text-ocean-500">
+          Expand this section to load all guide pages from Firestore.
+        </p>
+      ) : (
+      <>
       <p className="text-xs text-ocean-700">
         Guide landing pages live at <code className="rounded bg-ocean-50 px-1">/guides/…</code>.
         They are in <strong>/sitemap.xml</strong> and <strong>/sitemaps/guides.xml</strong>.
@@ -315,6 +342,8 @@ export function GuidesScheduleTable({
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
     </AdminCollapseSection>
   );

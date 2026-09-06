@@ -10,6 +10,8 @@ type Props = {
   hint?: string;
   badge?: ReactNode;
   defaultOpen?: boolean;
+  /** Controlled open state (optional). When set, `defaultOpen` is ignored after mount. */
+  open?: boolean;
   className?: string;
   /** Fires when the section is expanded or collapsed. */
   onOpenChange?: (open: boolean) => void;
@@ -53,11 +55,14 @@ export function AdminCollapseSection({
   hint,
   badge,
   defaultOpen = false,
+  open: controlledOpen,
   className = "",
   onOpenChange,
   children,
 }: Props) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
 
   return (
     <details
@@ -65,7 +70,7 @@ export function AdminCollapseSection({
       open={open}
       onToggle={(e) => {
         const next = e.currentTarget.open;
-        setOpen(next);
+        if (!isControlled) setInternalOpen(next);
         onOpenChange?.(next);
       }}
     >

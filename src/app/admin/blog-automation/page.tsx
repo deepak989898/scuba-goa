@@ -9,6 +9,7 @@ import { GuidesScheduleTable } from "@/app/admin/blog-automation/GuidesScheduleT
 import { ContentOverviewBar } from "@/app/admin/blog-automation/ContentOverviewBar";
 import { utcIsoToIstDatetimeLocalValue } from "@/lib/blog-automation/schedule-ist";
 import { AdminContentSeoNav } from "@/components/admin/AdminContentSeoNav";
+import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import type { ContentOverview } from "@/lib/admin-content-overview";
 import { getContentTrafficForSlug } from "@/lib/analytics-content-traffic";
 import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
@@ -61,9 +62,9 @@ export default function AdminBlogAutomationPage() {
     views: 0,
     visitors: 0,
   });
-  const [guideTrafficLoading, setGuideTrafficLoading] = useState(true);
+  const [guideTrafficLoading, setGuideTrafficLoading] = useState(false);
   const [guideTrafficRefreshing, setGuideTrafficRefreshing] = useState(false);
-  const [trafficLoading, setTrafficLoading] = useState(true);
+  const [trafficLoading, setTrafficLoading] = useState(false);
   const [trafficRefreshing, setTrafficRefreshing] = useState(false);
   const [editing, setEditing] = useState<BlogPostFirestore | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,6 +77,12 @@ export default function AdminBlogAutomationPage() {
   /** Avoid refresh↔posts dependency loop (continuous re-fetch). */
   const postsRef = useRef<BlogPostFirestore[]>([]);
   postsRef.current = posts;
+  const blogsLoadedRef = useRef(false);
+  const guidesLoadedRef = useRef(false);
+  const [blogsLoaded, setBlogsLoaded] = useState(false);
+  const [guidesLoaded, setGuidesLoaded] = useState(false);
+  const [blogsLoading, setBlogsLoading] = useState(false);
+  const [guidesLoading, setGuidesLoading] = useState(false);
   /** Estimated % while OpenAI image generation runs (API has no real progress stream). */
   const [aiImageProgress, setAiImageProgress] = useState<number | null>(null);
 
@@ -159,6 +166,47 @@ export default function AdminBlogAutomationPage() {
     }
   }, []);
 
+  const loadBlogs = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setBlogsLoading(true);
+      try {
+        const p = await adminFetch("/api/admin/blog-posts");
+        const loadedPosts = (p.posts ?? []) as BlogPostFirestore[];
+        setPosts(loadedPosts);
+        blogsLoadedRef.current = true;
+        setBlogsLoaded(true);
+        setEditing((current) => {
+          if (!current) return current;
+          const match = loadedPosts.find((post) => post.slug === current.slug);
+          return match ?? current;
+        });
+        await loadBlogTraffic({ silent: true, posts: loadedPosts });
+        return loadedPosts;
+      } finally {
+        setBlogsLoading(false);
+      }
+    },
+    [loadBlogTraffic],
+  );
+
+  const loadGuides = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setGuidesLoading(true);
+      try {
+        const guidesRes = await adminFetch("/api/admin/seo-pages").catch(() => ({
+          pages: [],
+        }));
+        setGuidePages((guidesRes.pages ?? []) as SeoPageFirestore[]);
+        guidesLoadedRef.current = true;
+        setGuidesLoaded(true);
+        await loadGuideTraffic({ silent: true });
+      } finally {
+        setGuidesLoading(false);
+      }
+    },
+    [loadGuideTraffic],
+  );
+
   async function refreshTrafficOnly() {
     setTrafficRefreshing(true);
     try {
@@ -192,27 +240,16 @@ export default function AdminBlogAutomationPage() {
     if (!silent) setLoading(true);
     if (!silent) setErr(null);
     try {
-      const [s, p, guidesRes] = await Promise.all([
-        adminFetch("/api/admin/blog-automation"),
-        adminFetch("/api/admin/blog-posts"),
-        adminFetch("/api/admin/seo-pages").catch(() => ({ pages: [] })),
-      ]);
+      const s = await adminFetch("/api/admin/blog-automation");
       setSettings(s.settings);
-      const loadedPosts = (p.posts ?? []) as BlogPostFirestore[];
-      setPosts(loadedPosts);
-      setGuidePages((guidesRes.pages ?? []) as SeoPageFirestore[]);
-      // Keep the open editor on the same post with fresh server fields
-      setEditing((current) => {
-        if (!current) return current;
-        const match = loadedPosts.find((post) => post.slug === current.slug);
-        return match ?? current;
-      });
-      // Traffic every time (cheap). Overview only on full page load — not on
-      // every silent save/image refresh (seoUrls read was ~800–2000/load).
-      await Promise.all([
-        loadBlogTraffic({ silent: true, posts: loadedPosts }),
-        loadGuideTraffic({ silent: true }),
-      ]);
+
+      if (blogsLoadedRef.current) {
+        await loadBlogs({ silent: true });
+      }
+      if (guidesLoadedRef.current) {
+        await loadGuides({ silent: true });
+      }
+
       if (!silent) {
         await loadOverview();
       }
@@ -221,7 +258,12 @@ export default function AdminBlogAutomationPage() {
         const params = new URLSearchParams(window.location.search);
         const editSlug = params.get("edit")?.trim();
         if (editSlug) {
-          const match = loadedPosts.find((post) => post.slug === editSlug);
+          const loadedPosts = blogsLoadedRef.current
+            ? postsRef.current
+            : await loadBlogs();
+          const match = (loadedPosts ?? postsRef.current).find(
+            (post) => post.slug === editSlug,
+          );
           if (match) {
             setEditing(match);
             setOkMsg(`Editing /blog/${editSlug}`);
@@ -242,11 +284,23 @@ export default function AdminBlogAutomationPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [loadBlogTraffic, loadGuideTraffic, loadOverview]);
+  }, [loadBlogs, loadGuides, loadOverview]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  function handleBlogsSectionOpen(open: boolean) {
+    if (open && !blogsLoadedRef.current && !blogsLoading) {
+      void loadBlogs();
+    }
+  }
+
+  function handleGuidesSectionOpen(open: boolean) {
+    if (open && !guidesLoadedRef.current && !guidesLoading) {
+      void loadGuides();
+    }
+  }
 
   const sortedPosts = useMemo(() => {
     return [...posts].sort((a, b) => {
@@ -754,39 +808,68 @@ export default function AdminBlogAutomationPage() {
             />
           </div>
 
-          <div data-blog-editor-panel>
-          <BlogPostsTable
-            posts={posts}
-            sortedPosts={displayPosts}
-            publishSlots={publishSlotOptions}
-            blogTrafficBySlug={blogTrafficBySlug}
-            blogIndexTraffic={blogIndexTraffic}
-            trafficLoading={trafficLoading}
-            editing={editing}
-            busy={busy}
-            blogGscBySlug={overview?.blogGscBySlug ?? {}}
-            services={serviceOptions}
-            serviceFilter={serviceFilter}
-            onServiceFilterChange={setServiceFilter}
-            onEdit={beginEdit}
-            onCancelEdit={cancelEdit}
-            onChangeEditing={setEditing}
-            onSave={(opts) => void saveEditedPost(opts)}
-            onPublishNow={(slug) => void publishPostNow(slug)}
-            onUnpublish={(slug) => void unpublishPost(slug)}
-            onDelete={(slug) => void deletePost(slug)}
-            onBulkAction={bulkBlogAction}
-            onUploadImage={(file) => void uploadBlogImage(file)}
-            onGenerateAiImage={() => void generateBlogImageWithAi()}
-            aiImageProgress={aiImageProgress}
-            onRefreshTraffic={() => void refreshTrafficOnly()}
-            trafficRefreshing={trafficRefreshing}
-            onGenerateSeoImprove={(slug) => generateBlogSeoImprove(slug)}
-            onBulkGenerateSeoImprove={(slugs) =>
-              bulkGenerateBlogSeoImprove(slugs)
+          <AdminCollapseSection
+            title="Blog posts"
+            hint={
+              blogsLoaded
+                ? `${posts.length} total — search, edit, schedule & publish`
+                : "Collapsed — expand to load all blogs (~1 read per post)"
             }
-          />
-          </div>
+            defaultOpen={false}
+            onOpenChange={handleBlogsSectionOpen}
+            badge={
+              blogsLoaded ? (
+                <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-cyan-900">
+                  {posts.length}
+                </span>
+              ) : (
+                <span className="rounded-full bg-ocean-100 px-2 py-0.5 text-[10px] font-medium text-ocean-600">
+                  Load on expand
+                </span>
+              )
+            }
+          >
+            {blogsLoading ? (
+              <p className="text-sm text-ocean-600">Loading blog posts…</p>
+            ) : !blogsLoaded ? (
+              <p className="text-sm text-ocean-500">
+                Expand this section when you need to browse or edit blogs. Keeping it
+                collapsed avoids loading ~1,200 Firestore documents on every visit.
+              </p>
+            ) : (
+              <BlogPostsTable
+                posts={posts}
+                sortedPosts={displayPosts}
+                publishSlots={publishSlotOptions}
+                blogTrafficBySlug={blogTrafficBySlug}
+                blogIndexTraffic={blogIndexTraffic}
+                trafficLoading={trafficLoading}
+                editing={editing}
+                busy={busy}
+                blogGscBySlug={overview?.blogGscBySlug ?? {}}
+                services={serviceOptions}
+                serviceFilter={serviceFilter}
+                onServiceFilterChange={setServiceFilter}
+                onEdit={beginEdit}
+                onCancelEdit={cancelEdit}
+                onChangeEditing={setEditing}
+                onSave={(opts) => void saveEditedPost(opts)}
+                onPublishNow={(slug) => void publishPostNow(slug)}
+                onUnpublish={(slug) => void unpublishPost(slug)}
+                onDelete={(slug) => void deletePost(slug)}
+                onBulkAction={bulkBlogAction}
+                onUploadImage={(file) => void uploadBlogImage(file)}
+                onGenerateAiImage={() => void generateBlogImageWithAi()}
+                aiImageProgress={aiImageProgress}
+                onRefreshTraffic={() => void refreshTrafficOnly()}
+                trafficRefreshing={trafficRefreshing}
+                onGenerateSeoImprove={(slug) => generateBlogSeoImprove(slug)}
+                onBulkGenerateSeoImprove={(slugs) =>
+                  bulkGenerateBlogSeoImprove(slugs)
+                }
+              />
+            )}
+          </AdminCollapseSection>
 
           <GuidesScheduleTable
             pages={guidePages}
@@ -796,6 +879,9 @@ export default function AdminBlogAutomationPage() {
             guideGscBySlug={overview?.guideGscBySlug ?? {}}
             onRefreshTraffic={() => void refreshGuideTrafficOnly()}
             trafficRefreshing={guideTrafficRefreshing}
+            listLoading={guidesLoading}
+            listLoaded={guidesLoaded}
+            onOpenChange={handleGuidesSectionOpen}
           />
         </>
       )}

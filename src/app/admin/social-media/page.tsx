@@ -146,11 +146,110 @@ async function adminFetch(path: string, init?: RequestInit) {
   return data;
 }
 
+type PickerItem = { id: string; title: string };
+
+function CollapsibleContentPicker({
+  kind,
+  items,
+  loaded,
+  loading,
+  selectedId,
+  onSelect,
+  onExpand,
+}: {
+  kind: "blog" | "guide";
+  items: PickerItem[];
+  loaded: boolean;
+  loading: boolean;
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onExpand: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items.slice(0, 50);
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return items
+      .filter((item) => {
+        const hay = `${item.title} ${item.id}`.toLowerCase();
+        return tokens.every((t) => hay.includes(t));
+      })
+      .slice(0, 50);
+  }, [items, query]);
+
+  const selected = items.find((item) => item.id === selectedId);
+
+  return (
+    <AdminCollapseSection
+      title={kind === "blog" ? "Choose blog" : "Choose guide"}
+      hint={
+        selected
+          ? `Selected: ${selected.title}`
+          : loaded
+            ? `${items.length} items — search and click to pick`
+            : "Expand to load list (saves Firestore reads)"
+      }
+      defaultOpen={false}
+      onOpenChange={(open) => {
+        if (open) onExpand();
+      }}
+      className="min-w-[280px] flex-1"
+    >
+      {loading ? (
+        <p className="text-sm text-ocean-600">Loading {kind}s…</p>
+      ) : !loaded ? (
+        <p className="text-sm text-ocean-500">
+          Expand to load published {kind}s from Firestore.
+        </p>
+      ) : (
+        <>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${kind}s by title or slug…`}
+            className="w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+          />
+          <ul className="mt-2 max-h-52 space-y-1 overflow-y-auto rounded-lg border border-ocean-100 bg-ocean-50/40 p-1">
+            {filtered.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(item.id)}
+                  className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
+                    selectedId === item.id
+                      ? "bg-cyan-100 font-semibold text-cyan-950"
+                      : "text-ocean-900 hover:bg-white"
+                  }`}
+                >
+                  {item.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {items.length > 50 && !query.trim() ? (
+            <p className="mt-2 text-xs text-ocean-500">
+              Showing first 50 — type in search to find more.
+            </p>
+          ) : null}
+        </>
+      )}
+    </AdminCollapseSection>
+  );
+}
+
 export default function AdminSocialMediaPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [blogs, setBlogs] = useState<BlogPostFirestore[]>([]);
   const [guides, setGuides] = useState<SeoPageFirestore[]>([]);
+  const [blogsLoaded, setBlogsLoaded] = useState(false);
+  const [guidesLoaded, setGuidesLoaded] = useState(false);
+  const [blogsLoading, setBlogsLoading] = useState(false);
+  const [guidesLoading, setGuidesLoading] = useState(false);
+  const [galleryLoaded, setGalleryLoaded] = useState(false);
+  const [galleryLoading, setGalleryLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok?: string; err?: string }>({});
   const [metaPages, setMetaPages] = useState<MetaPageOption[]>([]);
@@ -211,27 +310,66 @@ export default function AdminSocialMediaPage() {
     return data;
   }, []);
 
-  const loadContent = useCallback(async () => {
-    const [blogData, guideData, galleryData] = await Promise.all([
-      adminFetch("/api/admin/blog-posts").catch(() => ({ posts: [] })),
-      adminFetch("/api/admin/seo-pages").catch(() => ({ pages: [] })),
-      adminFetch("/api/admin/social-media/gallery-media").catch(() => ({ items: [] })),
-    ]);
-    setBlogs((blogData.posts ?? []) as BlogPostFirestore[]);
-    setGuides((guideData.pages ?? []) as SeoPageFirestore[]);
-    const items = (galleryData.items ?? []) as GalleryMediaOption[];
-    setGalleryVideos(items.filter((i) => i.contentType === "video"));
-    setGalleryReels(items.filter((i) => i.contentType === "reel"));
-  }, []);
+  const loadBlogs = useCallback(async () => {
+    if (blogsLoaded || blogsLoading) return;
+    setBlogsLoading(true);
+    try {
+      const blogData = await adminFetch("/api/admin/blog-posts").catch(() => ({
+        posts: [],
+      }));
+      setBlogs((blogData.posts ?? []) as BlogPostFirestore[]);
+      setBlogsLoaded(true);
+    } finally {
+      setBlogsLoading(false);
+    }
+  }, [blogsLoaded, blogsLoading]);
+
+  const loadGuides = useCallback(async () => {
+    if (guidesLoaded || guidesLoading) return;
+    setGuidesLoading(true);
+    try {
+      const guideData = await adminFetch("/api/admin/seo-pages").catch(() => ({
+        pages: [],
+      }));
+      setGuides((guideData.pages ?? []) as SeoPageFirestore[]);
+      setGuidesLoaded(true);
+    } finally {
+      setGuidesLoading(false);
+    }
+  }, [guidesLoaded, guidesLoading]);
+
+  const loadGallery = useCallback(async () => {
+    if (galleryLoaded || galleryLoading) return;
+    setGalleryLoading(true);
+    try {
+      const galleryData = await adminFetch("/api/admin/social-media/gallery-media").catch(
+        () => ({ items: [] }),
+      );
+      const items = (galleryData.items ?? []) as GalleryMediaOption[];
+      setGalleryVideos(items.filter((i) => i.contentType === "video"));
+      setGalleryReels(items.filter((i) => i.contentType === "reel"));
+      setGalleryLoaded(true);
+    } finally {
+      setGalleryLoading(false);
+    }
+  }, [galleryLoaded, galleryLoading]);
+
+  const ensureContentForType = useCallback(
+    (type: PostContentType) => {
+      if (type === "blog") void loadBlogs();
+      else if (type === "guide") void loadGuides();
+      else void loadGallery();
+    },
+    [loadBlogs, loadGuides, loadGallery],
+  );
 
   useEffect(() => {
     loadStatus().catch((e) =>
       setMsg({ err: e instanceof Error ? e.message : "Failed to load" }),
     );
-    loadContent().catch(() => {});
     loadWhatsApp().catch(() => {});
     loadSchedule().catch(() => {});
-  }, [loadStatus, loadContent, loadWhatsApp, loadSchedule]);
+  }, [loadStatus, loadWhatsApp, loadSchedule]);
 
   useEffect(() => {
     const gbp = searchParams.get("gbp");
@@ -265,6 +403,23 @@ export default function AdminSocialMediaPage() {
   const publishedGuides = useMemo(
     () => guides.filter((g) => g.published).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [guides],
+  );
+
+  const publishedBlogOptions = useMemo(
+    () =>
+      publishedBlogs.map((b) => ({
+        id: b.slug,
+        title: b.title,
+      })),
+    [publishedBlogs],
+  );
+  const publishedGuideOptions = useMemo(
+    () =>
+      publishedGuides.map((g) => ({
+        id: g.slug,
+        title: g.headline,
+      })),
+    [publishedGuides],
   );
 
   const postMediaOptions = useMemo(() => {
@@ -798,12 +953,14 @@ export default function AdminSocialMediaPage() {
               Items post in order at each scheduled time, then loop back to the start.
             </p>
 
-            <div className="mt-3 flex flex-wrap gap-3">
+            <div className="mt-3 flex flex-wrap items-start gap-3">
               <select
                 value={queueAddType}
                 onChange={(e) => {
-                  setQueueAddType(e.target.value as PostContentType);
+                  const next = e.target.value as PostContentType;
+                  setQueueAddType(next);
                   setQueueAddRef("");
+                  ensureContentForType(next);
                 }}
                 className="rounded border border-ocean-200 px-3 py-2 text-sm"
               >
@@ -812,16 +969,43 @@ export default function AdminSocialMediaPage() {
                 <option value="video">Video</option>
                 <option value="reel">Reel</option>
               </select>
-              <select
-                value={queueAddRef}
-                onChange={(e) => setQueueAddRef(e.target.value)}
-                className="min-w-[220px] rounded border border-ocean-200 px-3 py-2 text-sm"
-              >
-                <option value="">Select to add…</option>
-                {queueAddOptions().map((o) => (
-                  <option key={o.id} value={o.id}>{o.title}</option>
-                ))}
-              </select>
+              {queueAddType === "blog" ? (
+                <CollapsibleContentPicker
+                  kind="blog"
+                  items={publishedBlogOptions}
+                  loaded={blogsLoaded}
+                  loading={blogsLoading}
+                  selectedId={queueAddRef}
+                  onSelect={setQueueAddRef}
+                  onExpand={() => void loadBlogs()}
+                />
+              ) : null}
+              {queueAddType === "guide" ? (
+                <CollapsibleContentPicker
+                  kind="guide"
+                  items={publishedGuideOptions}
+                  loaded={guidesLoaded}
+                  loading={guidesLoading}
+                  selectedId={queueAddRef}
+                  onSelect={setQueueAddRef}
+                  onExpand={() => void loadGuides()}
+                />
+              ) : null}
+              {queueAddType === "video" || queueAddType === "reel" ? (
+                <select
+                  value={queueAddRef}
+                  onChange={(e) => setQueueAddRef(e.target.value)}
+                  onFocus={() => void loadGallery()}
+                  className="min-w-[220px] rounded border border-ocean-200 px-3 py-2 text-sm"
+                >
+                  <option value="">
+                    {galleryLoading ? "Loading…" : "Select to add…"}
+                  </option>
+                  {queueAddOptions().map((o) => (
+                    <option key={o.id} value={o.id}>{o.title}</option>
+                  ))}
+                </select>
+              ) : null}
               <button
                 type="button"
                 onClick={() => addToQueue()}
@@ -1184,7 +1368,7 @@ export default function AdminSocialMediaPage() {
           prices, Baga/Goa location, phone &amp; booking link. Videos post natively to Facebook
           &amp; Instagram (reels use Instagram Reels).
         </p>
-        <div className="mt-4 flex flex-wrap gap-4">
+        <div className="mt-4 flex flex-wrap items-start gap-4">
           <label className="text-sm">
             <span className="text-ocean-700">Content type</span>
             <select
@@ -1193,6 +1377,7 @@ export default function AdminSocialMediaPage() {
                 const next = e.target.value as PostContentType;
                 setPostContentType(next);
                 setPostSlug("");
+                ensureContentForType(next);
                 if (next === "reel" || next === "video") {
                   setPostPlatforms((prev) => {
                     const platforms = new Set(prev);
@@ -1210,42 +1395,67 @@ export default function AdminSocialMediaPage() {
               <option value="reel">Gallery reel</option>
             </select>
           </label>
-          <label className="min-w-[280px] text-sm">
-            <span className="text-ocean-700">Content</span>
-            <select
-              value={postSlug}
-              onChange={(e) => setPostSlug(e.target.value)}
-              className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
-            >
-              <option value="">Select…</option>
-              {postContentType === "blog"
-                ? publishedBlogs.map((item) => (
-                    <option key={item.slug} value={item.slug}>{item.title}</option>
-                  ))
-                : null}
-              {postContentType === "guide"
-                ? publishedGuides.map((item) => (
-                    <option key={item.slug} value={item.slug}>{item.headline}</option>
-                  ))
-                : null}
-              {postContentType === "video"
-                ? galleryVideos.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title}
-                      {item.source === "service" ? " (Service)" : item.source === "gallery" ? " (Gallery)" : ""}
-                    </option>
-                  ))
-                : null}
-              {postContentType === "reel"
-                ? galleryReels.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title}
-                      {item.source === "service" ? " (Service)" : item.source === "gallery" ? " (Gallery)" : ""}
-                    </option>
-                  ))
-                : null}
-            </select>
-          </label>
+          {postContentType === "blog" ? (
+            <CollapsibleContentPicker
+              kind="blog"
+              items={publishedBlogOptions}
+              loaded={blogsLoaded}
+              loading={blogsLoading}
+              selectedId={postSlug}
+              onSelect={setPostSlug}
+              onExpand={() => void loadBlogs()}
+            />
+          ) : null}
+          {postContentType === "guide" ? (
+            <CollapsibleContentPicker
+              kind="guide"
+              items={publishedGuideOptions}
+              loaded={guidesLoaded}
+              loading={guidesLoading}
+              selectedId={postSlug}
+              onSelect={setPostSlug}
+              onExpand={() => void loadGuides()}
+            />
+          ) : null}
+          {postContentType === "video" || postContentType === "reel" ? (
+            <label className="min-w-[280px] text-sm">
+              <span className="text-ocean-700">Content</span>
+              <select
+                value={postSlug}
+                onChange={(e) => setPostSlug(e.target.value)}
+                onFocus={() => void loadGallery()}
+                className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
+              >
+                <option value="">
+                  {galleryLoading ? "Loading…" : "Select…"}
+                </option>
+                {postContentType === "video"
+                  ? galleryVideos.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title}
+                        {item.source === "service"
+                          ? " (Service)"
+                          : item.source === "gallery"
+                            ? " (Gallery)"
+                            : ""}
+                      </option>
+                    ))
+                  : null}
+                {postContentType === "reel"
+                  ? galleryReels.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title}
+                        {item.source === "service"
+                          ? " (Service)"
+                          : item.source === "gallery"
+                            ? " (Gallery)"
+                            : ""}
+                      </option>
+                    ))
+                  : null}
+              </select>
+            </label>
+          ) : null}
         </div>
         {(postContentType === "video" || postContentType === "reel") &&
         postMediaOptions.length === 0 ? (
