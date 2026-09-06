@@ -34,10 +34,4 @@ export function guideToSocialPayload(page: SeoPageFirestore): SocialContentPaylo
   };
 }
 
-export function buildSocialCaption(payload: SocialContentPayload): string {
-  const lines = [payload.title.trim()];
-  const excerpt = payload.excerpt.trim().replace(/\s+/g, " ");
-  if (excerpt) lines.push(excerpt.slice(0, 400));
-  lines.push(payload.url);
-  return lines.join("\n\n");
-}
+export { buildSocialCaption } from "@/lib/social-media/platform-captions";

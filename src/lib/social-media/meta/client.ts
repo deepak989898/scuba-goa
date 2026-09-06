@@ -135,6 +135,59 @@ export async function postToFacebookPage(input: {
   return data.id;
 }
 
+export async function postVideoToFacebookPage(input: {
+  pageId: string;
+  pageAccessToken: string;
+  videoUrl: string;
+  description: string;
+}): Promise<string> {
+  const url = `https://graph.facebook.com/v21.0/${input.pageId}/videos`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      file_url: input.videoUrl,
+      description: input.description.slice(0, 5000),
+      access_token: input.pageAccessToken,
+    }),
+  });
+  const data = (await res.json()) as { id?: string; error?: { message?: string } };
+  if (!res.ok || !data.id) {
+    throw new Error(data.error?.message ?? "Facebook video post failed");
+  }
+  return data.id;
+}
+
+async function waitForInstagramMediaReady(
+  containerId: string,
+  pageAccessToken: string,
+  maxWaitMs = 120_000,
+): Promise<void> {
+  const started = Date.now();
+  while (Date.now() - started < maxWaitMs) {
+    const statusUrl = new URL(`https://graph.facebook.com/v21.0/${containerId}`);
+    statusUrl.searchParams.set("fields", "status_code,status");
+    statusUrl.searchParams.set("access_token", pageAccessToken);
+
+    const res = await fetch(statusUrl.toString());
+    const data = (await res.json()) as {
+      status_code?: string;
+      status?: string;
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      throw new Error(data.error?.message ?? "Instagram media status check failed");
+    }
+    const code = String(data.status_code ?? "").toUpperCase();
+    if (code === "FINISHED") return;
+    if (code === "ERROR" || code === "EXPIRED") {
+      throw new Error(data.status ?? "Instagram video processing failed");
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw new Error("Instagram video processing timed out — try again in a minute");
+}
+
 export async function postToInstagram(input: {
   instagramBusinessId: string;
   pageAccessToken: string;
@@ -174,6 +227,54 @@ export async function postToInstagram(input: {
   };
   if (!publishRes.ok || !publishData.id) {
     throw new Error(publishData.error?.message ?? "Instagram publish failed");
+  }
+  return publishData.id;
+}
+
+export async function postVideoToInstagram(input: {
+  instagramBusinessId: string;
+  pageAccessToken: string;
+  videoUrl: string;
+  caption: string;
+  isReel?: boolean;
+}): Promise<string> {
+  const createUrl = `https://graph.facebook.com/v21.0/${input.instagramBusinessId}/media`;
+  const createRes = await fetch(createUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      media_type: input.isReel ? "REELS" : "VIDEO",
+      video_url: input.videoUrl,
+      caption: input.caption.slice(0, 2200),
+      share_to_feed: input.isReel ? true : undefined,
+      access_token: input.pageAccessToken,
+    }),
+  });
+  const createData = (await createRes.json()) as {
+    id?: string;
+    error?: { message?: string };
+  };
+  if (!createRes.ok || !createData.id) {
+    throw new Error(createData.error?.message ?? "Instagram video create failed");
+  }
+
+  await waitForInstagramMediaReady(createData.id, input.pageAccessToken);
+
+  const publishUrl = `https://graph.facebook.com/v21.0/${input.instagramBusinessId}/media_publish`;
+  const publishRes = await fetch(publishUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      creation_id: createData.id,
+      access_token: input.pageAccessToken,
+    }),
+  });
+  const publishData = (await publishRes.json()) as {
+    id?: string;
+    error?: { message?: string };
+  };
+  if (!publishRes.ok || !publishData.id) {
+    throw new Error(publishData.error?.message ?? "Instagram video publish failed");
   }
   return publishData.id;
 }

@@ -7,6 +7,7 @@ import type { BlogPostFirestore } from "@/lib/blog-firestore";
 import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
 import type { SocialPlatform } from "@/lib/social-media/types";
 import type { SocialAutomationFlags } from "@/lib/social-media/settings";
+import type { SocialQueueItem, SocialScheduleSettings } from "@/lib/social-media/schedule";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import {
@@ -62,6 +63,17 @@ type StatusResponse = {
     results?: Array<{ platform: string; ok: boolean; posted: boolean; message: string }>;
   }>;
 };
+
+type GalleryMediaOption = {
+  id: string;
+  title: string;
+  contentType: "video" | "reel";
+  mediaUrl: string;
+  posterUrl?: string;
+  category?: string;
+};
+
+type PostContentType = "blog" | "guide" | "video" | "reel";
 
 type WhatsAppAgentStatus = {
   settings: {
@@ -141,13 +153,23 @@ export default function AdminSocialMediaPage() {
   const [metaPages, setMetaPages] = useState<MetaPageOption[]>([]);
   const [selectedPageId, setSelectedPageId] = useState("");
 
-  const [postContentType, setPostContentType] = useState<"blog" | "guide">("blog");
+  const [postContentType, setPostContentType] = useState<PostContentType>("blog");
   const [postSlug, setPostSlug] = useState("");
+  const [galleryVideos, setGalleryVideos] = useState<GalleryMediaOption[]>([]);
+  const [galleryReels, setGalleryReels] = useState<GalleryMediaOption[]>([]);
   const [postPlatforms, setPostPlatforms] = useState<Set<SocialPlatform>>(
     () => new Set(["googleBusiness", "facebook"]),
   );
   const [waStatus, setWaStatus] = useState<WhatsAppAgentStatus | null>(null);
   const [waIntro, setWaIntro] = useState("");
+  const [schedule, setSchedule] = useState<SocialScheduleSettings | null>(null);
+  const [scheduleLabels, setScheduleLabels] = useState<{
+    nextRunAtLabel?: string;
+    lastRunAtLabel?: string;
+  }>({});
+  const [queueDraft, setQueueDraft] = useState<SocialQueueItem[]>([]);
+  const [queueAddType, setQueueAddType] = useState<PostContentType>("blog");
+  const [queueAddRef, setQueueAddRef] = useState("");
 
   const loadStatus = useCallback(async () => {
     const data = await adminFetch("/api/admin/social-media/status");
@@ -162,13 +184,29 @@ export default function AdminSocialMediaPage() {
     return data as WhatsAppAgentStatus;
   }, []);
 
+  const loadSchedule = useCallback(async () => {
+    const data = await adminFetch("/api/admin/social-media/schedule");
+    const s = data.schedule as SocialScheduleSettings;
+    setSchedule(s);
+    setQueueDraft([...(s.queue ?? [])].sort((a, b) => a.order - b.order));
+    setScheduleLabels({
+      nextRunAtLabel: String(data.nextRunAtLabel ?? ""),
+      lastRunAtLabel: String(data.lastRunAtLabel ?? ""),
+    });
+    return data;
+  }, []);
+
   const loadContent = useCallback(async () => {
-    const [blogData, guideData] = await Promise.all([
+    const [blogData, guideData, galleryData] = await Promise.all([
       adminFetch("/api/admin/blog-posts").catch(() => ({ posts: [] })),
       adminFetch("/api/admin/seo-pages").catch(() => ({ pages: [] })),
+      adminFetch("/api/admin/social-media/gallery-media").catch(() => ({ items: [] })),
     ]);
     setBlogs((blogData.posts ?? []) as BlogPostFirestore[]);
     setGuides((guideData.pages ?? []) as SeoPageFirestore[]);
+    const items = (galleryData.items ?? []) as GalleryMediaOption[];
+    setGalleryVideos(items.filter((i) => i.contentType === "video"));
+    setGalleryReels(items.filter((i) => i.contentType === "reel"));
   }, []);
 
   useEffect(() => {
@@ -177,7 +215,8 @@ export default function AdminSocialMediaPage() {
     );
     loadContent().catch(() => {});
     loadWhatsApp().catch(() => {});
-  }, [loadStatus, loadContent, loadWhatsApp]);
+    loadSchedule().catch(() => {});
+  }, [loadStatus, loadContent, loadWhatsApp, loadSchedule]);
 
   useEffect(() => {
     const gbp = searchParams.get("gbp");
@@ -212,6 +251,125 @@ export default function AdminSocialMediaPage() {
     () => guides.filter((g) => g.published).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [guides],
   );
+
+  const postMediaOptions = useMemo(() => {
+    if (postContentType === "blog") return publishedBlogs;
+    if (postContentType === "guide") return publishedGuides;
+    if (postContentType === "video") return galleryVideos;
+    return galleryReels;
+  }, [postContentType, publishedBlogs, publishedGuides, galleryVideos, galleryReels]);
+
+  async function saveSchedule(patch: Partial<SocialScheduleSettings>) {
+    setBusy("schedule");
+    try {
+      const data = await adminFetch("/api/admin/social-media/schedule", {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      const s = data.schedule as SocialScheduleSettings;
+      setSchedule(s);
+      setQueueDraft([...(s.queue ?? [])].sort((a, b) => a.order - b.order));
+      await loadSchedule();
+      setMsg({ ok: "Scheduled auto-post settings saved." });
+    } catch (e) {
+      setMsg({ err: e instanceof Error ? e.message : "Save failed" });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function queueAddOptions(): { id: string; title: string }[] {
+    if (queueAddType === "blog") {
+      return publishedBlogs.map((b) => ({ id: b.slug, title: b.title }));
+    }
+    if (queueAddType === "guide") {
+      return publishedGuides.map((g) => ({ id: g.slug, title: g.headline }));
+    }
+    if (queueAddType === "video") {
+      return galleryVideos.map((v) => ({ id: v.id, title: v.title }));
+    }
+    return galleryReels.map((r) => ({ id: r.id, title: r.title }));
+  }
+
+  function addToQueue() {
+    if (!queueAddRef) {
+      setMsg({ err: "Select content to add to the queue." });
+      return;
+    }
+    const options = queueAddOptions();
+    const picked = options.find((o) => o.id === queueAddRef);
+    if (!picked) return;
+    const exists = queueDraft.some(
+      (q) => q.contentType === queueAddType && q.refId === queueAddRef,
+    );
+    if (exists) {
+      setMsg({ err: "This item is already in the queue." });
+      return;
+    }
+    const item: SocialQueueItem = {
+      id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      contentType: queueAddType,
+      refId: queueAddRef,
+      title: picked.title,
+      order: queueDraft.length,
+      addedAt: new Date().toISOString(),
+      postCount: 0,
+    };
+    setQueueDraft((prev) => [...prev, item]);
+    setQueueAddRef("");
+    setMsg({ ok: `Added "${picked.title}" to queue. Click Save queue & start.` });
+  }
+
+  function removeFromQueue(id: string) {
+    setQueueDraft((prev) =>
+      prev.filter((q) => q.id !== id).map((q, i) => ({ ...q, order: i })),
+    );
+  }
+
+  function moveQueueItem(id: string, dir: -1 | 1) {
+    setQueueDraft((prev) => {
+      const list = [...prev].sort((a, b) => a.order - b.order);
+      const idx = list.findIndex((q) => q.id === id);
+      const next = idx + dir;
+      if (idx < 0 || next < 0 || next >= list.length) return prev;
+      const a = list[idx];
+      const b = list[next];
+      list[idx] = { ...b, order: idx };
+      list[next] = { ...a, order: next };
+      return list;
+    });
+  }
+
+  async function saveQueueAndSettings(enabled?: boolean) {
+    if (!schedule) return;
+    await saveSchedule({
+      enabled: enabled ?? schedule.enabled,
+      frequency: schedule.frequency,
+      timeIst: schedule.timeIst,
+      dayOfWeek: schedule.dayOfWeek,
+      dayOfMonth: schedule.dayOfMonth,
+      platforms: schedule.platforms,
+      queue: queueDraft.map((q, i) => ({ ...q, order: i })),
+    });
+  }
+
+  async function runScheduleNow() {
+    setBusy("schedule-run");
+    try {
+      const data = await adminFetch("/api/admin/social-media/schedule", {
+        method: "POST",
+        body: JSON.stringify({ force: true }),
+      });
+      await loadSchedule();
+      await loadStatus();
+      const summary = String(data.result?.summary ?? "Schedule run completed.");
+      setMsg({ ok: summary });
+    } catch (e) {
+      setMsg({ err: e instanceof Error ? e.message : "Run failed" });
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function saveAutomation(patch: Partial<SocialAutomationFlags>) {
     if (!status) return;
@@ -432,7 +590,8 @@ export default function AdminSocialMediaPage() {
       <section className="mb-8 rounded-xl border border-ocean-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-ocean-950">Auto-post on publish</h2>
         <p className="mt-1 text-sm text-ocean-600">
-          When a blog or guide is published, post to the platforms you enable below.
+          When a blog or guide is <strong>first published</strong>, post immediately to these
+          platforms (one-time per publish).
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {PLATFORMS.map((p) => (
@@ -446,6 +605,234 @@ export default function AdminSocialMediaPage() {
             />
           ))}
         </div>
+      </section>
+
+      <section className="mb-8 rounded-xl border border-cyan-200 bg-gradient-to-br from-white to-cyan-50/40 p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-ocean-950">Scheduled auto-post</h2>
+            <p className="mt-1 max-w-2xl text-sm text-ocean-600">
+              Build a queue from blogs, guides, videos &amp; reels. Pick how often to post (daily /
+              weekly / monthly), set IST time, choose platforms, then start — the next item posts
+              automatically (cron ~10:00 AM IST daily on Vercel).
+            </p>
+          </div>
+          {schedule?.enabled ? (
+            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
+              Running
+            </span>
+          ) : (
+            <span className="rounded-full bg-ocean-100 px-3 py-1 text-xs font-medium text-ocean-600">
+              Stopped
+            </span>
+          )}
+        </div>
+
+        {schedule ? (
+          <>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-sm">
+                <span className="text-ocean-700">Frequency</span>
+                <select
+                  value={schedule.frequency}
+                  onChange={(e) =>
+                    setSchedule({
+                      ...schedule,
+                      frequency: e.target.value as SocialScheduleSettings["frequency"],
+                    })
+                  }
+                  className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
+                >
+                  <option value="daily">Every day</option>
+                  <option value="weekly">Every week</option>
+                  <option value="monthly">Every month</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                <span className="text-ocean-700">Time (IST)</span>
+                <input
+                  type="time"
+                  value={schedule.timeIst}
+                  onChange={(e) => setSchedule({ ...schedule, timeIst: e.target.value })}
+                  className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
+                />
+              </label>
+              {schedule.frequency === "weekly" ? (
+                <label className="text-sm">
+                  <span className="text-ocean-700">Day of week</span>
+                  <select
+                    value={schedule.dayOfWeek}
+                    onChange={(e) =>
+                      setSchedule({ ...schedule, dayOfWeek: Number(e.target.value) })
+                    }
+                    className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
+                  >
+                    <option value={0}>Sunday</option>
+                    <option value={1}>Monday</option>
+                    <option value={2}>Tuesday</option>
+                    <option value={3}>Wednesday</option>
+                    <option value={4}>Thursday</option>
+                    <option value={5}>Friday</option>
+                    <option value={6}>Saturday</option>
+                  </select>
+                </label>
+              ) : null}
+              {schedule.frequency === "monthly" ? (
+                <label className="text-sm">
+                  <span className="text-ocean-700">Day of month</span>
+                  <select
+                    value={schedule.dayOfMonth}
+                    onChange={(e) =>
+                      setSchedule({ ...schedule, dayOfMonth: Number(e.target.value) })
+                    }
+                    className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
+                  >
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+
+            <p className="mt-3 text-xs text-ocean-500">
+              Next run: {scheduleLabels.nextRunAtLabel || "—"} · Last run:{" "}
+              {scheduleLabels.lastRunAtLabel || "—"}
+              {schedule.lastRunSummary ? ` · ${schedule.lastRunSummary}` : ""}
+            </p>
+
+            <h3 className="mt-6 text-sm font-semibold text-ocean-900">Platforms for schedule</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {PLATFORMS.map((p) => (
+                <PlatformCheckbox
+                  key={`sched-${p.id}`}
+                  platform={p.id}
+                  label={p.label}
+                  checked={schedule.platforms[p.id] === true}
+                  disabled={busy === "schedule"}
+                  onChange={(on) =>
+                    setSchedule({
+                      ...schedule,
+                      platforms: { ...schedule.platforms, [p.id]: on },
+                    })
+                  }
+                />
+              ))}
+            </div>
+
+            <h3 className="mt-6 text-sm font-semibold text-ocean-900">Post queue</h3>
+            <p className="mt-1 text-xs text-ocean-500">
+              Items post in order, then loop back to the start. One item per scheduled run.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-3">
+              <select
+                value={queueAddType}
+                onChange={(e) => {
+                  setQueueAddType(e.target.value as PostContentType);
+                  setQueueAddRef("");
+                }}
+                className="rounded border border-ocean-200 px-3 py-2 text-sm"
+              >
+                <option value="blog">Blog</option>
+                <option value="guide">Guide</option>
+                <option value="video">Video</option>
+                <option value="reel">Reel</option>
+              </select>
+              <select
+                value={queueAddRef}
+                onChange={(e) => setQueueAddRef(e.target.value)}
+                className="min-w-[220px] rounded border border-ocean-200 px-3 py-2 text-sm"
+              >
+                <option value="">Select to add…</option>
+                {queueAddOptions().map((o) => (
+                  <option key={o.id} value={o.id}>{o.title}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => addToQueue()}
+                className="rounded-lg border border-ocean-300 px-4 py-2 text-sm font-medium text-ocean-800 hover:bg-ocean-50"
+              >
+                Add to queue
+              </button>
+            </div>
+
+            {queueDraft.length > 0 ? (
+              <ol className="mt-4 space-y-2">
+                {queueDraft
+                  .sort((a, b) => a.order - b.order)
+                  .map((item, idx) => (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-ocean-100 bg-white px-3 py-2 text-sm"
+                    >
+                      <span className="font-mono text-xs text-ocean-400">{idx + 1}.</span>
+                      <span className="rounded bg-ocean-100 px-2 py-0.5 text-xs text-ocean-700">
+                        {item.contentType}
+                      </span>
+                      <span className="flex-1 font-medium text-ocean-900">{item.title}</span>
+                      {item.postCount > 0 ? (
+                        <span className="text-xs text-ocean-500">posted {item.postCount}×</span>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => moveQueueItem(item.id, -1)}
+                        className="rounded border border-ocean-200 px-2 py-0.5 text-xs"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveQueueItem(item.id, 1)}
+                        className="rounded border border-ocean-200 px-2 py-0.5 text-xs"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeFromQueue(item.id)}
+                        className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+              </ol>
+            ) : (
+              <p className="mt-3 text-sm text-ocean-500">Queue is empty — add blogs, guides, videos or reels.</p>
+            )}
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={busy != null || queueDraft.length === 0}
+                onClick={() => void saveQueueAndSettings(true)}
+                className="rounded-lg bg-cyan-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-cyan-800 disabled:opacity-50"
+              >
+                {busy === "schedule" ? "Saving…" : "Save & start schedule"}
+              </button>
+              <button
+                type="button"
+                disabled={busy != null}
+                onClick={() => void saveQueueAndSettings(false)}
+                className="rounded-lg border border-ocean-300 px-5 py-2.5 text-sm font-medium text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
+              >
+                Save & stop
+              </button>
+              <button
+                type="button"
+                disabled={busy != null || queueDraft.length === 0}
+                onClick={() => void runScheduleNow()}
+                className="rounded-lg border border-cyan-300 px-5 py-2.5 text-sm font-medium text-cyan-900 hover:bg-cyan-50 disabled:opacity-50"
+              >
+                {busy === "schedule-run" ? "Posting…" : "Run next item now"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="mt-4 text-sm text-ocean-500">Loading schedule…</p>
+        )}
       </section>
 
       <div className="space-y-6">
@@ -711,7 +1098,9 @@ export default function AdminSocialMediaPage() {
       <section className="mt-10 rounded-xl border border-ocean-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-ocean-950">Post now</h2>
         <p className="mt-1 text-sm text-ocean-600">
-          Pick a published blog or guide and share it immediately.
+          Share a blog, guide, gallery video, or reel from your website. Captions include live
+          prices, Baga/Goa location, phone &amp; booking link. Videos post natively to Facebook
+          &amp; Instagram (reels use Instagram Reels).
         </p>
         <div className="mt-4 flex flex-wrap gap-4">
           <label className="text-sm">
@@ -719,13 +1108,24 @@ export default function AdminSocialMediaPage() {
             <select
               value={postContentType}
               onChange={(e) => {
-                setPostContentType(e.target.value as "blog" | "guide");
+                const next = e.target.value as PostContentType;
+                setPostContentType(next);
                 setPostSlug("");
+                if (next === "reel" || next === "video") {
+                  setPostPlatforms((prev) => {
+                    const platforms = new Set(prev);
+                    platforms.add("instagram");
+                    platforms.add("facebook");
+                    return platforms;
+                  });
+                }
               }}
               className="mt-1 block rounded border border-ocean-200 px-3 py-2"
             >
               <option value="blog">Blog post</option>
               <option value="guide">Guide page</option>
+              <option value="video">Gallery video</option>
+              <option value="reel">Gallery reel</option>
             </select>
           </label>
           <label className="min-w-[280px] text-sm">
@@ -736,19 +1136,46 @@ export default function AdminSocialMediaPage() {
               className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
             >
               <option value="">Select…</option>
-              {(postContentType === "blog" ? publishedBlogs : publishedGuides).map((item) => (
-                <option
-                  key={item.slug}
-                  value={item.slug}
-                >
-                  {postContentType === "blog"
-                    ? (item as BlogPostFirestore).title
-                    : (item as SeoPageFirestore).headline}
-                </option>
-              ))}
+              {postContentType === "blog"
+                ? publishedBlogs.map((item) => (
+                    <option key={item.slug} value={item.slug}>{item.title}</option>
+                  ))
+                : null}
+              {postContentType === "guide"
+                ? publishedGuides.map((item) => (
+                    <option key={item.slug} value={item.slug}>{item.headline}</option>
+                  ))
+                : null}
+              {postContentType === "video"
+                ? galleryVideos.map((item) => (
+                    <option key={item.id} value={item.id}>{item.title}</option>
+                  ))
+                : null}
+              {postContentType === "reel"
+                ? galleryReels.map((item) => (
+                    <option key={item.id} value={item.id}>{item.title}</option>
+                  ))
+                : null}
             </select>
           </label>
         </div>
+        {(postContentType === "video" || postContentType === "reel") &&
+        postMediaOptions.length === 0 ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            No {postContentType === "reel" ? "reels" : "videos"} in gallery yet. Add them in{" "}
+            <a href="/admin/gallery" className="font-medium text-cyan-800 underline">
+              Gallery admin
+            </a>{" "}
+            (type: Video, category: {postContentType === "reel" ? "Reels" : "Customer videos"}).
+          </p>
+        ) : null}
+        {(postContentType === "video" || postContentType === "reel") &&
+        postMediaOptions.length > 0 ? (
+          <p className="mt-3 text-xs text-ocean-500">
+            Video must be a public HTTPS MP4 URL (Firebase Storage works). Instagram reels may take
+            1–2 minutes to process after you click Post.
+          </p>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-3">
           {PLATFORMS.map((p) => (
             <PlatformCheckbox
@@ -819,7 +1246,8 @@ export default function AdminSocialMediaPage() {
           </ul>
         ) : (
           <p className="mt-3 text-sm text-ocean-500">
-            Post a blog or guide to Facebook, Google Business, or Instagram to see it here.
+            Post a blog, guide, video, or reel to Facebook, Google Business, or Instagram to see it
+            here.
           </p>
         )}
       </AdminCollapseSection>

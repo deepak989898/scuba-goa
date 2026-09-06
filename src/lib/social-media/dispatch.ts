@@ -1,8 +1,13 @@
 import { getAdminDb } from "@/lib/firebase-admin";
-import { buildSocialCaption } from "@/lib/social-media/build-content";
+import {
+  generatePlatformCaptions,
+  type PlatformCaptions,
+} from "@/lib/social-media/platform-captions";
 import {
   postToFacebookPage,
   postToInstagram,
+  postVideoToFacebookPage,
+  postVideoToInstagram,
 } from "@/lib/social-media/meta/client";
 import { getMetaSettings, saveMetaSettings } from "@/lib/social-media/meta/settings";
 import { postToGoogleBusiness } from "@/lib/social-media/platforms/google-business";
@@ -17,6 +22,7 @@ import { prepareYouTubeShare } from "@/lib/social-media/youtube/client";
 
 async function postToFacebook(
   payload: SocialContentPayload,
+  captions: PlatformCaptions,
 ): Promise<SocialPlatformResult> {
   const meta = await getMetaSettings();
   if (!meta.pageId || !meta.pageAccessToken) {
@@ -28,12 +34,21 @@ async function postToFacebook(
     };
   }
   try {
-    const id = await postToFacebookPage({
-      pageId: meta.pageId,
-      pageAccessToken: meta.pageAccessToken,
-      message: buildSocialCaption(payload),
-      link: payload.url,
-    });
+    const videoUrl = payload.videoUrl?.trim();
+    const id =
+      videoUrl && /^https:\/\//i.test(videoUrl)
+        ? await postVideoToFacebookPage({
+            pageId: meta.pageId,
+            pageAccessToken: meta.pageAccessToken,
+            videoUrl,
+            description: captions.facebook,
+          })
+        : await postToFacebookPage({
+            pageId: meta.pageId,
+            pageAccessToken: meta.pageAccessToken,
+            message: captions.facebook,
+            link: payload.url,
+          });
     await saveMetaSettings({
       lastPostAt: new Date().toISOString(),
       lastPostError: null,
@@ -42,7 +57,7 @@ async function postToFacebook(
       platform: "facebook",
       ok: true,
       posted: true,
-      message: "Posted to Facebook Page",
+      message: videoUrl ? "Posted video to Facebook Page" : "Posted to Facebook Page",
       externalId: id,
     };
   } catch (e) {
@@ -54,6 +69,7 @@ async function postToFacebook(
 
 async function postToInstagramPlatform(
   payload: SocialContentPayload,
+  captions: PlatformCaptions,
 ): Promise<SocialPlatformResult> {
   const meta = await getMetaSettings();
   if (!meta.instagramBusinessId || !meta.pageAccessToken) {
@@ -64,13 +80,44 @@ async function postToInstagramPlatform(
       message: "Instagram Business not linked to your Facebook Page",
     };
   }
+  const videoUrl = payload.videoUrl?.trim();
   const imageUrl = payload.imageUrl?.trim();
+
+  if (videoUrl && /^https:\/\//i.test(videoUrl)) {
+    try {
+      const id = await postVideoToInstagram({
+        instagramBusinessId: meta.instagramBusinessId,
+        pageAccessToken: meta.pageAccessToken,
+        videoUrl,
+        caption: captions.instagram,
+        isReel: payload.isReel === true || payload.contentType === "reel",
+      });
+      await saveMetaSettings({
+        lastPostAt: new Date().toISOString(),
+        lastPostError: null,
+      });
+      return {
+        platform: "instagram",
+        ok: true,
+        posted: true,
+        message: payload.isReel || payload.contentType === "reel"
+          ? "Posted reel to Instagram"
+          : "Posted video to Instagram",
+        externalId: id,
+      };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Instagram video post failed";
+      await saveMetaSettings({ lastPostError: message });
+      return { platform: "instagram", ok: false, posted: false, message };
+    }
+  }
+
   if (!imageUrl || !/^https:\/\//i.test(imageUrl)) {
     return {
       platform: "instagram",
       ok: false,
       posted: false,
-      message: "Instagram requires a public HTTPS image on this content",
+      message: "Instagram requires a public HTTPS video or image on this content",
     };
   }
   try {
@@ -78,7 +125,7 @@ async function postToInstagramPlatform(
       instagramBusinessId: meta.instagramBusinessId,
       pageAccessToken: meta.pageAccessToken,
       imageUrl,
-      caption: buildSocialCaption(payload),
+      caption: captions.instagram,
     });
     await saveMetaSettings({
       lastPostAt: new Date().toISOString(),
@@ -100,18 +147,20 @@ async function postToInstagramPlatform(
 
 async function postToYouTubePlatform(
   payload: SocialContentPayload,
+  captions: PlatformCaptions,
 ): Promise<SocialPlatformResult> {
   try {
     const { message } = await prepareYouTubeShare(payload.title, payload.url);
     if (message.includes("not connected")) {
       return { platform: "youtube", ok: true, posted: false, message };
     }
-    const caption = buildSocialCaption(payload);
     return {
       platform: "youtube",
       ok: true,
       posted: false,
-      message: `Manual post only (YouTube API cannot publish Community posts). Copy this caption into YouTube Studio → Community:\n\n${caption}`,
+      message: payload.videoUrl
+        ? `Manual post only. Upload this video in YouTube Studio, then paste caption:\n\nVideo: ${payload.videoUrl}\n\n${captions.youtube}`
+        : `Manual post only (YouTube API cannot publish Community posts). Copy this caption into YouTube Studio → Community:\n\n${captions.youtube}`,
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : "YouTube share failed";
@@ -121,9 +170,12 @@ async function postToYouTubePlatform(
 
 const HANDLERS: Record<
   SocialPlatform,
-  (payload: SocialContentPayload) => Promise<SocialPlatformResult>
+  (
+    payload: SocialContentPayload,
+    captions: PlatformCaptions,
+  ) => Promise<SocialPlatformResult>
 > = {
-  googleBusiness: (p) => postToGoogleBusiness(p, { force: true }),
+  googleBusiness: (p, c) => postToGoogleBusiness(p, { force: true, summary: c.googleBusiness }),
   facebook: postToFacebook,
   instagram: postToInstagramPlatform,
   youtube: postToYouTubePlatform,
@@ -135,10 +187,11 @@ export async function dispatchSocialPost(
   trigger: "manual" | "auto",
 ): Promise<SocialPostLogDoc> {
   const unique = [...new Set(platforms)];
+  const captions = await generatePlatformCaptions(payload);
   const results: SocialPlatformResult[] = [];
   for (const platform of unique) {
     const handler = HANDLERS[platform];
-    results.push(await handler(payload));
+    results.push(await handler(payload, captions));
   }
 
   const log: SocialPostLogDoc = {
@@ -147,6 +200,7 @@ export async function dispatchSocialPost(
     title: payload.title,
     url: payload.url,
     trigger,
+    captions,
     results,
     createdAt: new Date().toISOString(),
   };

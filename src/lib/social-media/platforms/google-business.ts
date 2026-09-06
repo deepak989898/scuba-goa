@@ -23,7 +23,7 @@ function buildSummary(title: string, excerpt: string): string {
 
 export async function postToGoogleBusiness(
   payload: SocialContentPayload,
-  options?: { force?: boolean },
+  options?: { force?: boolean; summary?: string },
 ): Promise<SocialPlatformResult> {
   const settings = await getGoogleBusinessSettings();
   const runtime = await getGoogleBusinessRuntimeConfig();
@@ -41,8 +41,11 @@ export async function postToGoogleBusiness(
   }
 
   try {
+    const summary =
+      options?.summary?.trim() ||
+      buildSummary(payload.title, payload.excerpt);
     const result = await createGoogleBusinessLocalPost(runtime!, {
-      summary: buildSummary(payload.title, payload.excerpt),
+      summary: summary.slice(0, 1500),
       languageCode: "en-IN",
       callToActionUrl: payload.url,
       imageUrl: payload.imageUrl,
