@@ -5,6 +5,7 @@ import { resolveSocialContentPayload } from "@/lib/social-media/resolve-payload"
 import type { SocialContentType, SocialPlatform } from "@/lib/social-media/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const PLATFORMS: SocialPlatform[] = [
   "googleBusiness",

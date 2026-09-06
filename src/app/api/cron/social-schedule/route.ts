@@ -4,7 +4,7 @@ import { runSocialScheduleOnce } from "@/lib/social-media/schedule";
 import { scheduleCronTask } from "@/lib/cron-runner";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /** Cron — posts next queued item when an IST time slot is due (checks every 30 min). */
 export async function GET(req: Request) {

@@ -18,7 +18,11 @@ import type {
   SocialPostLogDoc,
 } from "@/lib/social-media/types";
 import { socialPostLogHasPublished } from "@/lib/social-media/types";
-import { prepareYouTubeShare } from "@/lib/social-media/youtube/client";
+import {
+  postVideoToYouTube,
+  prepareYouTubeShare,
+} from "@/lib/social-media/youtube/client";
+import { saveYouTubeSettings } from "@/lib/social-media/youtube/settings";
 
 async function postToFacebook(
   payload: SocialContentPayload,
@@ -148,6 +152,31 @@ async function postToYouTubePlatform(
   payload: SocialContentPayload,
   captions: PlatformCaptions,
 ): Promise<SocialPlatformResult> {
+  const videoUrl = payload.videoUrl?.trim();
+  const isShort = payload.isReel === true || payload.contentType === "reel";
+
+  if (videoUrl && /^https:\/\//i.test(videoUrl)) {
+    try {
+      const id = await postVideoToYouTube({
+        title: payload.title,
+        description: captions.youtube,
+        videoUrl,
+        isShort,
+      });
+      return {
+        platform: "youtube",
+        ok: true,
+        posted: true,
+        message: isShort ? "Uploaded to YouTube (Short)" : "Uploaded to YouTube",
+        externalId: id,
+      };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "YouTube upload failed";
+      await saveYouTubeSettings({ lastPostError: message }).catch(() => null);
+      return { platform: "youtube", ok: false, posted: false, message };
+    }
+  }
+
   try {
     const { message } = await prepareYouTubeShare(payload.title, payload.url);
     if (message.includes("not connected")) {
@@ -157,9 +186,7 @@ async function postToYouTubePlatform(
       platform: "youtube",
       ok: true,
       posted: false,
-      message: payload.videoUrl
-        ? `Manual post only. Upload this video in YouTube Studio, then paste caption:\n\nVideo: ${payload.videoUrl}\n\n${captions.youtube}`
-        : `Manual post only (YouTube API cannot publish Community posts). Copy this caption into YouTube Studio → Community:\n\n${captions.youtube}`,
+      message: `Manual post only (YouTube API cannot publish Community posts). Copy this caption into YouTube Studio → Community:\n\n${captions.youtube}`,
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : "YouTube share failed";

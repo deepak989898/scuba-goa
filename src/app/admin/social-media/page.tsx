@@ -590,8 +590,8 @@ export default function AdminSocialMediaPage() {
         .map((r) => {
           if (r.platform === "youtube") {
             return r.posted
-              ? "youtube: posted"
-              : "youtube: manual — paste caption in YouTube Studio → Community (see Recent activity)";
+              ? `youtube: ${r.message?.toLowerCase().includes("short") ? "uploaded (Short)" : "uploaded"}`
+              : "youtube: manual — blog/guide Community caption only (see message)";
           }
           return `${r.platform}: ${r.posted ? "posted" : r.message}`;
         })
@@ -1020,9 +1020,16 @@ export default function AdminSocialMediaPage() {
           }
         >
           <p className="text-sm text-ocean-700">
-            YouTube Community posts are not available via API. When connected, automation logs a
-            ready-to-paste caption and link for YouTube Studio → Community.
+            Reels and gallery videos upload automatically to your YouTube channel (Shorts when
+            content type is Reel). Blog/guide posts still need a manual Community caption — the API
+            cannot publish Community posts.
           </p>
+          {youtube?.settings.connected ? (
+            <p className="mt-2 text-xs text-amber-800">
+              If upload fails with a scope/permission error, click Disconnect then Connect YouTube
+              again to grant video upload access.
+            </p>
+          ) : null}
           {!youtube?.configured ? (
             <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               Set <code className="text-xs">GOOGLE_YOUTUBE_CLIENT_ID</code> /{" "}

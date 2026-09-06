@@ -26,6 +26,12 @@
     },
     "src/app/api/admin/seo-intelligence/keywords/generate-blogs/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/admin/social-media/post/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/social-schedule/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
