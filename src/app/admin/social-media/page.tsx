@@ -9,6 +9,10 @@ import type { SocialPlatform } from "@/lib/social-media/types";
 import type { SocialAutomationFlags } from "@/lib/social-media/settings";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
+import {
+  SocialPlatformIcon,
+  socialPlatformLabel,
+} from "@/components/admin/SocialPlatformIcon";
 
 type MetaPageOption = {
   pageId: string;
@@ -59,12 +63,55 @@ type StatusResponse = {
   }>;
 };
 
+type WhatsAppAgentStatus = {
+  settings: {
+    enabled: boolean;
+    maxRepliesPerUserPerHour: number;
+    handoffCooldownHours: number;
+    businessIntro: string;
+  };
+  configured: boolean;
+  webhookUrl: string;
+  verifyTokenSet: boolean;
+  openAiSet: boolean;
+};
+
 const PLATFORMS: { id: SocialPlatform; label: string }[] = [
   { id: "googleBusiness", label: "Google Business" },
   { id: "facebook", label: "Facebook Page" },
   { id: "instagram", label: "Instagram" },
   { id: "youtube", label: "YouTube" },
 ];
+
+function PlatformCheckbox({
+  platform,
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  platform: SocialPlatform;
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      className="flex cursor-pointer items-center gap-3 rounded-lg border border-ocean-100 px-4 py-3 transition hover:border-ocean-200 hover:bg-ocean-50/50"
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="shrink-0"
+      />
+      <SocialPlatformIcon platform={platform} size={24} />
+      <span className="text-sm font-medium text-ocean-900">{label}</span>
+    </label>
+  );
+}
 
 async function adminFetch(path: string, init?: RequestInit) {
   const auth = getFirebaseAuth();
@@ -99,11 +146,20 @@ export default function AdminSocialMediaPage() {
   const [postPlatforms, setPostPlatforms] = useState<Set<SocialPlatform>>(
     () => new Set(["googleBusiness", "facebook"]),
   );
+  const [waStatus, setWaStatus] = useState<WhatsAppAgentStatus | null>(null);
+  const [waIntro, setWaIntro] = useState("");
 
   const loadStatus = useCallback(async () => {
     const data = await adminFetch("/api/admin/social-media/status");
     setStatus(data as StatusResponse);
     return data as StatusResponse;
+  }, []);
+
+  const loadWhatsApp = useCallback(async () => {
+    const data = await adminFetch("/api/admin/social-media/whatsapp");
+    setWaStatus(data as WhatsAppAgentStatus);
+    setWaIntro(String((data as WhatsAppAgentStatus).settings?.businessIntro ?? ""));
+    return data as WhatsAppAgentStatus;
   }, []);
 
   const loadContent = useCallback(async () => {
@@ -120,7 +176,8 @@ export default function AdminSocialMediaPage() {
       setMsg({ err: e instanceof Error ? e.message : "Failed to load" }),
     );
     loadContent().catch(() => {});
-  }, [loadStatus, loadContent]);
+    loadWhatsApp().catch(() => {});
+  }, [loadStatus, loadContent, loadWhatsApp]);
 
   useEffect(() => {
     const gbp = searchParams.get("gbp");
@@ -245,6 +302,28 @@ export default function AdminSocialMediaPage() {
     }
   }
 
+  async function saveWhatsAppSettings(patch: {
+    enabled?: boolean;
+    maxRepliesPerUserPerHour?: number;
+    businessIntro?: string;
+  }) {
+    setBusy("wa-settings");
+    try {
+      const data = await adminFetch("/api/admin/social-media/whatsapp", {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      setWaStatus((prev) =>
+        prev ? { ...prev, settings: data.settings } : prev,
+      );
+      setMsg({ ok: "WhatsApp agent settings saved." });
+    } catch (e) {
+      setMsg({ err: e instanceof Error ? e.message : "Save failed" });
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function connectYouTube() {
     setBusy("youtube-connect");
     try {
@@ -327,14 +406,15 @@ export default function AdminSocialMediaPage() {
 
   const meta = status?.meta;
   const youtube = status?.youtube;
+  const recentCount = status?.recentPosts?.length ?? 0;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-ocean-950">Social media</h1>
         <p className="mt-2 text-sm text-ocean-700">
-          Connect accounts once, then post any blog or guide manually — or turn on automation to
-          share new publishes automatically.
+          Connect accounts once, post blogs/guides to social platforms, and let the WhatsApp AI
+          agent reply to customer chats like a real team member — prices, packages & booking help.
         </p>
       </header>
 
@@ -356,27 +436,33 @@ export default function AdminSocialMediaPage() {
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {PLATFORMS.map((p) => (
-            <label
+            <PlatformCheckbox
               key={p.id}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-ocean-100 px-4 py-3"
-            >
-              <input
-                type="checkbox"
-                checked={status?.automation[p.id] === true}
-                disabled={!status || busy === "automation"}
-                onChange={(e) => void saveAutomation({ [p.id]: e.target.checked })}
-              />
-              <span className="text-sm font-medium text-ocean-900">{p.label}</span>
-            </label>
+              platform={p.id}
+              label={p.label}
+              checked={status?.automation[p.id] === true}
+              disabled={!status || busy === "automation"}
+              onChange={(on) => void saveAutomation({ [p.id]: on })}
+            />
           ))}
         </div>
       </section>
 
       <div className="space-y-6">
-        <GoogleBusinessSection onMessage={setMsg} hideAutoPostToggle />
+        <GoogleBusinessSection
+          onMessage={setMsg}
+          hideAutoPostToggle
+          titleIcon={<SocialPlatformIcon platform="googleBusiness" size={22} />}
+        />
 
         <AdminCollapseSection
           title="Facebook Page & Instagram"
+          icon={
+            <span className="flex items-center gap-1">
+              <SocialPlatformIcon platform="facebook" size={22} />
+              <SocialPlatformIcon platform="instagram" size={20} />
+            </span>
+          }
           hint={
             meta?.settings.connected
               ? `${meta.settings.pageName}${meta.settings.instagramConnected ? ` · @${meta.settings.instagramUsername}` : ""}`
@@ -466,6 +552,7 @@ export default function AdminSocialMediaPage() {
 
         <AdminCollapseSection
           title="YouTube"
+          icon={<SocialPlatformIcon platform="youtube" size={22} />}
           hint={
             youtube?.settings.connected
               ? youtube.settings.channelTitle
@@ -514,6 +601,111 @@ export default function AdminSocialMediaPage() {
             ) : null}
           </div>
         </AdminCollapseSection>
+
+        <AdminCollapseSection
+          title="WhatsApp AI agent"
+          icon={<SocialPlatformIcon platform="whatsapp" size={22} />}
+          hint={
+            waStatus?.settings.enabled
+              ? "Auto-reply ON — answers enquiries & guides booking"
+              : waStatus?.configured
+                ? "Configured — turn on auto-reply below"
+                : "Not configured"
+          }
+          defaultOpen={false}
+        >
+          <p className="text-sm text-ocean-700">
+            When customers message your WhatsApp Business number, the AI replies automatically
+            with real prices from your catalog, answers scuba questions, collects date/people, and
+            sends your <strong>/booking</strong> link — like a human travel desk in Baga.
+          </p>
+
+          <ul className="mt-4 space-y-1 text-sm text-ocean-800">
+            <li>
+              Cloud API:{" "}
+              {waStatus?.configured ? (
+                <span className="font-semibold text-green-700">Configured</span>
+              ) : (
+                <span className="text-amber-700">Missing env vars</span>
+              )}
+            </li>
+            <li>
+              OpenAI:{" "}
+              {waStatus?.openAiSet ? (
+                <span className="text-green-700">Ready</span>
+              ) : (
+                <span className="text-amber-700">Add OPENAI_API_KEY</span>
+              )}
+            </li>
+            <li>
+              Auto-reply:{" "}
+              {waStatus?.settings.enabled ? (
+                <span className="font-semibold text-green-700">Enabled</span>
+              ) : (
+                <span className="text-ocean-500">Disabled</span>
+              )}
+            </li>
+          </ul>
+
+          {waStatus?.webhookUrl ? (
+            <p className="mt-3 rounded-lg border border-ocean-100 bg-ocean-50 px-3 py-2 text-xs text-ocean-700">
+              <strong>Meta webhook URL</strong> (WhatsApp → Configuration → Webhook):<br />
+              <code className="break-all">{waStatus.webhookUrl}</code>
+              <br />
+              Verify token: <code>META_WHATSAPP_VERIFY_TOKEN</code> in Vercel
+            </p>
+          ) : null}
+
+          {!waStatus?.configured ? (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Set in Vercel: <code className="text-xs">META_WHATSAPP_TOKEN</code>,{" "}
+              <code className="text-xs">META_WHATSAPP_PHONE_NUMBER_ID</code>,{" "}
+              <code className="text-xs">META_WHATSAPP_VERIFY_TOKEN</code>
+            </p>
+          ) : null}
+
+          <label className="mt-5 flex items-center gap-3 text-sm font-medium text-ocean-900">
+            <input
+              type="checkbox"
+              checked={waStatus?.settings.enabled === true}
+              disabled={!waStatus?.configured || busy === "wa-settings"}
+              onChange={(e) => void saveWhatsAppSettings({ enabled: e.target.checked })}
+            />
+            Enable WhatsApp auto-reply (human-style AI)
+          </label>
+
+          <label className="mt-4 block text-sm">
+            <span className="text-ocean-700">Custom intro (optional)</span>
+            <textarea
+              value={waIntro}
+              onChange={(e) => setWaIntro(e.target.value)}
+              rows={2}
+              placeholder="e.g. Hi, I'm Priya from Book Scuba Goa Baga office..."
+              className="mt-1 block w-full rounded-lg border border-ocean-200 px-3 py-2 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={busy != null}
+            onClick={() => void saveWhatsAppSettings({ businessIntro: waIntro })}
+            className="mt-2 rounded-lg border border-ocean-300 px-4 py-2 text-sm font-medium text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
+          >
+            Save intro
+          </button>
+
+          <p className="mt-4 text-xs text-ocean-500">
+            If a customer asks for a human, auto-reply pauses and your team can reply manually in
+            WhatsApp Business app. View chats in{" "}
+            <a href="/admin/chat-logs" className="text-cyan-700 underline">
+              Chat logs
+            </a>{" "}
+            and{" "}
+            <a href="/admin/recovery-agent" className="text-cyan-700 underline">
+              Recovery agent
+            </a>
+            .
+          </p>
+        </AdminCollapseSection>
       </div>
 
       <section className="mt-10 rounded-xl border border-ocean-200 bg-white p-5 shadow-sm">
@@ -559,14 +751,13 @@ export default function AdminSocialMediaPage() {
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
           {PLATFORMS.map((p) => (
-            <label key={p.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={postPlatforms.has(p.id)}
-                onChange={() => togglePostPlatform(p.id)}
-              />
-              {p.label}
-            </label>
+            <PlatformCheckbox
+              key={p.id}
+              platform={p.id}
+              label={socialPlatformLabel(p.id)}
+              checked={postPlatforms.has(p.id)}
+              onChange={() => togglePostPlatform(p.id)}
+            />
           ))}
         </div>
         <button
@@ -579,11 +770,22 @@ export default function AdminSocialMediaPage() {
         </button>
       </section>
 
-      {status?.recentPosts?.length ? (
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold text-ocean-950">Recent activity</h2>
+      <AdminCollapseSection
+        className="mt-10"
+        title="Recent activity"
+        hint={
+          recentCount > 0
+            ? `${recentCount} successful post${recentCount === 1 ? "" : "s"} — click to expand`
+            : "No successful posts yet"
+        }
+        defaultOpen={false}
+      >
+        <p className="text-sm text-ocean-600">
+          Only content that was successfully published to a connected platform.
+        </p>
+        {recentCount > 0 ? (
           <ul className="mt-3 space-y-2">
-            {status.recentPosts.map((row, i) => (
+            {status!.recentPosts.map((row, i) => (
               <li
                 key={row.id ?? i}
                 className="rounded-lg border border-ocean-100 bg-ocean-50/50 px-4 py-3 text-sm"
@@ -594,21 +796,33 @@ export default function AdminSocialMediaPage() {
                     ({row.contentType} · {row.trigger})
                   </span>
                 </div>
-                <div className="mt-1 text-ocean-600">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {(row.results ?? [])
-                    .map((r) => `${r.platform}: ${r.posted ? "✓" : r.message}`)
-                    .join(" · ")}
+                    .filter((r) => r.posted)
+                    .map((r) => (
+                      <span
+                        key={r.platform}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-900"
+                      >
+                        <SocialPlatformIcon platform={r.platform} size={16} />
+                        {socialPlatformLabel(r.platform)}
+                      </span>
+                    ))}
                 </div>
                 {row.createdAt ? (
-                  <div className="mt-1 text-xs text-ocean-400">
+                  <div className="mt-2 text-xs text-ocean-400">
                     {new Date(row.createdAt).toLocaleString("en-IN")}
                   </div>
                 ) : null}
               </li>
             ))}
           </ul>
-        </section>
-      ) : null}
+        ) : (
+          <p className="mt-3 text-sm text-ocean-500">
+            Post a blog or guide to Facebook, Google Business, or Instagram to see it here.
+          </p>
+        )}
+      </AdminCollapseSection>
     </div>
   );
 }

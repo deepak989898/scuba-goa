@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 
 type GbpPublicSettings = {
@@ -40,10 +40,12 @@ async function adminFetch(path: string, init?: RequestInit) {
 export function GoogleBusinessSection({
   onMessage,
   hideAutoPostToggle = false,
+  titleIcon,
 }: {
   onMessage: (msg: { ok?: string; err?: string }) => void;
   /** When true, auto-post is controlled from Social media page automation toggles. */
   hideAutoPostToggle?: boolean;
+  titleIcon?: ReactNode;
 }) {
   const [settings, setSettings] = useState<GbpPublicSettings | null>(null);
   const [redirectUri, setRedirectUri] = useState("");
@@ -245,7 +247,11 @@ export function GoogleBusinessSection({
   ].join(" · ");
 
   return (
-    <AdminCollapseSection title="Google Business Profile" hint={gbpHint}>
+    <AdminCollapseSection
+      title="Google Business Profile"
+      hint={gbpHint}
+      icon={titleIcon}
+    >
       <p className="text-sm text-ocean-700">
         When a blog is auto-published, also create an <strong>Update</strong> post on your
         scuba diving Google Business Profile (title, excerpt, photo, link to the blog).

@@ -33,3 +33,10 @@ export type SocialPostLogDoc = {
   results: SocialPlatformResult[];
   createdAt: string;
 };
+
+/** True when at least one platform actually published (not skipped/failed). */
+export function socialPostLogHasPublished(
+  log: Pick<SocialPostLogDoc, "results">,
+): boolean {
+  return log.results.some((r) => r.posted === true);
+}

@@ -4,6 +4,8 @@ import { useState, type ReactNode } from "react";
 
 type Props = {
   title: string;
+  /** Optional brand icon shown before the title */
+  icon?: ReactNode;
   /** One-line summary shown when collapsed */
   hint?: string;
   badge?: ReactNode;
@@ -47,6 +49,7 @@ function CollapseChevron({ open }: { open: boolean }) {
 /** Collapsible admin card — collapsed by default; click header to expand. */
 export function AdminCollapseSection({
   title,
+  icon,
   hint,
   badge,
   defaultOpen = false,
@@ -69,6 +72,7 @@ export function AdminCollapseSection({
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 marker:hidden transition hover:bg-ocean-50/80 [&::-webkit-details-marker]:hidden">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
+            {icon ? <span className="shrink-0">{icon}</span> : null}
             <p className="text-sm font-bold text-ocean-900">{title}</p>
             {badge}
           </div>

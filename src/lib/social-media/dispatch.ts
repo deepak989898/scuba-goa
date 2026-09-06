@@ -12,6 +12,7 @@ import type {
   SocialPlatformResult,
   SocialPostLogDoc,
 } from "@/lib/social-media/types";
+import { socialPostLogHasPublished } from "@/lib/social-media/types";
 import { prepareYouTubeShare } from "@/lib/social-media/youtube/client";
 
 async function postToFacebook(
@@ -151,7 +152,7 @@ export async function dispatchSocialPost(
   };
 
   const db = getAdminDb();
-  if (db) {
+  if (db && socialPostLogHasPublished(log)) {
     await db.collection("socialMediaPosts").add(log);
   }
 

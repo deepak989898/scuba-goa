@@ -23,6 +23,10 @@ import {
   getYouTubeSettings,
   youtubeSettingsPublic,
 } from "@/lib/social-media/youtube/settings";
+import {
+  socialPostLogHasPublished,
+  type SocialPostLogDoc,
+} from "@/lib/social-media/types";
 
 export const runtime = "nodejs";
 
@@ -45,11 +49,14 @@ export async function GET(req: Request) {
     const snap = await db
       .collection("socialMediaPosts")
       .orderBy("createdAt", "desc")
-      .limit(15)
+      .limit(50)
       .get()
       .catch(() => null);
     if (snap) {
-      recentPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      recentPosts = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as SocialPostLogDoc & { id: string })
+        .filter((row) => socialPostLogHasPublished(row))
+        .slice(0, 15);
     }
   }
 

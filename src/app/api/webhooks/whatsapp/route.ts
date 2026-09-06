@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { processWhatsAppWebhookPayload } from "@/lib/whatsapp-agent/inbound";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,10 @@ export async function POST(req: NextRequest) {
       // Always return 200 so Meta does not retry endlessly.
     }
   }
+
+  void processWhatsAppWebhookPayload(body).catch((e) => {
+    console.error("[whatsapp webhook] agent:", e);
+  });
 
   return NextResponse.json({ ok: true });
 }

@@ -67,7 +67,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       {
         href: "/admin/social-media",
         label: "Social media",
-        description: "Connect GBP, Facebook, Instagram, YouTube — post & automate",
+        description: "Connect GBP, Facebook, Instagram, YouTube, WhatsApp AI — post & automate",
         highlight: true,
         badge: "action",
       },
