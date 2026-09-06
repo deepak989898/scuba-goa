@@ -6,7 +6,7 @@ import { scheduleCronTask } from "@/lib/cron-runner";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-/** Daily cron — posts next queued item when schedule is due (IST time + frequency). */
+/** Cron — posts next queued item when an IST time slot is due (checks every 30 min). */
 export async function GET(req: Request) {
   if (!verifyCronRequest(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

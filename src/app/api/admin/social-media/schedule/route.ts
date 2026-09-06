@@ -3,8 +3,11 @@ import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { formatUtcInIst } from "@/lib/blog-automation/schedule-ist";
 import {
   getSocialScheduleSettings,
+  getScheduleSlotStatus,
   runSocialScheduleOnce,
   saveSocialScheduleSettings,
+  normalizePostsPerDay,
+  normalizeSocialTimeSlots,
   type SocialQueueItem,
   type SocialScheduleSettings,
 } from "@/lib/social-media/schedule";
@@ -21,10 +24,12 @@ export async function GET(req: Request) {
   const queue = [...schedule.queue].sort((a, b) => a.order - b.order);
   const nextItem =
     queue.length > 0 ? queue[schedule.cursor % queue.length] : null;
+  const slotStatus = getScheduleSlotStatus(schedule);
 
   return NextResponse.json({
     schedule,
     nextItem,
+    slotStatus,
     nextRunAtLabel: formatUtcInIst(schedule.nextRunAt, "long"),
     lastRunAtLabel: formatUtcInIst(schedule.lastRunAt, "long"),
   });
@@ -45,6 +50,15 @@ export async function PATCH(req: Request) {
   if (typeof body.enabled === "boolean") patch.enabled = body.enabled;
   if (body.frequency === "daily" || body.frequency === "weekly" || body.frequency === "monthly") {
     patch.frequency = body.frequency;
+  }
+  if (body.postsPerDay != null) {
+    patch.postsPerDay = normalizePostsPerDay(body.postsPerDay);
+  }
+  if (Array.isArray(body.timeSlotsIst)) {
+    patch.timeSlotsIst = normalizeSocialTimeSlots(
+      patch.postsPerDay ?? (await getSocialScheduleSettings()).postsPerDay,
+      body.timeSlotsIst,
+    );
   }
   if (body.timeIst != null) patch.timeIst = String(body.timeIst).slice(0, 5);
   if (body.dayOfWeek != null) patch.dayOfWeek = Number(body.dayOfWeek);

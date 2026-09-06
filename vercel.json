@@ -43,7 +43,7 @@
     },
     {
       "path": "/api/cron/social-schedule",
-      "schedule": "30 4 * * *"
+      "schedule": "*/30 * * * *"
     }
   ],
   "rewrites": [

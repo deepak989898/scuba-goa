@@ -8,6 +8,7 @@ import type { SeoPageFirestore } from "@/lib/seo-page-firestore";
 import type { SocialPlatform } from "@/lib/social-media/types";
 import type { SocialAutomationFlags } from "@/lib/social-media/settings";
 import type { SocialQueueItem, SocialScheduleSettings } from "@/lib/social-media/schedule";
+import { MAX_SOCIAL_POSTS_PER_DAY } from "@/lib/social-media/schedule";
 import { GoogleBusinessSection } from "@/app/admin/blog-automation/GoogleBusinessSection";
 import { AdminCollapseSection } from "@/components/admin/AdminCollapseSection";
 import {
@@ -168,6 +169,12 @@ export default function AdminSocialMediaPage() {
   const [scheduleLabels, setScheduleLabels] = useState<{
     nextRunAtLabel?: string;
     lastRunAtLabel?: string;
+    slotStatus?: {
+      slotsToday: string[];
+      completedToday: string[];
+      postsPerDay: number;
+      nextSlotIst: string | null;
+    };
   }>({});
   const [queueDraft, setQueueDraft] = useState<SocialQueueItem[]>([]);
   const [queueAddType, setQueueAddType] = useState<PostContentType>("blog");
@@ -194,6 +201,12 @@ export default function AdminSocialMediaPage() {
     setScheduleLabels({
       nextRunAtLabel: String(data.nextRunAtLabel ?? ""),
       lastRunAtLabel: String(data.lastRunAtLabel ?? ""),
+      slotStatus: data.slotStatus as {
+        slotsToday: string[];
+        completedToday: string[];
+        postsPerDay: number;
+        nextSlotIst: string | null;
+      },
     });
     return data;
   }, []);
@@ -342,12 +355,40 @@ export default function AdminSocialMediaPage() {
     });
   }
 
+  function defaultSlotForIndex(index: number): string {
+    const defaults = ["09:00", "12:00", "15:00", "18:00"];
+    return defaults[index] ?? "10:00";
+  }
+
+  function setPostsPerDay(count: number) {
+    if (!schedule) return;
+    const postsPerDay = Math.min(MAX_SOCIAL_POSTS_PER_DAY, Math.max(1, count));
+    const slots = [...(schedule.timeSlotsIst ?? [schedule.timeIst])];
+    while (slots.length < postsPerDay) {
+      slots.push(defaultSlotForIndex(slots.length));
+    }
+    setSchedule({
+      ...schedule,
+      postsPerDay,
+      timeSlotsIst: slots.slice(0, postsPerDay),
+    });
+  }
+
+  function setTimeSlot(index: number, value: string) {
+    if (!schedule) return;
+    const slots = [...(schedule.timeSlotsIst ?? [])];
+    slots[index] = value;
+    setSchedule({ ...schedule, timeSlotsIst: slots });
+  }
+
   async function saveQueueAndSettings(enabled?: boolean) {
     if (!schedule) return;
     await saveSchedule({
       enabled: enabled ?? schedule.enabled,
       frequency: schedule.frequency,
-      timeIst: schedule.timeIst,
+      postsPerDay: schedule.postsPerDay,
+      timeSlotsIst: schedule.timeSlotsIst,
+      timeIst: schedule.timeSlotsIst[0] ?? schedule.timeIst,
       dayOfWeek: schedule.dayOfWeek,
       dayOfMonth: schedule.dayOfMonth,
       platforms: schedule.platforms,
@@ -614,9 +655,9 @@ export default function AdminSocialMediaPage() {
           <div>
             <h2 className="text-lg font-semibold text-ocean-950">Scheduled auto-post</h2>
             <p className="mt-1 max-w-2xl text-sm text-ocean-600">
-              Build a queue from blogs, guides, videos &amp; reels. Pick how often to post (daily /
-              weekly / monthly), set IST time, choose platforms, then start — the next item posts
-              automatically (cron ~10:00 AM IST daily on Vercel).
+              Build a queue from blogs, guides, videos &amp; reels. Set how many posts per day (max{" "}
+              {MAX_SOCIAL_POSTS_PER_DAY}), pick IST times for each post, choose platforms, then start
+              — one queue item posts at each time slot (cron checks every 30 minutes).
             </p>
           </div>
           {schedule?.enabled ? (
@@ -651,13 +692,18 @@ export default function AdminSocialMediaPage() {
                 </select>
               </label>
               <label className="text-sm">
-                <span className="text-ocean-700">Time (IST)</span>
-                <input
-                  type="time"
-                  value={schedule.timeIst}
-                  onChange={(e) => setSchedule({ ...schedule, timeIst: e.target.value })}
+                <span className="text-ocean-700">Posts per day (max {MAX_SOCIAL_POSTS_PER_DAY})</span>
+                <select
+                  value={schedule.postsPerDay ?? 1}
+                  onChange={(e) => setPostsPerDay(Number(e.target.value))}
                   className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
-                />
+                >
+                  {Array.from({ length: MAX_SOCIAL_POSTS_PER_DAY }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} post{n > 1 ? "s" : ""} per day
+                    </option>
+                  ))}
+                </select>
               </label>
               {schedule.frequency === "weekly" ? (
                 <label className="text-sm">
@@ -697,6 +743,31 @@ export default function AdminSocialMediaPage() {
               ) : null}
             </div>
 
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-ocean-900">Post times (IST)</h3>
+              <p className="mt-1 text-xs text-ocean-500">
+                One queue item posts at each time. Today:{" "}
+                {scheduleLabels.slotStatus?.completedToday?.length ?? 0}/
+                {scheduleLabels.slotStatus?.postsPerDay ?? schedule.postsPerDay ?? 1} done
+                {scheduleLabels.slotStatus?.nextSlotIst
+                  ? ` · Next slot today: ${scheduleLabels.slotStatus.nextSlotIst}`
+                  : ""}
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {(schedule.timeSlotsIst ?? [schedule.timeIst]).map((slot, index) => (
+                  <label key={index} className="text-sm">
+                    <span className="text-ocean-700">Post {index + 1} time</span>
+                    <input
+                      type="time"
+                      value={slot}
+                      onChange={(e) => setTimeSlot(index, e.target.value)}
+                      className="mt-1 block w-full rounded border border-ocean-200 px-3 py-2"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <p className="mt-3 text-xs text-ocean-500">
               Next run: {scheduleLabels.nextRunAtLabel || "—"} · Last run:{" "}
               {scheduleLabels.lastRunAtLabel || "—"}
@@ -724,7 +795,7 @@ export default function AdminSocialMediaPage() {
 
             <h3 className="mt-6 text-sm font-semibold text-ocean-900">Post queue</h3>
             <p className="mt-1 text-xs text-ocean-500">
-              Items post in order, then loop back to the start. One item per scheduled run.
+              Items post in order at each scheduled time, then loop back to the start.
             </p>
 
             <div className="mt-3 flex flex-wrap gap-3">

@@ -1,6 +1,12 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { istSlotToUtcIso } from "@/lib/blog-automation/schedule-ist";
-import { parseSlotToMinutes } from "@/lib/blog-automation/schedule-utils";
+import {
+  getIstNow,
+  getNextDueSlot,
+  getNextUpcomingSlot,
+  normalizePublishSlotsIst,
+  parseSlotToMinutes,
+} from "@/lib/blog-automation/schedule-utils";
 import { dispatchSocialPost } from "@/lib/social-media/dispatch";
 import { resolveSocialContentPayload } from "@/lib/social-media/resolve-payload";
 import type { SocialAutomationFlags } from "@/lib/social-media/settings";
@@ -8,6 +14,7 @@ import { enabledPlatforms } from "@/lib/social-media/settings";
 import type { SocialContentType, SocialPlatform } from "@/lib/social-media/types";
 
 const SCHEDULE_DOC = "socialMedia/schedule";
+export const MAX_SOCIAL_POSTS_PER_DAY = 4;
 
 export type SocialScheduleFrequency = "daily" | "weekly" | "monthly";
 
@@ -22,10 +29,19 @@ export type SocialQueueItem = {
   postCount: number;
 };
 
+export type SocialDailyRunState = {
+  dateIst: string;
+  completedSlots: string[];
+};
+
 export type SocialScheduleSettings = {
   enabled: boolean;
   frequency: SocialScheduleFrequency;
-  /** HH:mm IST */
+  /** Posts per day (1–4), each at its own IST time slot. */
+  postsPerDay: number;
+  /** HH:mm IST — one per postsPerDay, sorted ascending. */
+  timeSlotsIst: string[];
+  /** @deprecated Use timeSlotsIst — kept for migration */
   timeIst: string;
   /** 0=Sun … 6=Sat (weekly) */
   dayOfWeek: number;
@@ -33,8 +49,8 @@ export type SocialScheduleSettings = {
   dayOfMonth: number;
   platforms: SocialAutomationFlags;
   queue: SocialQueueItem[];
-  /** Round-robin index into sorted queue */
   cursor: number;
+  dailyRunState: SocialDailyRunState;
   lastRunAt: string | null;
   lastRunSummary: string | null;
   nextRunAt: string | null;
@@ -44,6 +60,8 @@ export type SocialScheduleSettings = {
 export const DEFAULT_SOCIAL_SCHEDULE: SocialScheduleSettings = {
   enabled: false,
   frequency: "daily",
+  postsPerDay: 1,
+  timeSlotsIst: ["10:00"],
   timeIst: "10:00",
   dayOfWeek: 1,
   dayOfMonth: 1,
@@ -55,6 +73,7 @@ export const DEFAULT_SOCIAL_SCHEDULE: SocialScheduleSettings = {
   },
   queue: [],
   cursor: 0,
+  dailyRunState: { dateIst: "", completedSlots: [] },
   lastRunAt: null,
   lastRunSummary: null,
   nextRunAt: null,
@@ -93,8 +112,39 @@ function istDateParts(now = new Date()) {
   };
 }
 
+export function normalizePostsPerDay(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(MAX_SOCIAL_POSTS_PER_DAY, Math.max(1, Math.round(n)));
+}
+
+export function normalizeSocialTimeSlots(
+  postsPerDay: number,
+  raw?: unknown,
+  legacyTimeIst?: string,
+): string[] {
+  const count = normalizePostsPerDay(postsPerDay);
+  const legacyMins = legacyTimeIst ? parseSlotToMinutes(legacyTimeIst) : null;
+  const legacyHour = legacyMins != null ? Math.floor(legacyMins / 60) : undefined;
+  return normalizePublishSlotsIst(count, raw, legacyHour).slice(0, MAX_SOCIAL_POSTS_PER_DAY);
+}
+
 function sortedQueue(queue: SocialQueueItem[]): SocialQueueItem[] {
   return [...queue].sort((a, b) => a.order - b.order || a.addedAt.localeCompare(b.addedAt));
+}
+
+function normalizeDailyRunState(
+  raw: unknown,
+  dateIst: string,
+): SocialDailyRunState {
+  const o = raw as Record<string, unknown> | undefined;
+  if (!o || String(o.dateIst ?? "") !== dateIst) {
+    return { dateIst, completedSlots: [] };
+  }
+  const completed = Array.isArray(o.completedSlots)
+    ? o.completedSlots.map((s) => String(s).trim()).filter((s) => parseSlotToMinutes(s) != null)
+    : [];
+  return { dateIst, completedSlots: completed };
 }
 
 export function parseSocialScheduleSettings(
@@ -126,14 +176,23 @@ export function parseSocialScheduleSettings(
     .filter((x): x is SocialQueueItem => x !== null);
 
   const timeIst = String(data.timeIst ?? "10:00").trim();
+  const postsPerDay = normalizePostsPerDay(data.postsPerDay ?? 1);
+  const timeSlotsIst = normalizeSocialTimeSlots(
+    postsPerDay,
+    data.timeSlotsIst,
+    timeIst,
+  );
   const freq = String(data.frequency ?? "daily");
   const frequency: SocialScheduleFrequency =
     freq === "weekly" || freq === "monthly" ? freq : "daily";
+  const ist = getIstNow();
 
   return {
     enabled: data.enabled === true,
     frequency,
-    timeIst: parseSlotToMinutes(timeIst) != null ? timeIst : "10:00",
+    postsPerDay,
+    timeSlotsIst,
+    timeIst: timeSlotsIst[0] ?? (parseSlotToMinutes(timeIst) != null ? timeIst : "10:00"),
     dayOfWeek: Math.min(6, Math.max(0, Number(data.dayOfWeek ?? 1))),
     dayOfMonth: Math.min(28, Math.max(1, Number(data.dayOfMonth ?? 1))),
     platforms: {
@@ -144,6 +203,7 @@ export function parseSocialScheduleSettings(
     },
     queue,
     cursor: Math.max(0, Number(data.cursor ?? 0)),
+    dailyRunState: normalizeDailyRunState(data.dailyRunState, ist.date),
     lastRunAt: data.lastRunAt ? String(data.lastRunAt) : null,
     lastRunSummary: data.lastRunSummary ? String(data.lastRunSummary) : null,
     nextRunAt: data.nextRunAt ? String(data.nextRunAt) : null,
@@ -165,14 +225,25 @@ export async function saveSocialScheduleSettings(
   const db = getAdminDb();
   if (!db) throw new Error("Firebase Admin not configured");
   const current = await getSocialScheduleSettings();
+  const postsPerDay = normalizePostsPerDay(patch.postsPerDay ?? current.postsPerDay);
+  const timeSlotsIst = normalizeSocialTimeSlots(
+    postsPerDay,
+    patch.timeSlotsIst ?? current.timeSlotsIst,
+    patch.timeIst ?? current.timeIst,
+  );
+
   const next: SocialScheduleSettings = {
     ...current,
     ...patch,
+    postsPerDay,
+    timeSlotsIst,
+    timeIst: timeSlotsIst[0] ?? current.timeIst,
     platforms: {
       ...current.platforms,
       ...(patch.platforms ?? {}),
     },
     queue: patch.queue ?? current.queue,
+    dailyRunState: patch.dailyRunState ?? current.dailyRunState,
     updatedAt: new Date().toISOString(),
   };
   next.nextRunAt = computeNextRunAt(next);
@@ -180,96 +251,71 @@ export async function saveSocialScheduleSettings(
   return next;
 }
 
+function isPostingDay(
+  schedule: Pick<SocialScheduleSettings, "frequency" | "dayOfWeek" | "dayOfMonth">,
+  ist: ReturnType<typeof istDateParts>,
+): boolean {
+  if (schedule.frequency === "weekly") return ist.dayOfWeek === schedule.dayOfWeek;
+  if (schedule.frequency === "monthly") return ist.dayOfMonth === schedule.dayOfMonth;
+  return true;
+}
+
 export function computeNextRunAt(
   schedule: Pick<
     SocialScheduleSettings,
-    "enabled" | "frequency" | "timeIst" | "dayOfWeek" | "dayOfMonth"
+    | "enabled"
+    | "frequency"
+    | "timeSlotsIst"
+    | "postsPerDay"
+    | "dayOfWeek"
+    | "dayOfMonth"
+    | "dailyRunState"
   >,
   from = new Date(),
 ): string | null {
   if (!schedule.enabled) return null;
-  const slotMins = parseSlotToMinutes(schedule.timeIst);
-  if (slotMins == null) return null;
+  const slots = normalizeSocialTimeSlots(
+    schedule.postsPerDay,
+    schedule.timeSlotsIst,
+  );
+  if (!slots.length) return null;
 
-  const ist = istDateParts(from);
-  let candidateDate = ist.dateIst;
+  const istNow = getIstNow();
+  const runState = normalizeDailyRunState(schedule.dailyRunState, istNow.date);
 
-  const trySlot = (dateIst: string) => istSlotToUtcIso(dateIst, schedule.timeIst);
-
-  if (schedule.frequency === "daily") {
-    let nextIso = trySlot(candidateDate);
-    if (new Date(nextIso).getTime() <= from.getTime()) {
-      const d = new Date(`${candidateDate}T12:00:00+05:30`);
-      d.setDate(d.getDate() + 1);
-      candidateDate = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-      nextIso = trySlot(candidateDate);
-    }
-    return nextIso;
-  }
-
-  if (schedule.frequency === "weekly") {
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(`${ist.dateIst}T12:00:00+05:30`);
-      d.setDate(d.getDate() + i);
-      const dateIst = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-      const parts = istDateParts(d);
-      if (parts.dayOfWeek !== schedule.dayOfWeek) continue;
-      const iso = trySlot(dateIst);
-      if (new Date(iso).getTime() > from.getTime()) return iso;
-    }
-    return null;
-  }
-
-  for (let i = 0; i < 62; i++) {
-    const d = new Date(`${ist.dateIst}T12:00:00+05:30`);
-    d.setDate(d.getDate() + i);
+  for (let dayOffset = 0; dayOffset <= 62; dayOffset += 1) {
+    const d = new Date(`${istNow.date}T12:00:00+05:30`);
+    d.setDate(d.getDate() + dayOffset);
     const dateIst = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-    const parts = istDateParts(d);
-    if (parts.dayOfMonth !== schedule.dayOfMonth) continue;
-    const iso = trySlot(dateIst);
-    if (new Date(iso).getTime() > from.getTime()) return iso;
+    if (!isPostingDay(schedule, istDateParts(d))) continue;
+
+    const completed = dayOffset === 0 ? runState.completedSlots : [];
+    const nextSlot =
+      dayOffset === 0
+        ? getNextUpcomingSlot(slots, istNow, completed)
+        : slots.find((s) => parseSlotToMinutes(s) != null) ?? null;
+
+    if (nextSlot) return istSlotToUtcIso(dateIst, nextSlot);
   }
   return null;
 }
 
-function periodKeyForSchedule(
-  schedule: Pick<SocialScheduleSettings, "frequency">,
-  ist: ReturnType<typeof istDateParts>,
-): string {
-  if (schedule.frequency === "daily") return ist.dateIst;
-  if (schedule.frequency === "weekly") {
-    const d = new Date(`${ist.dateIst}T12:00:00+05:30`);
-    const diff = (d.getDay() + 6) % 7;
-    d.setDate(d.getDate() - diff);
-    return `week-${d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })}`;
-  }
-  return ist.dateIst.slice(0, 7);
-}
-
-function isScheduleDue(
+export function getScheduleDueSlot(
   schedule: SocialScheduleSettings,
   now = new Date(),
-): boolean {
-  if (!schedule.enabled || schedule.queue.length === 0) return false;
+): string | null {
+  if (!schedule.enabled || schedule.queue.length === 0) return null;
 
   const ist = istDateParts(now);
-  const slotMins = parseSlotToMinutes(schedule.timeIst);
-  if (slotMins == null) return false;
-  const nowMins = ist.hour * 60 + ist.minute;
-  if (nowMins < slotMins) return false;
+  if (!isPostingDay(schedule, ist)) return null;
 
-  if (schedule.frequency === "weekly" && ist.dayOfWeek !== schedule.dayOfWeek) {
-    return false;
-  }
-  if (schedule.frequency === "monthly" && ist.dayOfMonth !== schedule.dayOfMonth) {
-    return false;
-  }
+  const istNow = getIstNow();
+  const slots = normalizeSocialTimeSlots(schedule.postsPerDay, schedule.timeSlotsIst);
+  const runState = normalizeDailyRunState(schedule.dailyRunState, istNow.date);
 
-  const currentPeriod = periodKeyForSchedule(schedule, ist);
-  if (!schedule.lastRunAt) return true;
-  const lastIst = istDateParts(new Date(schedule.lastRunAt));
-  const lastPeriod = periodKeyForSchedule(schedule, lastIst);
-  return currentPeriod !== lastPeriod;
+  if (runState.completedSlots.length >= slots.length) return null;
+
+  return getNextDueSlot(slots, istNow, runState.completedSlots);
 }
 
 export type SocialScheduleRunResult = {
@@ -279,6 +325,7 @@ export type SocialScheduleRunResult = {
   item?: SocialQueueItem;
   platforms?: SocialPlatform[];
   summary?: string;
+  slot?: string;
 };
 
 export async function runSocialScheduleOnce(
@@ -286,11 +333,10 @@ export async function runSocialScheduleOnce(
 ): Promise<SocialScheduleRunResult> {
   const schedule = await getSocialScheduleSettings();
   const platforms = enabledPlatforms(schedule.platforms);
+  const dueSlot = options?.force ? null : getScheduleDueSlot(schedule);
 
-  if (!options?.force) {
-    if (!isScheduleDue(schedule)) {
-      return { ok: true, skipped: true, summary: "Not due yet" };
-    }
+  if (!options?.force && !dueSlot) {
+    return { ok: true, skipped: true, summary: "Not due yet" };
   }
 
   if (!schedule.enabled && !options?.force) {
@@ -322,9 +368,10 @@ export async function runSocialScheduleOnce(
   try {
     const log = await dispatchSocialPost(payload, platforms, "auto");
     const posted = log.results.filter((r) => r.posted).map((r) => r.platform);
+    const slotLabel = dueSlot ? ` @ ${dueSlot} IST` : "";
     const summary = posted.length
-      ? `Posted "${item.title}" to ${posted.join(", ")}`
-      : `No platform published for "${item.title}"`;
+      ? `Posted "${item.title}" to ${posted.join(", ")}${slotLabel}`
+      : `No platform published for "${item.title}"${slotLabel}`;
 
     const updatedQueue = schedule.queue.map((q) =>
       q.id === item.id
@@ -336,14 +383,22 @@ export async function runSocialScheduleOnce(
         : q,
     );
 
+    const istNow = getIstNow();
+    const runState = normalizeDailyRunState(schedule.dailyRunState, istNow.date);
+    const completedSlots =
+      dueSlot && !runState.completedSlots.includes(dueSlot)
+        ? [...runState.completedSlots, dueSlot]
+        : runState.completedSlots;
+
     await saveSocialScheduleSettings({
       queue: updatedQueue,
       cursor: (index + 1) % queue.length,
+      dailyRunState: { dateIst: istNow.date, completedSlots },
       lastRunAt: new Date().toISOString(),
       lastRunSummary: summary,
     });
 
-    return { ok: true, item, platforms, summary };
+    return { ok: true, item, platforms, summary, slot: dueSlot ?? undefined };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Schedule post failed";
     await saveSocialScheduleSettings({
@@ -352,4 +407,23 @@ export async function runSocialScheduleOnce(
     });
     return { ok: false, error: message, item };
   }
+}
+
+/** Admin status: today's slot progress. */
+export function getScheduleSlotStatus(schedule: SocialScheduleSettings): {
+  slotsToday: string[];
+  completedToday: string[];
+  postsPerDay: number;
+  nextSlotIst: string | null;
+} {
+  const istNow = getIstNow();
+  const slots = normalizeSocialTimeSlots(schedule.postsPerDay, schedule.timeSlotsIst);
+  const runState = normalizeDailyRunState(schedule.dailyRunState, istNow.date);
+  const nextSlotIst = getNextUpcomingSlot(slots, istNow, runState.completedSlots);
+  return {
+    slotsToday: slots,
+    completedToday: runState.completedSlots,
+    postsPerDay: slots.length,
+    nextSlotIst,
+  };
 }
