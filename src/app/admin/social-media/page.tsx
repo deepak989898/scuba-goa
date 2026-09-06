@@ -71,6 +71,8 @@ type GalleryMediaOption = {
   mediaUrl: string;
   posterUrl?: string;
   category?: string;
+  source?: "gallery" | "service";
+  serviceSlug?: string;
 };
 
 type PostContentType = "blog" | "guide" | "video" | "reel";
@@ -1100,7 +1102,7 @@ export default function AdminSocialMediaPage() {
       <section className="mt-10 rounded-xl border border-ocean-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-ocean-950">Post now</h2>
         <p className="mt-1 text-sm text-ocean-600">
-          Share a blog, guide, gallery video, or reel from your website. Captions include live
+          Share a blog, guide, gallery video/reel, or service video/reel from your website. Captions include live
           prices, Baga/Goa location, phone &amp; booking link. Videos post natively to Facebook
           &amp; Instagram (reels use Instagram Reels).
         </p>
@@ -1150,12 +1152,18 @@ export default function AdminSocialMediaPage() {
                 : null}
               {postContentType === "video"
                 ? galleryVideos.map((item) => (
-                    <option key={item.id} value={item.id}>{item.title}</option>
+                    <option key={item.id} value={item.id}>
+                      {item.title}
+                      {item.source === "service" ? " (Service)" : item.source === "gallery" ? " (Gallery)" : ""}
+                    </option>
                   ))
                 : null}
               {postContentType === "reel"
                 ? galleryReels.map((item) => (
-                    <option key={item.id} value={item.id}>{item.title}</option>
+                    <option key={item.id} value={item.id}>
+                      {item.title}
+                      {item.source === "service" ? " (Service)" : item.source === "gallery" ? " (Gallery)" : ""}
+                    </option>
                   ))
                 : null}
             </select>
@@ -1164,7 +1172,11 @@ export default function AdminSocialMediaPage() {
         {(postContentType === "video" || postContentType === "reel") &&
         postMediaOptions.length === 0 ? (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            No {postContentType === "reel" ? "reels" : "videos"} in gallery yet. Add them in{" "}
+            No {postContentType === "reel" ? "reels" : "videos"} found yet. Add them in{" "}
+            <a href="/admin/services" className="font-medium text-cyan-800 underline">
+              Services admin
+            </a>{" "}
+            (Extra media → Upload {postContentType === "reel" ? "reels" : "videos"}) or{" "}
             <a href="/admin/gallery" className="font-medium text-cyan-800 underline">
               Gallery admin
             </a>{" "}

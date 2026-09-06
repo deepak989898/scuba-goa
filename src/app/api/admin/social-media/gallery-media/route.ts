@@ -24,6 +24,8 @@ export async function GET(req: Request) {
       mediaUrl: item.mediaUrl,
       posterUrl: item.posterUrl,
       category: item.category,
+      source: item.source,
+      serviceSlug: item.serviceSlug,
     })),
     counts: {
       video: items.filter((i) => i.contentType === "video").length,

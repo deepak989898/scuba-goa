@@ -34,3 +34,11 @@ yarn-error.log*
 NUL
 
 .vercel
+
+# Android app (source only — never commit build/ or .gradle/)
+android/**/build/
+android/**/.gradle/
+android/**/.cxx/
+android/**/local.properties
+android/**/*.apk
+android/**/*.aab

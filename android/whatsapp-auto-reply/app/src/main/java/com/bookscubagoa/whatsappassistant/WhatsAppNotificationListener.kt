@@ -57,7 +57,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
             return
         }
 
-        val sent = WhatsAppReplyHelper.sendReply(sbn, result.reply)
+        val sent = WhatsAppReplyHelper.sendReply(this@WhatsAppNotificationListener, sbn, result.reply)
         Prefs.appendLog(
             this,
             if (sent) {

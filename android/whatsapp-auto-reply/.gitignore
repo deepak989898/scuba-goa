@@ -1,8 +1,11 @@
-
-# Android WhatsApp assistant
-android/whatsapp-auto-reply/.gradle/
-android/whatsapp-auto-reply/**/build/
-android/whatsapp-auto-reply/**/.cxx/
-android/whatsapp-auto-reply/local.properties
-android/whatsapp-auto-reply/*.iml
-android/whatsapp-auto-reply/.idea/
+# Android / Gradle — never commit build output or local caches
+.gradle/
+**/build/
+**/.cxx/
+local.properties
+*.iml
+.idea/
+*.apk
+*.aab
+captures/
+.externalNativeBuild/

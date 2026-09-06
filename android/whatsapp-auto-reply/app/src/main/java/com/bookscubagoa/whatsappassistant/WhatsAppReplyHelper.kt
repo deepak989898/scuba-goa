@@ -1,6 +1,7 @@
 package com.bookscubagoa.whatsappassistant
 
 import android.app.RemoteInput
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.service.notification.StatusBarNotification
@@ -52,7 +53,7 @@ object WhatsAppReplyHelper {
         return false
     }
 
-    fun sendReply(sbn: StatusBarNotification, replyText: String): Boolean {
+    fun sendReply(context: Context, sbn: StatusBarNotification, replyText: String): Boolean {
         val notification = sbn.notification
         val actions = notification.actions ?: return false
         for (action in actions) {
@@ -60,12 +61,13 @@ object WhatsAppReplyHelper {
             val remoteInputs = action.remoteInputs
             if (remoteInputs == null || remoteInputs.isEmpty()) continue
             val remoteInput = remoteInputs[0]
-            val intent = action.actionIntent ?: continue
+            val pendingIntent = action.actionIntent ?: continue
+            val fillInIntent = Intent()
             val bundle = Bundle()
             bundle.putCharSequence(remoteInput.resultKey, replyText)
-            RemoteInput.addResultsToIntent(arrayOf(remoteInput), intent, bundle)
+            RemoteInput.addResultsToIntent(arrayOf(remoteInput), fillInIntent, bundle)
             try {
-                intent.send()
+                pendingIntent.send(context, 0, fillInIntent)
                 return true
             } catch (_: Exception) {
                 continue
