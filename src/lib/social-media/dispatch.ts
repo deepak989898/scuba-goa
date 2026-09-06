@@ -91,6 +91,7 @@ async function postToInstagramPlatform(
         videoUrl,
         caption: captions.instagram,
         isReel: payload.isReel === true || payload.contentType === "reel",
+        coverUrl: imageUrl,
       });
       await saveMetaSettings({
         lastPostAt: new Date().toISOString(),
@@ -100,9 +101,7 @@ async function postToInstagramPlatform(
         platform: "instagram",
         ok: true,
         posted: true,
-        message: payload.isReel || payload.contentType === "reel"
-          ? "Posted reel to Instagram"
-          : "Posted video to Instagram",
+        message: "Posted video to Instagram (Reels + feed)",
         externalId: id,
       };
     } catch (e) {

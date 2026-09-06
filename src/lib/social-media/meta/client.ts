@@ -158,6 +158,21 @@ export async function postVideoToFacebookPage(input: {
   return data.id;
 }
 
+type MetaApiError = {
+  message?: string;
+  error_user_msg?: string;
+  error_subcode?: number;
+  code?: number;
+};
+
+function formatMetaError(data: { error?: MetaApiError }): string {
+  const e = data.error;
+  if (!e) return "Meta API error";
+  const msg = e.error_user_msg || e.message || "Meta API error";
+  if (e.error_subcode) return `${msg} (subcode ${e.error_subcode})`;
+  return msg;
+}
+
 async function waitForInstagramMediaReady(
   containerId: string,
   pageAccessToken: string,
@@ -176,7 +191,7 @@ async function waitForInstagramMediaReady(
       error?: { message?: string };
     };
     if (!res.ok) {
-      throw new Error(data.error?.message ?? "Instagram media status check failed");
+      throw new Error(formatMetaError(data));
     }
     const code = String(data.status_code ?? "").toUpperCase();
     if (code === "FINISHED") return;
@@ -209,7 +224,7 @@ export async function postToInstagram(input: {
     error?: { message?: string };
   };
   if (!createRes.ok || !createData.id) {
-    throw new Error(createData.error?.message ?? "Instagram media create failed");
+    throw new Error(formatMetaError(createData));
   }
 
   const publishUrl = `https://graph.facebook.com/v21.0/${input.instagramBusinessId}/media_publish`;
@@ -226,7 +241,7 @@ export async function postToInstagram(input: {
     error?: { message?: string };
   };
   if (!publishRes.ok || !publishData.id) {
-    throw new Error(publishData.error?.message ?? "Instagram publish failed");
+    throw new Error(formatMetaError(publishData));
   }
   return publishData.id;
 }
@@ -236,26 +251,36 @@ export async function postVideoToInstagram(input: {
   pageAccessToken: string;
   videoUrl: string;
   caption: string;
+  /** @deprecated Instagram API requires REELS for all video — kept for callers */
   isReel?: boolean;
+  coverUrl?: string;
 }): Promise<string> {
   const createUrl = `https://graph.facebook.com/v21.0/${input.instagramBusinessId}/media`;
+
+  // Instagram no longer accepts media_type=VIDEO for standalone posts — use REELS + share_to_feed.
+  const createBody: Record<string, string | boolean> = {
+    media_type: "REELS",
+    video_url: input.videoUrl,
+    caption: input.caption.slice(0, 2200),
+    share_to_feed: true,
+    access_token: input.pageAccessToken,
+  };
+  const cover = input.coverUrl?.trim();
+  if (cover && /^https:\/\//i.test(cover)) {
+    createBody.cover_url = cover;
+  }
+
   const createRes = await fetch(createUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      media_type: input.isReel ? "REELS" : "VIDEO",
-      video_url: input.videoUrl,
-      caption: input.caption.slice(0, 2200),
-      share_to_feed: input.isReel ? true : undefined,
-      access_token: input.pageAccessToken,
-    }),
+    body: JSON.stringify(createBody),
   });
   const createData = (await createRes.json()) as {
     id?: string;
-    error?: { message?: string };
+    error?: MetaApiError;
   };
   if (!createRes.ok || !createData.id) {
-    throw new Error(createData.error?.message ?? "Instagram video create failed");
+    throw new Error(formatMetaError(createData));
   }
 
   await waitForInstagramMediaReady(createData.id, input.pageAccessToken);
@@ -271,10 +296,10 @@ export async function postVideoToInstagram(input: {
   });
   const publishData = (await publishRes.json()) as {
     id?: string;
-    error?: { message?: string };
+    error?: MetaApiError;
   };
   if (!publishRes.ok || !publishData.id) {
-    throw new Error(publishData.error?.message ?? "Instagram video publish failed");
+    throw new Error(formatMetaError(publishData));
   }
   return publishData.id;
 }
