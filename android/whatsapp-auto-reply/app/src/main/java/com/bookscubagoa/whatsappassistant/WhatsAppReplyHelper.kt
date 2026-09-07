@@ -50,12 +50,40 @@ object WhatsAppReplyHelper {
         if (!messaging.text.isNullOrBlank() && !messaging.isFromSelf) {
             return messaging.text.trim()
         }
+        if (messaging.isFromSelf) return ""
 
         val text = extras.getCharSequence("android.text")?.toString()?.trim() ?: ""
         val big = extras.getCharSequence("android.bigText")?.toString()?.trim()
         val lines = extras.getCharSequenceArray("android.textLines")
         val lineText = lines?.lastOrNull()?.toString()?.trim()
         return (big ?: lineText ?: text).trim()
+    }
+
+    /** Latest bubble text including admin's own messages (for pause / echo detection). */
+    fun extractLatestMessageText(sbn: StatusBarNotification): String {
+        val extras = sbn.notification.extras ?: return ""
+        val messaging = extractMessagingStyle(extras)
+        if (!messaging.text.isNullOrBlank()) {
+            return messaging.text.trim()
+        }
+
+        val text = extras.getCharSequence("android.text")?.toString()?.trim() ?: ""
+        val big = extras.getCharSequence("android.bigText")?.toString()?.trim()
+        val lines = extras.getCharSequenceArray("android.textLines")
+        val lineText = lines?.lastOrNull()?.toString()?.trim()
+        return (big ?: lineText ?: text).trim()
+    }
+
+    /** Contact / chat title shown on the WhatsApp notification (customer name). */
+    fun extractContactTitle(sbn: StatusBarNotification): String {
+        val extras = sbn.notification.extras ?: return ""
+        val title = extras.getCharSequence("android.title")?.toString()?.trim() ?: ""
+        if (title.isNotEmpty() && !isGroupSummary(title) && !isSelfSenderLabel(title)) {
+            return title
+        }
+        val sub = extras.getString("android.subText")?.trim() ?: ""
+        if (sub.isNotEmpty() && !isSelfSenderLabel(sub)) return sub
+        return extractSenderTitle(sbn)
     }
 
     fun extractPhoneHint(sbn: StatusBarNotification): String {
@@ -85,6 +113,10 @@ object WhatsAppReplyHelper {
             return "already replied to this customer message"
         }
 
+        val contact = extractContactTitle(sbn)
+        val pauseKey = AdminReplyPause.customerKey(sbn, contact)
+        AdminReplyPause.pauseReason(pauseKey)?.let { return it }
+
         val lower = text.lowercase()
         if (lower == "checking for new messages") return "whatsapp sync notification"
         if (lower == "waiting for this message. this may take a while.") return "e2e wait notification"
@@ -99,6 +131,13 @@ object WhatsAppReplyHelper {
 
     fun shouldIgnoreMessage(sbn: StatusBarNotification, text: String, sender: String): Boolean =
         ignoreReason(sbn, text, sender) != null
+
+    fun isAdminManualOutgoing(sbn: StatusBarNotification, sender: String): Boolean {
+        if (!isOutgoingNotification(sbn, sender)) return false
+        val latest = extractLatestMessageText(sbn)
+        if (latest.isBlank()) return true
+        return !ReplyGuard.isEchoOfOurReply(latest)
+    }
 
     fun isOutgoingNotification(sbn: StatusBarNotification, sender: String): Boolean {
         if (isSelfSenderLabel(sender)) return true

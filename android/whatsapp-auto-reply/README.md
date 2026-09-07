@@ -40,5 +40,6 @@ Copy APK to phone → allow unknown sources → install → enable notification 
 ## Notes
 
 - Business phone must stay online with WhatsApp running.
+- **Manual reply pause:** If you reply to a customer yourself in WhatsApp, auto-reply stops for **that chat only** for **10 minutes** (other customers are unaffected).
 - Separate from Meta Cloud API — social media WhatsApp config unchanged.
 - Disable battery optimization for reliable background use.

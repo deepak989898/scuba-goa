@@ -212,6 +212,7 @@ class MainActivity : AppCompatActivity() {
             add("Notification access: ${if (listener) "ON" else "OFF — tap button above"}")
             add("Website: ${Prefs.baseUrl(this@MainActivity)}")
             if (enabled && listener) {
+                add(getString(R.string.status_admin_pause_hint))
                 add("Ready — send a test WhatsApp, then check Debug log below.")
             }
         }

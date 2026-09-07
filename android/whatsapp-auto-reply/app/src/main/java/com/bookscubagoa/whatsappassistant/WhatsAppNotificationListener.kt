@@ -41,6 +41,13 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         }
 
         val sender = WhatsAppReplyHelper.extractSenderTitle(sbn)
+        val contact = WhatsAppReplyHelper.extractContactTitle(sbn)
+
+        if (WhatsAppReplyHelper.isAdminManualOutgoing(sbn, sender)) {
+            AdminReplyPause.recordManualReply(this, sbn, contact)
+            return
+        }
+
         val message = WhatsAppReplyHelper.extractMessageText(sbn)
         val ignoreReason = WhatsAppReplyHelper.ignoreReason(sbn, message, sender)
         if (ignoreReason != null) {
@@ -113,6 +120,8 @@ class WhatsAppNotificationListener : NotificationListenerService() {
 
         DebugLog.d(this, "API", "OK in ${elapsed}ms — reply ${result.reply.length} chars: \"${result.reply.take(80)}\"")
 
+        ReplyGuard.recordOutbound(result.reply)
+
         val candidates = WhatsAppReplyHelper.findReplyCandidates(this, sbn, sender)
         DebugLog.d(
             this,
@@ -124,7 +133,6 @@ class WhatsAppNotificationListener : NotificationListenerService() {
 
         val sendResult = WhatsAppReplyHelper.sendReply(this, sbn, sender, result.reply)
         if (sendResult.success) {
-            ReplyGuard.recordOutbound(result.reply)
             ReplyGuard.markInboundReplied(convKey, message)
             DebugLog.d(this, "OUT", "Reply sent (1 per customer message) — ${sendResult.detail}")
         } else {

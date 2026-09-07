@@ -3,6 +3,7 @@
     <string name="app_name">Book Scuba WhatsApp Assistant</string>
     <string name="notification_listener_label">Book Scuba Goa WhatsApp Auto-Reply</string>
     <string name="status_running">Auto-reply is ON — keep this phone online with WhatsApp.</string>
+    <string name="status_admin_pause_hint">When you reply manually in a chat, auto-reply pauses for that customer only (10 minutes).</string>
     <string name="status_stopped">Auto-reply is OFF</string>
     <string name="enable_notification_access">Enable notification access</string>
     <string name="battery_optimization">Disable battery optimization (recommended)</string>
