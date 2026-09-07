@@ -6,7 +6,7 @@ import {
   runScheduledAutomation,
   shouldRunScheduledAutomation,
 } from "@/lib/seo-blog-center/scheduled-automation";
-import { addSeoBlogLog, getSeoBlogSettings } from "@/lib/seo-blog-center/store";
+import { addSeoBlogLog, getSeoBlogSettings, listGenerationJobs } from "@/lib/seo-blog-center/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -22,6 +22,24 @@ export async function POST(req: Request) {
 
   try {
     const cfg = await getSeoBlogSettings();
+
+    const autoApproveOn =
+      cfg.autoApprovePublishWithAiImage === true ||
+      cfg.autoApprovePublishWithoutImage === true;
+    const scheduleDue =
+      cfg.automationScheduleEnabled && shouldRunScheduledAutomation(cfg);
+
+    if (!autoApproveOn && !scheduleDue) {
+      const waiting = await listGenerationJobs("waiting", 1);
+      if (waiting.length === 0) {
+        return NextResponse.json({
+          ok: true,
+          skipped: true,
+          reason: "automation_off_no_waiting_jobs",
+        });
+      }
+    }
+
     let scheduled: Awaited<ReturnType<typeof runScheduledAutomation>> | null = null;
 
     if (

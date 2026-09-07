@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getAdminDb } from "@/lib/firebase-admin";
 import type { OfferDoc } from "@/lib/types";
 
@@ -40,7 +41,7 @@ export async function fetchActiveOfferByPromoCode(
 }
 
 /** All active offers for public listing, sorted. */
-export async function fetchActiveOffersPublic(): Promise<OfferDoc[]> {
+async function fetchActiveOffersPublicUncached(): Promise<OfferDoc[]> {
   const db = getAdminDb();
   if (!db) return [];
   const snap = await db.collection("offers").get();
@@ -54,4 +55,12 @@ export async function fetchActiveOffersPublic(): Promise<OfferDoc[]> {
     (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.title.localeCompare(b.title)
   );
   return rows;
+}
+
+export async function fetchActiveOffersPublic(): Promise<OfferDoc[]> {
+  return unstable_cache(
+    fetchActiveOffersPublicUncached,
+    ["public-offers-v1"],
+    { revalidate: 3600, tags: ["offers"] },
+  )();
 }

@@ -17,7 +17,7 @@ import { ADVANCE_BOOKING_INR } from "@/lib/payment";
 
 type Props = { params: Promise<{ id: string }> };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   return fallbackPackages.map((p) => ({ id: p.id }));

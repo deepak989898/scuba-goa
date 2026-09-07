@@ -6,7 +6,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { fetchActiveOffersPublic } from "@/lib/server-offers";
 import type { OfferDoc } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Offers & promo codes",

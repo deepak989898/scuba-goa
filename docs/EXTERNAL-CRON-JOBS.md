@@ -35,7 +35,7 @@ Actual run status is written to Firestore collection `cronRunStatus`.
 
 | Job title | URL | UTC schedule | IST time |
 |---|---|---:|---:|
-| Blog publish checker | `https://www.bookscubagoa.com/api/cron/blog-publish` | Every 30 minutes | Every 30 minutes |
+| Blog publish checker | `https://www.bookscubagoa.com/api/cron/blog-publish` | Every **60** minutes (recommended) | Every 60 minutes |
 | Booking recovery | `https://www.bookscubagoa.com/api/cron/recovery-hourly` | Minute 15 of every hour | Minute 45 of every hour |
 | AI analytics | `https://www.bookscubagoa.com/api/cron/analytics-daily` | `0 4 * * *` | 09:30 daily |
 | Weekly SEO | `https://www.bookscubagoa.com/api/cron/seo-weekly` | `0 5 * * 1` | 10:30 Monday |
@@ -43,7 +43,7 @@ Actual run status is written to Firestore collection `cronRunStatus`.
 | Marketing agent | `https://www.bookscubagoa.com/api/cron/marketing-daily` | `0 6 * * *` | 11:30 daily |
 | Command Center | `https://www.bookscubagoa.com/api/cron/command-center-daily` | `15 6 * * *` | 11:45 daily |
 | SEO Blog Center | `https://www.bookscubagoa.com/api/cron/seo-blog-center-daily` | `45 6 * * *` | 12:15 daily |
-| AI blog generation queue | `https://www.bookscubagoa.com/api/cron/ai-blog-generation` | Every 30 minutes | Every 30 minutes |
+| AI blog generation queue | `https://www.bookscubagoa.com/api/cron/ai-blog-generation` | Every **60** minutes (recommended) | Every 60 minutes |
 | AI Pricing (weekly) | `https://www.bookscubagoa.com/api/cron/pricing-agent-weekly` | `30 0 * * 2` | **Tuesday 06:00 IST** |
 | GSC Indexing Agent (daily) | `https://www.bookscubagoa.com/api/cron/gsc-indexing-agent` | `30 5 * * *` | 11:00 daily |
 | GSC Indexing Agent (weekly) | `https://www.bookscubagoa.com/api/cron/gsc-indexing-agent?job=weekly` | `0 7 * * 1` | 12:30 Monday |

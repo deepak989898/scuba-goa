@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { sanitizePackageImageUrl } from "@/lib/cms-image";
 import { parseFirestoreIncludes } from "@/lib/parse-firestore-includes";
@@ -36,7 +37,7 @@ function mapPackageDoc(id: string, data: Record<string, unknown>): PackageDoc {
 }
 
 /** Server-only: booking packages for SSR, blog catalog, and schema. */
-export async function getAllPackagesServer(): Promise<PackageDoc[]> {
+async function getAllPackagesUncached(): Promise<PackageDoc[]> {
   const db = getAdminDb();
   if (!db) return stripStockFromPackages(fallbackPackages);
   try {
@@ -56,6 +57,14 @@ export async function getAllPackagesServer(): Promise<PackageDoc[]> {
   } catch {
     return stripStockFromPackages(fallbackPackages);
   }
+}
+
+export async function getAllPackagesServer(): Promise<PackageDoc[]> {
+  return unstable_cache(
+    getAllPackagesUncached,
+    ["public-packages-v1"],
+    { revalidate: 3600, tags: ["packages"] },
+  )();
 }
 
 export async function getPackageByIdServer(id: string): Promise<PackageDoc | null> {

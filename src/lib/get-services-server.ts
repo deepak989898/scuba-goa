@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { sanitizeServiceImages } from "@/lib/cms-image";
 import { docToService } from "@/lib/service-firestore";
@@ -22,7 +23,7 @@ function mergeServicesWithFallback(live: ServiceItem[]): ServiceItem[] {
 }
 
 /** Server-only: metadata & SSR when FIREBASE_SERVICE_ACCOUNT_KEY is set */
-export async function getAllServicesServer(): Promise<ServiceItem[]> {
+async function getAllServicesUncached(): Promise<ServiceItem[]> {
   const db = getAdminDb();
   if (!db) return publicFallbackServices();
   try {
@@ -46,6 +47,14 @@ export async function getAllServicesServer(): Promise<ServiceItem[]> {
   } catch {
     return publicFallbackServices();
   }
+}
+
+export async function getAllServicesServer(): Promise<ServiceItem[]> {
+  return unstable_cache(
+    getAllServicesUncached,
+    ["public-services-v1"],
+    { revalidate: 3600, tags: ["services"] },
+  )();
 }
 
 export async function getServiceBySlugServer(

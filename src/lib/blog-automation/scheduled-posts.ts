@@ -161,17 +161,46 @@ export async function publishDueScheduledPosts(limit = 5): Promise<{
   if (!db) return { published: [], errors: ["Firebase Admin not configured"] };
 
   const nowMs = Date.now();
-  const snap = await db.collection("blogPosts").where("published", "==", false).get();
+  const nowIso = new Date(nowMs).toISOString();
 
   const due: { slug: string; at: number }[] = [];
-  for (const doc of snap.docs) {
-    const post = parseBlogPostFromFirestore(doc.id, doc.data() as Record<string, unknown>, {
-      requirePublished: false,
-    });
-    if (!post?.scheduledPublishAt) continue;
-    const at = new Date(post.scheduledPublishAt).getTime();
-    if (!Number.isNaN(at) && at <= nowMs) {
-      due.push({ slug: post.slug, at });
+
+  try {
+    const snap = await db
+      .collection("blogPosts")
+      .where("published", "==", false)
+      .where("scheduledPublishAt", "<=", nowIso)
+      .orderBy("scheduledPublishAt")
+      .limit(Math.max(limit, 10))
+      .get();
+
+    for (const doc of snap.docs) {
+      const post = parseBlogPostFromFirestore(doc.id, doc.data() as Record<string, unknown>, {
+        requirePublished: false,
+      });
+      if (!post?.scheduledPublishAt) continue;
+      const at = new Date(post.scheduledPublishAt).getTime();
+      if (!Number.isNaN(at) && at <= nowMs) {
+        due.push({ slug: post.slug, at });
+      }
+    }
+  } catch {
+    // Fallback when composite index is missing: capped scan of unpublished only.
+    const snap = await db
+      .collection("blogPosts")
+      .where("published", "==", false)
+      .limit(40)
+      .get();
+
+    for (const doc of snap.docs) {
+      const post = parseBlogPostFromFirestore(doc.id, doc.data() as Record<string, unknown>, {
+        requirePublished: false,
+      });
+      if (!post?.scheduledPublishAt) continue;
+      const at = new Date(post.scheduledPublishAt).getTime();
+      if (!Number.isNaN(at) && at <= nowMs) {
+        due.push({ slug: post.slug, at });
+      }
     }
   }
 

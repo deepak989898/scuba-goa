@@ -7,7 +7,7 @@ import {
 
 type Props = { params: Promise<{ slug: string; subSlug: string }> };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 /**
  * Legacy nested URLs (/services/scuba-diving/grand-island) permanently

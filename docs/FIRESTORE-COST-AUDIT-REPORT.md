@@ -136,9 +136,24 @@ Monitor Firebase console for 48 hours post-deploy.
 2. **AI Blog Automation** — full `blogPosts.get()` on each `load()`.
 3. **Blog traffic `mode=full`** — 5,000 pageViews backfill scan.
 4. **GSC daily cron** — 5K–15K reads/day (acceptable).
-5. **Bot analytics events** — `/api/t` still does transactional reads per view.
-6. **Client CMS hooks** on homepage — 55 reads per new browser session.
+5. ~~**Bot analytics events** — `/api/t` still does transactional reads per view.~~ **Fixed wave 2:** bots skip rate-limit txn reads.
+6. ~~**Client CMS hooks** on homepage — 55 reads per new browser session.~~ **Fixed wave 2:** `/api/public/cms-catalog` + 1h server cache.
 7. **Bulk gallery backfill** — still scans full collections when run manually.
+8. **cron-job.org every 30 min** — reduce `blog-publish` + `ai-blog-generation` to **hourly** (see `docs/EXTERNAL-CRON-JOBS.md`).
+
+---
+
+## Wave 2 fixes (Sep 7 — billing still rising with admin closed)
+
+| Fix | Files |
+|-----|-------|
+| Public CMS catalog API (services + packages + hero) with 1h cache | `src/app/api/public/cms-catalog/route.ts`, `get-*-server.ts` |
+| Homepage hooks use HTTP catalog instead of client `getDocs` | `useServices.ts`, `usePackages.ts`, `useHeroSlides.ts`, `usePublicCmsCatalog.ts` |
+| Bot analytics: skip rate-limit read txn | `src/app/api/analytics/track/route.ts` |
+| ISR 1h on services, packages, offers | `services/[slug]/page.tsx`, `packages/[id]/page.tsx`, `offers/page.tsx` |
+| `publishDueScheduledPosts` targeted query (not full unpublished scan) | `scheduled-posts.ts` |
+| AI blog cron early-exit when automation off + no waiting jobs | `api/cron/ai-blog-generation/route.ts` |
+| Cache public offers list 1h | `server-offers.ts` |
 
 ---
 

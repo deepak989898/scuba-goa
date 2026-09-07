@@ -222,7 +222,6 @@ export async function POST(req: Request) {
 
   const ua = req.headers.get("user-agent") ?? "";
   const botUa = classifyBotFromUserAgent(ua);
-  const { category, label, deviceModel, uaSnippet } = parseRequestDevice(req.headers);
 
   const purpose =
     req.headers.get("purpose")?.toLowerCase() ||
@@ -232,49 +231,11 @@ export async function POST(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
-  const ipSecret = process.env.ANALYTICS_IP_HASH_SECRET?.trim() || "";
-  const ip = clientIpFromHeaders(req.headers);
-  const ipHash = ipSecret ? hashIp(ip, ipSecret) : hashIp(ip, "bsg-analytics-fallback");
-  // Heartbeats are already sparse client-side; skip rate-limit txn (1 read each).
-  if (eventType !== "heartbeat") {
-    const allowed = await checkRateLimit(db, ipHash || sessionId);
-    if (!allowed) {
-      return new NextResponse(null, { status: 204 });
-    }
-  }
-
-  // Confirmed UA bots: store evidence but never inflate human/blog counters
+  // Bots: skip rate-limit txn + human session reads (major read saver under crawl load).
   if (botUa.isBot) {
+    if (!db) return new NextResponse(null, { status: 204 });
+    const { category, label, uaSnippet } = parseRequestDevice(req.headers);
     try {
-      const sessionRef = db.collection("analyticsSessions").doc(sessionId || "anon");
-      await sessionRef.set(
-        {
-          sessionId: sessionId || "anon",
-          lastPath: path,
-          isActive: false,
-          lastEventType: eventType,
-          lastSeenAt: FieldValue.serverTimestamp(),
-          firstSeenAt: FieldValue.serverTimestamp(),
-          deviceCategory: category,
-          deviceLabel: label,
-          uaSnippet,
-          isBot: true,
-          visitorType: "bot",
-          botName: botUa.botName,
-          botCategory: botUa.botCategory,
-          botReason: botUa.botReason,
-          botConfidence: botUa.botConfidence,
-          botSignals: botUa.botSignals,
-          analyticsVersion: ANALYTICS_DATA_VERSION,
-          trafficChannel: "other",
-          trafficLabel: "Bot / crawler",
-          source: "unknown",
-          medium: "unknown",
-          sourceConfidence: "unknown",
-          attributionReason: "classified as bot from User-Agent",
-        },
-        { merge: true },
-      );
       if (eventType === "view") {
         await db.collection("pageViews").add({
           path,
@@ -297,6 +258,19 @@ export async function POST(req: Request) {
       console.error("bot analytics write failed", e);
     }
     return new NextResponse(null, { status: 204 });
+  }
+
+  const { category, label, deviceModel, uaSnippet } = parseRequestDevice(req.headers);
+
+  const ipSecret = process.env.ANALYTICS_IP_HASH_SECRET?.trim() || "";
+  const ip = clientIpFromHeaders(req.headers);
+  const ipHash = ipSecret ? hashIp(ip, ipSecret) : hashIp(ip, "bsg-analytics-fallback");
+  // Heartbeats are already sparse client-side; skip rate-limit txn (1 read each).
+  if (eventType !== "heartbeat") {
+    const allowed = await checkRateLimit(db, ipHash || sessionId);
+    if (!allowed) {
+      return new NextResponse(null, { status: 204 });
+    }
   }
 
   // Idempotent event id
