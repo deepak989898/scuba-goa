@@ -13,8 +13,7 @@ import {
   getBlogPostBySlugMerged,
 } from "@/lib/blog-posts-unified";
 import {
-  buildClusterCatalog,
-  getMoreLikeThisForBlog,
+  getBlogClusterPageBundle,
 } from "@/lib/cluster-related-content";
 import { enrichMarkdownWithClusterLinks } from "@/lib/contextual-internal-links";
 import { getTopicAwareBlogFaqs } from "@/lib/blog-topic-faqs";
@@ -243,11 +242,10 @@ export default async function BlogPostPage({ params }: Props) {
     if (dest) permanentRedirect(dest);
     notFound();
   }
-  const [fs, moreLikeThis, catalog, clusterCatalog] = await Promise.all([
+  const [fs, { moreLikeThis, clusterCatalog }, catalog] = await Promise.all([
     getPublishedBlogPostBySlug(slug),
-    getMoreLikeThisForBlog(slug),
+    getBlogClusterPageBundle(slug),
     buildBlogCatalogContext(),
-    buildClusterCatalog(),
   ]);
 
   const pageUrl = `${SITE_URL.replace(/\/$/, "")}/blog/${p.slug}`;

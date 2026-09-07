@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getAdminDb } from "@/lib/firebase-admin";
 import {
   isValidBlogSlug,
@@ -54,6 +55,14 @@ export async function getPublishedBlogPostBySlug(
 }
 
 export async function listPublishedBlogPostsServer(): Promise<BlogPostFirestore[]> {
+  return unstable_cache(
+    listPublishedBlogPostsUncached,
+    ["published-blog-posts-v1"],
+    { revalidate: 3600, tags: ["blog-posts"] },
+  )();
+}
+
+async function listPublishedBlogPostsUncached(): Promise<BlogPostFirestore[]> {
   const db = getAdminDb();
   if (!db) return [];
   try {

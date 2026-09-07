@@ -768,7 +768,7 @@ const SAMPLE_LIMIT = 400;
 const SESSION_LIMIT = 150;
 /** Heartbeat is ~3 min — allow two missed beats before going offline. */
 const ONLINE_WINDOW_MS = 420_000;
-const ANALYTICS_POLL_MS = 120_000;
+const ANALYTICS_POLL_MS = 300_000;
 const MAX_DAYS = 31;
 const MONTH_SAMPLE_LIMIT = 3000;
 const MONTH_SESSION_LIMIT = 1000;
@@ -906,7 +906,15 @@ export default function AdminAnalyticsPage() {
       }
     };
     void loadLeads();
-    const poll = window.setInterval(() => void loadLeads(), ANALYTICS_POLL_MS);
+    const poll = window.setInterval(() => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
+      void loadLeads();
+    }, ANALYTICS_POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(poll);
@@ -1395,7 +1403,15 @@ export default function AdminAnalyticsPage() {
       }
     };
     void loadPushStats();
-    const poll = window.setInterval(() => void loadPushStats(), ANALYTICS_POLL_MS);
+    const poll = window.setInterval(() => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
+      void loadPushStats();
+    }, ANALYTICS_POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(poll);

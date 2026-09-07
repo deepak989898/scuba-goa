@@ -85,21 +85,32 @@ export async function syncBlogImageToHomeGallery(
     input.category ??
     inferGalleryCategoryFromBlog(String(input.serviceSlug ?? "").trim());
 
-  const mediaKey = galleryMediaDedupeKey(mediaUrl);
   const sha = input.sha256?.trim().toLowerCase() || "";
   const ph = input.perceptualHash?.trim().toLowerCase() || "";
-  const existing = await db.collection("homeGallery").get();
-  const alreadyElsewhere = existing.docs.some((docSnap) => {
-    if (docSnap.id === docId) return false;
-    const data = docSnap.data();
-    const url = String(data.mediaUrl ?? data.imageUrl ?? "").trim();
-    if (url && galleryMediaDedupeKey(url) === mediaKey) return true;
-    const otherSha = String(data.sha256 ?? "").trim().toLowerCase();
-    if (sha && otherSha && sha === otherSha) return true;
-    const otherPh = String(data.perceptualHash ?? "").trim().toLowerCase();
-    if (ph && otherPh && ph === otherPh) return true;
-    return false;
-  });
+
+  let alreadyElsewhere = false;
+  if (sha) {
+    const shaSnap = await db
+      .collection("homeGallery")
+      .where("sha256", "==", sha)
+      .limit(8)
+      .get();
+    alreadyElsewhere = shaSnap.docs.some((docSnap) => docSnap.id !== docId);
+  } else if (ph) {
+    const phSnap = await db
+      .collection("homeGallery")
+      .where("perceptualHash", "==", ph)
+      .limit(8)
+      .get();
+    alreadyElsewhere = phSnap.docs.some((docSnap) => docSnap.id !== docId);
+  } else {
+    const urlSnap = await db
+      .collection("homeGallery")
+      .where("mediaUrl", "==", mediaUrl)
+      .limit(4)
+      .get();
+    alreadyElsewhere = urlSnap.docs.some((docSnap) => docSnap.id !== docId);
+  }
   if (alreadyElsewhere) {
     try {
       await ref.delete();

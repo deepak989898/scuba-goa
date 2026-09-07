@@ -21,8 +21,7 @@ import { parseBookingOption } from "@/lib/booking-selection";
 import { getTopicCta } from "@/lib/content-clusters";
 import { buildGuideFaqs } from "@/lib/guide-faqs";
 import {
-  buildClusterCatalog,
-  getMoreLikeThisForGuide,
+  getGuideClusterPageBundle,
 } from "@/lib/cluster-related-content";
 import { enrichMarkdownWithClusterLinks } from "@/lib/contextual-internal-links";
 import { splitServicesForContentSidebar } from "@/lib/related-services-for-content";
@@ -38,7 +37,7 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 const guideBookNowClass =
   "inline-flex min-h-10 touch-manipulation items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-2 ring-amber-200/70 transition hover:brightness-110 active:brightness-95";
@@ -313,10 +312,9 @@ export default async function SeoGuidePage({
     notFound();
   }
 
-  const [catalog, moreLikeThis, clusterCatalog] = await Promise.all([
+  const [catalog, { moreLikeThis, clusterCatalog }] = await Promise.all([
     buildBlogCatalogContext(),
-    getMoreLikeThisForGuide(slug),
-    buildClusterCatalog(),
+    getGuideClusterPageBundle(slug),
   ]);
 
   const focusServiceSlug =

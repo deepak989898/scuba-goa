@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import type { BlogPost } from "@/data/blog/post-types";
 import {
   type ClusterContentItem,
@@ -5,7 +6,6 @@ import {
   pickClusterRelated,
   scoreClusterRelevance,
 } from "@/lib/content-clusters";
-import { getAllBlogPostsMerged } from "@/lib/blog-posts-unified";
 import { listPublishedBlogPostsServer } from "@/lib/blog-posts-server";
 import { hasEditorialBlogFeaturedImage } from "@/lib/cms-image";
 import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
@@ -14,7 +14,7 @@ import type { SeoPageListItem } from "@/lib/seo-pages-server";
 /** Max cards in “More like this” on blog + guide detail pages. */
 export const MORE_LIKE_THIS_LIMIT = 2;
 
-async function buildClusterCatalog(): Promise<ClusterContentItem[]> {
+async function buildClusterCatalogUncached(): Promise<ClusterContentItem[]> {
   const [guides, blogPosts] = await Promise.all([
     listPublishedSeoPagesServer(),
     listPublishedBlogPostsServer(),
@@ -64,6 +64,44 @@ async function buildClusterCatalog(): Promise<ClusterContentItem[]> {
   return [...guideItems, ...blogItems];
 }
 
+/** Cached 1h — avoids re-scanning all blogs+guides on every guide/blog page request. */
+export async function buildClusterCatalog(): Promise<ClusterContentItem[]> {
+  return unstable_cache(
+    buildClusterCatalogUncached,
+    ["cluster-catalog-v1"],
+    { revalidate: 3600, tags: ["cluster-catalog"] },
+  )();
+}
+
+export type ClusterPageBundle = {
+  moreLikeThis: ClusterContentItem[];
+  clusterCatalog: ClusterContentItem[];
+};
+
+export async function getGuideClusterPageBundle(
+  slug: string,
+  limit = MORE_LIKE_THIS_LIMIT,
+): Promise<ClusterPageBundle> {
+  const clusterCatalog = await buildClusterCatalog();
+  const current = clusterCatalog.find((c) => c.kind === "guide" && c.slug === slug);
+  const moreLikeThis = current
+    ? pickClusterRelated({ ...current, kind: "guide", slug }, clusterCatalog, limit)
+    : [];
+  return { moreLikeThis, clusterCatalog };
+}
+
+export async function getBlogClusterPageBundle(
+  slug: string,
+  limit = MORE_LIKE_THIS_LIMIT,
+): Promise<ClusterPageBundle> {
+  const clusterCatalog = await buildClusterCatalog();
+  const current = clusterCatalog.find((c) => c.kind === "blog" && c.slug === slug);
+  const moreLikeThis = current
+    ? pickClusterRelated({ ...current, kind: "blog", slug }, clusterCatalog, limit)
+    : [];
+  return { moreLikeThis, clusterCatalog };
+}
+
 export async function getMoreLikeThisForGuide(
   slug: string,
   limit = MORE_LIKE_THIS_LIMIT,
@@ -96,10 +134,19 @@ export async function getRelatedSeoGuidesByCluster(
   currentSlug: string,
   limit = 4,
 ): Promise<SeoPageListItem[]> {
-  const [all, catalog] = await Promise.all([
-    listPublishedSeoPagesServer(),
-    buildClusterCatalog(),
-  ]);
+  const catalog = await buildClusterCatalog();
+  const all = catalog
+    .filter((c) => c.kind === "guide")
+    .map((g) => ({
+      slug: g.slug,
+      headline: g.title,
+      updatedAt: g.updatedAt ?? "",
+      metaDescription: g.description,
+      imageUrl: g.imageUrl,
+      heroImageUrl: g.imageUrl,
+      ogImageUrl: g.imageUrl,
+      keywords: g.keywords,
+    }));
   const current = all.find((g) => g.slug === currentSlug);
   if (!current) {
     return all.filter((g) => g.slug !== currentSlug).slice(0, limit);
@@ -135,17 +182,28 @@ export async function getRelatedSeoGuidesByCluster(
   const slugs = ranked.slice(0, limit).map((r) => r.g.slug);
   return slugs
     .map((s) => all.find((g) => g.slug === s))
-    .filter((g): g is SeoPageListItem => Boolean(g));
+    .filter((g): g is NonNullable<typeof g> => g != null);
 }
 
 export async function getRelatedBlogPostsByCluster(
   currentSlug: string,
   limit = 6,
 ): Promise<BlogPost[]> {
-  const [all, catalog] = await Promise.all([
-    getAllBlogPostsMerged(),
-    buildClusterCatalog(),
-  ]);
+  const catalog = await buildClusterCatalog();
+  const all = catalog
+    .filter((c) => c.kind === "blog")
+    .map((b) => ({
+      slug: b.slug,
+      title: b.title,
+      excerpt: b.description,
+      date: b.updatedAt ?? "",
+      updatedAt: b.updatedAt ?? "",
+      readTime: "",
+      keywords: b.keywords,
+      imageUrl: b.imageUrl,
+      imageAlt: b.title,
+      content: "",
+    }));
   const current = all.find((p) => p.slug === currentSlug);
   if (!current) return [];
 
@@ -179,7 +237,5 @@ export async function getRelatedBlogPostsByCluster(
   const slugs = ranked.slice(0, limit).map((r) => r.b.slug);
   return slugs
     .map((s) => all.find((p) => p.slug === s))
-    .filter((p): p is BlogPost => Boolean(p));
+    .filter((p): p is NonNullable<typeof p> => p != null);
 }
-
-export { buildClusterCatalog };

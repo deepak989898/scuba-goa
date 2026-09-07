@@ -12,7 +12,7 @@ import { listPublishedSeoPagesServer } from "@/lib/seo-pages-server";
 import { isPermanentRedirectSource } from "@/lib/blog-redirects";
 import { buildMetaDescriptionWithContact } from "@/lib/seo-meta-description";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type Props = { searchParams: Promise<{ page?: string }> };
 

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import {
   classifyContent,
   scoreClusterRelevance,
@@ -42,11 +43,11 @@ export type SeoPageListItem = {
 };
 
 /** All published guides for `/guides` index and sitemap. */
-export async function listPublishedSeoPagesServer(): Promise<SeoPageListItem[]> {
+async function listPublishedSeoPagesUncached(): Promise<SeoPageListItem[]> {
   const db = getAdminDb();
   if (!db) return [];
   try {
-    const snap = await db.collection("seoPages").get();
+    const snap = await db.collection("seoPages").where("published", "==", true).get();
     const out: SeoPageListItem[] = [];
     for (const d of snap.docs) {
       const p = parseSeoPageFromFirestore(d.id, d.data() as Record<string, unknown>, {
@@ -70,6 +71,14 @@ export async function listPublishedSeoPagesServer(): Promise<SeoPageListItem[]> 
   } catch {
     return [];
   }
+}
+
+export async function listPublishedSeoPagesServer(): Promise<SeoPageListItem[]> {
+  return unstable_cache(
+    listPublishedSeoPagesUncached,
+    ["published-seo-pages-v1"],
+    { revalidate: 3600, tags: ["seo-pages"] },
+  )();
 }
 
 function toGuideClusterItem(g: SeoPageListItem): ClusterContentItem {
