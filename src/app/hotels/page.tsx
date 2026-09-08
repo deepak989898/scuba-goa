@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { HotelCard } from "@/components/hotels/HotelCard";
+import { ListPagination } from "@/components/ListPagination";
 import { GOA_HOTELS_LIST_CAP, listGoaHotels } from "@/lib/goa-hotels/firestore";
+import { getPageSlice } from "@/lib/list-pagination";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const revalidate = 3600;
 
+const HOTELS_PAGE_SIZE = 20;
+
+type Props = { searchParams: Promise<{ page?: string }> };
 export const metadata: Metadata = {
   title: "Goa hotels",
   description: `Book Goa hotels online with ${SITE_NAME}. Browse curated stays with photos, facilities, and Razorpay checkout.`,
@@ -13,9 +18,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function HotelsPage() {
+export default async function HotelsPage({ searchParams }: Props) {
+  const { page: pageRaw } = await searchParams;
   const hotels = await listGoaHotels(GOA_HOTELS_LIST_CAP);
-
+  const slice = getPageSlice(hotels.length, pageRaw, HOTELS_PAGE_SIZE);
+  const pageHotels = hotels.slice(slice.start, slice.end);
   return (
     <div className="bg-white py-10 sm:py-14">
       <div className="site-container">
@@ -42,15 +49,23 @@ export default async function HotelsPage() {
         ) : (
           <>
             <p className="mt-4 text-sm text-ocean-600">
-              Showing {hotels.length} Goa hotel{hotels.length === 1 ? "" : "s"} from the full
-              Safar Sathi <code className="text-xs">goaHotels</code> catalog.
+              {slice.totalItems} Goa hotel{slice.totalItems === 1 ? "" : "s"} from the Safar Sathi{" "}
+              <code className="text-xs">goaHotels</code> catalog.
             </p>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {hotels.map((hotel) => (
+            {pageHotels.map((hotel) => (
               <HotelCard key={hotel.id} hotel={hotel} />
             ))}
             </div>
-          </>
+            <ListPagination
+              basePath="/hotels"
+              page={slice.page}
+              totalPages={slice.totalPages}
+              totalItems={slice.totalItems}
+              start={slice.start}
+              end={slice.end}
+              itemLabel="hotels"
+            />          </>
         )}
       </div>
     </div>

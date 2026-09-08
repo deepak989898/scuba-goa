@@ -90,8 +90,8 @@ export default function HomePage() {
       </Suspense>
       <HeroSection />
       <HomeDeferredSections />
-      <HomeInternalLinksSection />
       <HomeBookingCTASection />
+      <HomeInternalLinksSection />
       <BlogPreview />
       <HomeInfoFaqSplit />
     </>

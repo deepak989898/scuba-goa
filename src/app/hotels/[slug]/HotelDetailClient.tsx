@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CmsRemoteImage } from "@/components/CmsRemoteImage";
+import { HotelGallery } from "@/components/hotels/HotelGallery";
 import { formatHotelPriceInr } from "@/lib/goa-hotels/format";
 import { pickHotelGalleryImages } from "@/lib/goa-hotels/images";
 import {
@@ -35,7 +35,7 @@ export function HotelDetailClient({ hotel }: Props) {
     return computeRoomStayTotalInr(selectedRoom.pricePerNight, nights);
   }, [selectedRoom, nights]);
 
-  const gallery = pickHotelGalleryImages(hotel, 12);
+  const gallery = pickHotelGalleryImages(hotel, 50);
 
   function onCheckInChange(v: string) {
     setCheckIn(v);
@@ -81,27 +81,7 @@ export function HotelDetailClient({ hotel }: Props) {
 
   return (
     <div className="space-y-8">
-      {gallery.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {gallery.slice(0, 6).map((src, i) => (
-            <div
-              key={`${src}-${i}`}
-              className={`relative overflow-hidden rounded-2xl bg-ocean-50 ${
-                i === 0 ? "sm:col-span-2 sm:row-span-2 aspect-[16/10]" : "aspect-[4/3]"
-              }`}
-            >
-              <CmsRemoteImage
-                src={src}
-                alt={`${hotel.name} photo ${i + 1}`}
-                fill
-                className="object-cover"
-                sizes="(max-width:768px) 100vw, 33vw"
-                priority={i === 0}
-              />
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <HotelGallery images={gallery} title={hotel.name} />
 
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
         <div>
