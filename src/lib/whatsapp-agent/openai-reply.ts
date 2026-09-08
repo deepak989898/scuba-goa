@@ -30,22 +30,25 @@ export async function generateWhatsAppAgentReply(opts: {
     ? opts.settings.businessIntro.trim()
     : "You work at Book Scuba Goa — a real travel desk in Baga, North Goa (scuba, water sports, packages).";
 
-  const fallback = `Hi! 👋 Book Scuba Goa here — scuba & water sports in Baga. What date and how many people?`;
+  const fallback = `Book Scuba Goa here — scuba & water sports in Baga. What date and how many people?`;
 
   if (!key) return fallback;
 
   const model = process.env.AI_ANALYTICS_OPENAI_MODEL?.trim() || "gpt-4o-mini";
+  const hasPriorAssistant = opts.history.some((m) => m.role === "assistant");
 
   const system = `You are Priya from Book Scuba Goa — a real person replying on WhatsApp (Baga, North Goa).
 
 ${intro}
 
 STYLE (most important):
-- Sound like a busy but friendly human on WhatsApp — NOT a brochure or email.
+- Sound like a busy but friendly human on WhatsApp — NOT a brochure, email, or chatbot.
 - Keep replies SHORT: usually 1-3 short lines, under 200 characters. Hard max 280 characters.
 - Use 0-1 emoji only. No markdown, no **bold**, no numbered lists unless customer asked for prices/options.
-- One short answer + one short question is perfect. Example: "Hi! 😊 Scuba from ₹1200 in Baga. Which date works for you?"
+- One short answer + one short question is perfect. Example: "Scuba from ₹1200 in Baga — which date works? 😊"
 - If they ask 2-3 things in one message, answer briefly in the same message — still keep it under 280 chars.
+- NEVER open with "Hi there", "Hello there", "Hey there", or a fresh "Hi!" if you already chatted in this thread — jump straight to the answer.
+- Do not repeat greetings (good morning / hi) when the customer is continuing the conversation.
 
 RULES:
 - NEVER say AI/bot/automated.
@@ -95,7 +98,7 @@ ${catalog.textBlock}`;
     if (!res.ok) return fallback;
     const text = data?.choices?.[0]?.message?.content?.trim();
     if (!text) return fallback;
-    return compactWhatsAppReply(text);
+    return compactWhatsAppReply(text, hasPriorAssistant);
   } catch {
     return fallback;
   }
@@ -103,9 +106,36 @@ ${catalog.textBlock}`;
 
 const WHATSAPP_REPLY_MAX = 320;
 
+/** Remove robotic chatbot openers so replies feel human on WhatsApp. */
+function stripRoboticGreetings(text: string, ongoingChat: boolean): string {
+  let out = text.trim();
+
+  const alwaysStrip = [
+    /^hi there[,!.\s]+/i,
+    /^hello there[,!.\s]+/i,
+    /^hey there[,!.\s]+/i,
+    /^dear\s+(customer|friend|sir|madam)[,!.\s]+/i,
+  ];
+  for (const re of alwaysStrip) {
+    out = out.replace(re, "");
+  }
+
+  if (ongoingChat) {
+    const ongoingStrip = [
+      /^(good\s+(morning|afternoon|evening)[,!.\s]+)/i,
+      /^(hi|hello|hey)[,!.\s]+(?=\S)/i,
+    ];
+    for (const re of ongoingStrip) {
+      out = out.replace(re, "");
+    }
+  }
+
+  return out.trim();
+}
+
 /** Trim AI output to short WhatsApp-style messages. */
-function compactWhatsAppReply(text: string): string {
-  let out = text
+function compactWhatsAppReply(text: string, ongoingChat = false): string {
+  let out = stripRoboticGreetings(text, ongoingChat)
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/^\s*[-•]\s+/gm, "")
     .replace(/\n{3,}/g, "\n\n")
