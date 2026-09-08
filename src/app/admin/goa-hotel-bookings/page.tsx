@@ -87,8 +87,10 @@ export default function AdminGoaHotelBookingsPage() {
       <div>
         <h1 className="font-display text-lg font-bold text-ocean-900">Goa hotel bookings</h1>
         <p className="mt-1 text-sm text-ocean-600">
-          Catalog from Safar Sathi <code className="text-xs">goaHotels</code> · payments via
-          Book Scuba Goa Razorpay · stored in <code className="text-xs">goaHotelBookings</code>.
+          Catalog from Safar Sathi <code className="text-xs">goaHotels</code> (separate Firebase
+          project — set <code className="text-xs">SAFAR_SATHI_FIREBASE_SERVICE_ACCOUNT_KEY</code> on
+          Vercel). Payments via Book Scuba Goa Razorpay · stored in{" "}
+          <code className="text-xs">goaHotelBookings</code>.
         </p>
       </div>
 

@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { getSafarSathiAdminDb } from "@/lib/safar-sathi-firebase-admin";
 import {
   GOA_HOTELS_COLLECTION,
   type GoaHotelDoc,
@@ -84,7 +84,7 @@ function normalizeHotel(raw: Record<string, unknown>, docId: string): GoaHotelDo
 }
 
 async function listGoaHotelsUncached(limit = 48): Promise<GoaHotelDoc[]> {
-  const db = getAdminDb();
+  const db = getSafarSathiAdminDb();
   if (!db) return [];
 
   const cap = Math.min(80, Math.max(1, limit));
@@ -124,7 +124,7 @@ export async function listGoaHotels(limit = 48): Promise<GoaHotelDoc[]> {
 }
 
 async function getGoaHotelBySlugUncached(slug: string): Promise<GoaHotelDoc | null> {
-  const db = getAdminDb();
+  const db = getSafarSathiAdminDb();
   if (!db || !slug.trim()) return null;
 
   try {

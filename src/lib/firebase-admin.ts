@@ -2,6 +2,7 @@ import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { tryParseServiceAccountJson } from "@/lib/parse-service-account-json";
 
+const BOOKSCUBA_APP_NAME = "bookscuba-admin";
 let adminApp: App | null = null;
 /** Last failure reason for diagnostics (no secrets). */
 let lastAdminInitMessage: string | null = null;
@@ -31,17 +32,27 @@ export function getAdminApp(): App | null {
   }
 
   try {
-    if (getApps().length) {
-      adminApp = getApps()[0]!;
+    const named = getApps().find((a) => a.name === BOOKSCUBA_APP_NAME);
+    if (named) {
+      adminApp = named;
       return adminApp;
     }
-    adminApp = initializeApp({
-      credential: cert({
-        projectId: parsed.projectId,
-        clientEmail: parsed.clientEmail,
-        privateKey: parsed.privateKey.replace(/\\n/g, "\n"),
-      }),
-    });
+    // Legacy: default app from older deploys
+    const legacy = getApps().find((a) => a.name === "[DEFAULT]");
+    if (legacy) {
+      adminApp = legacy;
+      return adminApp;
+    }
+    adminApp = initializeApp(
+      {
+        credential: cert({
+          projectId: parsed.projectId,
+          clientEmail: parsed.clientEmail,
+          privateKey: parsed.privateKey.replace(/\\n/g, "\n"),
+        }),
+      },
+      BOOKSCUBA_APP_NAME,
+    );
     return adminApp;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
