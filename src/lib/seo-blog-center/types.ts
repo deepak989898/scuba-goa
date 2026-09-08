@@ -36,7 +36,8 @@ export type KeywordSource =
   | "ai"
   | "google_ads"
   | "service_seed"
-  | "local_seed";
+  | "local_seed"
+  | "manual";
 
 export type KeywordIntent =
   | "informational"
@@ -149,6 +150,8 @@ export interface SeoKeywordCluster {
   /** Detailed conflict rows for admin UI */
   conflicts?: ClusterConflict[];
   status: "pending" | "approved" | "rejected" | "queued" | "generated";
+  /** True when cluster was created from admin manual title entry (not keyword research). */
+  isManual?: boolean;
   notes?: string;
   createdAt: string;
   updatedAt?: string;

@@ -213,6 +213,8 @@ export default function AiBlogAutomationPage() {
   const [researchCategories, setResearchCategories] = useState<
     Set<ResearchCategoryId>
   >(() => new Set(ALL_RESEARCH_CATEGORY_IDS));
+  const [researchMode, setResearchMode] = useState<"keyword" | "manual">("keyword");
+  const [manualTitles, setManualTitles] = useState("");
   const [generateAiImage, setGenerateAiImage] = useState(true);
   const [automationModalOpen, setAutomationModalOpen] = useState(false);
   const [clusterFilter, setClusterFilter] = useState<
@@ -510,6 +512,91 @@ export default function AiBlogAutomationPage() {
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Research failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runManualClusters() {
+    const lines = manualTitles
+      .split(/\r?\n/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (lines.length === 0) {
+      setErr("Add at least one title (one per line)");
+      return;
+    }
+    setBusy("manual-clusters");
+    setErr(null);
+    setOk(null);
+    try {
+      const svc = serviceOptions.find((s) => s.slug === serviceSlug);
+      const data = await adminFetch(
+        "/api/admin/ai-blog-automation/manual-clusters",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            titles: lines,
+            serviceSlug,
+            serviceName: svc?.name,
+            language: "en",
+            excludeCovered: true,
+          }),
+        },
+      );
+      const auto = data.autoApprove as {
+        mode?: string;
+        result?: {
+          jobsCreated?: number;
+          skippedConflicts?: number;
+          approved?: number;
+        };
+        processed?: number;
+      } | null;
+      const queued = auto?.result?.jobsCreated ?? 0;
+      const conflicts = auto?.result?.skippedConflicts ?? 0;
+      const processed = auto?.processed ?? 0;
+      const skipped = (data.skipped as { title: string; reason: string }[]) ?? [];
+      let tail = "";
+      if (auto?.mode && auto.mode !== "off") {
+        tail =
+          ` · Auto: ${queued} queued, ${processed} processed now` +
+          (conflicts > 0 ? `, ${conflicts} conflict(s) still pending` : "");
+      } else if ((data.clusters?.length ?? 0) > 0) {
+        tail =
+          " · Open Clusters tab → choose free stock or AI images → Approve selected";
+      }
+      const skipNote =
+        skipped.length > 0
+          ? ` · Skipped ${skipped.length}: ${skipped
+              .slice(0, 3)
+              .map((s) => s.title)
+              .join(", ")}${skipped.length > 3 ? "…" : ""}`
+          : "";
+      setOk(
+        `Created ${data.clusters?.length ?? 0} cluster(s) from ${lines.length} title(s)${tail}${skipNote}`,
+      );
+      setTab("clusters");
+      if (Array.isArray(data.clusters) && data.clusters.length > 0) {
+        const fresh = (data.clusters as SeoKeywordCluster[]).filter(
+          clusterAwaitingApproval,
+        );
+        if (fresh.length > 0) {
+          setClusters((prev) => {
+            const byId = new Map(prev.map((c) => [c.id, c]));
+            for (const c of fresh) byId.set(c.id, c);
+            return [...byId.values()]
+              .filter(clusterAwaitingApproval)
+              .sort((a, b) =>
+                (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
+              );
+          });
+          setSelectedClusters(new Set(fresh.map((c) => c.id)));
+        }
+      }
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not create clusters");
     } finally {
       setBusy(null);
     }
@@ -1485,6 +1572,94 @@ export default function AiBlogAutomationPage() {
 
       {tab === "research" ? (
         <section className="mt-4 rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setResearchMode("keyword")}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                researchMode === "keyword"
+                  ? "bg-ocean-800 text-white"
+                  : "border border-ocean-200 bg-white text-ocean-800"
+              }`}
+            >
+              Automated keyword research
+            </button>
+            <button
+              type="button"
+              onClick={() => setResearchMode("manual")}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                researchMode === "manual"
+                  ? "bg-ocean-800 text-white"
+                  : "border border-ocean-200 bg-white text-ocean-800"
+              }`}
+            >
+              Manual titles
+            </button>
+          </div>
+
+          {researchMode === "manual" ? (
+            <>
+              <h2 className="mt-4 font-display text-base font-bold text-ocean-900">
+                Add blog titles manually
+              </h2>
+              <p className="mt-1 text-xs text-ocean-600">
+                Enter one or more blog titles/topics (one per line). Each title
+                becomes its own cluster. Then approve in the Clusters tab with
+                free stock images or AI-generated featured images.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-ocean-800">
+                  Service / package
+                  <select
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-3 py-2"
+                    value={serviceSlug}
+                    onChange={(e) => setServiceSlug(e.target.value)}
+                  >
+                    {serviceOptions.map((s) => (
+                      <option key={s.slug} value={s.slug}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="text-sm text-ocean-800">
+                  <p className="font-medium">Workflow</p>
+                  <ol className="mt-1 list-decimal pl-4 text-xs text-ocean-600">
+                    <li>Paste titles below → Generate clusters</li>
+                    <li>Clusters tab → select → stock or AI image</li>
+                    <li>Approve → Generation queue → publish</li>
+                  </ol>
+                </div>
+              </div>
+              <label className="mt-3 block text-sm text-ocean-800">
+                Blog titles / topics (one per line, up to 50)
+                <textarea
+                  className="mt-1 min-h-[10rem] w-full rounded-lg border border-ocean-200 px-3 py-2 font-mono text-sm"
+                  placeholder={`Best scuba diving spots in North Goa\nScuba diving price in Goa 2026\nIs scuba diving safe for beginners in Goa?`}
+                  value={manualTitles}
+                  onChange={(e) => setManualTitles(e.target.value)}
+                />
+              </label>
+              <p className="mt-1 text-xs text-ocean-500">
+                {manualTitles
+                  .split(/\r?\n/)
+                  .map((t) => t.trim())
+                  .filter(Boolean).length}{" "}
+                title(s) entered
+              </p>
+              <button
+                type="button"
+                disabled={busy === "manual-clusters" || !manualTitles.trim()}
+                onClick={() => void runManualClusters()}
+                className="mt-4 rounded-full bg-ocean-gradient px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {busy === "manual-clusters"
+                  ? "Generating clusters…"
+                  : "Generate clusters"}
+              </button>
+            </>
+          ) : (
+            <>
           <h2 className="font-display text-base font-bold text-ocean-900">
             New keyword research
           </h2>
@@ -1656,6 +1831,8 @@ export default function AiBlogAutomationPage() {
           >
             {busy === "research" ? "Researching…" : "Run research"}
           </button>
+            </>
+          )}
         </section>
       ) : null}
 
@@ -1868,8 +2045,8 @@ export default function AiBlogAutomationPage() {
                   <tr>
                     <td colSpan={9} className="p-4 text-center text-ocean-500">
                       {clusterFilter === "conflicts"
-                        ? "No pending conflict clusters. Run research or switch to Without conflict."
-                        : "No clusters awaiting approval. Run research or check Generation queue for approved jobs."}
+                        ? "No pending conflict clusters. Run research, add manual titles, or switch to Without conflict."
+                        : "No clusters awaiting approval. Run research, add manual titles, or check Generation queue for approved jobs."}
                     </td>
                   </tr>
                 ) : null}
@@ -1895,7 +2072,14 @@ export default function AiBlogAutomationPage() {
                         />
                       </td>
                       <td className="max-w-[16rem] p-2 font-medium text-ocean-900">
-                        <p>{c.primaryKeyword}</p>
+                        <p>
+                          {c.primaryKeyword}
+                          {c.isManual ? (
+                            <span className="ml-1.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-800">
+                              Manual
+                            </span>
+                          ) : null}
+                        </p>
                         <p className="mt-0.5 text-[10px] font-normal text-ocean-500">
                           {c.contentType}
                           {c.secondaryKeywords.length
@@ -1955,7 +2139,9 @@ export default function AiBlogAutomationPage() {
                         {kw?.suggestedAction ?? c.contentType ?? "—"}
                       </td>
                       <td className="p-2">{c.status}</td>
-                      <td className="p-2">{kw?.source ?? "—"}</td>
+                      <td className="p-2">
+                        {kw?.source === "manual" ? "manual title" : kw?.source ?? "—"}
+                      </td>
                     </tr>
                   );
                 })}
