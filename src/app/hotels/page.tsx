@@ -32,8 +32,12 @@ export default async function HotelsPage() {
 
         {hotels.length === 0 ? (
           <p className="mt-10 rounded-2xl border border-dashed border-ocean-200 bg-ocean-50/50 p-8 text-sm text-ocean-700">
-            Hotels are being synced. Please check back shortly or contact us on WhatsApp for
-            help booking a stay.
+            No hotels loaded yet. If you just added{" "}
+            <code className="text-xs">SAFAR_SATHI_FIREBASE_SERVICE_ACCOUNT_KEY</code> on Vercel,
+            redeploy and wait a few minutes. Safar Sathi must have documents in{" "}
+            <code className="text-xs">goaHotels</code> with{" "}
+            <code className="text-xs">sharedFor: bookscubagoa</code>. Check{" "}
+            <code className="text-xs">/api/hotels/catalog-health</code> after deploy.
           </p>
         ) : (
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
