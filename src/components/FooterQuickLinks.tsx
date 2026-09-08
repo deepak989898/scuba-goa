@@ -1,11 +1,7 @@
-"use client";
-
 import Link from "next/link";
-import { useHotelsMenuVisible } from "@/hooks/useHotelsMenuVisible";
 
 const QUICK_LINKS = [
   { href: "/booking", label: "Book & pay online" },
-  { href: "/hotels", label: "Hotels in Goa", hotelsOnly: true },
   { href: "/offers", label: "Package offers" },
   { href: "/services", label: "All services" },
   { href: "/blog", label: "Travel blog" },
@@ -14,18 +10,9 @@ const QUICK_LINKS = [
 ] as const;
 
 export function FooterQuickLinks() {
-  const { visible: hotelsVisible, loading } = useHotelsMenuVisible();
-
-  const links = QUICK_LINKS.filter(
-    (item) =>
-      !("hotelsOnly" in item && item.hotelsOnly) ||
-      hotelsVisible ||
-      loading,
-  );
-
   return (
     <ul className="mt-4 space-y-1 text-sm text-slate-200">
-      {links.map((item) => (
+      {QUICK_LINKS.map((item) => (
         <li key={item.href}>
           <Link
             href={item.href}

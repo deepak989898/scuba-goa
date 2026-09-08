@@ -36,13 +36,6 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         highlight: true,
         badge: "daily",
       },
-      {
-        href: "/admin/hotel-bookings",
-        label: "Hotel bookings",
-        description: "Goa hotels — pay received, manual confirm",
-        highlight: true,
-        badge: "action",
-      },
     ],
   },
   {

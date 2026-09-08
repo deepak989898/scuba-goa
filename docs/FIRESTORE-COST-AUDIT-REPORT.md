@@ -24,7 +24,7 @@ The dominant causes are a **combination** of:
 
 5. **Admin blog/guide list pages** loading ~1,200 blogs + ~600 guides on every open/refresh (partially fixed in prior commit with lazy-load collapse).
 
-**Hotels (TripJack) are NOT the primary cause.** Hotel catalog queries use `where("websiteVisible","==",true).limit()` — low volume unless search API is hammered.
+**External crons and bot traffic are common secondary causes** alongside SSR full-collection scans.
 
 **No `onSnapshot` listeners exist anywhere in the codebase** — the problem is repeated `get()` / `getDocs()` / Admin `.get()`, not realtime listeners.
 
@@ -48,7 +48,7 @@ The dominant causes are a **combination** of:
 | **MEDIUM** | `src/app/sitemap.ts` | Full blog+guide scans per sitemap generation |
 | **MEDIUM** | `src/lib/gsc-indexing-agent/*` | Daily full inventory + seoUrls scans |
 | **MEDIUM** | `src/app/admin/ai-blog-automation/page.tsx` | Full blog list reload on many actions |
-| **LOW** | `src/lib/tripjack-hotels/catalog-store.ts` | Limited queries; only spikes if hotel search abused |
+| **LOW** | External crons (blog-publish, ai-blog) | Periodic scans when misconfigured |
 | **LOW** | Client hooks `useServices`, `usePackages`, `useHeroSlides` | ~55 reads/session (cached 5 min in browser) |
 
 ---
@@ -84,7 +84,7 @@ Likely sources:
 - `analytics/track` — session updates, pageViews, rate-limit docs, content-traffic txns
 - Bot traffic generating view/heartbeat/leave events
 - GSC agent upserts, blog automation, hotel price cache writes
-- **Not primarily TripJack hotel sync** (catalog sync is admin-triggered)
+- **Not primarily external cron misconfiguration** (blog-publish full scans when unoptimized)
 
 ---
 
@@ -173,14 +173,6 @@ In Firebase Console → Firestore → Usage:
 3. **Do not leave** `/admin/analytics` or `/admin/ai-blog-automation` open overnight.
 4. Check **Firestore Usage by API** — client SDK spikes = admin browser; Admin SDK spikes = SSR/cron.
 5. Set **budget alert** at ₹500/day.
-
----
-
-## Hotels (TripJack) — specific finding
-
-- `catalog-store.ts` uses `where("websiteVisible","==",true).limit(limit*2)` — **correct pattern**.
-- Hotel listing/pricing APIs are user-triggered — **not** a 34M reads source unless bots hammer `/api/hotels/*`.
-- No evidence of full hotel collection sync on every page view.
 
 ---
 
