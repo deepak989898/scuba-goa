@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { HotelCard } from "@/components/hotels/HotelCard";
-import { listGoaHotels } from "@/lib/goa-hotels/firestore";
+import { GOA_HOTELS_LIST_CAP, listGoaHotels } from "@/lib/goa-hotels/firestore";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 
 export const revalidate = 3600;
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HotelsPage() {
-  const hotels = await listGoaHotels(48);
+  const hotels = await listGoaHotels(GOA_HOTELS_LIST_CAP);
 
   return (
     <div className="bg-white py-10 sm:py-14">
@@ -40,11 +40,17 @@ export default async function HotelsPage() {
             <code className="text-xs">/api/hotels/catalog-health</code> after deploy.
           </p>
         ) : (
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <>
+            <p className="mt-4 text-sm text-ocean-600">
+              Showing {hotels.length} Goa hotel{hotels.length === 1 ? "" : "s"} from the full
+              Safar Sathi <code className="text-xs">goaHotels</code> catalog.
+            </p>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {hotels.map((hotel) => (
               <HotelCard key={hotel.id} hotel={hotel} />
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>

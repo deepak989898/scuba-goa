@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { formatHotelPriceInr } from "@/lib/goa-hotels/format";
+import { pickHotelGalleryImages } from "@/lib/goa-hotels/images";
 import {
   computeRoomStayTotalInr,
   countHotelNights,
@@ -34,7 +35,7 @@ export function HotelDetailClient({ hotel }: Props) {
     return computeRoomStayTotalInr(selectedRoom.pricePerNight, nights);
   }, [selectedRoom, nights]);
 
-  const gallery = hotel.imageUrls.length ? hotel.imageUrls : hotel.images;
+  const gallery = pickHotelGalleryImages(hotel, 12);
 
   function onCheckInChange(v: string) {
     setCheckIn(v);

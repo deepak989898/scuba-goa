@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { formatHotelPriceInr } from "@/lib/goa-hotels/format";
-import { pickHotelHeroImage } from "@/lib/goa-hotels/firestore";
+import { pickHotelHeroImage } from "@/lib/goa-hotels/images";
 import type { GoaHotelDoc } from "@/lib/goa-hotels/types";
 
 type Props = {
