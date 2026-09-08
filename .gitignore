@@ -43,3 +43,4 @@ android/**/.cxx/
 android/**/local.properties
 android/**/*.apk
 android/**/*.aab
+.env*
