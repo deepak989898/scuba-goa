@@ -13,6 +13,7 @@ import {
   type GoaHotelDoc,
   type GoaHotelRoom,
 } from "./types";
+import { hasHotelPhoto } from "./images";
 
 /** Max hotels shown on /hotels (full collection is paginated up to this cap). */
 export const GOA_HOTELS_LIST_CAP = 1000;
@@ -218,6 +219,7 @@ async function listGoaHotelsUncached(limit = GOA_HOTELS_LIST_CAP): Promise<GoaHo
   return docs
     .map((d) => normalizeHotel(d.data() as Record<string, unknown>, d.id))
     .filter((h): h is GoaHotelDoc => Boolean(h))
+    .filter(hasHotelPhoto)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -225,7 +227,7 @@ export async function listGoaHotels(limit = GOA_HOTELS_LIST_CAP): Promise<GoaHot
   const cap = Math.min(GOA_HOTELS_LIST_CAP, Math.max(1, limit));
   return unstable_cache(
     () => listGoaHotelsUncached(cap),
-    ["goa-hotels-list-v4", String(cap)],
+    ["goa-hotels-list-v5", String(cap)],
     { revalidate: 600, tags: ["goa-hotels"] },
   )();
 }
@@ -297,6 +299,7 @@ export async function getGoaHotelsCatalogStatus(): Promise<{
     deleted: number;
     notWebsiteVisible: number;
     notGoaOrNotShared: number;
+    noPhoto: number;
   };
   sampleHotelName: string | null;
   sampleHotelSlug: string | null;
@@ -310,14 +313,14 @@ export async function getGoaHotelsCatalogStatus(): Promise<{
       totalDocumentCount: 0,
       visibleHotelCount: 0,
       listedHotelCount: 0,
-      excluded: { deleted: 0, notWebsiteVisible: 0, notGoaOrNotShared: 0 },
+      excluded: { deleted: 0, notWebsiteVisible: 0, notGoaOrNotShared: 0, noPhoto: 0 },
       sampleHotelName: null,
       sampleHotelSlug: null,
     };
   }
 
   const docs = await fetchAllGoaHotelDocs(db, 0);
-  const excluded = { deleted: 0, notWebsiteVisible: 0, notGoaOrNotShared: 0 };
+  const excluded = { deleted: 0, notWebsiteVisible: 0, notGoaOrNotShared: 0, noPhoto: 0 };
   const hotels: GoaHotelDoc[] = [];
 
   for (const d of docs) {
@@ -328,7 +331,12 @@ export async function getGoaHotelsCatalogStatus(): Promise<{
     else if (reason === "not_goa_or_not_shared") excluded.notGoaOrNotShared += 1;
     else {
       const hotel = normalizeHotel(raw, d.id);
-      if (hotel) hotels.push(hotel);
+      if (!hotel) continue;
+      if (!hasHotelPhoto(hotel)) {
+        excluded.noPhoto += 1;
+        continue;
+      }
+      hotels.push(hotel);
     }
   }
 

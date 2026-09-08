@@ -9,6 +9,8 @@ type Props = {
   start: number;
   end: number;
   itemLabel: string;
+  /** Preserve filters in pagination links (e.g. hotels search). */
+  queryParams?: Record<string, string>;
   /** Hide “Showing X–Y of Z · Page N of M” status text */
   hideStatus?: boolean;
   /** Cap visible page links + Next (e.g. 3 = only pages 1–3) */
@@ -23,6 +25,7 @@ export function ListPagination({
   start,
   end,
   itemLabel,
+  queryParams,
   hideStatus = false,
   maxPages,
 }: Props) {
@@ -36,6 +39,7 @@ export function ListPagination({
 
   const prev = currentPage > 1 ? currentPage - 1 : null;
   const next = currentPage < cappedTotalPages ? currentPage + 1 : null;
+  const href = (n: number) => pageHref(basePath, n, queryParams);
 
   const pageNumbers: number[] = [];
   if (maxPages != null && maxPages > 0) {
@@ -73,7 +77,7 @@ export function ListPagination({
         <div className="flex flex-wrap items-center gap-1.5">
           {prev != null ? (
             <Link
-              href={pageHref(basePath, prev)}
+              href={href(prev)}
               className="inline-flex min-h-10 items-center rounded-full border border-ocean-200 bg-white px-3.5 py-2 text-sm font-semibold text-ocean-800 hover:border-ocean-400"
               rel="prev"
             >
@@ -88,7 +92,7 @@ export function ListPagination({
           {useWindow && from > 1 ? (
             <>
               <Link
-                href={pageHref(basePath, 1)}
+                href={href(1)}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ocean-200 bg-white text-sm font-semibold text-ocean-800 hover:border-ocean-400"
               >
                 1
@@ -113,7 +117,7 @@ export function ListPagination({
             ) : (
               <Link
                 key={n}
-                href={pageHref(basePath, n)}
+                href={href(n)}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ocean-200 bg-white text-sm font-semibold text-ocean-800 hover:border-ocean-400"
               >
                 {n}
@@ -129,7 +133,7 @@ export function ListPagination({
                 </span>
               ) : null}
               <Link
-                href={pageHref(basePath, cappedTotalPages)}
+                href={href(cappedTotalPages)}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ocean-200 bg-white text-sm font-semibold text-ocean-800 hover:border-ocean-400"
               >
                 {cappedTotalPages}
@@ -139,7 +143,7 @@ export function ListPagination({
 
           {next != null ? (
             <Link
-              href={pageHref(basePath, next)}
+              href={href(next)}
               className="inline-flex min-h-10 items-center rounded-full border border-ocean-200 bg-white px-3.5 py-2 text-sm font-semibold text-ocean-800 hover:border-ocean-400"
               rel="next"
             >

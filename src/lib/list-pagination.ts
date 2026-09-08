@@ -29,7 +29,19 @@ export function getPageSlice(
   return { page, totalPages, totalItems, start, end };
 }
 
-export function pageHref(basePath: string, page: number): string {
-  if (page <= 1) return basePath;
-  return `${basePath}?page=${page}`;
+export function pageHref(
+  basePath: string,
+  page: number,
+  query?: Record<string, string | undefined>,
+): string {
+  const params = new URLSearchParams();
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      const v = value?.trim();
+      if (v) params.set(key, v);
+    }
+  }
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
 }

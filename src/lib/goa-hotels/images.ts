@@ -4,6 +4,11 @@ export function pickHotelHeroImage(hotel: GoaHotelDoc): string {
   return hotel.heroImage || hotel.imageUrls[0] || hotel.images[0] || "";
 }
 
+/** True when the hotel has at least one usable photo URL. */
+export function hasHotelPhoto(hotel: GoaHotelDoc): boolean {
+  return pickHotelGalleryImages(hotel, 1).length > 0;
+}
+
 /** Gallery on detail page — Safar Sathi exports often have 50+ images. */
 export function pickHotelGalleryImages(hotel: GoaHotelDoc, max = 50): string[] {
   const hero = pickHotelHeroImage(hotel);
