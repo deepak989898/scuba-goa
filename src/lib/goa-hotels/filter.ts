@@ -1,4 +1,5 @@
 import type { GoaHotelDoc } from "./types";
+import { getHotelDisplayPriceFrom } from "./normalize-pricing";
 
 export const HOTELS_PAGE_SIZE = 20;
 
@@ -56,25 +57,33 @@ export function filterAndSortHotels(
   const min = filters.minPrice;
   const max = filters.maxPrice;
   if (min !== undefined && min > 0) {
-    list = list.filter((h) => h.priceFrom > 0 && h.priceFrom >= min);
+    list = list.filter((h) => {
+      const price = getHotelDisplayPriceFrom(h);
+      return price > 0 && price >= min;
+    });
   }
   if (max !== undefined && max > 0) {
-    list = list.filter((h) => h.priceFrom > 0 && h.priceFrom <= max);
+    list = list.filter((h) => {
+      const price = getHotelDisplayPriceFrom(h);
+      return price > 0 && price <= max;
+    });
   }
 
   const sort = filters.sort ?? "name";
   list.sort((a, b) => {
+    const priceA = getHotelDisplayPriceFrom(a);
+    const priceB = getHotelDisplayPriceFrom(b);
     if (sort === "price-asc") {
-      if (a.priceFrom <= 0 && b.priceFrom <= 0) return a.name.localeCompare(b.name);
-      if (a.priceFrom <= 0) return 1;
-      if (b.priceFrom <= 0) return -1;
-      return a.priceFrom - b.priceFrom || a.name.localeCompare(b.name);
+      if (priceA <= 0 && priceB <= 0) return a.name.localeCompare(b.name);
+      if (priceA <= 0) return 1;
+      if (priceB <= 0) return -1;
+      return priceA - priceB || a.name.localeCompare(b.name);
     }
     if (sort === "price-desc") {
-      if (a.priceFrom <= 0 && b.priceFrom <= 0) return a.name.localeCompare(b.name);
-      if (a.priceFrom <= 0) return 1;
-      if (b.priceFrom <= 0) return -1;
-      return b.priceFrom - a.priceFrom || a.name.localeCompare(b.name);
+      if (priceA <= 0 && priceB <= 0) return a.name.localeCompare(b.name);
+      if (priceA <= 0) return 1;
+      if (priceB <= 0) return -1;
+      return priceB - priceA || a.name.localeCompare(b.name);
     }
     return a.name.localeCompare(b.name);
   });

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { HotelGallery } from "@/components/hotels/HotelGallery";
 import { formatHotelPriceInr } from "@/lib/goa-hotels/format";
 import { pickHotelGalleryImages } from "@/lib/goa-hotels/images";
+import { getHotelDisplayPriceFrom } from "@/lib/goa-hotels/normalize-pricing";
 import {
   computeRoomStayTotalInr,
   countHotelNights,
@@ -36,6 +37,7 @@ export function HotelDetailClient({ hotel }: Props) {
   }, [selectedRoom, nights]);
 
   const gallery = pickHotelGalleryImages(hotel, 50);
+  const displayPriceFrom = getHotelDisplayPriceFrom(hotel);
 
   function onCheckInChange(v: string) {
     setCheckIn(v);
@@ -182,8 +184,8 @@ export function HotelDetailClient({ hotel }: Props) {
             {hotel.rooms.length === 0 ? (
               <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
                 Rates are updating for this hotel.{" "}
-                {hotel.priceFrom > 0
-                  ? `Indicative from ${formatHotelPriceInr(hotel.priceFrom)} / night.`
+                {displayPriceFrom > 0
+                  ? `Indicative from ${formatHotelPriceInr(displayPriceFrom)} / night.`
                   : "Please contact us on WhatsApp."}
               </p>
             ) : (

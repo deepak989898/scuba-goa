@@ -2,6 +2,7 @@
 
 import { cachedCmsFetch } from "@/lib/cms-client-cache";
 import type { HeroSlide } from "@/lib/hero-slides-default";
+import type { GoaHotelDoc } from "@/lib/goa-hotels/types";
 import type { PackageDoc } from "@/lib/types";
 import type { ServiceItem } from "@/data/services";
 
@@ -9,6 +10,7 @@ export type PublicCmsCatalog = {
   services: ServiceItem[];
   packages: PackageDoc[];
   heroSlides: HeroSlide[];
+  hotelsPreview?: GoaHotelDoc[];
   fromFirestore: boolean;
 };
 
@@ -22,5 +24,5 @@ async function fetchPublicCmsCatalog(): Promise<PublicCmsCatalog> {
 
 /** One cached HTTP fetch — replaces 3× client Firestore getDocs on homepage. */
 export function getPublicCmsCatalogCached(): Promise<PublicCmsCatalog> {
-  return cachedCmsFetch("public-cms-catalog", fetchPublicCmsCatalog, 60 * 60 * 1000);
+  return cachedCmsFetch("public-cms-catalog-v2", fetchPublicCmsCatalog, 60 * 60 * 1000);
 }

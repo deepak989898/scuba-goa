@@ -7,6 +7,10 @@ const ServiceCards = dynamic(
   () => import("@/components/ServiceCards").then((m) => m.ServiceCards),
   { ssr: false, loading: () => null },
 );
+const HomeHotelCards = dynamic(
+  () => import("@/components/HomeHotelCards").then((m) => m.HomeHotelCards),
+  { ssr: false, loading: () => null },
+);
 const RatingsSection = dynamic(
   () => import("@/components/RatingsSection").then((m) => m.RatingsSection),
   { ssr: false, loading: () => null },
@@ -28,7 +32,7 @@ export function HomeDeferredSections() {
         aria-hidden
         className="bg-white py-4 text-center text-sm text-ocean-700"
       >
-        Scroll to explore services, reviews, and Goa experiences.
+        Scroll to explore services, hotels, reviews, and Goa experiences.
       </div>
     );
   }
@@ -36,6 +40,7 @@ export function HomeDeferredSections() {
   return (
     <>
       <ServiceCards />
+      <HomeHotelCards />
       <RatingsSection />
     </>
   );

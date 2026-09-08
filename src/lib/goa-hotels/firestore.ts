@@ -14,6 +14,10 @@ import {
   type GoaHotelRoom,
 } from "./types";
 import { hasHotelPhoto } from "./images";
+import {
+  normalizeHotelRooms,
+  resolveHotelPriceFrom,
+} from "./normalize-pricing";
 
 /** Max hotels shown on /hotels (full collection is paginated up to this cap). */
 export const GOA_HOTELS_LIST_CAP = 1000;
@@ -70,55 +74,8 @@ function normalizeImageUrls(raw: unknown): string[] {
   return out;
 }
 
-function normalizeRooms(raw: unknown): GoaHotelRoom[] {
-  const rows: { key: string; data: Record<string, unknown> }[] = [];
-
-  if (Array.isArray(raw)) {
-    raw.forEach((r, i) => {
-      if (r && typeof r === "object") {
-        const o = r as Record<string, unknown>;
-        const key = String(o.id ?? o.roomId ?? `room-${i}`).trim();
-        rows.push({ key, data: o });
-      }
-    });
-  } else if (raw && typeof raw === "object") {
-    for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-      if (value && typeof value === "object") {
-        rows.push({ key, data: value as Record<string, unknown> });
-      }
-    }
-  }
-
-  return rows
-    .map(({ key, data: o }, index) => {
-      const id = String(o.id ?? o.roomId ?? key ?? `room-${index}`).trim();
-      const inclusionsRaw = o.inclusions;
-      let inclusions: string[] = [];
-      if (Array.isArray(inclusionsRaw)) {
-        inclusions = inclusionsRaw.map((x) => String(x));
-      } else if (inclusionsRaw && typeof inclusionsRaw === "object") {
-        inclusions = normalizeStringList(inclusionsRaw);
-      }
-
-      return {
-        id,
-        name: String(o.name ?? "Room"),
-        type: String(o.type ?? ""),
-        mealBasis: String(o.mealBasis ?? ""),
-        mealBasisLabel: String(o.mealBasisLabel ?? o.mealBasis ?? ""),
-        pricePerNight: Number(o.pricePerNight ?? 0),
-        totalPrice: Number(o.totalPrice ?? 0),
-        basePrice: Number(o.basePrice ?? 0),
-        taxes: Number(o.taxes ?? 0),
-        currency: String(o.currency ?? "INR"),
-        maxGuests: Number(o.maxGuests ?? 2),
-        available: o.available !== false,
-        isRefundable: Boolean(o.isRefundable),
-        inclusions,
-        images: normalizeImageUrls(o.images),
-      };
-    })
-    .filter((r) => r.available);
+function normalizeRooms(raw: unknown, priceFrom = 0): GoaHotelRoom[] {
+  return normalizeHotelRooms(raw, priceFrom);
 }
 
 function normalizeHotel(raw: Record<string, unknown>, docId: string): GoaHotelDoc | null {
@@ -128,6 +85,13 @@ function normalizeHotel(raw: Record<string, unknown>, docId: string): GoaHotelDo
   const images = normalizeImageUrls(raw.images);
   const mergedImages = [...new Set([...imageUrls, ...images])];
   const heroImage = String(raw.heroImage ?? mergedImages[0] ?? "").trim();
+
+  const preliminaryPrice = resolveHotelPriceFrom(raw, []);
+  const rooms = normalizeRooms(
+    raw.rooms ?? raw.roomTypes ?? raw.roomList ?? raw.roomOptions,
+    preliminaryPrice,
+  );
+  const priceFrom = resolveHotelPriceFrom(raw, rooms);
 
   return {
     id: String(raw.id ?? docId),
@@ -149,9 +113,9 @@ function normalizeHotel(raw: Record<string, unknown>, docId: string): GoaHotelDo
     heroImage: heroImage || undefined,
     imageUrls: mergedImages,
     images: mergedImages,
-    priceFrom: Number(raw.priceFrom ?? 0),
+    priceFrom,
     currency: String(raw.currency ?? "INR"),
-    rooms: normalizeRooms(raw.rooms),
+    rooms,
     lastPricedAt: raw.lastPricedAt ? String(raw.lastPricedAt) : undefined,
     contentSynced: Boolean(raw.contentSynced),
     websiteVisible: true,
@@ -227,7 +191,7 @@ export async function listGoaHotels(limit = GOA_HOTELS_LIST_CAP): Promise<GoaHot
   const cap = Math.min(GOA_HOTELS_LIST_CAP, Math.max(1, limit));
   return unstable_cache(
     () => listGoaHotelsUncached(cap),
-    ["goa-hotels-list-v5", String(cap)],
+    ["goa-hotels-list-v6", String(cap)],
     { revalidate: 600, tags: ["goa-hotels"] },
   )();
 }
@@ -270,7 +234,7 @@ export async function getGoaHotelBySlug(slug: string): Promise<GoaHotelDoc | nul
   if (!key) return null;
   return unstable_cache(
     () => getGoaHotelBySlugUncached(key),
-    ["goa-hotel-slug-v3", key],
+    ["goa-hotel-slug-v4", key],
     { revalidate: 600, tags: ["goa-hotels", `goa-hotel-${key}`] },
   )();
 }

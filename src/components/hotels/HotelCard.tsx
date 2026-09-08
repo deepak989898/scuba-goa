@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CmsRemoteImage } from "@/components/CmsRemoteImage";
 import { formatHotelPriceInr } from "@/lib/goa-hotels/format";
 import { pickHotelHeroImage } from "@/lib/goa-hotels/images";
+import { getHotelDisplayPriceFrom } from "@/lib/goa-hotels/normalize-pricing";
 import type { GoaHotelDoc } from "@/lib/goa-hotels/types";
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
 
 export function HotelCard({ hotel, searchQuery }: Props) {
   const image = pickHotelHeroImage(hotel);
+  const priceFrom = getHotelDisplayPriceFrom(hotel);
   const detailHref = `/hotels/${encodeURIComponent(hotel.slug)}${
     searchQuery ? `?${searchQuery}` : ""
   }`;
@@ -46,8 +48,8 @@ export function HotelCard({ hotel, searchQuery }: Props) {
           <p className="mt-3 text-sm text-ocean-700">
             From{" "}
             <span className="font-bold text-ocean-900">
-              {hotel.priceFrom > 0
-                ? `${formatHotelPriceInr(hotel.priceFrom)} / night`
+              {priceFrom > 0
+                ? `${formatHotelPriceInr(priceFrom)} / night`
                 : "rates updating"}
             </span>
           </p>
