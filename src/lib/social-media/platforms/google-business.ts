@@ -1,8 +1,7 @@
 import { SITE_URL } from "@/lib/constants";
 import { getAdminDb } from "@/lib/firebase-admin";
-import {
-  createGoogleBusinessLocalPost,
-} from "@/lib/google-business/client";
+import { mapGoogleBusinessError } from "@/lib/google-business/errors";
+import { GoogleBusinessProfileService } from "@/lib/google-business/service";
 import {
   getGoogleBusinessRuntimeConfig,
   isGoogleBusinessPostingEnabled,
@@ -44,7 +43,7 @@ export async function postToGoogleBusiness(
     const summary =
       options?.summary?.trim() ||
       buildSummary(payload.title, payload.excerpt);
-    const result = await createGoogleBusinessLocalPost(runtime!, {
+    const result = await GoogleBusinessProfileService.createPost(runtime!, {
       summary: summary.slice(0, 1500),
       languageCode: "en-IN",
       callToActionUrl: payload.url,
@@ -84,7 +83,7 @@ export async function postToGoogleBusiness(
       externalId: result.name,
     };
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Google Business post failed";
+    const message = mapGoogleBusinessError(e);
     await saveGoogleBusinessSettings({ lastPostError: message });
     return {
       platform: "googleBusiness",

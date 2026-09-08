@@ -17,7 +17,13 @@ type GbpPublicSettings = {
 };
 
 type GbpAccount = { accountId: string; accountName: string };
-type GbpLocation = { accountId: string; locationId: string; title: string };
+type GbpLocation = {
+  accountId: string;
+  locationId: string;
+  title: string;
+  accountResourceName?: string;
+  locationResourceName?: string;
+};
 
 async function adminFetch(path: string, init?: RequestInit) {
   const auth = (await import("@/lib/firebase")).getFirebaseAuth();
@@ -178,6 +184,8 @@ export function GoogleBusinessSection({
           accountId: loc.accountId,
           locationId: loc.locationId,
           locationTitle: loc.title,
+          accountResourceName: loc.accountResourceName,
+          locationResourceName: loc.locationResourceName,
         }),
       });
       setSettings(data.settings);
@@ -259,7 +267,8 @@ export function GoogleBusinessSection({
       <p className="mt-2 rounded-lg border border-ocean-100 bg-ocean-50 px-3 py-2 text-xs text-ocean-700">
         <strong>Google Cloud APIs</strong> (search these exact names in API Library — there is
         no single “Google Business API”):{" "}
-        <em>Google My Business API</em>, <em>My Business Account Management API</em>,{" "}
+        <em>Google My Business API</em> (required for Update posts),{" "}
+        <em>My Business Account Management API</em>, and{" "}
         <em>My Business Business Information API</em>.
       </p>
 

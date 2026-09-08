@@ -8,6 +8,10 @@ export type GoogleBusinessSettings = {
   refreshToken: string;
   accountId: string;
   locationId: string;
+  /** Full resource names required by Google APIs, e.g. accounts/123 */
+  accountResourceName: string;
+  /** e.g. accounts/123/locations/456 */
+  locationResourceName: string;
   locationTitle: string;
   connectedAt: string | null;
   lastPostAt: string | null;
@@ -21,6 +25,8 @@ export const DEFAULT_GOOGLE_BUSINESS_SETTINGS: GoogleBusinessSettings = {
   refreshToken: "",
   accountId: "",
   locationId: "",
+  accountResourceName: "",
+  locationResourceName: "",
   locationTitle: "",
   connectedAt: null,
   lastPostAt: null,
@@ -38,6 +44,8 @@ export function parseGoogleBusinessSettings(
     refreshToken: String(data.refreshToken ?? "").trim(),
     accountId: String(data.accountId ?? "").trim(),
     locationId: String(data.locationId ?? "").trim(),
+    accountResourceName: String(data.accountResourceName ?? "").trim(),
+    locationResourceName: String(data.locationResourceName ?? "").trim(),
     locationTitle: String(data.locationTitle ?? "").trim(),
     connectedAt: data.connectedAt != null ? String(data.connectedAt) : null,
     lastPostAt: data.lastPostAt != null ? String(data.lastPostAt) : null,
@@ -64,6 +72,8 @@ export function googleBusinessSettingsPublic(
     enabled: s.enabled,
     accountId: s.accountId,
     locationId: s.locationId,
+    accountResourceName: s.accountResourceName,
+    locationResourceName: s.locationResourceName,
     locationTitle: s.locationTitle,
     connectedAt: s.connectedAt,
     lastPostAt: s.lastPostAt,

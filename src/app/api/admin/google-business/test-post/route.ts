@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { SITE_URL } from "@/lib/constants";
-import { createGoogleBusinessLocalPost } from "@/lib/google-business/client";
+import { mapGoogleBusinessError } from "@/lib/google-business/errors";
 import { getGoogleBusinessRuntimeConfig } from "@/lib/google-business/config";
+import { GoogleBusinessProfileService } from "@/lib/google-business/service";
 import { saveGoogleBusinessSettings } from "@/lib/google-business/settings";
 
 export const runtime = "nodejs";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
 
   const site = SITE_URL.replace(/\/$/, "");
   try {
-    const result = await createGoogleBusinessLocalPost(runtime, {
+    const result = await GoogleBusinessProfileService.createPost(runtime, {
       summary: `Test post from ${site} — Book Scuba Goa blog automation. If you see this, Google Business Profile posting is working.`,
       callToActionUrl: site,
       languageCode: "en-IN",
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, postName: result.name });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Test post failed";
+    const message = mapGoogleBusinessError(e);
     await saveGoogleBusinessSettings({ lastPostError: message });
     return NextResponse.json({ error: message }, { status: 500 });
   }

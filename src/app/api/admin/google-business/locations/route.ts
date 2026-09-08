@@ -12,10 +12,8 @@ import {
   describeGoogleBusinessOAuthGap,
   getGoogleBusinessOAuthConfig,
 } from "@/lib/google-business/config";
-import {
-  listGoogleBusinessAccounts,
-  listGoogleBusinessLocations,
-} from "@/lib/google-business/client";
+import { mapGoogleBusinessError } from "@/lib/google-business/errors";
+import { GoogleBusinessProfileService } from "@/lib/google-business/service";
 
 export const runtime = "nodejs";
 
@@ -43,7 +41,10 @@ export async function GET(req: Request) {
         const cached = await getCachedGoogleBusinessLocations(accountId);
         if (cached) return NextResponse.json({ locations: cached, cached: true });
       }
-      const locations = await listGoogleBusinessLocations(config, accountId);
+      const locations = await GoogleBusinessProfileService.listLocations(
+        config,
+        accountId,
+      );
       await setCachedGoogleBusinessLocations(accountId, locations);
       return NextResponse.json({ locations, cached: false });
     }
@@ -52,11 +53,11 @@ export async function GET(req: Request) {
       const cached = await getCachedGoogleBusinessAccounts();
       if (cached) return NextResponse.json({ accounts: cached, cached: true });
     }
-    const accounts = await listGoogleBusinessAccounts(config);
+    const accounts = await GoogleBusinessProfileService.listAccounts(config);
     await setCachedGoogleBusinessAccounts(accounts);
     return NextResponse.json({ accounts, cached: false });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to list locations";
+    const message = mapGoogleBusinessError(e);
     const rateLimited =
       /rate limit|quota exceeded|429/i.test(message) || message.includes("429");
     if (accountId) {

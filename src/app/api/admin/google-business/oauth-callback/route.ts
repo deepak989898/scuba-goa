@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { SITE_URL } from "@/lib/constants";
-import { exchangeGoogleAuthCode } from "@/lib/google-business/auth";
+import { consumeGoogleBusinessOAuthState } from "@/lib/google-business/oauth-state";
+import { GoogleBusinessProfileService } from "@/lib/google-business/service";
 import {
+  getGoogleOAuthRedirectUri,
   getGoogleOAuthClientId,
   getGoogleOAuthClientSecret,
-  getGoogleOAuthRedirectUri,
 } from "@/lib/google-business/config";
-import { consumeGoogleBusinessOAuthState } from "@/lib/google-business/oauth-state";
-import { saveGoogleBusinessSettings } from "@/lib/google-business/settings";
+import { mapGoogleBusinessError } from "@/lib/google-business/errors";
 
 export const runtime = "nodejs";
 
@@ -49,22 +49,10 @@ export async function GET(req: Request) {
   }
 
   try {
-    const tokens = await exchangeGoogleAuthCode({
-      clientId,
-      clientSecret,
-      code,
-      redirectUri,
-    });
-
-    await saveGoogleBusinessSettings({
-      refreshToken: tokens.refreshToken,
-      connectedAt: new Date().toISOString(),
-      lastPostError: null,
-    });
-
+    await GoogleBusinessProfileService.connectFromAuthCode(code, redirectUri);
     return NextResponse.redirect(`${SITE_URL}${adminPath}?gbp=connected`);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "oauth_failed";
+    const msg = mapGoogleBusinessError(e);
     return NextResponse.redirect(
       `${SITE_URL}${adminPath}?gbp=error&msg=${encodeURIComponent(msg.slice(0, 120))}`,
     );

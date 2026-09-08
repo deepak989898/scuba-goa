@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
+  buildAccountResourceName,
+  buildLocationResourceName,
+} from "@/lib/google-business/apis";
+import {
   getGoogleBusinessSettings,
   googleBusinessSettingsPublic,
   saveGoogleBusinessSettings,
@@ -60,9 +64,20 @@ export async function PATCH(req: Request) {
     if (fullResource) {
       patch.accountId = accountId;
       patch.locationId = locationId;
+      patch.accountResourceName = buildAccountResourceName(accountId);
+      patch.locationResourceName = buildLocationResourceName(accountId, locationId);
     } else {
-      if (body.accountId != null) patch.accountId = accountId;
-      if (body.locationId != null) patch.locationId = locationId;
+      if (body.accountId != null) {
+        patch.accountId = accountId;
+        patch.accountResourceName = buildAccountResourceName(accountId);
+      }
+      if (body.locationId != null) {
+        patch.locationId = locationId;
+        patch.locationResourceName = buildLocationResourceName(
+          patch.accountId ?? current.accountId,
+          locationId,
+        );
+      }
     }
   }
   if (body.locationTitle != null) {
