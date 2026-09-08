@@ -36,6 +36,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         highlight: true,
         badge: "daily",
       },
+      {
+        href: "/admin/goa-hotel-bookings",
+        label: "Hotel bookings",
+        description: "Goa hotels — Safar Sathi catalog, Razorpay",
+        highlight: true,
+        badge: "action",
+      },
     ],
   },
   {

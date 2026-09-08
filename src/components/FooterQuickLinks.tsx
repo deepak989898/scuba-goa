@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const QUICK_LINKS = [
   { href: "/booking", label: "Book & pay online" },
+  { href: "/hotels", label: "Hotels in Goa" },
   { href: "/offers", label: "Package offers" },
   { href: "/services", label: "All services" },
   { href: "/blog", label: "Travel blog" },
