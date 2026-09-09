@@ -198,15 +198,33 @@ function drawSectionTitle(
   icon: PDFImage | null,
   fontBold: PDFFont,
 ) {
+  const textX = x + (icon ? 18 : 0);
+  const titleSize = 11;
+  const titleW = fontBold.widthOfTextAtSize(title, titleSize) + (icon ? 18 : 0) + 8;
+
+  page.drawRectangle({
+    x: x - 2,
+    y: y - 7,
+    width: titleW,
+    height: 17,
+    color: C.blueLight,
+  });
   if (icon) {
     page.drawImage(icon, { x, y: y - 2, width: 14, height: 14 });
   }
   page.drawText(title, {
-    x: x + (icon ? 18 : 0),
+    x: textX,
     y,
-    size: 10,
+    size: titleSize,
     font: fontBold,
-    color: C.navyText,
+    color: C.blue,
+  });
+  page.drawLine({
+    start: { x: textX, y: y - 4 },
+    end: { x: textX + fontBold.widthOfTextAtSize(title, titleSize), y: y - 4 },
+    thickness: 0.8,
+    color: C.blue,
+    opacity: 0.45,
   });
 }
 
@@ -340,7 +358,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   );
   const iconPerson = await embedImage(doc, "bill/icon-person.png");
   const iconGift = await embedImage(doc, "bill/icon-gift.png");
-  const iconRupee = await embedImage(doc, "bill/icon-rupee.png");
   const iconAlert = await embedImage(doc, "bill/icon-alert.png");
   const iconPin = await embedImage(doc, "bill/icon-pin.png");
   const iconCheck = await embedImage(doc, "bill/icon-check.png");
@@ -551,9 +568,9 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   yTop = guestBottom - 8;
 
-  // ── Packages & guests + Payment details (single merged card) ────────────
-  const pkgSectionH = 72;
-  const paySectionH = 88;
+  // ── Packages & guests + payment summary (single merged card) ────────────
+  const pkgSectionH = 68;
+  const paySectionH = 62;
   const combinedH = pkgSectionH + paySectionH;
   const combinedBottom = yTop - combinedH;
   drawCard(page, margin, combinedBottom, contentW, combinedH);
@@ -567,8 +584,8 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     fontBold,
   );
 
-  const thumbSize = 52;
-  const thumbY = yTop - pkgSectionH + 8;
+  const thumbSize = 48;
+  const thumbY = yTop - pkgSectionH + 10;
   if (pkgThumb) {
     page.drawImage(pkgThumb, {
       x: margin + 12,
@@ -594,33 +611,55 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const displayPrice =
     pkgPrice ?? `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`;
 
+  const membersColX = margin + contentW * 0.48;
+  const stampW = 118;
+  const stampH = 58;
+  const stampX = margin + contentW - stampW - 10;
+  const payValueRight = stampX - 14;
+
   page.drawText(pkgLabel, {
     x: pkgTextX,
-    y: yTop - 38,
+    y: yTop - 36,
     size: 10,
     font: fontBold,
     color: C.text,
-    maxWidth: contentW - thumbSize - 100,
+    maxWidth: membersColX - pkgTextX - 8,
   });
-  page.drawText(
-    pdfSafeText(
-      `${input.people} person(s)  |  Trip date: ${input.date || "-"}  |  Headcount: ${input.people}`,
-      100,
-    ),
-    {
-      x: pkgTextX,
-      y: yTop - 52,
-      size: 7.5,
-      font,
-      color: C.blue,
-    },
-  );
+  page.drawText(`Trip date: ${pdfSafeText(input.date || "-", 24)}`, {
+    x: pkgTextX,
+    y: yTop - 50,
+    size: 7.5,
+    font,
+    color: C.blue,
+  });
 
-  const pillW = Math.max(52, fontBold.widthOfTextAtSize(displayPrice, 10) + 16);
+  page.drawText("Members", {
+    x: membersColX,
+    y: yTop - 36,
+    size: 7,
+    font,
+    color: C.muted,
+  });
+  page.drawText(`${input.people} person(s)`, {
+    x: membersColX,
+    y: yTop - 50,
+    size: 10,
+    font: fontBold,
+    color: C.navyText,
+  });
+
+  const pillW = Math.max(58, fontBold.widthOfTextAtSize(displayPrice, 10) + 16);
   const pillX = margin + contentW - pillW - 12;
+  page.drawText("Total price", {
+    x: pillX,
+    y: yTop - 36,
+    size: 7,
+    font,
+    color: C.muted,
+  });
   page.drawRectangle({
     x: pillX,
-    y: thumbY + 14,
+    y: thumbY + 10,
     width: pillW,
     height: 22,
     color: C.pillBg,
@@ -629,36 +668,13 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   });
   page.drawText(displayPrice, {
     x: pillX + 8,
-    y: thumbY + 20,
+    y: thumbY + 16,
     size: 10,
     font: fontBold,
     color: C.greenDark,
   });
 
-  const dividerY = yTop - pkgSectionH;
-  page.drawLine({
-    start: { x: margin + 8, y: dividerY },
-    end: { x: margin + contentW - 8, y: dividerY },
-    thickness: 0.6,
-    color: C.cardBorder,
-  });
-
-  const payTop = dividerY - 6;
-  drawSectionTitle(
-    page,
-    margin + 10,
-    payTop - 8,
-    "Payment details (INR)",
-    iconRupee,
-    fontBold,
-  );
-
-  const stampW = 118;
-  const stampH = 58;
-  const stampX = margin + contentW - stampW - 10;
-  const stampY = combinedBottom + 14;
-  const payValueRight = stampX - 12;
-
+  const stampY = combinedBottom + 8;
   if (stampArt) {
     page.drawImage(stampArt, {
       x: stampX,
@@ -684,7 +700,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     },
   ];
 
-  let rowY = payTop - 30;
+  let rowY = yTop - pkgSectionH - 18;
   for (const r of payRows) {
     if (r.highlight) {
       page.drawRectangle({
@@ -701,7 +717,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
       size: 8,
       font,
       color: C.text,
-      maxWidth: payValueRight - margin - 20,
+      maxWidth: payValueRight - margin - 24,
     });
     const tw = fontBold.widthOfTextAtSize(r.value, 9);
     page.drawText(r.value, {
