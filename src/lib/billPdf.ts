@@ -404,10 +404,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const stampIsPartial =
     input.isPartial ||
     (input.balanceInr > 0 && input.fullAmountInr > input.amountPaidInr);
-  const stampArt = await embedImage(
-    doc,
-    stampIsPartial ? "bill/stamp-advanced-paid.png" : "bill/stamp-full-paid.png",
-  );
   const iconPerson = await embedImage(doc, "bill/icon-person.png");
   const iconGift = await embedImage(doc, "bill/icon-gift.png");
   const iconAlert = await embedImage(doc, "bill/icon-alert.png");
@@ -436,6 +432,12 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     timeZone: "Asia/Kolkata",
   });
   const orderRef = formatOrderRef(input.orderId || input.paymentId);
+  const footH = footerArt
+    ? width * (footerArt.height / footerArt.width)
+    : 76;
+  const notesH = 86;
+  const notesBottom = footH + 10;
+
   page.drawRectangle({ x: 0, y: 0, width, height, color: C.pageBg });
 
   // ── Header banner (full-width image, no crop or overlay) ──────────────
@@ -620,9 +622,10 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   yTop = guestBottom - 8;
 
   // ── Packages & guests + payment summary (single merged card) ────────────
-  const pkgSectionH = 68;
-  const paySectionH = 62;
-  const combinedH = pkgSectionH + paySectionH;
+  const titleRowH = 24;
+  const pkgRowH = 44;
+  const paySectionH = 58;
+  const combinedH = titleRowH + pkgRowH + paySectionH;
   const combinedBottom = yTop - combinedH;
   drawCard(page, margin, combinedBottom, contentW, combinedH);
 
@@ -635,105 +638,68 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     fontBold,
   );
 
-  const thumbSize = 48;
-  const thumbY = yTop - pkgSectionH + 10;
+  const pkgRowTop = yTop - titleRowH;
+  const thumbSize = 34;
+  const thumbX = margin + 12;
+  const thumbY = pkgRowTop - thumbSize - 2;
+  page.drawRectangle({
+    x: thumbX,
+    y: thumbY,
+    width: thumbSize,
+    height: thumbSize,
+    color: C.pillBg,
+    borderColor: C.cardBorder,
+    borderWidth: 0.5,
+  });
   if (pkgThumb) {
-    page.drawImage(pkgThumb, {
-      x: margin + 12,
-      y: thumbY,
-      width: thumbSize,
-      height: thumbSize,
-    });
-  } else {
-    page.drawRectangle({
-      x: margin + 12,
-      y: thumbY,
-      width: thumbSize,
-      height: thumbSize,
-      color: C.pillBg,
-      borderColor: C.cardBorder,
-      borderWidth: 0.5,
-    });
+    drawImageCover(page, pkgThumb, thumbX, thumbY, thumbSize, thumbSize);
   }
 
-  const pkgTextX = margin + 12 + thumbSize + 10;
+  const pkgTextX = thumbX + thumbSize + 8;
   const primaryLine = packageLines[0] ?? pdfSafeText(input.packageName, 120);
-  const { label: pkgLabel, price: pkgPrice } = parsePackageLine(primaryLine);
-  const displayPrice =
-    pkgPrice ?? `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`;
-
-  const membersColX = margin + contentW * 0.48;
-  const stampW = 118;
-  const stampH = 58;
-  const stampX = margin + contentW - stampW - 10;
-  const payValueRight = stampX - 14;
+  const { label: pkgLabel } = parsePackageLine(primaryLine);
+  const membersColX = margin + contentW * 0.5;
+  const payLabelX = margin + contentW * 0.38;
+  const payValueRight = margin + contentW - 14;
 
   page.drawText(pkgLabel, {
     x: pkgTextX,
-    y: yTop - 36,
-    size: 10,
+    y: pkgRowTop - 12,
+    size: 9.5,
     font: fontBold,
     color: C.text,
     maxWidth: membersColX - pkgTextX - 8,
   });
   page.drawText(`Trip date: ${pdfSafeText(input.date || "-", 24)}`, {
     x: pkgTextX,
-    y: yTop - 50,
-    size: 7.5,
+    y: pkgRowTop - 24,
+    size: 7,
     font,
     color: C.blue,
   });
 
   page.drawText("Members", {
     x: membersColX,
-    y: yTop - 36,
+    y: pkgRowTop - 12,
     size: 7,
     font,
     color: C.muted,
   });
   page.drawText(`${input.people} person(s)`, {
     x: membersColX,
-    y: yTop - 50,
-    size: 10,
+    y: pkgRowTop - 24,
+    size: 9.5,
     font: fontBold,
     color: C.navyText,
   });
 
-  const pillW = Math.max(58, fontBold.widthOfTextAtSize(displayPrice, 10) + 16);
-  const pillX = margin + contentW - pillW - 12;
-  page.drawText("Total price", {
-    x: pillX,
-    y: yTop - 36,
-    size: 7,
-    font,
-    color: C.muted,
+  const payDividerY = yTop - titleRowH - pkgRowH;
+  page.drawLine({
+    start: { x: margin + 8, y: payDividerY },
+    end: { x: margin + contentW - 8, y: payDividerY },
+    thickness: 0.5,
+    color: C.cardBorder,
   });
-  page.drawRectangle({
-    x: pillX,
-    y: thumbY + 10,
-    width: pillW,
-    height: 22,
-    color: C.pillBg,
-    borderColor: rgb(0.75, 0.88, 0.98),
-    borderWidth: 0.8,
-  });
-  page.drawText(displayPrice, {
-    x: pillX + 8,
-    y: thumbY + 16,
-    size: 10,
-    font: fontBold,
-    color: C.greenDark,
-  });
-
-  const stampY = combinedBottom + 8;
-  if (stampArt) {
-    page.drawImage(stampArt, {
-      x: stampX,
-      y: stampY,
-      width: stampW,
-      height: stampH,
-    });
-  }
 
   const payRows = [
     {
@@ -751,24 +717,25 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     },
   ];
 
-  let rowY = yTop - pkgSectionH - 18;
+  let rowY = payDividerY - 16;
   for (const r of payRows) {
+    const rowW = payValueRight - payLabelX + 4;
     if (r.highlight) {
       page.drawRectangle({
-        x: margin + 8,
+        x: payLabelX - 4,
         y: rowY - 3,
-        width: payValueRight - margin - 8,
+        width: rowW,
         height: 16,
         color: C.pillBg,
       });
     }
     page.drawText(r.label, {
-      x: margin + 12,
+      x: payLabelX,
       y: rowY,
-      size: 8,
+      size: 7.5,
       font,
       color: C.text,
-      maxWidth: payValueRight - margin - 24,
+      maxWidth: payValueRight - payLabelX - 56,
     });
     const tw = fontBold.widthOfTextAtSize(r.value, 9);
     page.drawText(r.value, {
@@ -778,19 +745,16 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
       font: fontBold,
       color: r.highlight ? C.navyText : C.text,
     });
-    rowY -= 18;
+    rowY -= 17;
   }
 
-  yTop = combinedBottom - 8;
-
-  // ── Please note ─────────────────────────────────────────────────────────
-  const notesH = 86;
-  const notesBottom = yTop - notesH;
+  // ── Please note (anchored just above footer) ────────────────────────────
   drawCard(page, margin, notesBottom, contentW, notesH);
+  const notesYTop = notesBottom + notesH;
   drawSectionTitle(
     page,
     margin + 10,
-    yTop - 14,
+    notesYTop - 14,
     "Please note (Do / Don't)",
     iconAlert,
     fontBold,
@@ -799,7 +763,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const halfW = (contentW - 28) / 2;
   const doX = margin + 12;
   const dontX = margin + 12 + halfW + 4;
-  let ny = yTop - 36;
+  let ny = notesYTop - 36;
 
   DO_NOTES.forEach((n, i) => {
     const yy = ny - i * 16;
@@ -832,9 +796,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   });
 
   // ── Footer (full-width image banner) ───────────────────────────────────
-  const footH = footerArt
-    ? width * (footerArt.height / footerArt.width)
-    : 76;
   if (footerArt) {
     page.drawImage(footerArt, { x: 0, y: 0, width, height: footH });
   } else {
