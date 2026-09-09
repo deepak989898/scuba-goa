@@ -4,6 +4,11 @@ import QRCode from "qrcode";
 import {
   PDFDocument,
   StandardFonts,
+  clip,
+  endPath,
+  popGraphicsState,
+  pushGraphicsState,
+  rectangle,
   rgb,
   type PDFFont,
   type PDFImage,
@@ -164,6 +169,35 @@ const DONT_NOTES = [
   "Don't share payment IDs publicly or with strangers.",
 ];
 
+/** Scale image to cover a rectangle (like CSS object-fit: cover), clipped to bounds. */
+function drawImageCover(
+  page: PDFPage,
+  img: PDFImage,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  opacity = 1,
+) {
+  const scale = Math.max(w / img.width, h / img.height);
+  const iw = img.width * scale;
+  const ih = img.height * scale;
+  page.pushOperators(
+    pushGraphicsState(),
+    rectangle(x, y, w, h),
+    clip(),
+    endPath(),
+  );
+  page.drawImage(img, {
+    x: x + (w - iw) / 2,
+    y: y + (h - ih) / 2,
+    width: iw,
+    height: ih,
+    opacity,
+  });
+  page.pushOperators(popGraphicsState());
+}
+
 function drawCard(
   page: PDFPage,
   x: number,
@@ -237,6 +271,8 @@ function drawPaymentStatusBox(
   const accent = isPartial ? C.orange : C.green;
   const bg = isPartial ? C.orangeLight : C.greenLight;
   const status = isPartial ? "ADVANCED PAID" : "FULL PAID";
+  const top = y + h;
+  const pad = 8;
 
   page.drawRectangle({
     x,
@@ -248,46 +284,59 @@ function drawPaymentStatusBox(
     borderWidth: 0.8,
   });
 
-  const checkCx = x + 15;
-  const checkCy = y + h - 22;
+  const row1Y = top - pad - 5;
+  const checkCx = x + 14;
+  const checkCy = row1Y + 1;
   page.drawCircle({
     x: checkCx,
     y: checkCy,
-    size: 14,
+    size: 12,
     color: accent,
   });
   drawCheckmark(page, checkCx, checkCy, C.white);
 
   page.drawText("Payment Status", {
-    x: x + 26,
-    y: y + h - 20,
-    size: 7,
+    x: x + 24,
+    y: row1Y,
+    size: 6.5,
     font,
     color: accent,
   });
+
+  const row2Y = top - pad - 19;
   page.drawText(status, {
-    x: x + 26,
-    y: y + h - 35,
-    size: 12,
+    x: x + 10,
+    y: row2Y,
+    size: 10,
     font: fontBold,
     color: accent,
   });
 
+  const dividerY = top - pad - 25;
+  page.drawLine({
+    start: { x: x + 8, y: dividerY },
+    end: { x: x + w - 8, y: dividerY },
+    thickness: 0.4,
+    color: accent,
+    opacity: 0.35,
+  });
+
   page.drawText(`Order ID: ${orderRef}`, {
     x: x + 10,
-    y: y + 22,
+    y: top - pad - 36,
     size: 6.5,
     font,
     color: C.muted,
   });
-  const payIdShort = pdfSafeText(paymentId, 24);
+
+  const payIdShort = pdfSafeText(paymentId, 22);
   page.drawText(`Payment ID: ${payIdShort}`, {
     x: x + 10,
-    y: y + 11,
-    size: 6,
+    y: top - pad - 46,
+    size: 5.8,
     font,
     color: C.muted,
-    maxWidth: w - 16,
+    maxWidth: w - 18,
   });
 }
 
@@ -304,7 +353,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const headerArt = await embedImage(
     doc,
     "bill/invoice-header-bg.png",
-    "bill/invoice-header.png",
     "booking-header.png",
   );
   const footerArt = await embedImage(
@@ -359,49 +407,39 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   page.drawRectangle({ x: 0, y: 0, width, height, color: C.pageBg });
 
-  // ── Hero banner (background only — logo drawn once below) ───────────────
-  const heroH = 92;
+  // ── Hero banner (full-bleed cover + logo on left) ─────────────────────
+  const heroH = 100;
+  const heroY = height - heroH;
+  page.drawRectangle({
+    x: 0,
+    y: heroY,
+    width,
+    height: heroH,
+    color: C.navy,
+  });
   if (headerArt) {
-    page.drawImage(headerArt, { x: 0, y: height - heroH, width, height: heroH });
+    drawImageCover(page, headerArt, 0, heroY, width, heroH, 0.92);
     page.drawRectangle({
       x: 0,
-      y: height - heroH,
+      y: heroY,
       width,
       height: heroH,
       color: C.navy,
-      opacity: 0.15,
-    });
-  } else {
-    page.drawRectangle({
-      x: 0,
-      y: height - heroH,
-      width,
-      height: heroH,
-      color: C.navy,
+      opacity: 0.2,
     });
   }
 
   if (logo) {
     page.drawImage(logo, {
       x: margin,
-      y: height - heroH + 8,
-      width: 76,
-      height: 76,
+      y: heroY + 10,
+      width: 80,
+      height: 80,
     });
   }
 
-  const adventure = "Your Adventure Starts Here!";
-  const advW = fontOblique.widthOfTextAtSize(adventure, 12);
-  page.drawText(adventure, {
-    x: width - margin - advW,
-    y: height - heroH + 28,
-    size: 12,
-    font: fontOblique,
-    color: C.white,
-  });
-
   // ── Title strip + payment status (white band below hero) ──────────────
-  const titleH = 58;
+  const titleH = 68;
   const titleY = height - heroH - titleH;
   page.drawRectangle({
     x: 0,
@@ -446,12 +484,12 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     color: C.muted,
   });
 
-  const statusBoxW = 156;
-  const statusBoxH = titleH - 12;
+  const statusBoxW = 162;
+  const statusBoxH = 58;
   drawPaymentStatusBox(
     page,
     width - margin - statusBoxW,
-    titleY + 6,
+    titleY + 5,
     statusBoxW,
     statusBoxH,
     stampIsPartial,
