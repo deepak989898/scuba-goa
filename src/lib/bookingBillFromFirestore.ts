@@ -1,5 +1,6 @@
 import type { BillPdfInput } from "@/lib/billPdf";
 import { buildPackageLinesForBill, normalizePickupLocation } from "@/lib/billPackageLines";
+import { resolveBillPackageImageUrl } from "@/lib/resolveBillPackageImage";
 
 export type BookingConfirmationEmailFields = {
   to: string;
@@ -74,6 +75,17 @@ export function bookingDocToBillPdfInput(
     orderId,
     isPartial,
   };
+}
+
+/** Booking doc → bill input with resolved service/package thumbnail URL. */
+export async function buildBillPdfInputFromBookingDoc(
+  data: Record<string, unknown>,
+  docId: string,
+): Promise<BillPdfInput | null> {
+  const input = bookingDocToBillPdfInput(data, docId);
+  if (!input) return null;
+  const packageImageUrl = await resolveBillPackageImageUrl(data);
+  return packageImageUrl ? { ...input, packageImageUrl } : input;
 }
 
 export function bookingDocToEmailFields(

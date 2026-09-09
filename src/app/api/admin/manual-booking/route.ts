@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
-import {
-  bookingDocToBillPdfInput,
-} from "@/lib/bookingBillFromFirestore";
+import { buildBillPdfInputFromBookingDoc } from "@/lib/bookingBillFromFirestore";
 import { createBookingBillShareToken } from "@/lib/bookingBillShareToken";
 import { generateBillPdf } from "@/lib/billPdf";
 import { sendBookingConfirmationEmailDetailed } from "@/lib/email";
@@ -78,10 +76,13 @@ export async function POST(req: Request) {
     packageName,
     actorId,
   });
+  if (serviceFromSlug?.image?.trim()) {
+    doc.packageImageUrl = serviceFromSlug.image.trim();
+  }
 
   await db.collection("bookings").doc(bookingId).set(doc);
 
-  const billInput = bookingDocToBillPdfInput(doc, bookingId);
+  const billInput = await buildBillPdfInputFromBookingDoc(doc, bookingId);
   if (!billInput) {
     return NextResponse.json(
       { error: "Booking saved but bill data was invalid." },

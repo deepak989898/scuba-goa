@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import { generateBillPdf } from "@/lib/billPdf";
-import { bookingDocToBillPdfInput } from "@/lib/bookingBillFromFirestore";
+import { buildBillPdfInputFromBookingDoc } from "@/lib/bookingBillFromFirestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   }
 
   const data = snap.data() as Record<string, unknown>;
-  const input = bookingDocToBillPdfInput(data, snap.id);
+  const input = await buildBillPdfInputFromBookingDoc(data, snap.id);
   if (!input) {
     return NextResponse.json({ error: "Invalid booking data" }, { status: 400 });
   }

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { authenticateAdminRequest } from "@/lib/admin-request-auth";
 import {
-  bookingDocToBillPdfInput,
   bookingDocToEmailFields,
+  buildBillPdfInputFromBookingDoc,
 } from "@/lib/bookingBillFromFirestore";
 import { generateBillPdf } from "@/lib/billPdf";
 import { sendBookingConfirmationEmail } from "@/lib/email";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const billInput = bookingDocToBillPdfInput(data, snap.id);
+  const billInput = await buildBillPdfInputFromBookingDoc(data, snap.id);
   if (!billInput) {
     return NextResponse.json({ error: "Invalid booking data" }, { status: 400 });
   }

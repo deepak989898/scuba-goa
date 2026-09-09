@@ -48,6 +48,8 @@ export type BillPdfInput = {
   phone: string;
   packageName: string;
   packageLines?: string[];
+  /** Package or service image shown in the invoice card. */
+  packageImageUrl?: string;
   date: string;
   people: number;
   pickupLocation?: string;
@@ -105,15 +107,67 @@ async function embedImage(
 ): Promise<PDFImage | null> {
   const bytes = await loadPublicBytes(...relativePaths);
   if (!bytes) return null;
+  return embedImageBytes(doc, bytes);
+}
+
+const urlImageCache: Record<string, Uint8Array | null | undefined> = {};
+
+async function loadImageBytesFromUrl(url: string): Promise<Uint8Array | null> {
+  const key = url.trim();
+  if (!key) return null;
+  if (urlImageCache[key] !== undefined) {
+    return urlImageCache[key];
+  }
+
+  try {
+    let bytes: Uint8Array | null = null;
+    if (key.startsWith("/") && !key.startsWith("//")) {
+      bytes = await loadPublicBytes(key.replace(/^\//, ""));
+    } else if (/^https?:\/\//i.test(key)) {
+      const res = await fetch(key, { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) {
+        urlImageCache[key] = null;
+        return null;
+      }
+      bytes = new Uint8Array(await res.arrayBuffer());
+    }
+    urlImageCache[key] = bytes;
+    return bytes;
+  } catch {
+    urlImageCache[key] = null;
+    return null;
+  }
+}
+
+async function embedImageBytes(
+  doc: PDFDocument,
+  bytes: Uint8Array,
+): Promise<PDFImage | null> {
   try {
     return await doc.embedPng(bytes);
   } catch {
     try {
       return await doc.embedJpg(bytes);
     } catch {
-      return null;
+      try {
+        const sharp = (await import("sharp")).default;
+        const jpeg = await sharp(Buffer.from(bytes)).jpeg({ quality: 85 }).toBuffer();
+        return await doc.embedJpg(new Uint8Array(jpeg));
+      } catch {
+        return null;
+      }
     }
   }
+}
+
+async function embedImageFromUrl(
+  doc: PDFDocument,
+  url?: string,
+): Promise<PDFImage | null> {
+  if (!url?.trim()) return null;
+  const bytes = await loadImageBytesFromUrl(url);
+  if (!bytes) return null;
+  return embedImageBytes(doc, bytes);
 }
 
 function formatOrderRef(orderId: string): string {
@@ -278,8 +332,9 @@ function drawPaymentStatusBox(
 
   const textX = x + 30;
   const row1Y = top - pad - 5;
+  const row2Y = top - pad - 19;
   const checkCx = x + 14;
-  const checkCy = row1Y + 1;
+  const checkCy = (row1Y + row2Y) / 2 - 1;
   page.drawCircle({
     x: checkCx,
     y: checkCy,
@@ -295,8 +350,6 @@ function drawPaymentStatusBox(
     font,
     color: accent,
   });
-
-  const row2Y = top - pad - 19;
   page.drawText(status, {
     x: textX,
     y: row2Y,
@@ -342,13 +395,12 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const margin = 22;
   const contentW = width - margin * 2;
 
-  const headerArt = await embedImage(
-    doc,
-    "bill/invoice-header-bg.png",
-    "booking-header.png",
-  );
+  const headerArt = await embedImage(doc, "bill/invoice-header.png");
   const footerArt = await embedImage(doc, "bill/invoice-footer.png");
-  const pkgThumb = await embedImage(doc, "bill/package-van.png");
+  const pkgThumb =
+    (input.packageImageUrl
+      ? await embedImageFromUrl(doc, input.packageImageUrl)
+      : null) ?? (await embedImage(doc, "bill/package-van.png"));
   const stampIsPartial =
     input.isPartial ||
     (input.balanceInr > 0 && input.fullAmountInr > input.amountPaidInr);
@@ -386,39 +438,77 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const orderRef = formatOrderRef(input.orderId || input.paymentId);
   page.drawRectangle({ x: 0, y: 0, width, height, color: C.pageBg });
 
-  // ── Hero banner (full-bleed cover + logo on left) ─────────────────────
-  const heroH = 100;
+  // ── Header banner (full-width image, no crop or overlay) ──────────────
+  const heroH = headerArt
+    ? width * (headerArt.height / headerArt.width)
+    : 100;
   const heroY = height - heroH;
-  page.drawRectangle({
-    x: 0,
-    y: heroY,
-    width,
-    height: heroH,
-    color: C.navy,
-  });
   if (headerArt) {
-    drawImageCover(page, headerArt, 0, heroY, width, heroH, 0.92);
+    page.drawImage(headerArt, { x: 0, y: heroY, width, height: heroH });
+  } else {
     page.drawRectangle({
       x: 0,
       y: heroY,
       width,
       height: heroH,
       color: C.navy,
-      opacity: 0.2,
     });
   }
 
-  // Logo is already part of the header artwork — avoid drawing it twice.
+  // ── Trust bar (directly below header, above receipt title) ──────────────
+  const trustH = 40;
+  const trustY = heroY - trustH;
+  page.drawRectangle({ x: 0, y: trustY, width, height: trustH, color: C.trustBg });
+  page.drawLine({
+    start: { x: 0, y: trustY + trustH },
+    end: { x: width, y: trustY + trustH },
+    thickness: 0.5,
+    color: C.cardBorder,
+  });
 
-  // ── Title strip + payment status (white band below hero) ──────────────
+  const trustItems = [
+    { icon: iconShield, title: "Secure Payment", sub: "Processed by Razorpay" },
+    { icon: iconBadge, title: "Trusted Operator", sub: "100% Safe & Reliable" },
+    { icon: iconHeadset, title: "24/7 Support", sub: "We're here to help" },
+    { icon: iconStar, title: "Best Experiences", sub: "Memorable & Hassle-free" },
+  ];
+  const trustColW = width / 4;
+  trustItems.forEach((item, i) => {
+    const cx = i * trustColW + 16;
+    if (item.icon) {
+      page.drawImage(item.icon, { x: cx, y: trustY + 22, width: 12, height: 12 });
+    }
+    page.drawText(item.title, {
+      x: cx + 15,
+      y: trustY + 26,
+      size: 6.5,
+      font: fontBold,
+      color: C.text,
+    });
+    page.drawText(item.sub, {
+      x: cx + 15,
+      y: trustY + 15,
+      size: 5.8,
+      font,
+      color: C.muted,
+    });
+  });
+
+  // ── Title strip + payment status (below trust bar) ────────────────────
   const titleH = 68;
-  const titleY = height - heroH - titleH;
+  const titleY = trustY - titleH;
   page.drawRectangle({
     x: 0,
     y: titleY,
     width,
     height: titleH,
     color: C.white,
+  });
+  page.drawLine({
+    start: { x: 0, y: titleY },
+    end: { x: width, y: titleY },
+    thickness: 0.5,
+    color: C.cardBorder,
   });
   page.drawLine({
     start: { x: 0, y: titleY + titleH },
@@ -464,46 +554,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     fontBold,
   );
 
-  // ── Trust bar ───────────────────────────────────────────────────────────
-  const trustH = 40;
-  const trustY = titleY - trustH;
-  page.drawRectangle({ x: 0, y: trustY, width, height: trustH, color: C.trustBg });
-  page.drawLine({
-    start: { x: 0, y: trustY },
-    end: { x: width, y: trustY },
-    thickness: 0.5,
-    color: C.cardBorder,
-  });
-
-  const trustItems = [
-    { icon: iconShield, title: "Secure Payment", sub: "Processed by Razorpay" },
-    { icon: iconBadge, title: "Trusted Operator", sub: "100% Safe & Reliable" },
-    { icon: iconHeadset, title: "24/7 Support", sub: "We're here to help" },
-    { icon: iconStar, title: "Best Experiences", sub: "Memorable & Hassle-free" },
-  ];
-  const trustColW = width / 4;
-  trustItems.forEach((item, i) => {
-    const cx = i * trustColW + 16;
-    if (item.icon) {
-      page.drawImage(item.icon, { x: cx, y: trustY + 22, width: 12, height: 12 });
-    }
-    page.drawText(item.title, {
-      x: cx + 15,
-      y: trustY + 26,
-      size: 6.5,
-      font: fontBold,
-      color: C.text,
-    });
-    page.drawText(item.sub, {
-      x: cx + 15,
-      y: trustY + 15,
-      size: 5.8,
-      font,
-      color: C.muted,
-    });
-  });
-
-  let yTop = trustY - 8;
+  let yTop = titleY - 8;
 
   // ── Customer & contact ──────────────────────────────────────────────────
   const guestH = 100;

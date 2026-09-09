@@ -15,6 +15,71 @@ function defaultTripDateValue(): string {
   return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
+type EditFormState = {
+  paymentId: string;
+  customerName: string;
+  phone: string;
+  email: string;
+  serviceSlug: string;
+  customService: string;
+  hotel: string;
+  date: string;
+  people: string;
+  fullAmountInr: string;
+  advanceInr: string;
+  notes: string;
+};
+
+function formatDateInputValue(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = dateFromUnknown(raw);
+  if (!d) return defaultTripDateValue();
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+function rowToEditForm(r: Row, serviceOptions: ServiceOption[]): EditFormState {
+  const fullInr = Math.round(
+    Number(r.fullAmountPaise ?? r.amountPaise ?? 0) / 100,
+  );
+  const advanceInr = Math.round(Number(r.amountPaise ?? 0) / 100);
+  const pkgName = String(r.packageName ?? "").trim();
+  const storedSlug = String(r.serviceSlug ?? "").trim();
+  let serviceSlug = storedSlug;
+  if (!serviceSlug) {
+    const match = serviceOptions.find(
+      (s) =>
+        pkgName === s.title ||
+        pkgName.startsWith(`${s.title} `) ||
+        pkgName.includes(s.title),
+    );
+    serviceSlug = match?.slug ?? (pkgName ? "__custom" : "");
+  }
+  if (
+    serviceSlug &&
+    serviceSlug !== "__custom" &&
+    !serviceOptions.some((s) => s.slug === serviceSlug)
+  ) {
+    serviceSlug = "__custom";
+  }
+
+  return {
+    paymentId: r.id,
+    customerName: String(r.customerName ?? ""),
+    phone: String(r.phone ?? ""),
+    email: String(r.email ?? ""),
+    serviceSlug: serviceSlug || serviceOptions[0]?.slug || "__custom",
+    customService:
+      serviceSlug === "__custom" || !storedSlug ? pkgName : "",
+    hotel: String(r.pickupLocation ?? ""),
+    date: formatDateInputValue(r.date),
+    people: String(Math.max(1, Number(r.people ?? r.payUnits ?? 1))),
+    fullAmountInr: fullInr > 0 ? String(fullInr) : "",
+    advanceInr: advanceInr > 0 ? String(advanceInr) : "",
+    notes: String(r.notes ?? ""),
+  };
+}
+
 function dateFromUnknown(raw: unknown): Date | null {
   if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : raw;
   if (raw && typeof raw === "object") {
@@ -163,6 +228,8 @@ export default function AdminBookingsPage() {
   const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualBusy, setManualBusy] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormState | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
   const [manualForm, setManualForm] = useState({
     customerName: "",
@@ -194,13 +261,86 @@ export default function AdminBookingsPage() {
   useEffect(() => () => closeBillPreview(), [closeBillPreview]);
 
   useEffect(() => {
-    if (!billPreviewUrl) return;
+    if (!billPreviewUrl && !editForm) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeBillPreview();
+      if (e.key !== "Escape") return;
+      if (editForm) setEditForm(null);
+      else closeBillPreview();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [billPreviewUrl, closeBillPreview]);
+  }, [billPreviewUrl, editForm, closeBillPreview]);
+
+  function openEditBooking(r: Row) {
+    setActionError(null);
+    setActionSuccess(null);
+    setEditForm(rowToEditForm(r, serviceOptions));
+  }
+
+  async function saveBookingEdit(andPreview = false) {
+    if (!editForm) return false;
+    setActionError(null);
+    setActionSuccess(null);
+    setEditBusy(true);
+    const paymentId = editForm.paymentId;
+    try {
+      const service =
+        serviceOptions.find((s) => s.slug === editForm.serviceSlug) ?? null;
+      const serviceName =
+        editForm.serviceSlug === "__custom"
+          ? editForm.customService.trim()
+          : service?.title ?? editForm.customService.trim();
+
+      const res = await authorizedFetch("/api/admin/booking-update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentId: editForm.paymentId,
+          customerName: editForm.customerName.trim(),
+          phone: editForm.phone.trim(),
+          email: editForm.email.trim(),
+          serviceSlug:
+            editForm.serviceSlug && editForm.serviceSlug !== "__custom"
+              ? editForm.serviceSlug
+              : undefined,
+          serviceName,
+          packageName: serviceName,
+          hotel: editForm.hotel.trim(),
+          date: editForm.date,
+          people: Number(editForm.people) || 1,
+          fullAmountInr: Number(editForm.fullAmountInr),
+          advanceInr: Number(editForm.advanceInr),
+          notes: editForm.notes.trim() || undefined,
+        }),
+      });
+      if (!res) return;
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        packageName?: string;
+      } | null;
+      if (!res.ok) {
+        setActionError(data?.error ?? `Could not update booking (${res.status})`);
+        return false;
+      }
+
+      setActionSuccess(
+        `Booking updated${data?.packageName ? `: ${data.packageName}` : ""}.${andPreview ? " Opening bill preview…" : " Preview bill to see the new invoice."}`,
+      );
+      setEditForm(null);
+      await reloadBookings();
+      if (andPreview) {
+        void previewBill(paymentId);
+      }
+      return true;
+    } catch (e) {
+      setActionError(
+        e instanceof Error ? e.message : "Could not update booking.",
+      );
+      return false;
+    } finally {
+      setEditBusy(false);
+    }
+  }
 
   async function authorizedFetch(
     input: RequestInfo | URL,
@@ -980,6 +1120,13 @@ export default function AdminBookingsPage() {
                               <div className="mt-1.5 flex flex-wrap gap-1.5 border-t border-ocean-100 pt-1.5">
                                 <button
                                   type="button"
+                                  onClick={() => openEditBooking(r)}
+                                  className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-900 hover:bg-violet-100"
+                                >
+                                  Edit invoice
+                                </button>
+                                <button
+                                  type="button"
                                   disabled={previewLoadingId === r.id}
                                   onClick={() => previewBill(r.id)}
                                   className="rounded-full border border-ocean-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
@@ -1029,6 +1176,203 @@ export default function AdminBookingsPage() {
           })}
         </div>
       )}
+
+      {editForm ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-3"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-booking-title"
+          onClick={() => !editBusy && setEditForm(null)}
+        >
+          <div
+            className="max-h-[min(92vh,900px)] w-full max-w-lg overflow-y-auto rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-ocean-100 bg-white px-4 py-3">
+              <p
+                id="edit-booking-title"
+                className="font-display font-semibold text-ocean-900"
+              >
+                Edit booking &amp; invoice
+              </p>
+              <button
+                type="button"
+                disabled={editBusy}
+                onClick={() => setEditForm(null)}
+                className="rounded-full border border-ocean-200 px-3 py-1 text-xs font-semibold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-[11px] text-ocean-600">
+                Changes update the booking record and the PDF invoice (guest name,
+                trip, pickup, service, and payment amounts).
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <label className="text-xs text-ocean-800 sm:col-span-2">
+                  Guest name *
+                  <input
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.customerName}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, customerName: e.target.value } : f,
+                      )
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800">
+                  Mobile number *
+                  <input
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    inputMode="tel"
+                    value={editForm.phone}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, phone: e.target.value } : f))
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800">
+                  Email
+                  <input
+                    type="email"
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.email}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, email: e.target.value } : f))
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800">
+                  Trip date *
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.date}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, date: e.target.value } : f))
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800">
+                  People *
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.people}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, people: e.target.value } : f))
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800 sm:col-span-2">
+                  Service / activity *
+                  <select
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.serviceSlug}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, serviceSlug: e.target.value } : f,
+                      )
+                    }
+                  >
+                    {serviceOptions.map((s) => (
+                      <option key={s.slug} value={s.slug}>
+                        {s.title}
+                      </option>
+                    ))}
+                    <option value="__custom">Other (type below)</option>
+                  </select>
+                </label>
+                {editForm.serviceSlug === "__custom" ? (
+                  <label className="text-xs text-ocean-800 sm:col-span-2">
+                    Custom service name *
+                    <input
+                      className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                      value={editForm.customService}
+                      onChange={(e) =>
+                        setEditForm((f) =>
+                          f ? { ...f, customService: e.target.value } : f,
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
+                <label className="text-xs text-ocean-800 sm:col-span-2">
+                  Hotel / pickup location *
+                  <input
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.hotel}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, hotel: e.target.value } : f))
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800">
+                  Full amount (INR) *
+                  <input
+                    type="number"
+                    min={1}
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.fullAmountInr}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, fullAmountInr: e.target.value } : f,
+                      )
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800">
+                  Advance paid (INR) *
+                  <input
+                    type="number"
+                    min={1}
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.advanceInr}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, advanceInr: e.target.value } : f,
+                      )
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ocean-800 sm:col-span-2">
+                  Notes (optional)
+                  <input
+                    className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                    value={editForm.notes}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, notes: e.target.value } : f))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={editBusy}
+                  onClick={() => void saveBookingEdit(false)}
+                  className="rounded-full bg-violet-700 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-800 disabled:opacity-50"
+                >
+                  {editBusy ? "Saving…" : "Save changes"}
+                </button>
+                <button
+                  type="button"
+                  disabled={editBusy}
+                  onClick={() => void saveBookingEdit(true)}
+                  className="rounded-full border border-ocean-200 bg-white px-4 py-2 text-xs font-semibold text-ocean-800 hover:bg-ocean-50 disabled:opacity-50"
+                >
+                  Save &amp; preview bill
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {billPreviewUrl ? (
         <div

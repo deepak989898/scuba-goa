@@ -258,8 +258,9 @@ export function BookingForm() {
         unitPrice: l.unitPrice,
         quantity: l.quantity,
         lineTotal: l.unitPrice * l.quantity,
+        image: resolveCartLineImage(l, packages, services),
       })),
-    [lines]
+    [lines, packages, services]
   );
 
   async function applyPromoCode() {
@@ -325,14 +326,7 @@ export function BookingForm() {
     }
 
     const summary = cartSummary(lines);
-    const cartItems = lines.map((l) => ({
-      kind: l.kind,
-      refId: l.refId,
-      name: l.name,
-      unitPrice: l.unitPrice,
-      quantity: l.quantity,
-      lineTotal: l.unitPrice * l.quantity,
-    }));
+    const cartItems = cartItemsPayload;
 
     setBusy(true);
     try {

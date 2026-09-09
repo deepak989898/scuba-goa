@@ -3,7 +3,7 @@ import { after, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { FieldValue } from "firebase-admin/firestore";
 import { generateBillPdf } from "@/lib/billPdf";
-import { buildPackageLinesForBill, normalizePickupLocation } from "@/lib/billPackageLines";
+import { buildBillPdfInputFromBookingDoc } from "@/lib/bookingBillFromFirestore";
 import {
   sendBookingAdminNotificationEmail,
   sendBookingConfirmationEmailDetailed,
@@ -361,27 +361,13 @@ export async function POST(req: Request) {
 
     let pdfBytes: Uint8Array | undefined;
     try {
-      pdfBytes = await generateBillPdf({
-        customerName,
-        customerEmail,
-        phone,
-        packageName,
-        packageLines: buildPackageLinesForBill({
-          packageName,
-          people: booking.people,
-          payUnits: booking.payUnits,
-          cartItems: booking.cartItems,
-        }),
-        pickupLocation: normalizePickupLocation(booking.pickupLocation),
-        date,
-        people,
-        amountPaidInr: amountInr,
-        fullAmountInr: fullInr,
-        balanceInr,
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        isPartial: paymentMode === "partial",
-      });
+      const billInput = await buildBillPdfInputFromBookingDoc(
+        payload as Record<string, unknown>,
+        razorpay_payment_id,
+      );
+      if (billInput) {
+        pdfBytes = await generateBillPdf(billInput);
+      }
     } catch (err) {
       console.error("PDF bill generation failed", err);
     }
