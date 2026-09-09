@@ -150,6 +150,71 @@ function drawImageFit(
   return { w, h };
 }
 
+/** Circular payment stamp in the payment details section. */
+function drawPaymentStamp(
+  page: PDFPage,
+  cx: number,
+  cy: number,
+  radius: number,
+  isPartial: boolean,
+  font: PDFFont,
+  fontBold: PDFFont,
+) {
+  const stampColor = isPartial ? COLORS.orange : COLORS.green;
+  const statusText = isPartial ? "ADVANCED PAID" : "FULL PAID";
+  const diameter = radius * 2;
+
+  page.drawCircle({
+    x: cx,
+    y: cy,
+    size: diameter,
+    color: rgb(0.99, 1, 0.99),
+    borderColor: stampColor,
+    borderWidth: 2.5,
+    opacity: 0.96,
+  });
+  page.drawCircle({
+    x: cx,
+    y: cy,
+    size: diameter - 10,
+    borderColor: stampColor,
+    borderWidth: 1,
+    opacity: 0.55,
+  });
+
+  const brand = pdfSafeText(SITE_NAME, 24);
+  const brandSize = 6.5;
+  const brandW = fontBold.widthOfTextAtSize(brand, brandSize);
+  page.drawText(brand, {
+    x: cx - brandW / 2,
+    y: cy + 10,
+    size: brandSize,
+    font: fontBold,
+    color: stampColor,
+  });
+
+  const statusSize = 9;
+  const statusW = fontBold.widthOfTextAtSize(statusText, statusSize);
+  page.drawText(statusText, {
+    x: cx - statusW / 2,
+    y: cy - 4,
+    size: statusSize,
+    font: fontBold,
+    color: stampColor,
+  });
+
+  const verified = "VERIFIED";
+  const verifiedSize = 6;
+  const verifiedW = font.widthOfTextAtSize(verified, verifiedSize);
+  page.drawText(verified, {
+    x: cx - verifiedW / 2,
+    y: cy - 16,
+    size: verifiedSize,
+    font,
+    color: COLORS.muted,
+  });
+}
+
 /** Split a package line into left label + right-aligned price. */
 function parsePackageLine(line: string): { label: string; price: string | null } {
   const priceMatch = line.match(/Rs\.[\d,]+(?:\s*\(line total\))?/);
@@ -188,7 +253,12 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     "book-scuba-goa-logo.png",
   );
   const pkgIcon = await embedPng(doc, "bill/package-van.png");
-  const footerArt = await embedPng(doc, "bill/footer-beach.png");
+  const footerArt = await embedPng(
+    doc,
+    "bill/footer-beach-gen.png",
+    "booking-header.png",
+    "bill/footer-beach.png",
+  );
   const palmWm = await embedPng(doc, "bill/palm-watermark.png");
   const iconPerson = await embedPng(doc, "bill/icon-person.png");
   const iconGift = await embedPng(doc, "bill/icon-gift.png");
@@ -231,9 +301,9 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     color: COLORS.pageBg,
   });
 
-  // ── Header (compact navy band) ──────────────────────────────────────────
-  const headerH = 112;
-  const logoSize = 92;
+  // ── Header (logo left, title centered) ─────────────────────────────────
+  const headerH = 118;
+  const logoSize = 108;
   page.drawRectangle({
     x: 0,
     y: height - headerH,
@@ -242,66 +312,44 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     color: COLORS.navy,
   });
 
-  const logoTopPad = 10;
+  const logoTopPad = 6;
   const logoY = height - logoTopPad - logoSize;
-  let brandTextX = margin;
   if (logo) {
     drawImageFit(page, logo, margin, logoY, logoSize, logoSize);
-    brandTextX = margin + logoSize + 10;
   }
 
-  page.drawText(pdfSafeText(SITE_NAME, 40), {
-    x: brandTextX,
-    y: logoY + logoSize - 24,
-    size: 17,
+  const brandTitle = pdfSafeText(SITE_NAME, 40);
+  const brandTitleSize = 16;
+  const brandTitleW = fontBold.widthOfTextAtSize(brandTitle, brandTitleSize);
+  page.drawText(brandTitle, {
+    x: (width - brandTitleW) / 2,
+    y: height - 34,
+    size: brandTitleSize,
     font: fontBold,
     color: COLORS.white,
   });
-  page.drawText("PAYMENT RECEIPT / BILL", {
-    x: brandTextX,
-    y: logoY + logoSize - 44,
-    size: 13,
+
+  const receiptLabel = "PAYMENT RECEIPT / BILL";
+  const receiptSize = 9;
+  const receiptW = fontBold.widthOfTextAtSize(receiptLabel, receiptSize);
+  page.drawText(receiptLabel, {
+    x: (width - receiptW) / 2,
+    y: height - 48,
+    size: receiptSize,
     font: fontBold,
-    color: COLORS.white,
+    color: rgb(0.82, 0.9, 0.98),
   });
-  page.drawText("Thank you for choosing Book Scuba Goa", {
-    x: brandTextX,
-    y: logoY + 6,
-    size: 8.5,
+
+  const thanksHeader = "Thank you for choosing Book Scuba Goa";
+  const thanksHeaderW = font.widthOfTextAtSize(thanksHeader, 8);
+  page.drawText(thanksHeader, {
+    x: (width - thanksHeaderW) / 2,
+    y: height - headerH + 10,
+    size: 8,
     font,
     color: rgb(0.75, 0.88, 0.98),
   });
 
-  // Paid badge + stamp (top-right; no hero image)
-  const badgeLabel = input.isPartial ? "PARTIAL PAYMENT" : "PAID IN FULL";
-  const badgeColor = input.isPartial ? COLORS.orange : COLORS.green;
-  const badgeW = 118;
-  const badgeH = 20;
-  const badgeX = width - margin - badgeW;
-  const badgeY = height - logoTopPad - 6 - badgeH;
-  page.drawRectangle({
-    x: badgeX,
-    y: badgeY,
-    width: badgeW,
-    height: badgeH,
-    color: badgeColor,
-  });
-  page.drawText(badgeLabel, {
-    x: badgeX + 10,
-    y: badgeY + 6,
-    size: 8.5,
-    font: fontBold,
-    color: COLORS.white,
-  });
-  page.drawText(input.isPartial ? "PARTIAL" : "PAID", {
-    x: badgeX + 28,
-    y: badgeY - 20,
-    size: 16,
-    font: fontBold,
-    color: badgeColor,
-  });
-
-  // Generated chip
   const genText = pdfSafeText(`Generated ${generatedAt}`, 80);
   const genW = Math.min(200, font.widthOfTextAtSize(genText, 8) + 18);
   page.drawRectangle({
@@ -568,9 +616,13 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   yTop = pkgBottom - 12;
 
   // ── Payment details ─────────────────────────────────────────────────────
-  const payH = 108;
+  const payH = 118;
   const payTop = yTop;
   const payBottom = sectionHeader("Payment details (INR)", iconRupee, payTop, payH);
+  const stampRadius = 34;
+  const stampCx = width - margin - 52;
+  const stampCy = payBottom + payH / 2 - 6;
+  const payValueRightX = stampCx - stampRadius - 14;
 
   const payRows: {
     label: string;
@@ -601,7 +653,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
       page.drawRectangle({
         x: margin + 10,
         y: rowY - 4,
-        width: width - margin * 2 - 20,
+        width: payValueRightX - margin - 6,
         height: 18,
         color: COLORS.payHighlight,
       });
@@ -612,11 +664,12 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
       size: 9,
       font: r.strong ? fontBold : font,
       color: COLORS.text,
+      maxWidth: payValueRightX - margin - 20,
     });
     const f: PDFFont = r.strong ? fontBold : font;
     const tw = f.widthOfTextAtSize(r.value, 10);
     page.drawText(r.value, {
-      x: width - margin - 16 - tw,
+      x: payValueRightX - tw,
       y: rowY,
       size: 10,
       font: f,
@@ -624,6 +677,18 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     });
     rowY -= 22;
   }
+
+  const stampIsPartial =
+    input.isPartial || (input.balanceInr > 0 && input.fullAmountInr > input.amountPaidInr);
+  drawPaymentStamp(
+    page,
+    stampCx,
+    stampCy,
+    stampRadius,
+    stampIsPartial,
+    font,
+    fontBold,
+  );
 
   yTop = payBottom - 12;
 
@@ -679,91 +744,23 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   yTop = notesBottom - 10;
 
-  // ── Website QR bar (no payment/order IDs on the bill) ───────────────────
-  const txBarH = 58;
-  const txBarY = Math.max(78, yTop - txBarH);
-  page.drawRectangle({
-    x: margin,
-    y: txBarY,
-    width: width - margin * 2,
-    height: txBarH,
-    color: COLORS.navy,
-  });
-
-  page.drawText("Book Scuba Goa", {
-    x: margin + 14,
-    y: txBarY + 32,
-    size: 11,
-    font: fontBold,
-    color: COLORS.white,
-  });
-  page.drawText(pdfSafeText(SITE_URL, 60), {
-    x: margin + 14,
-    y: txBarY + 16,
-    size: 8.5,
-    font,
-    color: rgb(0.75, 0.88, 0.98),
-  });
-
-  const qrBytes = await tryLoadQrBytes();
-  if (qrBytes) {
-    try {
-      const qr = await doc.embedPng(qrBytes);
-      const qrSize = 40;
-      const qrBoxW = 118;
-      const qrBoxX = width - margin - qrBoxW - 8;
-      const qrBoxY = txBarY + 7;
-      page.drawRectangle({
-        x: qrBoxX,
-        y: qrBoxY,
-        width: qrBoxW,
-        height: 44,
-        color: COLORS.white,
-      });
-      page.drawImage(qr, {
-        x: qrBoxX + 4,
-        y: qrBoxY + 2,
-        width: qrSize,
-        height: qrSize,
-      });
-      page.drawText("Scan for website", {
-        x: qrBoxX + 48,
-        y: qrBoxY + 28,
-        size: 6.5,
-        font: fontBold,
-        color: COLORS.navy,
-      });
-      page.drawText(pdfSafeText(SITE_URL.replace(/^https?:\/\//, ""), 40), {
-        x: qrBoxX + 48,
-        y: qrBoxY + 14,
-        size: 6.5,
-        font,
-        color: COLORS.greenDark,
-        maxWidth: 64,
-      });
-    } catch {
-      /* ignore */
-    }
-  }
-
-  // ── Beach thank-you footer ──────────────────────────────────────────────
-  const footH = 64;
+  // ── Footer (scuba/beach background + QR on the right) ───────────────────
+  const footH = 78;
   if (footerArt) {
     page.drawImage(footerArt, {
       x: 0,
       y: 0,
       width,
       height: footH,
-      opacity: 0.95,
+      opacity: 0.92,
     });
-    // Darken for text readability
     page.drawRectangle({
       x: 0,
       y: 0,
       width,
       height: footH,
       color: COLORS.navyDeep,
-      opacity: 0.35,
+      opacity: 0.42,
     });
   } else {
     page.drawRectangle({
@@ -776,13 +773,74 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   }
 
   const thanks = "Thank you for choosing Book Scuba Goa";
-  const thanksW = fontOblique.widthOfTextAtSize(thanks, 12);
   page.drawText(thanks, {
-    x: (width - thanksW) / 2,
-    y: 28,
-    size: 12,
+    x: margin,
+    y: 46,
+    size: 11,
     font: fontOblique,
     color: COLORS.white,
+  });
+  page.drawText("We look forward to your adventure in Goa!", {
+    x: margin,
+    y: 30,
+    size: 8,
+    font,
+    color: rgb(0.85, 0.92, 0.98),
+  });
+
+  const siteDisplay = pdfSafeText(SITE_URL.replace(/^https?:\/\//, ""), 60);
+  const qrBytes = await tryLoadQrBytes();
+  const qrBoxW = 168;
+  const qrBoxX = width - margin - qrBoxW;
+  const qrBoxY = 10;
+  page.drawRectangle({
+    x: qrBoxX,
+    y: qrBoxY,
+    width: qrBoxW,
+    height: 58,
+    color: rgb(1, 1, 1),
+    opacity: 0.94,
+    borderColor: rgb(0.9, 0.94, 0.98),
+    borderWidth: 1,
+  });
+
+  if (qrBytes) {
+    try {
+      const qr = await doc.embedPng(qrBytes);
+      const qrSize = 46;
+      page.drawImage(qr, {
+        x: qrBoxX + 6,
+        y: qrBoxY + 6,
+        width: qrSize,
+        height: qrSize,
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  page.drawText("Scan for website", {
+    x: qrBoxX + 58,
+    y: qrBoxY + 40,
+    size: 7,
+    font: fontBold,
+    color: COLORS.navy,
+  });
+  page.drawText(siteDisplay, {
+    x: qrBoxX + 58,
+    y: qrBoxY + 26,
+    size: 7.5,
+    font: fontBold,
+    color: COLORS.greenDark,
+    maxWidth: qrBoxW - 64,
+  });
+  page.drawText(pdfSafeText(SITE_URL, 70), {
+    x: qrBoxX + 58,
+    y: qrBoxY + 14,
+    size: 6,
+    font,
+    color: COLORS.muted,
+    maxWidth: qrBoxW - 64,
   });
 
   return doc.save();

@@ -80,6 +80,9 @@ export const CONTENT_SECURITY_POLICY = [
   [
     "frame-src",
     "'self'",
+    // Admin bill preview modal (blob: PDF iframe) + data: fallbacks
+    "blob:",
+    "data:",
     "https://api.razorpay.com",
     "https://checkout.razorpay.com",
     "https://*.razorpay.com",

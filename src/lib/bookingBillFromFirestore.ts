@@ -21,10 +21,13 @@ export function bookingDocToBillPdfInput(
   data: Record<string, unknown>,
   docId: string
 ): BillPdfInput | null {
-  const paymentId = String(data.razorpayPaymentId ?? docId ?? "").trim();
+  const paymentId = String(
+    data.razorpayPaymentId ?? data.manualBookingRef ?? docId ?? "",
+  ).trim();
   if (!paymentId) return null;
 
-  const orderId = String(data.razorpayOrderId ?? "").trim() || paymentId;
+  const orderId =
+    String(data.razorpayOrderId ?? data.manualBookingRef ?? "").trim() || paymentId;
   const customerName = String(data.customerName ?? "").trim() || "Guest";
   const customerEmail = String(data.email ?? "").trim();
   const phone = String(data.phone ?? "");

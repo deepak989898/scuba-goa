@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, type DocumentData } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "@/lib/firebase";
 import { customerWhatsappLink, SITE_NAME } from "@/lib/constants";
 
 type Row = Record<string, unknown> & { id: string };
+
+type ServiceOption = { slug: string; title: string };
+
+function defaultTripDateValue(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 3);
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
 
 function dateFromUnknown(raw: unknown): Date | null {
   if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : raw;
@@ -153,6 +161,23 @@ export default function AdminBookingsPage() {
   const [whatsAppLoadingId, setWhatsAppLoadingId] = useState<string | null>(null);
   const [billPreviewUrl, setBillPreviewUrl] = useState<string | null>(null);
   const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualBusy, setManualBusy] = useState(false);
+  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [manualForm, setManualForm] = useState({
+    customerName: "",
+    phone: "",
+    email: "",
+    serviceSlug: "",
+    customService: "",
+    hotel: "",
+    date: defaultTripDateValue(),
+    people: "1",
+    fullAmountInr: "",
+    advanceInr: "",
+    sendEmail: true,
+    notes: "",
+  });
   /** Day keys open in the list — newest day starts expanded. */
   const [openDayKeys, setOpenDayKeys] = useState<Set<string>>(new Set());
   const daysInitializedRef = useRef(false);
@@ -351,6 +376,103 @@ export default function AdminBookingsPage() {
     }
   }
 
+  const reloadBookings = useCallback(async () => {
+    if (!db) return;
+    const snap = await getDocs(collection(db, "bookings"));
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Row));
+    list.sort(
+      (a, b) =>
+        (dateFromUnknown(b.createdAt)?.getTime() ?? 0) -
+        (dateFromUnknown(a.createdAt)?.getTime() ?? 0),
+    );
+    setRows(list);
+  }, [db]);
+
+  async function createManualBooking() {
+    setActionError(null);
+    setActionSuccess(null);
+    setManualBusy(true);
+    try {
+      const service =
+        serviceOptions.find((s) => s.slug === manualForm.serviceSlug) ?? null;
+      const serviceName =
+        manualForm.serviceSlug === "__custom"
+          ? manualForm.customService.trim()
+          : service?.title ?? manualForm.customService.trim();
+
+      const res = await authorizedFetch("/api/admin/manual-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: manualForm.customerName.trim(),
+          phone: manualForm.phone.trim(),
+          email: manualForm.email.trim(),
+          serviceSlug:
+            manualForm.serviceSlug && manualForm.serviceSlug !== "__custom"
+              ? manualForm.serviceSlug
+              : undefined,
+          serviceName,
+          hotel: manualForm.hotel.trim(),
+          date: manualForm.date,
+          people: Number(manualForm.people) || 1,
+          fullAmountInr: Number(manualForm.fullAmountInr),
+          advanceInr: Number(manualForm.advanceInr),
+          sendEmail: manualForm.sendEmail,
+          notes: manualForm.notes.trim() || undefined,
+        }),
+      });
+      if (!res) return;
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        bookingId?: string;
+        emailSent?: boolean;
+        emailError?: string;
+        packageName?: string;
+      } | null;
+      if (!res.ok) {
+        setActionError(data?.error ?? `Could not create booking (${res.status})`);
+        return;
+      }
+
+      const bookingId = data?.bookingId ?? "";
+      let msg = `Manual booking created${data?.packageName ? `: ${data.packageName}` : ""}.`;
+      if (manualForm.sendEmail) {
+        msg += data?.emailSent
+          ? " Invoice emailed to guest."
+          : ` Email failed${data?.emailError ? `: ${data.emailError}` : ""} — use Preview bill.`;
+      } else {
+        msg += " Use Preview bill to send invoice.";
+      }
+      setActionSuccess(msg);
+
+      setManualForm({
+        customerName: "",
+        phone: "",
+        email: "",
+        serviceSlug: serviceOptions[0]?.slug ?? "",
+        customService: "",
+        hotel: "",
+        date: defaultTripDateValue(),
+        people: "1",
+        fullAmountInr: "",
+        advanceInr: "",
+        sendEmail: true,
+        notes: "",
+      });
+      setManualOpen(false);
+      await reloadBookings();
+      if (bookingId) {
+        void previewBill(bookingId);
+      }
+    } catch (e) {
+      setActionError(
+        e instanceof Error ? e.message : "Could not create manual booking.",
+      );
+    } finally {
+      setManualBusy(false);
+    }
+  }
+
   async function sendConfirmationEmail(paymentId: string) {
     setActionError(null);
     setActionSuccess(null);
@@ -379,14 +501,32 @@ export default function AdminBookingsPage() {
       return;
     }
     (async () => {
-      const snap = await getDocs(collection(db, "bookings"));
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Row));
+      const [bookingSnap, serviceSnap] = await Promise.all([
+        getDocs(collection(db, "bookings")),
+        getDocs(collection(db, "services")),
+      ]);
+      const list = bookingSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Row));
       list.sort(
         (a, b) =>
           (dateFromUnknown(b.createdAt)?.getTime() ?? 0) -
-          (dateFromUnknown(a.createdAt)?.getTime() ?? 0)
+          (dateFromUnknown(a.createdAt)?.getTime() ?? 0),
       );
       setRows(list);
+
+      const services = serviceSnap.docs
+        .map((d) => {
+          const data = d.data() as DocumentData;
+          const title = String(data.title ?? d.id).trim();
+          if (!title) return null;
+          if (data.active === false) return null;
+          return { slug: d.id, title };
+        })
+        .filter((s): s is ServiceOption => Boolean(s))
+        .sort((a, b) => a.title.localeCompare(b.title));
+      setServiceOptions(services);
+      if (services.length > 0 && !manualForm.serviceSlug) {
+        setManualForm((prev) => ({ ...prev, serviceSlug: services[0]!.slug }));
+      }
       setLoading(false);
     })();
   }, [db]);
@@ -439,7 +579,180 @@ export default function AdminBookingsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-base font-bold text-ocean-900">Bookings</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-display text-base font-bold text-ocean-900">Bookings</h1>
+        <button
+          type="button"
+          onClick={() => setManualOpen((v) => !v)}
+          className="rounded-full bg-ocean-gradient px-3 py-1.5 text-xs font-semibold text-white"
+        >
+          {manualOpen ? "Hide manual booking" : "+ Manual booking"}
+        </button>
+      </div>
+
+      {manualOpen ? (
+        <section className="mt-3 rounded-xl border border-ocean-200 bg-white p-3 shadow-sm">
+          <h2 className="font-display text-sm font-bold text-ocean-900">
+            Create manual booking &amp; invoice
+          </h2>
+          <p className="mt-1 text-[11px] text-ocean-600">
+            For walk-in, phone, or hotel desk bookings. Saves to the list, generates
+            PDF bill, and can email the guest.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <label className="text-xs text-ocean-800">
+              Guest name *
+              <input
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.customerName}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, customerName: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800">
+              Mobile number *
+              <input
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                inputMode="tel"
+                value={manualForm.phone}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, phone: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800">
+              Email (for invoice)
+              <input
+                type="email"
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.email}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, email: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800">
+              Trip date *
+              <input
+                type="date"
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.date}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, date: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800 sm:col-span-2">
+              Service / activity *
+              <select
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.serviceSlug}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, serviceSlug: e.target.value }))
+                }
+              >
+                {serviceOptions.map((s) => (
+                  <option key={s.slug} value={s.slug}>
+                    {s.title}
+                  </option>
+                ))}
+                <option value="__custom">Other (type below)</option>
+              </select>
+            </label>
+            {manualForm.serviceSlug === "__custom" ? (
+              <label className="text-xs text-ocean-800 sm:col-span-2">
+                Custom service name *
+                <input
+                  className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                  placeholder="e.g. North Goa Tour + Scuba combo"
+                  value={manualForm.customService}
+                  onChange={(e) =>
+                    setManualForm((f) => ({ ...f, customService: e.target.value }))
+                  }
+                />
+              </label>
+            ) : null}
+            <label className="text-xs text-ocean-800 sm:col-span-2">
+              Hotel / pickup location *
+              <input
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                placeholder="Hotel name, area, or full address"
+                value={manualForm.hotel}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, hotel: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800">
+              People
+              <input
+                type="number"
+                min={1}
+                max={99}
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.people}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, people: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800">
+              Full amount (INR) *
+              <input
+                type="number"
+                min={1}
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.fullAmountInr}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, fullAmountInr: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800">
+              Advance paid (INR) *
+              <input
+                type="number"
+                min={1}
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.advanceInr}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, advanceInr: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs text-ocean-800 sm:col-span-2">
+              Notes (optional)
+              <input
+                className="mt-1 w-full rounded-lg border border-ocean-200 px-2.5 py-1.5"
+                value={manualForm.notes}
+                onChange={(e) =>
+                  setManualForm((f) => ({ ...f, notes: e.target.value }))
+                }
+              />
+            </label>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-xs font-medium text-ocean-800">
+            <input
+              type="checkbox"
+              checked={manualForm.sendEmail}
+              onChange={(e) =>
+                setManualForm((f) => ({ ...f, sendEmail: e.target.checked }))
+              }
+            />
+            Email invoice PDF to guest (needs valid email above)
+          </label>
+          <button
+            type="button"
+            disabled={manualBusy}
+            onClick={() => void createManualBooking()}
+            className="mt-3 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {manualBusy ? "Creating…" : "Create booking & generate invoice"}
+          </button>
+        </section>
+      ) : null}
+
       {actionError ? (
         <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800">
           {actionError}
@@ -517,6 +830,11 @@ export default function AdminBookingsPage() {
                                   <p className="truncate font-display text-sm font-extrabold text-amber-800 sm:text-[15px]">
                                     {String(r.packageName ?? "—")}
                                   </p>
+                                  {r.source === "manual" ? (
+                                    <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-violet-800">
+                                      Manual
+                                    </span>
+                                  ) : null}
                                   <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-emerald-800">
                                     Paid {rupeesFromPaise(r.amountPaise)}
                                   </span>
@@ -623,6 +941,9 @@ export default function AdminBookingsPage() {
                                 </p>
                                 <p className="mt-0.5 text-[10px] text-emerald-900/80">
                                   Mode: {String(r.paymentMode ?? "—")}
+                                  {r.source === "manual" ? (
+                                    <> · Ref {String(r.manualBookingRef ?? r.id)}</>
+                                  ) : null}
                                   {r.razorpayPaymentId ? (
                                     <> · Pay {String(r.razorpayPaymentId)}</>
                                   ) : null}
@@ -669,7 +990,15 @@ export default function AdminBookingsPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  disabled={sendingEmailId === r.id}
+                                  disabled={
+                                    sendingEmailId === r.id ||
+                                    !String(r.email ?? "").includes("@")
+                                  }
+                                  title={
+                                    String(r.email ?? "").includes("@")
+                                      ? undefined
+                                      : "Add guest email to send invoice"
+                                  }
                                   onClick={() => sendConfirmationEmail(r.id)}
                                   className="rounded-full bg-ocean-800 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-ocean-900 disabled:opacity-50"
                                 >
@@ -745,24 +1074,17 @@ export default function AdminBookingsPage() {
                 </button>
               </div>
             </div>
-            {/* object/embed: more reliable than iframe for blob: PDFs (Chrome/Safari) */}
-            <object
-              key={billPreviewUrl}
-              data={billPreviewUrl}
-              type="application/pdf"
-              className="min-h-0 min-h-[60vh] w-full flex-1 border-0 bg-ocean-50/50"
-              aria-label="Booking bill PDF"
-            >
-              <embed
-                src={billPreviewUrl}
-                type="application/pdf"
-                className="h-[60vh] w-full"
+            <div className="relative min-h-0 flex-1 bg-ocean-50/50">
+              <iframe
+                key={billPreviewUrl}
+                src={`${billPreviewUrl}#view=FitH`}
                 title="Booking bill PDF"
+                className="absolute inset-0 h-full w-full border-0"
               />
-            </object>
+            </div>
             <p className="flex-shrink-0 border-t border-ocean-100 px-4 py-2 text-center text-xs text-ocean-700">
               If the preview is blank, use <strong>Open in new tab</strong> or{" "}
-              <strong>Download</strong> — some browsers block inline PDFs.
+              <strong>Download</strong>.
             </p>
           </div>
         </div>
