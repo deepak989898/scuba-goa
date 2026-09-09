@@ -9,9 +9,8 @@ import {
   type PDFImage,
   type PDFPage,
 } from "pdf-lib";
-import { SITE_NAME, SITE_URL } from "@/lib/constants";
+import { SITE_URL } from "@/lib/constants";
 
-/** Standard 14 fonts use WinAnsi; unsupported chars make pdf-lib throw. */
 function pdfSafeText(s: string, maxLen = 600): string {
   const mapped = s
     .replace(/[₹]/g, "Rs.")
@@ -19,7 +18,6 @@ function pdfSafeText(s: string, maxLen = 600): string {
     .replace(/[—–−]/g, "-")
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
-    .replace(/[♡♥]/g, "<3")
     .replace(/[…]/g, "...");
   const slice =
     mapped.length > maxLen ? `${mapped.slice(0, maxLen - 3)}...` : mapped;
@@ -30,11 +28,8 @@ function pdfSafeText(s: string, maxLen = 600): string {
       out += " ";
       continue;
     }
-    if (c >= 0x20 && c <= 0x7e) {
-      out += ch;
-      continue;
-    }
-    out += " ";
+    if (c >= 0x20 && c <= 0x7e) out += ch;
+    else out += " ";
   }
   return out.replace(/\s+/g, " ").trim();
 }
@@ -57,23 +52,22 @@ export type BillPdfInput = {
 };
 
 const C = {
-  navy: rgb(0.02, 0.12, 0.28),
-  navyText: rgb(0.05, 0.18, 0.38),
-  blue: rgb(0.08, 0.45, 0.82),
-  blueLight: rgb(0.9, 0.95, 0.99),
-  green: rgb(0.12, 0.62, 0.38),
-  greenLight: rgb(0.9, 0.97, 0.92),
-  greenDark: rgb(0.05, 0.52, 0.3),
-  orange: rgb(0.95, 0.55, 0.08),
-  orangeLight: rgb(1, 0.96, 0.9),
+  navy: rgb(0.03, 0.14, 0.32),
+  navyText: rgb(0.05, 0.2, 0.42),
+  blue: rgb(0.1, 0.48, 0.86),
+  blueSoft: rgb(0.93, 0.97, 1),
+  green: rgb(0.11, 0.64, 0.36),
+  greenBg: rgb(0.9, 0.97, 0.92),
+  greenDark: rgb(0.04, 0.52, 0.3),
+  orange: rgb(0.95, 0.52, 0.08),
+  orangeBg: rgb(1, 0.96, 0.9),
   red: rgb(0.88, 0.22, 0.18),
   text: rgb(0.12, 0.16, 0.22),
   muted: rgb(0.45, 0.5, 0.58),
   white: rgb(1, 1, 1),
-  pageBg: rgb(0.96, 0.98, 1),
-  cardBorder: rgb(0.86, 0.9, 0.94),
-  trustBg: rgb(0.94, 0.97, 1),
-  pillBg: rgb(0.88, 0.95, 1),
+  pageBg: rgb(0.97, 0.98, 0.99),
+  border: rgb(0.86, 0.9, 0.94),
+  pill: rgb(0.88, 0.95, 1),
 };
 
 const pngCache: Record<string, Uint8Array | null | undefined> = {};
@@ -86,8 +80,7 @@ async function loadPublicBytes(...relativePaths: string[]): Promise<Uint8Array |
     }
     try {
       const p = path.join(process.cwd(), "public", rel);
-      const buf = await readFile(p);
-      pngCache[rel] = new Uint8Array(buf);
+      pngCache[rel] = new Uint8Array(await readFile(p));
       return pngCache[rel]!;
     } catch {
       pngCache[rel] = null;
@@ -125,11 +118,7 @@ async function tryLoadQrBytes(): Promise<Uint8Array | null> {
       color: { dark: "#0A2744", light: "#FFFFFF" },
     });
     const b64 = dataUrl.split(",")[1] ?? "";
-    if (!b64) {
-      qrBytesCache = null;
-      return null;
-    }
-    qrBytesCache = Uint8Array.from(Buffer.from(b64, "base64"));
+    qrBytesCache = b64 ? Uint8Array.from(Buffer.from(b64, "base64")) : null;
     return qrBytesCache;
   } catch {
     qrBytesCache = null;
@@ -164,21 +153,15 @@ const DONT_NOTES = [
   "Don't share payment IDs publicly or with strangers.",
 ];
 
-function drawCard(
-  page: PDFPage,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-) {
+function drawCard(page: PDFPage, x: number, y: number, w: number, h: number) {
   page.drawRectangle({
     x,
     y,
     width: w,
     height: h,
     color: C.white,
-    borderColor: C.cardBorder,
-    borderWidth: 1,
+    borderColor: C.border,
+    borderWidth: 0.8,
   });
 }
 
@@ -190,13 +173,11 @@ function drawSectionTitle(
   icon: PDFImage | null,
   fontBold: PDFFont,
 ) {
-  if (icon) {
-    page.drawImage(icon, { x, y: y - 2, width: 14, height: 14 });
-  }
+  if (icon) page.drawImage(icon, { x, y, width: 13, height: 13 });
   page.drawText(title, {
-    x: x + (icon ? 18 : 0),
-    y,
-    size: 10,
+    x: x + (icon ? 17 : 0),
+    y: y + 2,
+    size: 9.5,
     font: fontBold,
     color: C.navyText,
   });
@@ -215,7 +196,7 @@ function drawPaymentStatusBox(
   fontBold: PDFFont,
 ) {
   const accent = isPartial ? C.orange : C.green;
-  const bg = isPartial ? C.orangeLight : C.greenLight;
+  const bg = isPartial ? C.orangeBg : C.greenBg;
   const status = isPartial ? "ADVANCED PAID" : "FULL PAID";
 
   page.drawRectangle({
@@ -225,50 +206,107 @@ function drawPaymentStatusBox(
     height: h,
     color: bg,
     borderColor: accent,
-    borderWidth: 1,
+    borderWidth: 0.8,
   });
-
-  page.drawCircle({
-    x: x + 14,
-    y: y + h - 16,
-    size: 12,
-    color: accent,
-  });
+  page.drawCircle({ x: x + 13, y: y + h - 14, size: 11, color: accent });
   page.drawText("v", {
-    x: x + 10.5,
-    y: y + h - 19,
-    size: 8,
+    x: x + 9.5,
+    y: y + h - 17.5,
+    size: 7,
     font: fontBold,
     color: C.white,
   });
-
   page.drawText("Payment Status", {
-    x: x + 24,
-    y: y + h - 18,
-    size: 7,
+    x: x + 22,
+    y: y + h - 15,
+    size: 6.5,
     font,
     color: accent,
   });
   page.drawText(status, {
-    x: x + 24,
-    y: y + h - 32,
-    size: 11,
+    x: x + 22,
+    y: y + h - 28,
+    size: 10,
     font: fontBold,
     color: accent,
   });
   page.drawText(`Order ID: ${orderRef}`, {
-    x: x + 10,
-    y: y + 18,
-    size: 6.5,
-    font,
-    color: C.muted,
-  });
-  page.drawText(`Payment ID: ${pdfSafeText(paymentId, 28)}`, {
-    x: x + 10,
-    y: y + 8,
+    x: x + 8,
+    y: y + 16,
     size: 6,
     font,
     color: C.muted,
+  });
+  page.drawText(`Payment ID: ${pdfSafeText(paymentId, 24)}`, {
+    x: x + 8,
+    y: y + 7,
+    size: 5.5,
+    font,
+    color: C.muted,
+  });
+}
+
+/** Green brush-style FULL PAID / ADVANCED PAID stamp (reference design). */
+function drawPaidStamp(
+  page: PDFPage,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  isPartial: boolean,
+  font: PDFFont,
+  fontBold: PDFFont,
+  fontOblique: PDFFont,
+) {
+  const accent = isPartial ? C.orange : C.green;
+  const status = isPartial ? "ADVANCED PAID" : "FULL PAID";
+
+  page.drawText("Book Scuba Goa", {
+    x: x + 6,
+    y: y + h - 12,
+    size: 10,
+    font: fontOblique,
+    color: C.navyText,
+  });
+
+  page.drawRectangle({
+    x: x + 2,
+    y: y + 10,
+    width: w - 4,
+    height: 34,
+    color: accent,
+  });
+  page.drawRectangle({
+    x: x + 6,
+    y: y + 14,
+    width: w - 12,
+    height: 26,
+    color: accent,
+    opacity: 0.85,
+  });
+
+  page.drawCircle({
+    x: x + 26,
+    y: y + 27,
+    size: 18,
+    color: C.white,
+  });
+  page.drawText("v", {
+    x: x + 20.5,
+    y: y + 21,
+    size: 11,
+    font: fontBold,
+    color: accent,
+  });
+
+  const statusSize = 10;
+  const statusW = fontBold.widthOfTextAtSize(status, statusSize);
+  page.drawText(status, {
+    x: x + (w - statusW) / 2 + 8,
+    y: y + 20,
+    size: statusSize,
+    font: fontBold,
+    color: C.white,
   });
 }
 
@@ -279,33 +317,15 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
   const fontOblique = await doc.embedFont(StandardFonts.HelveticaOblique);
-  const margin = 22;
-  const contentW = width - margin * 2;
 
-  const headerArt = await embedImage(
-    doc,
-    "bill/invoice-header.png",
-    "booking-header.png",
-  );
-  const footerArt = await embedImage(
-    doc,
-    "bill/invoice-footer.png",
-    "bill/footer-beach.png",
-    "booking-header.png",
-  );
-  const logo = await embedImage(
-    doc,
-    "book-scuba-goa-logo-transparent.png",
-    "book-scuba-goa-logo.png",
-  );
-  const pkgThumb = await embedImage(doc, "bill/package-van.png");
-  const stampIsPartial =
-    input.isPartial ||
-    (input.balanceInr > 0 && input.fullAmountInr > input.amountPaidInr);
-  const stampArt = await embedImage(
-    doc,
-    stampIsPartial ? "bill/stamp-advanced-paid.png" : "bill/stamp-full-paid.png",
-  );
+  const M = 18;
+  const CW = width - M * 2;
+  const FOOT_H = 92;
+  const GAP = 5;
+
+  const headerArt = await embedImage(doc, "bill/invoice-header.png");
+  const footerArt = await embedImage(doc, "bill/invoice-footer.png");
+  const pkgThumb = await embedImage(doc, "bill/package-thumb.png");
   const iconPerson = await embedImage(doc, "bill/icon-person.png");
   const iconGift = await embedImage(doc, "bill/icon-gift.png");
   const iconRupee = await embedImage(doc, "bill/icon-rupee.png");
@@ -318,14 +338,15 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const iconHeadset = await embedImage(doc, "bill/icon-headset.png");
   const iconStar = await embedImage(doc, "bill/icon-star.png");
 
+  const stampIsPartial =
+    input.isPartial ||
+    (input.balanceInr > 0 && input.fullAmountInr > input.amountPaidInr);
+
   const rawLines =
     input.packageLines && input.packageLines.length > 0
       ? input.packageLines.map((l) => pdfSafeText(l, 160))
       : [pdfSafeText(input.packageName, 120)];
-  const packageLines =
-    rawLines.length > 4
-      ? [...rawLines.slice(0, 4), pdfSafeText(`+ ${rawLines.length - 4} more`, 40)]
-      : rawLines;
+  const packageLines = rawLines.slice(0, 4);
 
   const pickupDisplay = input.pickupLocation?.trim()
     ? pdfSafeText(input.pickupLocation.trim(), 200)
@@ -339,452 +360,22 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   page.drawRectangle({ x: 0, y: 0, width, height, color: C.pageBg });
 
-  // ── Hero banner ─────────────────────────────────────────────────────────
-  const heroH = 96;
-  if (headerArt) {
-    page.drawImage(headerArt, { x: 0, y: height - heroH, width, height: heroH });
-    page.drawRectangle({
-      x: 0,
-      y: height - heroH,
-      width,
-      height: heroH,
-      color: C.navy,
-      opacity: 0.12,
-    });
-  } else {
-    page.drawRectangle({
-      x: 0,
-      y: height - heroH,
-      width,
-      height: heroH,
-      color: C.navy,
-    });
-  }
-
-  if (logo) {
-    page.drawImage(logo, {
-      x: margin,
-      y: height - heroH + 10,
-      width: 72,
-      height: 72,
-    });
-  }
-
-  const adventure = "Your Adventure Starts Here!";
-  const advW = fontOblique.widthOfTextAtSize(adventure, 11);
-  page.drawText(adventure, {
-    x: width - margin - advW,
-    y: height - 28,
-    size: 11,
-    font: fontOblique,
-    color: C.white,
-  });
-
-  // ── Title strip + payment status ──────────────────────────────────────
-  const titleH = 54;
-  const titleY = height - heroH - titleH;
-  page.drawRectangle({
-    x: 0,
-    y: titleY,
-    width,
-    height: titleH,
-    color: C.white,
-  });
-
-  page.drawRectangle({
-    x: margin,
-    y: titleY + 18,
-    width: 12,
-    height: 14,
-    color: C.blue,
-  });
-  page.drawText("PAYMENT RECEIPT / INVOICE", {
-    x: margin + 18,
-    y: titleY + 32,
-    size: 13,
-    font: fontBold,
-    color: C.navyText,
-  });
-  page.drawText("Thank you for choosing Book Scuba Goa", {
-    x: margin + 18,
-    y: titleY + 18,
-    size: 8,
-    font,
-    color: C.muted,
-  });
-  page.drawText(`Generated on ${pdfSafeText(generatedAt, 80)}`, {
-    x: margin + 18,
-    y: titleY + 8,
-    size: 7,
-    font,
-    color: C.muted,
-  });
-
-  drawPaymentStatusBox(
-    page,
-    width - margin - 148,
-    titleY + 6,
-    148,
-    42,
-    stampIsPartial,
-    orderRef,
-    input.paymentId,
-    font,
-    fontBold,
-  );
-
-  // ── Trust bar ───────────────────────────────────────────────────────────
-  const trustH = 40;
-  const trustY = titleY - trustH;
-  page.drawRectangle({ x: 0, y: trustY, width, height: trustH, color: C.trustBg });
-  page.drawLine({
-    start: { x: 0, y: trustY },
-    end: { x: width, y: trustY },
-    thickness: 0.5,
-    color: C.cardBorder,
-  });
-
-  const trustItems = [
-    { icon: iconShield, title: "Secure Payment", sub: "Processed by Razorpay" },
-    { icon: iconBadge, title: "Trusted Operator", sub: "100% Safe & Reliable" },
-    { icon: iconHeadset, title: "24/7 Support", sub: "We're here to help" },
-    { icon: iconStar, title: "Best Experiences", sub: "Memorable & Hassle-free" },
-  ];
-  const trustColW = width / 4;
-  trustItems.forEach((item, i) => {
-    const cx = i * trustColW + 16;
-    if (item.icon) {
-      page.drawImage(item.icon, { x: cx, y: trustY + 22, width: 12, height: 12 });
-    }
-    page.drawText(item.title, {
-      x: cx + 15,
-      y: trustY + 26,
-      size: 6.5,
-      font: fontBold,
-      color: C.text,
-    });
-    page.drawText(item.sub, {
-      x: cx + 15,
-      y: trustY + 15,
-      size: 5.8,
-      font,
-      color: C.muted,
-    });
-  });
-
-  let yTop = trustY - 8;
-
-  // ── Customer & contact ──────────────────────────────────────────────────
-  const guestH = 100;
-  const guestBottom = yTop - guestH;
-  drawCard(page, margin, guestBottom, contentW, guestH);
-  drawSectionTitle(
-    page,
-    margin + 10,
-    yTop - 14,
-    "Customer & contact",
-    iconPerson,
-    fontBold,
-  );
-
-  const colW = (contentW - 28) / 2;
-  const leftX = margin + 12;
-  const rightX = margin + 12 + colW + 4;
-
-  const leftFields = [
-    { label: "Customer Name", value: pdfSafeText(input.customerName, 40) },
-    { label: "Email", value: pdfSafeText(input.customerEmail, 42) || "-" },
-  ];
-  const rightFields = [
-    { label: "Phone", value: pdfSafeText(input.phone, 24) },
-    { label: "Pickup / Meeting Point", value: pickupDisplay },
-  ];
-
-  leftFields.forEach((f, i) => {
-    const fy = yTop - 36 - i * 28;
-    page.drawText(f.label, { x: leftX, y: fy, size: 7, font, color: C.muted });
-    page.drawText(f.value, {
-      x: leftX,
-      y: fy - 12,
-      size: 9,
-      font: fontBold,
-      color: C.text,
-      maxWidth: colW - 4,
-    });
-  });
-
-  rightFields.forEach((f, i) => {
-    const fy = yTop - 36 - i * 28;
-    if (i === 1 && iconPin) {
-      page.drawImage(iconPin, { x: rightX, y: fy - 14, width: 10, height: 10 });
-    }
-    page.drawText(f.label, {
-      x: rightX + (i === 1 ? 13 : 0),
-      y: fy,
-      size: 7,
-      font,
-      color: C.muted,
-    });
-    page.drawText(f.value, {
-      x: rightX + (i === 1 ? 13 : 0),
-      y: fy - 12,
-      size: i === 1 ? 8 : 9,
-      font: fontBold,
-      color: C.text,
-      maxWidth: colW - 16,
-    });
-  });
-
-  yTop = guestBottom - 8;
-
-  // ── Packages & guests ───────────────────────────────────────────────────
-  const pkgH = 82;
-  const pkgBottom = yTop - pkgH;
-  drawCard(page, margin, pkgBottom, contentW, pkgH);
-  drawSectionTitle(
-    page,
-    margin + 10,
-    yTop - 14,
-    "Packages & guests",
-    iconGift,
-    fontBold,
-  );
-
-  const thumbSize = 52;
-  if (pkgThumb) {
-    page.drawImage(pkgThumb, {
-      x: margin + 12,
-      y: pkgBottom + 14,
-      width: thumbSize,
-      height: thumbSize,
-    });
-  } else {
-    page.drawRectangle({
-      x: margin + 12,
-      y: pkgBottom + 14,
-      width: thumbSize,
-      height: thumbSize,
-      color: C.pillBg,
-      borderColor: C.cardBorder,
-      borderWidth: 0.5,
-    });
-  }
-
-  const pkgTextX = margin + 12 + thumbSize + 10;
-  const primaryLine = packageLines[0] ?? pdfSafeText(input.packageName, 120);
-  const { label: pkgLabel, price: pkgPrice } = parsePackageLine(primaryLine);
-  const displayPrice =
-    pkgPrice ?? `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`;
-
-  page.drawText(pkgLabel, {
-    x: pkgTextX,
-    y: yTop - 38,
-    size: 10,
-    font: fontBold,
-    color: C.text,
-    maxWidth: contentW - thumbSize - 100,
-  });
-  page.drawText(
-    pdfSafeText(
-      `${input.people} person(s)  |  Trip date: ${input.date || "-"}  |  Headcount: ${input.people}`,
-      100,
-    ),
-    {
-      x: pkgTextX,
-      y: yTop - 52,
-      size: 7.5,
-      font,
-      color: C.blue,
-    },
-  );
-
-  const pillW = Math.max(52, fontBold.widthOfTextAtSize(displayPrice, 10) + 16);
-  const pillX = margin + contentW - pillW - 12;
-  page.drawRectangle({
-    x: pillX,
-    y: pkgBottom + 28,
-    width: pillW,
-    height: 22,
-    color: C.pillBg,
-    borderColor: rgb(0.75, 0.88, 0.98),
-    borderWidth: 0.8,
-  });
-  page.drawText(displayPrice, {
-    x: pillX + 8,
-    y: pkgBottom + 34,
-    size: 10,
-    font: fontBold,
-    color: C.greenDark,
-  });
-
-  yTop = pkgBottom - 8;
-
-  // ── Payment details ─────────────────────────────────────────────────────
-  const payH = 92;
-  const payBottom = yTop - payH;
-  drawCard(page, margin, payBottom, contentW, payH);
-  drawSectionTitle(
-    page,
-    margin + 10,
-    yTop - 14,
-    "Payment details (INR)",
-    iconRupee,
-    fontBold,
-  );
-
-  const stampW = 118;
-  const stampH = 58;
-  const stampX = margin + contentW - stampW - 10;
-  const stampY = payBottom + 14;
-  const payValueRight = stampX - 12;
-
-  if (stampArt) {
-    page.drawImage(stampArt, {
-      x: stampX,
-      y: stampY,
-      width: stampW,
-      height: stampH,
-    });
-  }
-
-  const payRows = [
-    {
-      label: "Total booking amount (order value)",
-      value: `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`,
-    },
-    {
-      label: "Advance payment",
-      value: `Rs.${input.amountPaidInr.toLocaleString("en-IN")}`,
-      highlight: true,
-    },
-    {
-      label: "Remaining balance (if any)",
-      value: `Rs.${input.balanceInr.toLocaleString("en-IN")}`,
-    },
-  ];
-
-  let rowY = yTop - 36;
-  for (const r of payRows) {
-    if (r.highlight) {
-      page.drawRectangle({
-        x: margin + 8,
-        y: rowY - 3,
-        width: payValueRight - margin - 8,
-        height: 16,
-        color: C.pillBg,
-      });
-    }
-    page.drawText(r.label, {
-      x: margin + 12,
-      y: rowY,
-      size: 8,
-      font,
-      color: C.text,
-      maxWidth: payValueRight - margin - 20,
-    });
-    const tw = fontBold.widthOfTextAtSize(r.value, 9);
-    page.drawText(r.value, {
-      x: payValueRight - tw,
-      y: rowY,
-      size: 9,
-      font: fontBold,
-      color: r.highlight ? C.navyText : C.text,
-    });
-    rowY -= 18;
-  }
-
-  yTop = payBottom - 8;
-
-  // ── Please note ─────────────────────────────────────────────────────────
-  const notesH = 86;
-  const notesBottom = yTop - notesH;
-  drawCard(page, margin, notesBottom, contentW, notesH);
-  drawSectionTitle(
-    page,
-    margin + 10,
-    yTop - 14,
-    "Please note (Do / Don't)",
-    iconAlert,
-    fontBold,
-  );
-
-  const halfW = (contentW - 28) / 2;
-  const doX = margin + 12;
-  const dontX = margin + 12 + halfW + 4;
-  let ny = yTop - 36;
-
-  DO_NOTES.forEach((n, i) => {
-    const yy = ny - i * 16;
-    if (iconCheck) {
-      page.drawImage(iconCheck, { x: doX, y: yy - 1, width: 10, height: 10 });
-    }
-    page.drawText(pdfSafeText(n, 70), {
-      x: doX + 14,
-      y: yy,
-      size: 7,
-      font,
-      color: C.text,
-      maxWidth: halfW - 18,
-    });
-  });
-
-  DONT_NOTES.forEach((n, i) => {
-    const yy = ny - i * 16;
-    if (iconX) {
-      page.drawImage(iconX, { x: dontX, y: yy - 1, width: 10, height: 10 });
-    }
-    page.drawText(pdfSafeText(n, 70), {
-      x: dontX + 14,
-      y: yy,
-      size: 7,
-      font,
-      color: C.text,
-      maxWidth: halfW - 18,
-    });
-  });
-
-  // ── Footer ──────────────────────────────────────────────────────────────
-  const footH = 76;
+  // ── Footer (fixed at bottom) ────────────────────────────────────────────
   if (footerArt) {
-    page.drawImage(footerArt, { x: 0, y: 0, width, height: footH });
-    page.drawRectangle({
-      x: 0,
-      y: 0,
-      width,
-      height: footH,
-      color: C.navy,
-      opacity: 0.35,
-    });
+    page.drawImage(footerArt, { x: 0, y: 0, width, height: FOOT_H });
   } else {
-    page.drawRectangle({ x: 0, y: 0, width, height: footH, color: C.navy });
+    page.drawRectangle({ x: 0, y: 0, width, height: FOOT_H, color: C.navy });
   }
-
-  const thanks1 = "Thank you for choosing Book Scuba Goa";
-  const thanks1W = fontOblique.widthOfTextAtSize(thanks1, 11);
-  page.drawText(thanks1, {
-    x: (width - thanks1W) / 2,
-    y: 48,
-    size: 11,
-    font: fontOblique,
-    color: C.white,
-  });
-  page.drawText("We look forward to your adventure in Goa!", {
-    x: (width - font.widthOfTextAtSize("We look forward to your adventure in Goa!", 8)) / 2,
-    y: 36,
-    size: 8,
-    font,
-    color: rgb(0.9, 0.95, 1),
-  });
 
   const qrBytes = await tryLoadQrBytes();
-  const qrSize = 44;
-  const qrX = width - margin - qrSize - 8;
-  const qrY = 16;
+  const qrSize = 46;
+  const qrX = width * 0.41 - qrSize / 2;
+  const qrY = 22;
   page.drawRectangle({
-    x: qrX - 4,
-    y: qrY - 4,
-    width: qrSize + 8,
-    height: qrSize + 8,
+    x: qrX - 3,
+    y: qrY - 3,
+    width: qrSize + 6,
+    height: qrSize + 6,
     color: C.white,
   });
   if (qrBytes) {
@@ -796,35 +387,351 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     }
   }
 
-  const infoX = qrX - 118;
-  page.drawText("Scan for website", {
-    x: infoX,
-    y: 52,
-    size: 6.5,
-    font: fontBold,
-    color: C.white,
+  // ── Stack sections bottom-up (just above footer) ────────────────────────
+  let y = FOOT_H + GAP;
+
+  const NOTES_H = 72;
+  drawCard(page, M, y, CW, NOTES_H);
+  drawSectionTitle(
+    page,
+    M + 8,
+    y + NOTES_H - 18,
+    "Please note (Do / Don't)",
+    iconAlert,
+    fontBold,
+  );
+  const halfW = (CW - 24) / 2;
+  const doX = M + 10;
+  const dontX = M + 10 + halfW + 4;
+  const noteY = y + NOTES_H - 34;
+  DO_NOTES.forEach((n, i) => {
+    const yy = noteY - i * 14;
+    if (iconCheck) page.drawImage(iconCheck, { x: doX, y: yy - 1, width: 9, height: 9 });
+    page.drawText(pdfSafeText(n, 72), {
+      x: doX + 12,
+      y: yy,
+      size: 6.5,
+      font,
+      color: C.text,
+      maxWidth: halfW - 16,
+    });
   });
-  page.drawText(siteHost, {
-    x: infoX,
-    y: 40,
+  DONT_NOTES.forEach((n, i) => {
+    const yy = noteY - i * 14;
+    if (iconX) page.drawImage(iconX, { x: dontX, y: yy - 1, width: 9, height: 9 });
+    page.drawText(pdfSafeText(n, 72), {
+      x: dontX + 12,
+      y: yy,
+      size: 6.5,
+      font,
+      color: C.text,
+      maxWidth: halfW - 16,
+    });
+  });
+  y += NOTES_H + GAP;
+
+  const PAY_H = 82;
+  drawCard(page, M, y, CW, PAY_H);
+  drawSectionTitle(
+    page,
+    M + 8,
+    y + PAY_H - 18,
+    "Payment details (INR)",
+    iconRupee,
+    fontBold,
+  );
+
+  const stampW = 128;
+  const stampH = 54;
+  const stampX = M + CW - stampW - 8;
+  const stampY = y + 12;
+  const payValRight = stampX - 10;
+
+  drawPaidStamp(
+    page,
+    stampX,
+    stampY,
+    stampW,
+    stampH,
+    stampIsPartial,
+    font,
+    fontBold,
+    fontOblique,
+  );
+
+  const payRows = [
+    {
+      label: "Total booking amount (order value)",
+      value: `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`,
+    },
+    {
+      label: "Advance payment",
+      value: `Rs.${input.amountPaidInr.toLocaleString("en-IN")}`,
+      hi: true,
+    },
+    {
+      label: "Remaining balance (if any)",
+      value: `Rs.${input.balanceInr.toLocaleString("en-IN")}`,
+    },
+  ];
+  let rowY = y + PAY_H - 32;
+  for (const r of payRows) {
+    if (r.hi) {
+      page.drawRectangle({
+        x: M + 6,
+        y: rowY - 2,
+        width: payValRight - M - 6,
+        height: 14,
+        color: C.pill,
+      });
+    }
+    page.drawText(r.label, {
+      x: M + 10,
+      y: rowY,
+      size: 7.5,
+      font,
+      color: C.text,
+      maxWidth: payValRight - M - 16,
+    });
+    const tw = fontBold.widthOfTextAtSize(r.value, 8.5);
+    page.drawText(r.value, {
+      x: payValRight - tw,
+      y: rowY,
+      size: 8.5,
+      font: fontBold,
+      color: r.hi ? C.navyText : C.text,
+    });
+    rowY -= 16;
+  }
+  y += PAY_H + GAP;
+
+  const PKG_H = 68;
+  drawCard(page, M, y, CW, PKG_H);
+  drawSectionTitle(
+    page,
+    M + 8,
+    y + PKG_H - 18,
+    "Packages & guests",
+    iconGift,
+    fontBold,
+  );
+
+  const thumbW = 56;
+  const thumbH = 40;
+  if (pkgThumb) {
+    page.drawImage(pkgThumb, {
+      x: M + 10,
+      y: y + 14,
+      width: thumbW,
+      height: thumbH,
+    });
+  } else {
+    page.drawRectangle({
+      x: M + 10,
+      y: y + 14,
+      width: thumbW,
+      height: thumbH,
+      color: C.pill,
+    });
+  }
+
+  const primaryLine = packageLines[0] ?? pdfSafeText(input.packageName, 120);
+  const { label: pkgLabel, price: pkgPrice } = parsePackageLine(primaryLine);
+  const displayPrice =
+    pkgPrice ?? `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`;
+  const pkgTextX = M + 10 + thumbW + 8;
+
+  page.drawText(pkgLabel, {
+    x: pkgTextX,
+    y: y + PKG_H - 32,
+    size: 9,
+    font: fontBold,
+    color: C.text,
+    maxWidth: CW - thumbW - 90,
+  });
+  page.drawText(
+    pdfSafeText(
+      `${input.people} person(s)  |  Trip date: ${input.date || "-"}  |  Headcount: ${input.people}`,
+      100,
+    ),
+    {
+      x: pkgTextX,
+      y: y + PKG_H - 44,
+      size: 6.8,
+      font,
+      color: C.blue,
+    },
+  );
+
+  const pillW = Math.max(48, fontBold.widthOfTextAtSize(displayPrice, 9) + 14);
+  page.drawRectangle({
+    x: M + CW - pillW - 10,
+    y: y + 22,
+    width: pillW,
+    height: 20,
+    color: C.pill,
+    borderColor: rgb(0.78, 0.9, 0.98),
+    borderWidth: 0.6,
+  });
+  page.drawText(displayPrice, {
+    x: M + CW - pillW - 4,
+    y: y + 28,
+    size: 9,
+    font: fontBold,
+    color: C.greenDark,
+  });
+  y += PKG_H + GAP;
+
+  const GUEST_H = 94;
+  drawCard(page, M, y, CW, GUEST_H);
+  drawSectionTitle(
+    page,
+    M + 8,
+    y + GUEST_H - 18,
+    "Customer & contact",
+    iconPerson,
+    fontBold,
+  );
+
+  const colW = (CW - 20) / 2;
+  const lx = M + 10;
+  const rx = M + 10 + colW;
+
+  const leftFields = [
+    { label: "Customer Name", value: pdfSafeText(input.customerName, 40) },
+    { label: "Email", value: pdfSafeText(input.customerEmail, 42) || "-" },
+  ];
+  const rightFields = [
+    { label: "Phone", value: pdfSafeText(input.phone, 24) },
+    { label: "Pickup / Meeting Point", value: pickupDisplay, pin: true },
+  ];
+
+  leftFields.forEach((f, i) => {
+    const fy = y + GUEST_H - 34 - i * 26;
+    page.drawText(f.label, { x: lx, y: fy, size: 6.5, font, color: C.muted });
+    page.drawText(f.value, {
+      x: lx,
+      y: fy - 11,
+      size: 8.5,
+      font: fontBold,
+      color: C.text,
+      maxWidth: colW - 6,
+    });
+  });
+
+  rightFields.forEach((f, i) => {
+    const fy = y + GUEST_H - 34 - i * 26;
+    const ox = f.pin && iconPin ? 12 : 0;
+    if (f.pin && iconPin) {
+      page.drawImage(iconPin, { x: rx, y: fy - 12, width: 9, height: 9 });
+    }
+    page.drawText(f.label, { x: rx + ox, y: fy, size: 6.5, font, color: C.muted });
+    page.drawText(f.value, {
+      x: rx + ox,
+      y: fy - 11,
+      size: f.pin ? 7.5 : 8.5,
+      font: fontBold,
+      color: C.text,
+      maxWidth: colW - ox - 4,
+    });
+  });
+  y += GUEST_H + GAP;
+
+  const TRUST_H = 34;
+  page.drawRectangle({ x: 0, y, width, height: TRUST_H, color: C.blueSoft });
+  page.drawLine({
+    start: { x: 0, y },
+    end: { x: width, y },
+    thickness: 0.5,
+    color: C.border,
+  });
+  const trustItems = [
+    { icon: iconShield, title: "Secure Payment", sub: "Processed by Razorpay" },
+    { icon: iconBadge, title: "Trusted Operator", sub: "100% Safe & Reliable" },
+    { icon: iconHeadset, title: "24/7 Support", sub: "We're here to help" },
+    { icon: iconStar, title: "Best Experiences", sub: "Memorable & Hassle-free" },
+  ];
+  const trustColW = width / 4;
+  trustItems.forEach((item, i) => {
+    const cx = i * trustColW + 12;
+    page.drawCircle({
+      x: cx + 6,
+      y: y + 20,
+      size: 12,
+      color: C.blue,
+      opacity: 0.15,
+    });
+    if (item.icon) {
+      page.drawImage(item.icon, { x: cx, y: y + 18, width: 11, height: 11 });
+    }
+    page.drawText(item.title, {
+      x: cx + 14,
+      y: y + 22,
+      size: 6.2,
+      font: fontBold,
+      color: C.text,
+    });
+    page.drawText(item.sub, {
+      x: cx + 14,
+      y: y + 12,
+      size: 5.5,
+      font,
+      color: C.muted,
+    });
+  });
+  y += TRUST_H;
+
+  const TITLE_H = 46;
+  page.drawRectangle({ x: 0, y, width, height: TITLE_H, color: C.white });
+  page.drawRectangle({
+    x: M,
+    y: y + 16,
+    width: 11,
+    height: 13,
+    color: C.blue,
+  });
+  page.drawText("PAYMENT RECEIPT / INVOICE", {
+    x: M + 16,
+    y: y + 28,
+    size: 12,
+    font: fontBold,
+    color: C.navyText,
+  });
+  page.drawText("Thank you for choosing Book Scuba Goa", {
+    x: M + 16,
+    y: y + 16,
     size: 7,
-    font: fontBold,
-    color: C.white,
+    font,
+    color: C.muted,
   });
-  page.drawText("@bookscubagoa", {
-    x: infoX,
-    y: 28,
+  page.drawText(`Generated on ${pdfSafeText(generatedAt, 80)}`, {
+    x: M + 16,
+    y: y + 7,
     size: 6.5,
     font,
-    color: rgb(0.88, 0.94, 1),
+    color: C.muted,
   });
-  page.drawText("Goa, India", {
-    x: infoX,
-    y: 16,
-    size: 6.5,
+
+  drawPaymentStatusBox(
+    page,
+    width - M - 142,
+    y + 5,
+    142,
+    38,
+    stampIsPartial,
+    orderRef,
+    input.paymentId,
     font,
-    color: rgb(0.88, 0.94, 1),
-  });
+    fontBold,
+  );
+  y += TITLE_H;
+
+  const HERO_H = height - y;
+  if (headerArt) {
+    page.drawImage(headerArt, { x: 0, y, width, height: HERO_H });
+  } else {
+    page.drawRectangle({ x: 0, y, width, height: HERO_H, color: C.navy });
+  }
 
   return doc.save();
 }
