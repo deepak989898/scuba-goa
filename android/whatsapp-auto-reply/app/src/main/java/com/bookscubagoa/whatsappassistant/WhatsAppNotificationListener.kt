@@ -41,7 +41,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         }
 
         val sender = WhatsAppReplyHelper.extractSenderTitle(sbn)
-        val contact = WhatsAppReplyHelper.extractContactTitle(sbn)
+        val contact = WhatsAppReplyHelper.extractChatContactLabel(sbn)
 
         if (WhatsAppReplyHelper.isAdminManualOutgoing(sbn, sender)) {
             AdminReplyPause.recordManualReply(this, sbn, contact)
@@ -49,7 +49,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         }
 
         val message = WhatsAppReplyHelper.extractMessageText(sbn)
-        val ignoreReason = WhatsAppReplyHelper.ignoreReason(sbn, message, sender)
+        val ignoreReason = WhatsAppReplyHelper.ignoreReason(this, sbn, message, sender)
         if (ignoreReason != null) {
             DebugLog.d(this, "SKIP", "Ignored: $ignoreReason | sender=\"$sender\" text=\"${message.take(60)}\"")
             return

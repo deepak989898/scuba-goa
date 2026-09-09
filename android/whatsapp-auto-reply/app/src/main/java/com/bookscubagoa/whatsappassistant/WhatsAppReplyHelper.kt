@@ -86,6 +86,16 @@ object WhatsAppReplyHelper {
         return extractSenderTitle(sbn)
     }
 
+    /** Best label for per-chat pause (works for incoming and outgoing notifications). */
+    fun extractChatContactLabel(sbn: StatusBarNotification): String {
+        val extras = sbn.notification.extras ?: return extractContactTitle(sbn)
+        val title = extras.getCharSequence("android.title")?.toString()?.trim() ?: ""
+        if (title.isNotEmpty() && !isGroupSummary(title) && !isSelfSenderLabel(title)) {
+            return title
+        }
+        return extractContactTitle(sbn)
+    }
+
     fun extractPhoneHint(sbn: StatusBarNotification): String {
         val extras = sbn.notification.extras ?: return ""
         val sender = extractSenderTitle(sbn)
@@ -103,7 +113,12 @@ object WhatsAppReplyHelper {
 
     fun extractPhoneFromText(text: String): String = digitsFromPhoneLike(text) ?: ""
 
-    fun ignoreReason(sbn: StatusBarNotification, text: String, sender: String): String? {
+    fun ignoreReason(
+        context: Context,
+        sbn: StatusBarNotification,
+        text: String,
+        sender: String,
+    ): String? {
         if (text.isBlank()) return "empty message text"
         if (isOutgoingNotification(sbn, sender)) return "own outgoing message"
         if (ReplyGuard.isEchoOfOurReply(text)) return "echo of our bot reply"
@@ -113,9 +128,8 @@ object WhatsAppReplyHelper {
             return "already replied to this customer message"
         }
 
-        val contact = extractContactTitle(sbn)
-        val pauseKey = AdminReplyPause.customerKey(sbn, contact)
-        AdminReplyPause.pauseReason(pauseKey)?.let { return it }
+        val contact = extractChatContactLabel(sbn)
+        AdminReplyPause.pauseReason(context, sbn, contact)?.let { return it }
 
         val lower = text.lowercase()
         if (lower == "checking for new messages") return "whatsapp sync notification"
@@ -129,11 +143,26 @@ object WhatsAppReplyHelper {
         return null
     }
 
-    fun shouldIgnoreMessage(sbn: StatusBarNotification, text: String, sender: String): Boolean =
-        ignoreReason(sbn, text, sender) != null
+    fun shouldIgnoreMessage(
+        context: Context,
+        sbn: StatusBarNotification,
+        text: String,
+        sender: String,
+    ): Boolean = ignoreReason(context, sbn, text, sender) != null
 
     fun isAdminManualOutgoing(sbn: StatusBarNotification, sender: String): Boolean {
-        if (!isOutgoingNotification(sbn, sender)) return false
+        val extras = sbn.notification.extras
+        val messaging = extras?.let { extractMessagingStyle(it) }
+        val textHint = extras?.getCharSequence("android.text")?.toString()?.trim() ?: ""
+        val youPrefix = textHint.lowercase().let { t ->
+            t.startsWith("you:") || t.startsWith("you :")
+        }
+
+        val isOutgoing = isOutgoingNotification(sbn, sender) ||
+            messaging?.isFromSelf == true ||
+            youPrefix
+        if (!isOutgoing) return false
+
         val latest = extractLatestMessageText(sbn)
         if (latest.isBlank()) return true
         return !ReplyGuard.isEchoOfOurReply(latest)
