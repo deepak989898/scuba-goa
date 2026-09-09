@@ -300,9 +300,12 @@ function drawRoundedCard(
     `Z`,
   ].join(" ");
 
+  page.drawRectangle({ x, y, width: w, height: h, color: C.white });
+
+  // pdf-lib flips SVG Y — anchor at the top edge of the card (y + h).
   page.drawSvgPath(path, {
     x,
-    y,
+    y: y + h,
     color: C.white,
     borderWidth: 0,
   });
@@ -336,13 +339,6 @@ function drawSectionTitle(
     size: titleSize,
     font: fontBold,
     color: C.blue,
-  });
-  page.drawLine({
-    start: { x: textX, y: y - 4 },
-    end: { x: textX + fontBold.widthOfTextAtSize(title, titleSize), y: y - 4 },
-    thickness: 0.8,
-    color: C.blue,
-    opacity: 0.45,
   });
 }
 
@@ -471,7 +467,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
   const iconPerson = await embedImage(doc, "bill/icon-person.png");
   const iconGift = await embedImage(doc, "bill/icon-gift.png");
   const iconAlert = await embedImage(doc, "bill/icon-alert.png");
-  const iconPin = await embedImage(doc, "bill/icon-pin.png");
   const iconCheck = await embedImage(doc, "bill/icon-check.png");
   const iconX = await embedImage(doc, "bill/icon-x.png");
   const iconShield = await embedImage(doc, "bill/icon-shield.png");
@@ -651,23 +646,20 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   rightFields.forEach((f, i) => {
     const fy = yTop - 36 - i * 28;
-    if (i === 1 && iconPin) {
-      page.drawImage(iconPin, { x: rightX, y: fy - 14, width: 10, height: 10 });
-    }
     page.drawText(f.label, {
-      x: rightX + (i === 1 ? 13 : 0),
+      x: rightX,
       y: fy,
       size: 7,
       font,
       color: C.muted,
     });
     page.drawText(f.value, {
-      x: rightX + (i === 1 ? 13 : 0),
+      x: rightX,
       y: fy - 12,
-      size: i === 1 ? 8 : 9,
+      size: 9,
       font: fontBold,
       color: C.text,
-      maxWidth: colW - 16,
+      maxWidth: colW - 4,
     });
   });
 
