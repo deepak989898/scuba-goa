@@ -185,6 +185,42 @@ function parsePackageLine(line: string): { label: string; price: string | null }
   return { label, price: priceMatch[0].replace(/\s*\(line total\)/, "") };
 }
 
+type BillServiceRow = {
+  label: string;
+  people: number;
+  lineTotal: string;
+};
+
+function buildServiceRowsForBill(
+  packageLines: string[],
+  input: BillPdfInput,
+): BillServiceRow[] {
+  const rows: BillServiceRow[] = [];
+  for (const line of packageLines) {
+    if (line.startsWith("+ ") || /Total persons \/ units/i.test(line)) continue;
+    const { label, price } = parsePackageLine(line);
+    const peopleMatch = line.match(/(\d+)\s+person\(s\)/i);
+    rows.push({
+      label: label || pdfSafeText(input.packageName, 120),
+      people: peopleMatch
+        ? Number(peopleMatch[1])
+        : Math.max(1, input.people),
+      lineTotal:
+        price ?? `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`,
+    });
+  }
+  if (rows.length === 0) {
+    rows.push({
+      label: pdfSafeText(input.packageName, 120),
+      people: Math.max(1, input.people),
+      lineTotal: `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`,
+    });
+  } else if (rows.length === 1 && !parsePackageLine(packageLines[0] ?? "").price) {
+    rows[0].lineTotal = `Rs.${input.fullAmountInr.toLocaleString("en-IN")}`;
+  }
+  return rows.slice(0, 5);
+}
+
 const DO_NOTES = [
   "Bring a valid photo ID for each guest on activity day.",
   "Arrive 15 minutes early at the pickup / meeting point.",
@@ -239,8 +275,36 @@ function drawCard(
     width: w,
     height: h,
     color: C.white,
-    borderColor: C.cardBorder,
-    borderWidth: 1,
+  });
+}
+
+function drawRoundedCard(
+  page: PDFPage,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius = 8,
+) {
+  const r = Math.min(radius, w / 2, h / 2);
+  const path = [
+    `M ${r} 0`,
+    `H ${w - r}`,
+    `Q ${w} 0 ${w} ${r}`,
+    `V ${h - r}`,
+    `Q ${w} ${h} ${w - r} ${h}`,
+    `H ${r}`,
+    `Q 0 ${h} 0 ${h - r}`,
+    `V ${r}`,
+    `Q 0 0 ${r} 0`,
+    `Z`,
+  ].join(" ");
+
+  page.drawSvgPath(path, {
+    x,
+    y,
+    color: C.white,
+    borderWidth: 0,
   });
 }
 
@@ -506,18 +570,6 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     height: titleH,
     color: C.white,
   });
-  page.drawLine({
-    start: { x: 0, y: titleY },
-    end: { x: width, y: titleY },
-    thickness: 0.5,
-    color: C.cardBorder,
-  });
-  page.drawLine({
-    start: { x: 0, y: titleY + titleH },
-    end: { x: width, y: titleY + titleH },
-    thickness: 0.5,
-    color: C.cardBorder,
-  });
 
   page.drawText("PAYMENT RECEIPT / INVOICE", {
     x: margin,
@@ -621,84 +673,109 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
 
   yTop = guestBottom - 8;
 
-  // ── Packages & guests + payment summary (single merged card) ────────────
+  // ── Packages & guests (tall card: services top, payment bottom) ─────────
+  const notesTop = notesBottom + notesH;
+  const gapBeforeNotes = 10;
   const titleRowH = 24;
-  const pkgRowH = 44;
-  const paySectionH = 58;
-  const combinedH = titleRowH + pkgRowH + paySectionH;
-  const combinedBottom = yTop - combinedH;
-  drawCard(page, margin, combinedBottom, contentW, combinedH);
+  const paySectionH = 54;
+  const serviceRowH = 36;
+  const minCombinedH = titleRowH + serviceRowH + paySectionH + 8;
+  const combinedTop = yTop;
+  let combinedBottom = notesTop + gapBeforeNotes;
+  let combinedH = combinedTop - combinedBottom;
+  if (combinedH < minCombinedH) {
+    combinedH = minCombinedH;
+    combinedBottom = combinedTop - combinedH;
+  }
+  drawRoundedCard(page, margin, combinedBottom, contentW, combinedH, 10);
 
   drawSectionTitle(
     page,
     margin + 10,
-    yTop - 14,
+    combinedTop - 14,
     "Packages & guests",
     iconGift,
     fontBold,
   );
 
-  const pkgRowTop = yTop - titleRowH;
-  const thumbSize = 34;
-  const thumbX = margin + 12;
-  const thumbY = pkgRowTop - thumbSize - 2;
-  page.drawRectangle({
-    x: thumbX,
-    y: thumbY,
-    width: thumbSize,
-    height: thumbSize,
-    color: C.pillBg,
-    borderColor: C.cardBorder,
-    borderWidth: 0.5,
-  });
-  if (pkgThumb) {
-    drawImageCover(page, pkgThumb, thumbX, thumbY, thumbSize, thumbSize);
-  }
-
-  const pkgTextX = thumbX + thumbSize + 8;
-  const primaryLine = packageLines[0] ?? pdfSafeText(input.packageName, 120);
-  const { label: pkgLabel } = parsePackageLine(primaryLine);
-  const membersColX = margin + contentW * 0.5;
   const payLabelX = margin + contentW * 0.38;
   const payValueRight = margin + contentW - 14;
-
-  page.drawText(pkgLabel, {
-    x: pkgTextX,
-    y: pkgRowTop - 12,
-    size: 9.5,
-    font: fontBold,
-    color: C.text,
-    maxWidth: membersColX - pkgTextX - 8,
-  });
-  page.drawText(`Trip date: ${pdfSafeText(input.date || "-", 24)}`, {
-    x: pkgTextX,
-    y: pkgRowTop - 24,
-    size: 7,
-    font,
-    color: C.blue,
-  });
-
-  page.drawText("Members", {
-    x: membersColX,
-    y: pkgRowTop - 12,
-    size: 7,
-    font,
-    color: C.muted,
-  });
-  page.drawText(`${input.people} person(s)`, {
-    x: membersColX,
-    y: pkgRowTop - 24,
-    size: 9.5,
-    font: fontBold,
-    color: C.navyText,
-  });
-
-  const payDividerY = yTop - titleRowH - pkgRowH;
+  const membersColX = margin + contentW * 0.5;
+  const payDividerY = combinedBottom + paySectionH;
   page.drawLine({
     start: { x: margin + 8, y: payDividerY },
     end: { x: margin + contentW - 8, y: payDividerY },
     thickness: 0.5,
     color: C.cardBorder,
+  });
+
+  const serviceRows = buildServiceRowsForBill(packageLines, input);
+  const thumbSize = 32;
+  const thumbX = margin + 12;
+  const servicesTop = combinedTop - titleRowH - 4;
+  let svcCursorY = servicesTop;
+
+  serviceRows.forEach((sr, index) => {
+    const rowTop = svcCursorY;
+    const textX =
+      index === 0 ? thumbX + thumbSize + 8 : margin + 12;
+
+    if (index === 0) {
+      const thumbY = rowTop - thumbSize;
+      page.drawRectangle({
+        x: thumbX,
+        y: thumbY,
+        width: thumbSize,
+        height: thumbSize,
+        color: C.pillBg,
+        borderColor: C.cardBorder,
+        borderWidth: 0.5,
+      });
+      if (pkgThumb) {
+        drawImageCover(page, pkgThumb, thumbX, thumbY, thumbSize, thumbSize);
+      }
+    }
+
+    page.drawText(sr.label, {
+      x: textX,
+      y: rowTop - 11,
+      size: 9.5,
+      font: fontBold,
+      color: C.text,
+      maxWidth: membersColX - textX - 8,
+    });
+    page.drawText(`Trip date: ${pdfSafeText(input.date || "-", 24)}`, {
+      x: textX,
+      y: rowTop - 22,
+      size: 7,
+      font,
+      color: C.blue,
+    });
+    page.drawText("Members", {
+      x: membersColX,
+      y: rowTop - 11,
+      size: 7,
+      font,
+      color: C.muted,
+    });
+    page.drawText(`${sr.people} person(s)`, {
+      x: membersColX,
+      y: rowTop - 22,
+      size: 9,
+      font: fontBold,
+      color: C.navyText,
+    });
+
+    const lineTw = fontBold.widthOfTextAtSize(sr.lineTotal, 9);
+    page.drawText(sr.lineTotal, {
+      x: payValueRight - lineTw,
+      y: rowTop - 16,
+      size: 9,
+      font: fontBold,
+      color: C.greenDark,
+    });
+
+    svcCursorY -= serviceRowH;
   });
 
   const payRows = [
@@ -717,7 +794,7 @@ export async function generateBillPdf(input: BillPdfInput): Promise<Uint8Array> 
     },
   ];
 
-  let rowY = payDividerY - 16;
+  let rowY = payDividerY - 14;
   for (const r of payRows) {
     const rowW = payValueRight - payLabelX + 4;
     if (r.highlight) {
