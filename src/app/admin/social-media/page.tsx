@@ -63,7 +63,12 @@ type StatusResponse = {
     createdAt?: string;
     results?: Array<{ platform: string; ok: boolean; posted: boolean; message: string }>;
   }>;
+  postedContentKeys?: string[];
 };
+
+function postedContentRef(contentType: PostContentType, id: string): string {
+  return `${contentType}:${id}`;
+}
 
 type GalleryMediaOption = {
   id: string;
@@ -422,12 +427,61 @@ export default function AdminSocialMediaPage() {
     [publishedGuides],
   );
 
+  const postedContentKeySet = useMemo(
+    () => new Set(status?.postedContentKeys ?? []),
+    [status?.postedContentKeys],
+  );
+
+  const isContentAlreadyPosted = useCallback(
+    (contentType: PostContentType, id: string) =>
+      postedContentKeySet.has(postedContentRef(contentType, id)),
+    [postedContentKeySet],
+  );
+
+  const availableBlogOptions = useMemo(
+    () =>
+      publishedBlogOptions.filter(
+        (b) => !isContentAlreadyPosted("blog", b.id),
+      ),
+    [publishedBlogOptions, isContentAlreadyPosted],
+  );
+  const availableGuideOptions = useMemo(
+    () =>
+      publishedGuideOptions.filter(
+        (g) => !isContentAlreadyPosted("guide", g.id),
+      ),
+    [publishedGuideOptions, isContentAlreadyPosted],
+  );
+  const availableGalleryVideos = useMemo(
+    () =>
+      galleryVideos.filter((v) => !isContentAlreadyPosted("video", v.id)),
+    [galleryVideos, isContentAlreadyPosted],
+  );
+  const availableGalleryReels = useMemo(
+    () =>
+      galleryReels.filter((r) => !isContentAlreadyPosted("reel", r.id)),
+    [galleryReels, isContentAlreadyPosted],
+  );
+
   const postMediaOptions = useMemo(() => {
-    if (postContentType === "blog") return publishedBlogs;
-    if (postContentType === "guide") return publishedGuides;
-    if (postContentType === "video") return galleryVideos;
-    return galleryReels;
-  }, [postContentType, publishedBlogs, publishedGuides, galleryVideos, galleryReels]);
+    if (postContentType === "blog") return availableBlogOptions;
+    if (postContentType === "guide") return availableGuideOptions;
+    if (postContentType === "video") return availableGalleryVideos;
+    return availableGalleryReels;
+  }, [
+    postContentType,
+    availableBlogOptions,
+    availableGuideOptions,
+    availableGalleryVideos,
+    availableGalleryReels,
+  ]);
+
+  useEffect(() => {
+    if (!postSlug) return;
+    if (isContentAlreadyPosted(postContentType, postSlug)) {
+      setPostSlug("");
+    }
+  }, [postContentType, postSlug, isContentAlreadyPosted]);
 
   async function saveSchedule(patch: Partial<SocialScheduleSettings>) {
     setBusy("schedule");
@@ -450,15 +504,15 @@ export default function AdminSocialMediaPage() {
 
   function queueAddOptions(): { id: string; title: string }[] {
     if (queueAddType === "blog") {
-      return publishedBlogs.map((b) => ({ id: b.slug, title: b.title }));
+      return availableBlogOptions;
     }
     if (queueAddType === "guide") {
-      return publishedGuides.map((g) => ({ id: g.slug, title: g.headline }));
+      return availableGuideOptions;
     }
     if (queueAddType === "video") {
-      return galleryVideos.map((v) => ({ id: v.id, title: v.title }));
+      return availableGalleryVideos.map((v) => ({ id: v.id, title: v.title }));
     }
-    return galleryReels.map((r) => ({ id: r.id, title: r.title }));
+    return availableGalleryReels.map((r) => ({ id: r.id, title: r.title }));
   }
 
   function addToQueue() {
@@ -972,7 +1026,7 @@ export default function AdminSocialMediaPage() {
               {queueAddType === "blog" ? (
                 <CollapsibleContentPicker
                   kind="blog"
-                  items={publishedBlogOptions}
+                  items={availableBlogOptions}
                   loaded={blogsLoaded}
                   loading={blogsLoading}
                   selectedId={queueAddRef}
@@ -983,7 +1037,7 @@ export default function AdminSocialMediaPage() {
               {queueAddType === "guide" ? (
                 <CollapsibleContentPicker
                   kind="guide"
-                  items={publishedGuideOptions}
+                  items={availableGuideOptions}
                   loaded={guidesLoaded}
                   loading={guidesLoading}
                   selectedId={queueAddRef}
@@ -1398,7 +1452,7 @@ export default function AdminSocialMediaPage() {
           {postContentType === "blog" ? (
             <CollapsibleContentPicker
               kind="blog"
-              items={publishedBlogOptions}
+              items={availableBlogOptions}
               loaded={blogsLoaded}
               loading={blogsLoading}
               selectedId={postSlug}
@@ -1409,7 +1463,7 @@ export default function AdminSocialMediaPage() {
           {postContentType === "guide" ? (
             <CollapsibleContentPicker
               kind="guide"
-              items={publishedGuideOptions}
+              items={availableGuideOptions}
               loaded={guidesLoaded}
               loading={guidesLoading}
               selectedId={postSlug}
@@ -1430,7 +1484,7 @@ export default function AdminSocialMediaPage() {
                   {galleryLoading ? "Loading…" : "Select…"}
                 </option>
                 {postContentType === "video"
-                  ? galleryVideos.map((item) => (
+                  ? availableGalleryVideos.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.title}
                         {item.source === "service"
@@ -1442,7 +1496,7 @@ export default function AdminSocialMediaPage() {
                     ))
                   : null}
                 {postContentType === "reel"
-                  ? galleryReels.map((item) => (
+                  ? availableGalleryReels.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.title}
                         {item.source === "service"
@@ -1457,18 +1511,39 @@ export default function AdminSocialMediaPage() {
             </label>
           ) : null}
         </div>
+        {postedContentKeySet.size > 0 ? (
+          <p className="mt-3 text-xs text-ocean-500">
+            Content already published (see Recent activity) is hidden from this list to
+            avoid duplicate posts.
+          </p>
+        ) : null}
         {(postContentType === "video" || postContentType === "reel") &&
         postMediaOptions.length === 0 ? (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            No {postContentType === "reel" ? "reels" : "videos"} found yet. Add them in{" "}
-            <a href="/admin/services" className="font-medium text-cyan-800 underline">
-              Services admin
-            </a>{" "}
-            (Extra media → Upload {postContentType === "reel" ? "reels" : "videos"}) or{" "}
-            <a href="/admin/gallery" className="font-medium text-cyan-800 underline">
-              Gallery admin
-            </a>{" "}
-            (type: Video, category: {postContentType === "reel" ? "Reels" : "Customer videos"}).
+            {galleryLoaded &&
+            (postContentType === "reel"
+              ? galleryReels.length > 0
+              : galleryVideos.length > 0) ? (
+              <>
+                All {postContentType === "reel" ? "reels" : "videos"} were already
+                posted. Check Recent activity or add new media.
+              </>
+            ) : (
+              <>
+                No {postContentType === "reel" ? "reels" : "videos"} found yet. Add them
+                in{" "}
+                <a href="/admin/services" className="font-medium text-cyan-800 underline">
+                  Services admin
+                </a>{" "}
+                (Extra media → Upload {postContentType === "reel" ? "reels" : "videos"})
+                or{" "}
+                <a href="/admin/gallery" className="font-medium text-cyan-800 underline">
+                  Gallery admin
+                </a>{" "}
+                (type: Video, category:{" "}
+                {postContentType === "reel" ? "Reels" : "Customer videos"}).
+              </>
+            )}
           </p>
         ) : null}
         {(postContentType === "video" || postContentType === "reel") &&

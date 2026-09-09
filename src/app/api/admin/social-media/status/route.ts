@@ -45,18 +45,24 @@ export async function GET(req: Request) {
 
   const db = getAdminDb();
   let recentPosts: unknown[] = [];
+  let postedContentKeys: string[] = [];
   if (db) {
     const snap = await db
       .collection("socialMediaPosts")
       .orderBy("createdAt", "desc")
-      .limit(50)
+      .limit(200)
       .get()
       .catch(() => null);
     if (snap) {
-      recentPosts = snap.docs
+      const published = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }) as SocialPostLogDoc & { id: string })
-        .filter((row) => socialPostLogHasPublished(row))
-        .slice(0, 15);
+        .filter((row) => socialPostLogHasPublished(row));
+      recentPosts = published.slice(0, 15);
+      postedContentKeys = [
+        ...new Set(
+          published.map((row) => `${row.contentType}:${row.slug}`),
+        ),
+      ];
     }
   }
 
@@ -82,6 +88,8 @@ export async function GET(req: Request) {
       configured: isYouTubeConfigured(),
     },
     recentPosts,
+    /** contentType:slug refs already published — hide from Post now picker */
+    postedContentKeys,
   });
 }
 
