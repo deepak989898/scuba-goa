@@ -131,6 +131,11 @@ object WhatsAppReplyHelper {
         val contact = extractChatContactLabel(sbn)
         AdminReplyPause.pauseReason(context, sbn, contact)?.let { return it }
 
+        val phoneHint = extractPhoneHint(sbn).ifEmpty { extractPhoneFromText(contact) }
+        PhoneContacts.savedContactSkipReason(context, contact, phoneHint)?.let { return it }
+
+        BusinessMessageFilter.skipReason(sender, contact, text)?.let { return it }
+
         val lower = text.lowercase()
         if (lower == "checking for new messages") return "whatsapp sync notification"
         if (lower == "waiting for this message. this may take a while.") return "e2e wait notification"

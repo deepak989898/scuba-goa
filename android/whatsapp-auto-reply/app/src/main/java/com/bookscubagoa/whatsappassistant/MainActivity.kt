@@ -34,6 +34,12 @@ class MainActivity : AppCompatActivity() {
             refreshStatus()
         }
 
+    private val contactsPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            PhoneContacts.invalidateCache()
+            refreshStatus()
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -54,6 +60,7 @@ class MainActivity : AppCompatActivity() {
         binding.refreshLogButton.setOnClickListener { refreshLogs() }
 
         requestPostNotificationsIfNeeded()
+        requestContactsPermissionIfNeeded()
         refreshStatus()
     }
 
@@ -169,6 +176,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestContactsPermissionIfNeeded() {
+        if (!PhoneContacts.hasPermission(this)) {
+            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
     private fun isNotificationListenerEnabled(): Boolean {
         val flat = Settings.Secure.getString(
             contentResolver,
@@ -213,6 +226,10 @@ class MainActivity : AppCompatActivity() {
             add("Website: ${Prefs.baseUrl(this@MainActivity)}")
             if (enabled && listener) {
                 add(getString(R.string.status_admin_pause_hint))
+                add(getString(R.string.status_filter_hint))
+                add(
+                    "Contacts access: ${if (PhoneContacts.hasPermission(this@MainActivity)) "ON" else "OFF — allow to skip saved contacts accurately"}",
+                )
                 add("Ready — send a test WhatsApp, then check Debug log below.")
             }
         }
