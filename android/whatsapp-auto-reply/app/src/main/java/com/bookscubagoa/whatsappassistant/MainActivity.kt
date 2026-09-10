@@ -45,7 +45,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.urlInput.setText(Prefs.baseUrl(this))
         binding.secretInput.setText(Prefs.apiSecret(this))
         binding.autoReplySwitch.isChecked = Prefs.isAutoReplyEnabled(this)
         setupWhatsAppTargetDropdown()
@@ -77,16 +76,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveSettings() {
-        val url = binding.urlInput.text?.toString()?.trim() ?: ""
         val secret = binding.secretInput.text?.toString()?.trim() ?: ""
         val enabled = binding.autoReplySwitch.isChecked
 
-        if (url.isEmpty() || secret.isEmpty()) {
-            Toast.makeText(this, "Website URL and API secret are required", Toast.LENGTH_LONG).show()
+        if (secret.isEmpty()) {
+            Toast.makeText(this, "API secret is required", Toast.LENGTH_LONG).show()
             return
         }
 
-        Prefs.save(this, url, secret, enabled, readWhatsAppTargetSelection())
+        Prefs.save(this, Prefs.DEFAULT_URL, secret, enabled, readWhatsAppTargetSelection())
 
         if (enabled && !isNotificationListenerEnabled()) {
             Toast.makeText(
@@ -223,7 +221,7 @@ class MainActivity : AppCompatActivity() {
             add(if (enabled) getString(R.string.status_running) else getString(R.string.status_stopped))
             add("Listening: ${target.displayLabel()}")
             add("Notification access: ${if (listener) "ON" else "OFF — tap button above"}")
-            add("Website: ${Prefs.baseUrl(this@MainActivity)}")
+            add("Website: ${Prefs.DEFAULT_URL}")
             if (enabled && listener) {
                 add(getString(R.string.status_admin_pause_hint))
                 add(getString(R.string.status_filter_hint))

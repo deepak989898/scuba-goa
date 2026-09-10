@@ -10,15 +10,12 @@ object Prefs {
     private const val KEY_ENABLED = "auto_reply_enabled"
     private const val KEY_WHATSAPP_TARGET = "whatsapp_target"
 
-    private const val DEFAULT_URL = "https://www.bookscubagoa.com"
+    const val DEFAULT_URL = "https://www.bookscubagoa.com"
 
     const val PKG_WHATSAPP = "com.whatsapp"
     const val PKG_WHATSAPP_BUSINESS = "com.whatsapp.w4b"
 
-    fun baseUrl(context: Context): String {
-        val raw = prefs(context).getString(KEY_BASE_URL, DEFAULT_URL)?.trim() ?: DEFAULT_URL
-        return raw.removeSuffix("/")
-    }
+    fun baseUrl(context: Context): String = DEFAULT_URL
 
     fun apiSecret(context: Context): String =
         prefs(context).getString(KEY_SECRET, "")?.trim() ?: ""
