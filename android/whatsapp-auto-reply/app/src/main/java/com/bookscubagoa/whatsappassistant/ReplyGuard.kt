@@ -35,6 +35,18 @@ object ReplyGuard {
         )
     }
 
+    fun markInboundBatchReplied(convKey: String, customerMessages: List<String>) {
+        val now = System.currentTimeMillis()
+        for (msg in customerMessages) {
+            val key = normalize(msg).take(200)
+            if (key.isNotEmpty()) {
+                lastInboundReply["$convKey|$key"] = InboundMark(messageKey = key, atMs = now)
+            }
+        }
+        val combined = normalize(customerMessages.joinToString("\n")).take(200)
+        lastInboundReply[convKey] = InboundMark(messageKey = combined, atMs = now)
+    }
+
     fun isEchoOfOurReply(text: String): Boolean {
         prune()
         val norm = normalize(text).take(120)
@@ -46,9 +58,14 @@ object ReplyGuard {
 
     fun alreadyRepliedToInbound(convKey: String, customerMessage: String): Boolean {
         prune()
+        val norm = normalize(customerMessage).take(200)
+        val perMessage = lastInboundReply["$convKey|$norm"]
+        if (perMessage != null && System.currentTimeMillis() - perMessage.atMs <= INBOUND_DEDUPE_MS) {
+            return true
+        }
         val mark = lastInboundReply[convKey] ?: return false
         if (System.currentTimeMillis() - mark.atMs > INBOUND_DEDUPE_MS) return false
-        return mark.messageKey == normalize(customerMessage).take(200)
+        return mark.messageKey == norm
     }
 
     private fun prune() {

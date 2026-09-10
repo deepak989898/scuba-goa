@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 class WhatsAppNotificationListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val recentKeys = ConcurrentHashMap.newKeySet<String>()
+    private val messageBatcher by lazy { InboundMessageBatcher(this, scope) }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -74,8 +75,12 @@ class WhatsAppNotificationListener : NotificationListenerService() {
             "Customer message from \"$sender\" | conv=$convKey | active=${activeNotifications?.size ?: 0}",
         )
 
-        scope.launch {
-            processMessage(sbn, sender, message, convKey)
+        val phone = WhatsAppReplyHelper.extractPhoneHint(sbn).ifEmpty {
+            WhatsAppReplyHelper.extractPhoneFromText(sender).ifEmpty { sender.trim() }
+        }
+
+        messageBatcher.enqueue(sbn, sender, message, phone, convKey) { notif, snd, ph, combined, conv, batchedItems ->
+            processMessage(notif, snd, ph, combined, conv, batchedItems)
         }
     }
 
@@ -91,14 +96,13 @@ class WhatsAppNotificationListener : NotificationListenerService() {
     private suspend fun processMessage(
         sbn: StatusBarNotification,
         sender: String,
+        phone: String,
         message: String,
         convKey: String,
+        batchedItems: List<String>,
     ) {
-        val phone = WhatsAppReplyHelper.extractPhoneHint(sbn).ifEmpty {
-            WhatsAppReplyHelper.extractPhoneFromText(sender).ifEmpty { sender.trim() }
-        }
-
-        DebugLog.d(this, "IN", "From=\"$sender\" phone=\"$phone\" msg=\"${message.take(120)}\"")
+        val batchNote = if (batchedItems.size > 1) " (${batchedItems.size} messages batched)" else ""
+        DebugLog.d(this, "IN", "From=\"$sender\" phone=\"$phone\"$batchNote msg=\"${message.take(120)}\"")
         DebugLog.d(this, "API", "Calling website…")
 
         val started = System.currentTimeMillis()
@@ -133,8 +137,12 @@ class WhatsAppNotificationListener : NotificationListenerService() {
 
         val sendResult = WhatsAppReplyHelper.sendReply(this, sbn, sender, result.reply)
         if (sendResult.success) {
-            ReplyGuard.markInboundReplied(convKey, message)
-            DebugLog.d(this, "OUT", "Reply sent (1 per customer message) — ${sendResult.detail}")
+            ReplyGuard.markInboundBatchReplied(convKey, batchedItems.ifEmpty { listOf(message) })
+            DebugLog.d(
+                this,
+                "OUT",
+                "Reply sent (1 reply for ${batchedItems.size.coerceAtLeast(1)} customer message(s)) — ${sendResult.detail}",
+            )
         } else {
             DebugLog.e(
                 this,
