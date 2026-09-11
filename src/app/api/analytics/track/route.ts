@@ -14,6 +14,7 @@ import {
   clientIpFromHeaders,
   hashIp,
 } from "@/lib/analytics-v2";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 const PATH_MAX = 512;
 const SESSION_MAX = 128;
@@ -143,11 +144,22 @@ async function incrementContentTraffic(
   });
 }
 
+type RateLimitResult = {
+  allowed: boolean;
+  retryAfterSec: number;
+  remaining: number;
+};
+
 async function checkRateLimit(
   db: NonNullable<ReturnType<typeof getAdminDb>>,
   ipHash: string,
-): Promise<boolean> {
-  if (!ipHash) return true;
+): Promise<RateLimitResult> {
+  const ok: RateLimitResult = {
+    allowed: true,
+    retryAfterSec: 0,
+    remaining: RATE_MAX_PER_IP,
+  };
+  if (!ipHash) return ok;
   const ref = db.collection("analyticsRateLimits").doc(ipHash);
   const now = Date.now();
   try {
@@ -158,18 +170,28 @@ async function checkRateLimit(
       const count = data?.count ?? 0;
       if (now - windowStart > RATE_WINDOW_MS) {
         tx.set(ref, { windowStartMs: now, count: 1, updatedAt: FieldValue.serverTimestamp() });
-        return true;
+        return { allowed: true, retryAfterSec: 0, remaining: RATE_MAX_PER_IP - 1 };
       }
-      if (count >= RATE_MAX_PER_IP) return false;
+      if (count >= RATE_MAX_PER_IP) {
+        const retryAfterSec = Math.max(
+          1,
+          Math.ceil((windowStart + RATE_WINDOW_MS - now) / 1000),
+        );
+        return { allowed: false, retryAfterSec, remaining: 0 };
+      }
       tx.set(
         ref,
         { windowStartMs: windowStart, count: count + 1, updatedAt: FieldValue.serverTimestamp() },
         { merge: true },
       );
-      return true;
+      return {
+        allowed: true,
+        retryAfterSec: 0,
+        remaining: Math.max(0, RATE_MAX_PER_IP - count - 1),
+      };
     });
   } catch {
-    return true;
+    return ok;
   }
 }
 
@@ -267,9 +289,13 @@ export async function POST(req: Request) {
   const ipHash = ipSecret ? hashIp(ip, ipSecret) : hashIp(ip, "bsg-analytics-fallback");
   // Heartbeats are already sparse client-side; skip rate-limit txn (1 read each).
   if (eventType !== "heartbeat") {
-    const allowed = await checkRateLimit(db, ipHash || sessionId);
-    if (!allowed) {
-      return new NextResponse(null, { status: 204 });
+    const rate = await checkRateLimit(db, ipHash || sessionId);
+    if (!rate.allowed) {
+      return rateLimitResponse({
+        limit: RATE_MAX_PER_IP,
+        retryAfterSec: rate.retryAfterSec,
+        remaining: rate.remaining,
+      });
     }
   }
 

@@ -5,11 +5,19 @@ import {
   verifyAdminSessionValue,
 } from "@/lib/admin-session-cookie";
 import {
+  checkBurstRateLimit,
+  clientIpFromRequestHeaders,
+} from "@/lib/edge-burst-rate-limit";
+import {
   firestoreReadPauseMessage,
   getFirestoreReadPauseUntilIso,
   isFirestoreReadPaused,
 } from "@/lib/firestore-read-pause";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { PRIMARY_SITE_ORIGIN, SITE_ORIGINS } from "@/lib/security-headers";
+
+const ANALYTICS_BURST_MAX = 20;
+const ANALYTICS_BURST_WINDOW_MS = 10_000;
 
 const DEV_ORIGINS = new Set([
   "http://localhost:3000",
@@ -60,11 +68,38 @@ function requiresAdminSession(pathname: string): boolean {
   return true;
 }
 
+function isAnalyticsIngestPath(pathname: string): boolean {
+  return pathname === "/api/t" || pathname.startsWith("/api/analytics/");
+}
+
+function analyticsBurstLimit(req: NextRequest): NextResponse | null {
+  if (req.method.toUpperCase() !== "POST") return null;
+  const path = req.nextUrl.pathname;
+  if (!isAnalyticsIngestPath(path)) return null;
+
+  const ip = clientIpFromRequestHeaders(req.headers);
+  const burst = checkBurstRateLimit(
+    `analytics:${ip}`,
+    ANALYTICS_BURST_MAX,
+    ANALYTICS_BURST_WINDOW_MS,
+  );
+  if (burst.allowed) return null;
+
+  return rateLimitResponse({
+    limit: ANALYTICS_BURST_MAX,
+    retryAfterSec: burst.retryAfterSec,
+    remaining: burst.remaining,
+  });
+}
+
 /**
  * Tighten CORS + emergency Firestore read pause (quota protection).
  */
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  const burstBlocked = analyticsBurstLimit(request);
+  if (burstBlocked) return burstBlocked;
 
   if (requiresAdminSession(pathname)) {
     const session = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
