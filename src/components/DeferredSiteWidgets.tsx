@@ -16,10 +16,6 @@ const LazyCartFAB = dynamic(
   () => import("@/components/cart/CartFAB").then((m) => m.CartFAB),
   { ssr: false, loading: () => null },
 );
-const LazyLeadCapturePopup = dynamic(
-  () => import("@/components/LeadCapturePopup").then((m) => m.LeadCapturePopup),
-  { ssr: false, loading: () => null },
-);
 const LazyPushNotificationPrompt = dynamic(
   () =>
     import("@/components/PushNotificationPrompt").then(
@@ -90,7 +86,6 @@ export function DeferredSiteWidgets() {
     <>
       {interacted || hasSavedCart ? <LazyCartFAB /> : null}
       {showChatbot ? <LazyAiChatbot /> : null}
-      {interacted ? <LazyLeadCapturePopup /> : null}
       {interacted ? <LazyPushNotificationPrompt /> : null}
     </>
   );
