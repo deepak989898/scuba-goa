@@ -162,6 +162,7 @@ const FEATURES = [
     title: "10,000+ Happy Divers",
     body: "First-timers and repeat guests book this same clear flow every season.",
     Icon: IconStar,
+    fiveStars: true,
   },
 ] as const;
 
@@ -372,10 +373,24 @@ export default async function AboutPage() {
       {/* Feature strip overlapping hero */}
       <section className="relative z-10 -mt-14 sm:-mt-16" aria-label="Why book with us">
         <div className="site-container grid gap-3 rounded-2xl border border-ocean-100 bg-white p-4 shadow-depth sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-4">
-          {FEATURES.map(({ title, body, Icon }) => (
+          {FEATURES.map(({ title, body, Icon, ...rest }) => (
             <div key={title} className="flex gap-3 sm:block sm:text-center lg:text-left">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 sm:mx-auto lg:mx-0">
-                <Icon className="h-5 w-5" />
+              <div
+                className={`flex h-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 sm:mx-auto lg:mx-0 ${
+                  "fiveStars" in rest && rest.fiveStars
+                    ? "gap-0.5 px-2.5 text-amber-400"
+                    : "w-10 text-cyan-700"
+                }`}
+              >
+                {"fiveStars" in rest && rest.fiveStars ? (
+                  <>
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <IconStar key={i} className="h-3.5 w-3.5" />
+                    ))}
+                  </>
+                ) : (
+                  <Icon className="h-5 w-5" />
+                )}
               </div>
               <div>
                 <p className="mt-0 font-display text-sm font-bold text-ocean-900 sm:mt-2">
