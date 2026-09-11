@@ -24,11 +24,6 @@ function normalizeBucket(raw: string | undefined): string | undefined {
   return v || undefined;
 }
 
-function firebaseDownloadUrl(bucketName: string, objectPath: string, token: string): string {
-  const enc = encodeURIComponent(objectPath);
-  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${enc}?alt=media&token=${token}`;
-}
-
 export async function POST(req: Request) {
   const auth = await authenticateAdminRequest(req);
   if (!auth.ok) {
@@ -107,22 +102,25 @@ export async function POST(req: Request) {
   const token = randomUUID();
 
   const bucket = getStorage(app).bucket(bucketName);
+  const storageFile = bucket.file(objectPath);
   try {
-    await bucket.file(objectPath).save(converted.buffer, {
+    await storageFile.save(converted.buffer, {
       resumable: false,
       metadata: {
         contentType: converted.contentType,
+        cacheControl: "public, max-age=86400",
         metadata: {
           firebaseStorageDownloadTokens: token,
         },
       },
     });
+    await storageFile.makePublic();
   } catch (e) {
     console.error("seo-image-upload save failed", e);
     return NextResponse.json({ error: "Storage upload failed" }, { status: 500 });
   }
 
-  const url = firebaseDownloadUrl(bucketName, objectPath, token);
+  const url = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
   return NextResponse.json({
     url,
     bytes: converted.bytes,

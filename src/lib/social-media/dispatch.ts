@@ -3,6 +3,7 @@ import {
   generatePlatformCaptions,
   type PlatformCaptions,
 } from "@/lib/social-media/platform-captions";
+import { resolveInstagramImageUrl } from "@/lib/social-media/instagram-image";
 import {
   postToFacebookPage,
   postToInstagram,
@@ -95,7 +96,7 @@ async function postToInstagramPlatform(
         videoUrl,
         caption: captions.instagram,
         isReel: payload.isReel === true || payload.contentType === "reel",
-        coverUrl: imageUrl,
+        coverUrl: imageUrl ? resolveInstagramImageUrl(imageUrl) : undefined,
       });
       await saveMetaSettings({
         lastPostAt: new Date().toISOString(),
@@ -127,7 +128,7 @@ async function postToInstagramPlatform(
     const id = await postToInstagram({
       instagramBusinessId: meta.instagramBusinessId,
       pageAccessToken: meta.pageAccessToken,
-      imageUrl,
+      imageUrl: resolveInstagramImageUrl(imageUrl),
       caption: captions.instagram,
     });
     await saveMetaSettings({
