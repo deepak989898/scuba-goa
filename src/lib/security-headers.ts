@@ -11,17 +11,20 @@ export const SITE_ORIGINS = [
 /** Primary origin used when a static ACAO value is required (override Vercel *). */
 export const PRIMARY_SITE_ORIGIN = "https://www.bookscubagoa.com";
 
+function isProduction(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
 /**
  * Content-Security-Policy — practical allow-list for this booking site.
- * 'unsafe-inline' / 'unsafe-eval' needed for Next.js + third-party tags.
+ * 'unsafe-inline' is required for Next.js + third-party tags.
+ * 'unsafe-eval' is omitted in production (dev-only for hot reload).
  */
-export const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  [
-    "script-src",
+export function buildContentSecurityPolicy(): string {
+  const scriptSrc = [
     "'self'",
     "'unsafe-inline'",
-    "'unsafe-eval'",
+    ...(isProduction() ? [] : ["'unsafe-eval'"]),
     "https://www.googletagmanager.com",
     "https://www.google-analytics.com",
     "https://connect.facebook.net",
@@ -29,6 +32,13 @@ export const CONTENT_SECURITY_POLICY = [
     "https://scripts.clarity.ms",
     "https://checkout.razorpay.com",
     "https://*.razorpay.com",
+  ];
+
+  return [
+  "default-src 'self'",
+  [
+    "script-src",
+    ...scriptSrc,
   ].join(" "),
   [
     "style-src",
@@ -106,13 +116,17 @@ export const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
   "upgrade-insecure-requests",
 ].join("; ");
+}
+
+/** @deprecated Use buildContentSecurityPolicy() */
+export const CONTENT_SECURITY_POLICY = buildContentSecurityPolicy();
 
 export function securityHeaderPairs(opts?: {
   /** When true, set a fixed ACAO (overrides Vercel default *). */
   includeCorsOrigin?: boolean;
 }): { key: string; value: string }[] {
   const headers: { key: string; value: string }[] = [
-    { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
+    { key: "Content-Security-Policy", value: buildContentSecurityPolicy() },
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   onAuthStateChanged,
@@ -16,6 +16,10 @@ import {
 } from "@/lib/firestore-read-pause";
 import { AdminNavDrawer } from "@/components/admin/AdminNavDrawer";
 import { adminNavCurrentLabel } from "@/components/admin/admin-nav";
+import {
+  clearAdminSession,
+  establishAdminSession,
+} from "@/lib/establish-admin-session";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -47,11 +51,15 @@ function AdminGate({ children }: { children: React.ReactNode }) {
         return;
       }
       const snap = await getDoc(doc(db, "admins", u.uid));
-      setAllowed(snap.exists());
-      if (!snap.exists()) {
+      const isAdmin = snap.exists();
+      setAllowed(isAdmin);
+      if (!isAdmin) {
         await signOut(auth);
+        await clearAdminSession();
         router.replace("/admin/login");
+        return;
       }
+      await establishAdminSession();
     });
   }, [router]);
 
@@ -140,7 +148,10 @@ function AdminGate({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 className="rounded-full bg-red-50 px-2.5 py-1.5 text-[11px] font-semibold text-red-700 hover:bg-red-100"
-                onClick={() => getFirebaseAuth()?.signOut()}
+                onClick={async () => {
+                  await clearAdminSession();
+                  await getFirebaseAuth()?.signOut();
+                }}
               >
                 Sign out
               </button>
@@ -158,10 +169,27 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 
 export function AdminLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next")?.startsWith("/admin")
+    ? searchParams.get("next")!
+    : "/admin/bookings";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    const db = getDb({ ignoreReadPause: true });
+    if (!auth || !db) return;
+    return onAuthStateChanged(auth, async (u) => {
+      if (!u) return;
+      const snap = await getDoc(doc(db, "admins", u.uid));
+      if (!snap.exists()) return;
+      const sessionOk = await establishAdminSession();
+      if (sessionOk) router.replace(nextPath);
+    });
+  }, [router, nextPath]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -181,7 +209,12 @@ export function AdminLoginForm() {
         setErr("This account is not an admin.");
         return;
       }
-      router.replace("/admin/bookings");
+      const sessionOk = await establishAdminSession();
+      if (!sessionOk) {
+        setErr("Could not start admin session. Check server env (CRON_SECRET).");
+        return;
+      }
+      router.replace(nextPath);
     } catch {
       setErr("Invalid email or password.");
     } finally {

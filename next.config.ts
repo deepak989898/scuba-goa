@@ -3,6 +3,7 @@ import { getAllPermanentRedirects } from "./src/lib/blog-redirects";
 import { securityHeaderPairs } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   // Tree-shake heavy packages so homepage bundles pull fewer unused modules.
   experimental: {
     optimizePackageImports: [

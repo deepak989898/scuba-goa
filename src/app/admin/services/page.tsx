@@ -131,8 +131,9 @@ export default function AdminServicesPage() {
     if (!db || loading || list.length > 0 || triedAutoSeed.current) return;
     triedAutoSeed.current = true;
     (async () => {
-      const r = await fetch("/api/seed-catalog-if-empty", { method: "POST" });
-      if (r.ok) await refresh();
+      const { adminFetch } = await import("@/lib/admin-fetch");
+      await adminFetch("/api/admin/seed-catalog-if-empty", { method: "POST" });
+      await refresh();
     })();
   }, [db, loading, list.length, refresh]);
 

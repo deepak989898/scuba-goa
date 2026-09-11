@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
+  ADMIN_SESSION_COOKIE,
+  verifyAdminSessionValue,
+} from "@/lib/admin-session-cookie";
+import {
   firestoreReadPauseMessage,
   getFirestoreReadPauseUntilIso,
   isFirestoreReadPaused,
@@ -50,10 +54,30 @@ function shouldBlockForReadPause(req: NextRequest): boolean {
   return false;
 }
 
+function requiresAdminSession(pathname: string): boolean {
+  if (!pathname.startsWith("/admin")) return false;
+  if (pathname === "/admin/login") return false;
+  return true;
+}
+
 /**
  * Tighten CORS + emergency Firestore read pause (quota protection).
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  if (requiresAdminSession(pathname)) {
+    const session = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const verified = await verifyAdminSessionValue(session);
+    if (!verified) {
+      const login = new URL("/admin/login", request.url);
+      if (pathname !== "/admin") {
+        login.searchParams.set("next", pathname);
+      }
+      return NextResponse.redirect(login);
+    }
+  }
+
   if (shouldBlockForReadPause(request)) {
     return NextResponse.json(
       {
